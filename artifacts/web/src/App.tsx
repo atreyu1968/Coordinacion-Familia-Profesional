@@ -11,6 +11,9 @@ import DashboardPage from "@/pages/dashboard";
 import PanelControlPage from "@/pages/panel-control";
 import CentrosPage from "@/pages/centros";
 import CentroDetallePage from "@/pages/centro-detalle";
+import AcademicaPage from "@/pages/academica";
+import RecursosPage from "@/pages/recursos";
+import AsistenteIaPage from "@/pages/asistente-ia";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +24,9 @@ function AuthedRoutes() {
         <Route path="/" component={DashboardPage} />
         <Route path="/centros" component={CentrosPage} />
         <Route path="/centros/:id" component={CentroDetallePage} />
+        <Route path="/academica" component={AcademicaPage} />
+        <Route path="/recursos" component={RecursosPage} />
+        <Route path="/asistente-ia" component={AsistenteIaPage} />
         <Route path="/panel-control" component={PanelControlPage} />
         <Route component={NotFound} />
       </Switch>

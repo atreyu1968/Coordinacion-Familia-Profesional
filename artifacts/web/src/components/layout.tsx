@@ -13,7 +13,9 @@ import {
   Briefcase,
   BarChart,
   Calendar,
-  FileText
+  FileText,
+  FolderOpen,
+  Sparkles
 } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -50,6 +52,8 @@ export function AppLayout({ children }: LayoutProps) {
     
     // Upcoming modules
     { label: "Coord. Académica", path: "/academica", icon: GraduationCap, visible: true },
+    { label: "Recursos", path: "/recursos", icon: FolderOpen, visible: true },
+    { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: true },
     { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: true },
     { label: "Encuestas", path: "/encuestas", icon: BarChart, visible: true },
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },

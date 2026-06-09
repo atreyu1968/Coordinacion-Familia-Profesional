@@ -4,6 +4,9 @@ import type {
   Department,
   TrainingOffer,
   Invitation,
+  Module,
+  Group,
+  Resource,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -43,6 +46,76 @@ export function toTrainingOffer(row: TrainingOffer) {
     cycleName: row.cycleName,
     level: row.level ?? undefined,
     shift: row.shift,
+  };
+}
+
+export function toModule(row: Module) {
+  return {
+    id: row.id,
+    code: row.code ?? undefined,
+    name: row.name,
+    cycleName: row.cycleName,
+    centerId: row.centerId,
+  };
+}
+
+export function toGroup(row: Group) {
+  return {
+    id: row.id,
+    centerId: row.centerId,
+    name: row.name,
+    cycleName: row.cycleName,
+    schoolYear: row.schoolYear,
+  };
+}
+
+export function toTeachingAssignment(row: {
+  id: number;
+  teacherId: number;
+  teacherName?: string | null;
+  moduleId: number;
+  moduleName?: string | null;
+  groupId: number | null;
+  centerId: number;
+  schoolYear: string | null;
+}) {
+  return {
+    id: row.id,
+    teacherId: row.teacherId,
+    teacherName: row.teacherName ?? null,
+    moduleId: row.moduleId,
+    moduleName: row.moduleName ?? null,
+    groupId: row.groupId,
+    centerId: row.centerId,
+    schoolYear: row.schoolYear,
+  };
+}
+
+export function toResource(row: {
+  id: number;
+  title: string;
+  description: string | null;
+  type: string;
+  fileUrl: string | null;
+  authorId: number | null;
+  authorName?: string | null;
+  originalAuthorName: string | null;
+  moduleId: number | null;
+  centerId: number | null;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    type: row.type,
+    fileUrl: row.fileUrl,
+    authorId: row.authorId,
+    authorName: row.authorName ?? null,
+    originalAuthorName: row.originalAuthorName,
+    moduleId: row.moduleId,
+    centerId: row.centerId,
+    createdAt: row.createdAt,
   };
 }
 

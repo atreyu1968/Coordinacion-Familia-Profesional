@@ -7,4 +7,8 @@ export * from "./invitations";
 export * from "./centers";
 export * from "./trainingOffer";
 export * from "./departments";
+export * from "./modules";
+export * from "./groups";
+export * from "./teachingAssignments";
+export * from "./resources";
 export * from "./integrationSettings";
