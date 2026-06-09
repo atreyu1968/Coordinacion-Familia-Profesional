@@ -16,6 +16,7 @@ import {
   requireRole,
   hasScopeOver,
   canManageUser,
+  roleRank,
 } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -130,6 +131,32 @@ router.patch(
     if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
+    }
+
+    if (caller.role !== "superadmin") {
+      const newRole = parsed.data.role ?? target.role;
+      if (roleRank(newRole) >= roleRank(caller.role)) {
+        res.status(403).json({
+          message: "No puede asignar un rol igual o superior al suyo",
+        });
+        return;
+      }
+      const candidate = {
+        provinceId:
+          parsed.data.provinceId !== undefined
+            ? parsed.data.provinceId
+            : target.provinceId,
+        centerId:
+          parsed.data.centerId !== undefined
+            ? parsed.data.centerId
+            : target.centerId,
+      };
+      if (!hasScopeOver(caller, candidate)) {
+        res.status(403).json({
+          message: "No puede asignar un ámbito fuera del suyo",
+        });
+        return;
+      }
     }
 
     const [user] = await db

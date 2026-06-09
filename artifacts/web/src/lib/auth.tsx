@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
-import { useGetCurrentUser } from "@workspace/api-client-react";
-import type { User } from "@workspace/api-client-react/src/generated/api.schemas";
+import {
+  setAuthTokenGetter,
+  useGetCurrentUser,
+  getGetCurrentUserQueryKey,
+  type User,
+} from "@workspace/api-client-react";
 
 const TOKEN_KEY = "coordina_adg_token";
 
@@ -24,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { data: user, isLoading: isUserLoading, error } = useGetCurrentUser({
     query: {
+      queryKey: getGetCurrentUserQueryKey(),
       enabled: !!token,
       retry: false,
     }
