@@ -11,10 +11,17 @@ export interface SendEmailResult {
  * call degrades gracefully: nothing is sent and `pending` is returned so the
  * caller can surface the invite link manually ("pendiente de configuración").
  */
+export interface EmailAttachment {
+  filename: string;
+  // Base64-encoded file content.
+  content: string;
+}
+
 export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }): Promise<SendEmailResult> {
   const settings = await getSettings();
 
@@ -36,6 +43,9 @@ export async function sendEmail(params: {
         to: params.to,
         subject: params.subject,
         html: params.html,
+        ...(params.attachments && params.attachments.length > 0
+          ? { attachments: params.attachments }
+          : {}),
       }),
     });
 
@@ -79,6 +89,48 @@ export function buildCompanyAlertEmail(params: {
         ${rows.length ? `<p>${rows.join("<br>")}</p>` : ""}
         ${params.description ? `<p>${params.description}</p>` : ""}
         <p>Accede a la plataforma para consultar los detalles en el módulo de FCT y Prospección.</p>
+      </div>
+    `,
+  };
+}
+
+export function buildAccreditationEmail(params: {
+  eventName: string;
+  holderName: string;
+  role: string;
+  location?: string | null;
+  startAt?: Date | null;
+  qrToken: string;
+  qrDataUrl: string;
+}): { subject: string; html: string } {
+  const roleLabels: Record<string, string> = {
+    participant: "Participante",
+    jury: "Jurado",
+    authority: "Autoridad",
+    staff: "Organización",
+  };
+  const rows: string[] = [];
+  if (params.location)
+    rows.push(`<strong>Lugar:</strong> ${params.location}`);
+  if (params.startAt)
+    rows.push(
+      `<strong>Fecha:</strong> ${new Date(params.startAt).toLocaleString("es-ES")}`,
+    );
+
+  return {
+    subject: `Acreditación · ${params.eventName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
+        <h2>Coordina ADG · Acreditación</h2>
+        <p>Hola ${params.holderName}, esta es tu acreditación como
+        <strong>${roleLabels[params.role] ?? params.role}</strong> para:</p>
+        <h3 style="margin-bottom:4px;">${params.eventName}</h3>
+        ${rows.length ? `<p>${rows.join("<br>")}</p>` : ""}
+        <p>Presenta este código QR en el control de acceso:</p>
+        <p style="text-align:center;">
+          <img src="${params.qrDataUrl}" alt="QR de acceso" width="220" height="220" style="border:1px solid #e2e8f0;border-radius:8px;" />
+        </p>
+        <p style="text-align:center;color:#64748b;font-size:12px;">Código: ${params.qrToken}</p>
       </div>
     `,
   };

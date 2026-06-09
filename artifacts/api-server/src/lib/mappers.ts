@@ -9,6 +9,10 @@ import type {
   Resource,
   GdcanResource,
   Survey,
+  Event,
+  EventAccreditation,
+  EventSpace,
+  CalendarEntry,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -171,6 +175,78 @@ export function toSurvey(row: Survey) {
     opensAt: row.opensAt,
     closesAt: row.closesAt,
     createdAt: row.createdAt,
+  };
+}
+
+export function toEvent(row: Event) {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type as "canarias_skills" | "jornada" | "other",
+    description: row.description,
+    location: row.location,
+    provinceId: row.provinceId,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    status: row.status,
+    createdAt: row.createdAt,
+  };
+}
+
+export function toAccreditation(row: EventAccreditation) {
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    holderName: row.holderName,
+    holderEmail: row.holderEmail,
+    role: row.role as "participant" | "jury" | "authority" | "staff",
+    qrToken: row.qrToken,
+    sentAt: row.sentAt,
+    checkedInAt: row.checkedInAt,
+  };
+}
+
+export function toEventSpace(row: EventSpace) {
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    name: row.name,
+    capacity: row.capacity,
+    resources: row.resources ?? [],
+  };
+}
+
+export function toEventStaff(row: {
+  id: number;
+  eventId: number;
+  userId: number;
+  userName?: string | null;
+  task: string | null;
+  role: string | null;
+  shiftStart: Date | null;
+  shiftEnd: Date | null;
+}) {
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    userId: row.userId,
+    userName: row.userName ?? null,
+    task: row.task,
+    role: row.role,
+    shiftStart: row.shiftStart,
+    shiftEnd: row.shiftEnd,
+  };
+}
+
+export function toCalendarEntry(row: CalendarEntry) {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type ?? undefined,
+    date: row.date,
+    endDate: row.endDate,
+    provinceId: row.provinceId,
+    description: row.description,
   };
 }
 

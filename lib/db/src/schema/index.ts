@@ -14,4 +14,5 @@ export * from "./resources";
 export * from "./companyAlerts";
 export * from "./gdcanResources";
 export * from "./surveys";
+export * from "./events";
 export * from "./integrationSettings";
