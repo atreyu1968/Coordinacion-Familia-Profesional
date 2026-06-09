@@ -1,7 +1,8 @@
-import { db, pushTokensTable } from "@workspace/db";
+import { db, integrationSettingsTable, pushTokensTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import webpush from "web-push";
 import { logger } from "./logger";
+import { getSettings } from "./settings";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
@@ -20,29 +21,77 @@ function isExpoPushToken(token: string): boolean {
 
 /**
  * Web Push (VAPID) configuration. The keypair is self-generated (no third-party
- * account required) and stored in the environment. If it is absent, web push is
- * silently disabled — mirroring the graceful-degradation pattern used elsewhere.
+ * account required) and persisted in the integration_settings row in the
+ * database — NOT in environment variables or committed files, since the private
+ * key is sensitive cryptographic material. It is generated on first use and
+ * reused thereafter. If the database is unreachable, web push degrades silently,
+ * mirroring the graceful-degradation pattern used elsewhere.
  */
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:admin@coordinaadg.es";
+const DEFAULT_VAPID_SUBJECT = "mailto:admin@coordinaadg.es";
 
-let webPushConfigured = false;
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-    webPushConfigured = true;
-  } catch (err) {
-    logger.warn({ err }, "push: invalid VAPID configuration, web push disabled");
+let vapidState: { publicKey: string; configured: boolean } | null = null;
+let vapidInit: Promise<{ publicKey: string; configured: boolean }> | null = null;
+
+async function loadOrCreateVapid(): Promise<{
+  publicKey: string;
+  configured: boolean;
+}> {
+  const settings = await getSettings();
+  let publicKey = settings.vapidPublicKey;
+  let privateKey = settings.vapidPrivateKey;
+  const subject = settings.vapidSubject ?? DEFAULT_VAPID_SUBJECT;
+
+  if (!publicKey || !privateKey) {
+    const keys = webpush.generateVAPIDKeys();
+    publicKey = keys.publicKey;
+    privateKey = keys.privateKey;
+    await db
+      .update(integrationSettingsTable)
+      .set({
+        vapidPublicKey: publicKey,
+        vapidPrivateKey: privateKey,
+        vapidSubject: subject,
+      })
+      .where(eq(integrationSettingsTable.id, settings.id));
+    logger.info("push: generated and stored a new VAPID keypair");
   }
+
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  return { publicKey, configured: true };
 }
 
-export function isWebPushConfigured(): boolean {
-  return webPushConfigured;
+/**
+ * Ensure the VAPID keypair is loaded (or generated) and registered with the
+ * web-push library. Cached after the first successful call; failures are not
+ * cached so a transient DB error can be retried on the next send.
+ */
+async function ensureVapid(): Promise<{
+  publicKey: string;
+  configured: boolean;
+}> {
+  if (vapidState) return vapidState;
+  if (!vapidInit) {
+    vapidInit = loadOrCreateVapid()
+      .then((state) => {
+        vapidState = state;
+        return state;
+      })
+      .catch((err) => {
+        logger.warn({ err }, "push: failed to load/generate VAPID keys");
+        vapidInit = null;
+        return { publicKey: "", configured: false };
+      });
+  }
+  return vapidInit;
 }
 
-export function getVapidPublicKey(): string | undefined {
-  return webPushConfigured ? VAPID_PUBLIC_KEY : undefined;
+export async function isWebPushConfigured(): Promise<boolean> {
+  return (await ensureVapid()).configured;
+}
+
+export async function getVapidPublicKey(): Promise<string | undefined> {
+  const state = await ensureVapid();
+  return state.configured ? state.publicKey : undefined;
 }
 
 /**
@@ -53,7 +102,9 @@ async function sendWebPush(
   subscriptions: { id: number; token: string }[],
   payload: PushPayload,
 ): Promise<void> {
-  if (!webPushConfigured || subscriptions.length === 0) return;
+  if (subscriptions.length === 0) return;
+  const { configured } = await ensureVapid();
+  if (!configured) return;
 
   const body = JSON.stringify({
     title: payload.title,

@@ -5,6 +5,9 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   deepseekApiKey: text("deepseek_api_key"),
   resendApiKey: text("resend_api_key"),
   resendFromEmail: text("resend_from_email"),
+  vapidPublicKey: text("vapid_public_key"),
+  vapidPrivateKey: text("vapid_private_key"),
+  vapidSubject: text("vapid_subject"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

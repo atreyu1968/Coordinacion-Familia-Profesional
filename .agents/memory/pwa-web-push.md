@@ -19,11 +19,18 @@ it. Tried it, it had no effect, deleted it.
 (skipWaiting/claim, noop fetch, `push` + `notificationclick` handlers).
 
 ## Web push pipeline
-Self-generated VAPID keypair (crypto ECDH prime256v1) stored as env vars
-`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`. Backend `lib/push.ts` now sends
-**both** Expo push and Web Push from the single `sendPushToUsers()` (called by notify.ts +
-messaging.ts → one change covers all paths). Web subs are pruned on 404/410. Everything
-no-ops gracefully when VAPID is absent (`isWebPushConfigured()` gate).
+Self-generated VAPID keypair stored in the **database** (the `integration_settings`
+singleton row, columns `vapid_public_key`/`vapid_private_key`/`vapid_subject`), NOT in env
+vars. It is generated on first use via `webpush.generateVAPIDKeys()` and cached in memory.
+**Why:** the VAPID *private* key is sensitive — storing it as a shared env var writes it
+into `.replit` in plaintext (committed to source control), which got the work REJECTED in
+review. The DB matches the existing deepseek/resend key pattern, survives restarts, works in
+prod, and never touches committed files. Settings route only ever exposes `*Configured`
+booleans, never raw keys.
+Backend `lib/push.ts` sends **both** Expo push and Web Push from the single
+`sendPushToUsers()` (called by notify.ts + messaging.ts → one change covers all paths). Web
+subs are pruned on 404/410. `getVapidPublicKey()`/`isWebPushConfigured()` are async (DB
+load) and degrade gracefully if the DB is unreachable.
 
 **Why (gotcha):** any best-effort branch fired with `void` must have its own `.catch` AND
 each DB cleanup (`db.delete`) must be wrapped — otherwise a delete failure becomes an

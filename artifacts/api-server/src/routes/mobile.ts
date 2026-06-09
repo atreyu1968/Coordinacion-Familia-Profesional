@@ -47,9 +47,13 @@ router.get("/mobile-app", requireAuth, (_req, res): void => {
   res.json(GetMobileAppResponse.parse(result));
 });
 
-router.get("/push/vapid-public-key", requireAuth, (_req, res): void => {
-  const key = getVapidPublicKey();
-  res.json(GetVapidPublicKeyResponse.parse(key ? { key } : {}));
-});
+router.get(
+  "/push/vapid-public-key",
+  requireAuth,
+  async (_req, res): Promise<void> => {
+    const key = await getVapidPublicKey();
+    res.json(GetVapidPublicKeyResponse.parse(key ? { key } : {}));
+  },
+);
 
 export default router;
