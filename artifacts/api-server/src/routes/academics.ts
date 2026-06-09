@@ -443,6 +443,12 @@ router.post(
       res.status(400).json({ message: "Profesor de destino no válido" });
       return;
     }
+    if (target.centerId == null) {
+      res
+        .status(400)
+        .json({ message: "El profesor de destino no tiene centro asignado" });
+      return;
+    }
     let targetProvinceId = target.provinceId;
     if (targetProvinceId == null && target.centerId != null) {
       const [c] = await db
@@ -466,6 +472,9 @@ router.post(
     const conditions: SQL[] = [
       isNull(teachingAssignmentsTable.deletedAt),
       eq(teachingAssignmentsTable.teacherId, fromTeacherId),
+      // Center coherence: only move assignments belonging to the destination
+      // teacher's center, mirroring the create-assignment invariant.
+      eq(teachingAssignmentsTable.centerId, target.centerId),
     ];
     if (moduleIds && moduleIds.length > 0) {
       conditions.push(inArray(teachingAssignmentsTable.moduleId, moduleIds));
