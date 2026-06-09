@@ -43,7 +43,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, Ban, Mail } from "lucide-react";
+import { Plus, RefreshCw, Ban, Mail, Copy } from "lucide-react";
 
 const ALL = "all";
 const NONE = "none";
@@ -81,8 +81,6 @@ function inviteRoleOptions(callerRole: string | undefined): Role[] {
 }
 
 interface FormState {
-  email: string;
-  name: string;
   role: Role;
   provinceId: number | null;
   centerId: number | null;
@@ -97,8 +95,6 @@ function CreateInvitationDialog() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>({
-    email: "",
-    name: "",
     role: roleOptions[0],
     provinceId: user?.provinceId ?? null,
     centerId: null,
@@ -115,8 +111,6 @@ function CreateInvitationDialog() {
 
   const reset = () =>
     setForm({
-      email: "",
-      name: "",
       role: roleOptions[0],
       provinceId: user?.provinceId ?? null,
       centerId: null,
@@ -126,13 +120,7 @@ function CreateInvitationDialog() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.email.trim()) {
-      setError("El correo electrónico es obligatorio.");
-      return;
-    }
     const payload: CreateInvitationInput = {
-      email: form.email.trim(),
-      name: form.name.trim() || undefined,
       role: form.role,
       provinceId: form.provinceId,
       centerId: form.centerId,
@@ -143,23 +131,19 @@ function CreateInvitationDialog() {
     try {
       const result = await createMut.mutateAsync({ data: payload });
       await qc.invalidateQueries({ queryKey: getListInvitationsQueryKey() });
-      if (result.emailSent) {
-        toast({
-          title: "Invitación enviada",
-          description: `Se envió un correo a ${form.email.trim()}.`,
-        });
-      } else {
-        toast({
-          title: "Invitación creada",
-          description:
-            "El correo no se pudo enviar automáticamente. Comparte el enlace de invitación manualmente.",
-        });
-        if (result.inviteUrl) {
-          await navigator.clipboard
-            ?.writeText(result.inviteUrl)
-            .catch(() => undefined);
-        }
+      let copied = false;
+      if (result.inviteUrl) {
+        copied = await navigator.clipboard
+          ?.writeText(result.inviteUrl)
+          .then(() => true)
+          .catch(() => false);
       }
+      toast({
+        title: "Invitación creada",
+        description: copied
+          ? "El enlace de invitación se ha copiado al portapapeles. Compártelo con la persona invitada."
+          : "Comparte el enlace de invitación con la persona invitada.",
+      });
       reset();
       setOpen(false);
     } catch {
@@ -185,32 +169,13 @@ function CreateInvitationDialog() {
         <DialogHeader>
           <DialogTitle>Nueva invitación</DialogTitle>
           <DialogDescription>
-            Invita a una persona a unirse a Coordina ADG. Recibirá un enlace
-            para crear su cuenta.
+            Genera un código de invitación para un rol. Comparte el enlace
+            resultante con la persona invitada; ella indicará su correo al
+            crear la cuenta.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => set({ email: e.target.value })}
-              placeholder="persona@centro.es"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre (opcional)</Label>
-            <Input
-              id="name"
-              value={form.name}
-              onChange={(e) => set({ name: e.target.value })}
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Rol</Label>
@@ -324,11 +289,11 @@ export default function InvitacionesPage() {
   const revokeMut = useRevokeInvitation();
   const resendMut = useResendInvitation();
 
-  const onRevoke = async (id: number, email: string) => {
+  const onRevoke = async (id: number, code: string) => {
     try {
       await revokeMut.mutateAsync({ id });
       await qc.invalidateQueries({ queryKey: getListInvitationsQueryKey() });
-      toast({ title: "Invitación revocada", description: email });
+      toast({ title: "Invitación revocada", description: code });
     } catch {
       toast({
         title: "No se pudo revocar",
@@ -338,23 +303,43 @@ export default function InvitacionesPage() {
     }
   };
 
-  const onResend = async (id: number, email: string) => {
+  const onRenew = async (id: number) => {
     try {
       const result = await resendMut.mutateAsync({ id });
       await qc.invalidateQueries({ queryKey: getListInvitationsQueryKey() });
+      let copied = false;
+      if (result.inviteUrl) {
+        copied = await navigator.clipboard
+          ?.writeText(result.inviteUrl)
+          .then(() => true)
+          .catch(() => false);
+      }
       toast({
-        title: result.emailSent ? "Invitación reenviada" : "Invitación renovada",
-        description: result.emailSent
-          ? `Se reenvió el correo a ${email}.`
-          : "El correo no se pudo enviar; comparte el enlace manualmente.",
+        title: "Invitación renovada",
+        description: copied
+          ? "Se amplió la validez y el enlace se ha copiado al portapapeles."
+          : "Se amplió la validez de la invitación.",
       });
     } catch {
       toast({
-        title: "No se pudo reenviar",
+        title: "No se pudo renovar",
         description: "Inténtalo de nuevo.",
         variant: "destructive",
       });
     }
+  };
+
+  const onCopyLink = async (code: string) => {
+    const url = `${window.location.origin}/register?token=${code}`;
+    const ok = await navigator.clipboard
+      ?.writeText(url)
+      .then(() => true)
+      .catch(() => false);
+    toast({
+      title: ok ? "Enlace copiado" : "No se pudo copiar",
+      description: ok ? url : "Cópialo manualmente.",
+      variant: ok ? undefined : "destructive",
+    });
   };
 
   const statusVariant = (
@@ -419,7 +404,7 @@ export default function InvitacionesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Correo</TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Caduca</TableHead>
@@ -446,7 +431,12 @@ export default function InvitacionesPage() {
                     <TableCell className="font-medium">
                       <span className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        {inv.email}
+                        <code className="text-xs">{inv.code}</code>
+                        {inv.email && (
+                          <span className="text-xs text-muted-foreground">
+                            · {inv.email}
+                          </span>
+                        )}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -470,18 +460,27 @@ export default function InvitacionesPage() {
                               variant="ghost"
                               size="sm"
                               className="gap-1.5"
+                              onClick={() => onCopyLink(inv.code)}
+                            >
+                              <Copy className="h-4 w-4" />
+                              Copiar enlace
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5"
                               disabled={resendMut.isPending}
-                              onClick={() => onResend(inv.id, inv.email)}
+                              onClick={() => onRenew(inv.id)}
                             >
                               <RefreshCw className="h-4 w-4" />
-                              Reenviar
+                              Renovar
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="gap-1.5 text-destructive hover:text-destructive"
                               disabled={revokeMut.isPending}
-                              onClick={() => onRevoke(inv.id, inv.email)}
+                              onClick={() => onRevoke(inv.id, inv.code)}
                             >
                               <Ban className="h-4 w-4" />
                               Revocar

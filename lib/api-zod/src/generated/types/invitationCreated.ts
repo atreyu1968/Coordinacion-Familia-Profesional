@@ -10,7 +10,4 @@ import type { Invitation } from './invitation';
 export interface InvitationCreated {
   invitation: Invitation;
   inviteUrl: string;
-  emailSent: boolean;
-  /** True when Resend is not configured and the email could not be sent */
-  emailPending: boolean;
 }

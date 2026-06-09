@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const token = searchParams.get("token") ?? "";
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export default function RegisterPage() {
     setError(null);
     try {
       const result = await registerMutation.mutateAsync({
-        data: { token, name: name || undefined, password },
+        data: { token, name: name || undefined, email, password },
       });
       login(result.token, result.user);
       setLocation("/");
@@ -86,10 +87,11 @@ export default function RegisterPage() {
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="rounded-md bg-muted/50 p-3 text-sm">
           <p>
-            Invitación para <strong>{invitation.email}</strong>
+            Invitación válida para el rol de{" "}
+            <strong>{ROLE_LABELS[invitation.role] ?? invitation.role}</strong>
           </p>
           <p className="text-muted-foreground">
-            Rol: {ROLE_LABELS[invitation.role] ?? invitation.role}
+            Completa tus datos para crear la cuenta.
           </p>
         </div>
         <div className="space-y-2">
@@ -100,6 +102,18 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Tu nombre y apellidos"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Correo electrónico</Label>
+          <Input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@centro.es"
           />
         </div>
         <div className="space-y-2">

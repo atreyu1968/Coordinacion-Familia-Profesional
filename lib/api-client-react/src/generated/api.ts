@@ -1434,8 +1434,8 @@ export const getCreateInvitationUrl = () => {
 }
 
 /**
- * Coordinators generate codes for department heads and prospectors; department heads for teachers. Sends a magic link via Resend when configured.
- * @summary Generate an invitation code and send it by email (Resend)
+ * Generates a shareable invitation code scoped to a role (and optional province/center). The email is unknown at creation time; the recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
+ * @summary Generate a role-based invitation code
  */
 export const createInvitation = async (createInvitationInput: CreateInvitationInput, options?: RequestInit): Promise<InvitationCreated> => {
 
@@ -1484,7 +1484,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateInvitationMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Generate an invitation code and send it by email (Resend)
+ * @summary Generate a role-based invitation code
  */
 export const useCreateInvitation = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInvitation>>, TError,{data: BodyType<CreateInvitationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1576,7 +1576,7 @@ export const getResendInvitationUrl = (id: number,) => {
 }
 
 /**
- * @summary Resend an invitation email
+ * @summary Renew an invitation code (extend its expiry)
  */
 export const resendInvitation = async (id: number, options?: RequestInit): Promise<InvitationCreated> => {
 
@@ -1624,7 +1624,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ResendInvitationMutationError = ErrorType<unknown>
 
     /**
- * @summary Resend an invitation email
+ * @summary Renew an invitation code (extend its expiry)
  */
 export const useResendInvitation = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendInvitation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}

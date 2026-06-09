@@ -17,6 +17,15 @@ import {
 } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
 
+class RegisterError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 const router: IRouter = Router();
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -88,7 +97,6 @@ router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
 
   res.json(
     GetInvitationByTokenResponse.parse({
-      email: invitation.email,
       role: invitation.role,
       inviterName,
       expiresAt: invitation.expiresAt,
@@ -103,57 +111,71 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const [invitation] = await db
-    .select()
-    .from(invitationsTable)
-    .where(
-      and(
-        eq(invitationsTable.code, parsed.data.token),
-        isNull(invitationsTable.deletedAt),
-      ),
-    );
-
-  if (
-    !invitation ||
-    invitation.status !== "pending" ||
-    invitation.expiresAt.getTime() < Date.now()
-  ) {
-    res.status(400).json({ message: "Invitación no válida o caducada" });
-    return;
-  }
-
-  const email = invitation.email.trim().toLowerCase();
-  const [existing] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email));
-  if (existing) {
-    res.status(400).json({ message: "Ya existe una cuenta con este correo" });
-    return;
-  }
-
-  const name =
-    parsed.data.name?.trim() || invitation.name || invitation.email;
+  const email = parsed.data.email.trim().toLowerCase();
   const passwordHash = await hashPassword(parsed.data.password);
 
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      name,
-      email,
-      passwordHash,
-      role: invitation.role,
-      status: "active",
-      provinceId: invitation.provinceId,
-      centerId: invitation.centerId,
-      createdBy: invitation.invitedBy,
-    })
-    .returning();
+  let user;
+  try {
+    user = await db.transaction(async (tx) => {
+      // Lock the invitation row so concurrent registrations cannot consume the
+      // same single-use token (TOCTOU on status/email).
+      const [invitation] = await tx
+        .select()
+        .from(invitationsTable)
+        .where(
+          and(
+            eq(invitationsTable.code, parsed.data.token),
+            isNull(invitationsTable.deletedAt),
+          ),
+        )
+        .for("update");
 
-  await db
-    .update(invitationsTable)
-    .set({ status: "used", usedAt: new Date() })
-    .where(eq(invitationsTable.id, invitation.id));
+      if (
+        !invitation ||
+        invitation.status !== "pending" ||
+        invitation.expiresAt.getTime() < Date.now()
+      ) {
+        throw new RegisterError(400, "Invitación no válida o caducada");
+      }
+
+      const [existing] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, email));
+      if (existing) {
+        throw new RegisterError(400, "Ya existe una cuenta con este correo");
+      }
+
+      const name = parsed.data.name?.trim() || invitation.name || email;
+
+      const [created] = await tx
+        .insert(usersTable)
+        .values({
+          name,
+          email,
+          passwordHash,
+          role: invitation.role,
+          status: "active",
+          provinceId: invitation.provinceId,
+          centerId: invitation.centerId,
+          createdBy: invitation.invitedBy,
+        })
+        .returning();
+
+      await tx
+        .update(invitationsTable)
+        .set({ status: "used", usedAt: new Date(), email })
+        .where(eq(invitationsTable.id, invitation.id));
+
+      return created;
+    });
+  } catch (err) {
+    if (err instanceof RegisterError) {
+      res.status(err.status).json({ message: err.message });
+      return;
+    }
+    throw err;
+  }
 
   const token = signToken({ sub: user.id, role: user.role });
   res.json(RegisterWithTokenResponse.parse({ token, user }));

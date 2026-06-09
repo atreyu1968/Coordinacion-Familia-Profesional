@@ -445,8 +445,8 @@ paths:
     post:
       operationId: createInvitation
       tags: [invitations]
-      summary: Generate an invitation code and send it by email (Resend)
-      description: Coordinators generate codes for department heads and prospectors; department heads for teachers. Sends a magic link via Resend when configured.
+      summary: Generate a role-based invitation code
+      description: Generates a shareable invitation code scoped to a role (and optional province/center). The email is unknown at creation time; the recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
       security:
         - bearerAuth: []
       requestBody:
@@ -480,7 +480,7 @@ paths:
     post:
       operationId: resendInvitation
       tags: [invitations]
-      summary: Resend an invitation email
+      summary: Renew an invitation code (extend its expiry)
       security:
         - bearerAuth: []
       parameters:
@@ -2212,8 +2212,6 @@ components:
     InvitationPublic:
       type: object
       properties:
-        email:
-          type: string
         role:
           $ref: "#/components/schemas/Role"
         inviterName:
@@ -2221,7 +2219,7 @@ components:
         expiresAt:
           type: string
           format: date-time
-      required: [email, role, expiresAt]
+      required: [role, expiresAt]
     Invitation:
       type: object
       properties:
@@ -2231,6 +2229,8 @@ components:
           type: string
         email:
           type: string
+          nullable: true
+          description: Email of the user who redeemed the code; null until redeemed.
         role:
           $ref: "#/components/schemas/Role"
         provinceId:
@@ -2251,14 +2251,10 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, code, email, role, status, expiresAt]
+      required: [id, code, role, status, expiresAt]
     CreateInvitationInput:
       type: object
       properties:
-        email:
-          type: string
-        name:
-          type: string
         role:
           $ref: "#/components/schemas/Role"
         provinceId:
@@ -2270,7 +2266,7 @@ components:
         expiresInHours:
           type: integer
           default: 72
-      required: [email, role]
+      required: [role]
     InvitationCreated:
       type: object
       properties:
@@ -2278,12 +2274,7 @@ components:
           $ref: "#/components/schemas/Invitation"
         inviteUrl:
           type: string
-        emailSent:
-          type: boolean
-        emailPending:
-          type: boolean
-          description: True when Resend is not configured and the email could not be sent
-      required: [invitation, inviteUrl, emailSent, emailPending]
+      required: [invitation, inviteUrl]
     RegisterInput:
       type: object
       properties:
@@ -2291,9 +2282,11 @@ components:
           type: string
         name:
           type: string
+        email:
+          type: string
         password:
           type: string
-      required: [token, password]
+      required: [token, email, password]
     Province:
       type: object
       properties:

@@ -8,8 +8,6 @@
 import type { Role } from './role';
 
 export interface CreateInvitationInput {
-  email: string;
-  name?: string;
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;

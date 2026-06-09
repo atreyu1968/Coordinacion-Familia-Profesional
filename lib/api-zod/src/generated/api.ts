@@ -312,7 +312,6 @@ export const GetInvitationByTokenParams = zod.object({
 })
 
 export const GetInvitationByTokenResponse = zod.object({
-  "email": zod.string(),
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "inviterName": zod.string().optional(),
   "expiresAt": zod.coerce.date()
@@ -325,6 +324,7 @@ export const GetInvitationByTokenResponse = zod.object({
 export const RegisterWithTokenBody = zod.object({
   "token": zod.string(),
   "name": zod.string().optional(),
+  "email": zod.string(),
   "password": zod.string()
 })
 
@@ -353,7 +353,7 @@ export const ListInvitationsQueryParams = zod.object({
 export const ListInvitationsResponseItem = zod.object({
   "id": zod.number(),
   "code": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish().describe('Email of the user who redeemed the code; null until redeemed.'),
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -366,14 +366,12 @@ export const ListInvitationsResponse = zod.array(ListInvitationsResponseItem)
 
 
 /**
- * Coordinators generate codes for department heads and prospectors; department heads for teachers. Sends a magic link via Resend when configured.
- * @summary Generate an invitation code and send it by email (Resend)
+ * Generates a shareable invitation code scoped to a role (and optional province/center). The email is unknown at creation time; the recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
+ * @summary Generate a role-based invitation code
  */
 export const createInvitationBodyExpiresInHoursDefault = 72;
 
 export const CreateInvitationBody = zod.object({
-  "email": zod.string(),
-  "name": zod.string().optional(),
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -390,7 +388,7 @@ export const RevokeInvitationParams = zod.object({
 
 
 /**
- * @summary Resend an invitation email
+ * @summary Renew an invitation code (extend its expiry)
  */
 export const ResendInvitationParams = zod.object({
   "id": zod.coerce.number()
@@ -400,7 +398,7 @@ export const ResendInvitationResponse = zod.object({
   "invitation": zod.object({
   "id": zod.number(),
   "code": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish().describe('Email of the user who redeemed the code; null until redeemed.'),
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -409,9 +407,7 @@ export const ResendInvitationResponse = zod.object({
   "usedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()
 }),
-  "inviteUrl": zod.string(),
-  "emailSent": zod.boolean(),
-  "emailPending": zod.boolean().describe('True when Resend is not configured and the email could not be sent')
+  "inviteUrl": zod.string()
 })
 
 

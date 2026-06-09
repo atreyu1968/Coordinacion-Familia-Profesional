@@ -3,7 +3,6 @@ import { eq, and, isNull, desc } from "drizzle-orm";
 import {
   db,
   invitationsTable,
-  usersTable,
   centersTable,
 } from "@workspace/db";
 import {
@@ -16,7 +15,6 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, canInvite, hasScopeOver } from "../middlewares/auth";
 import { generateInvitationCode, getAppBaseUrl } from "../lib/auth";
-import { sendEmail, buildInvitationEmail } from "../lib/email";
 import { toInvitation } from "../lib/mappers";
 
 const router: IRouter = Router();
@@ -103,8 +101,8 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
     .insert(invitationsTable)
     .values({
       code,
-      email: parsed.data.email.trim().toLowerCase(),
-      name: parsed.data.name ?? null,
+      email: null,
+      name: null,
       role: parsed.data.role,
       provinceId,
       centerId,
@@ -115,22 +113,10 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
     .returning();
 
   const inviteUrl = `${getAppBaseUrl()}/register?token=${code}`;
-  const email = buildInvitationEmail({
-    inviterName: inviter.name,
-    inviteUrl,
-    role: parsed.data.role,
-  });
-  const result = await sendEmail({
-    to: invitation.email,
-    subject: email.subject,
-    html: email.html,
-  });
 
   res.status(201).json({
     invitation: toInvitation(invitation),
     inviteUrl,
-    emailSent: result.sent,
-    emailPending: result.pending,
   });
 });
 
@@ -206,33 +192,29 @@ router.post("/invitations/:id/resend", requireAuth, async (req, res): Promise<vo
     return;
   }
 
-  const inviteUrl = `${getAppBaseUrl()}/register?token=${invitation.code}`;
-  let inviterName = "Coordina ADG";
-  if (invitation.invitedBy) {
-    const [inviter] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, invitation.invitedBy));
-    if (inviter) inviterName = inviter.name;
+  if (invitation.status === "used") {
+    res.status(409).json({ message: "La invitación ya ha sido utilizada" });
+    return;
+  }
+  if (invitation.status === "revoked") {
+    res.status(409).json({ message: "La invitación ha sido revocada" });
+    return;
   }
 
-  const email = buildInvitationEmail({
-    inviterName,
-    inviteUrl,
-    role: invitation.role,
-  });
-  const result = await sendEmail({
-    to: invitation.email,
-    subject: email.subject,
-    html: email.html,
-  });
+  // Renew: extend the expiry by 72h and keep it pending so the code stays shareable.
+  const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+  const [renewed] = await db
+    .update(invitationsTable)
+    .set({ status: "pending", expiresAt })
+    .where(eq(invitationsTable.id, invitation.id))
+    .returning();
+
+  const inviteUrl = `${getAppBaseUrl()}/register?token=${renewed.code}`;
 
   res.json(
     ResendInvitationResponse.parse({
-      invitation: toInvitation(invitation),
+      invitation: toInvitation(renewed),
       inviteUrl,
-      emailSent: result.sent,
-      emailPending: result.pending,
     }),
   );
 });

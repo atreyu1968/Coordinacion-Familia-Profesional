@@ -10,7 +10,8 @@ import type { Role } from './role';
 export interface Invitation {
   id: number;
   code: string;
-  email: string;
+  /** Email of the user who redeemed the code; null until redeemed. */
+  email?: string | null;
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;

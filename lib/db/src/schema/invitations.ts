@@ -10,7 +10,7 @@ import { roleEnum } from "./enums";
 export const invitationsTable = pgTable("invitations", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
-  email: text("email").notNull(),
+  email: text("email"),
   name: text("name"),
   role: roleEnum("role").notNull(),
   provinceId: integer("province_id"),

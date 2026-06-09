@@ -8,7 +8,6 @@
 import type { Role } from './role';
 
 export interface InvitationPublic {
-  email: string;
   role: Role;
   inviterName?: string;
   expiresAt: Date;

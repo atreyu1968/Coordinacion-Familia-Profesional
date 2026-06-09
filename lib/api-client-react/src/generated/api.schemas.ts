@@ -232,7 +232,6 @@ export interface UpdateUserInput {
 }
 
 export interface InvitationPublic {
-  email: string;
   role: Role;
   inviterName?: string;
   expiresAt: string;
@@ -241,7 +240,8 @@ export interface InvitationPublic {
 export interface Invitation {
   id: number;
   code: string;
-  email: string;
+  /** Email of the user who redeemed the code; null until redeemed. */
+  email?: string | null;
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
@@ -252,8 +252,6 @@ export interface Invitation {
 }
 
 export interface CreateInvitationInput {
-  email: string;
-  name?: string;
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
@@ -263,14 +261,12 @@ export interface CreateInvitationInput {
 export interface InvitationCreated {
   invitation: Invitation;
   inviteUrl: string;
-  emailSent: boolean;
-  /** True when Resend is not configured and the email could not be sent */
-  emailPending: boolean;
 }
 
 export interface RegisterInput {
   token: string;
   name?: string;
+  email: string;
   password: string;
 }
 
