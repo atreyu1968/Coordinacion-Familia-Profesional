@@ -148,11 +148,29 @@ function CreateAlertDialog() {
         : null,
     };
     try {
-      await createMut.mutateAsync({ data: payload });
+      const result = await createMut.mutateAsync({ data: payload });
       await qc.invalidateQueries({
         queryKey: getListCompanyAlertsQueryKey(),
       });
-      toast({ title: "Alerta publicada", description: companyName.trim() });
+      if (result.emailPending) {
+        toast({
+          title: "Alerta publicada",
+          description:
+            "El aviso por email está pendiente: un administrador debe configurar el envío de correos (Resend).",
+        });
+      } else if (result.notifiedCount > 0) {
+        toast({
+          title: "Alerta publicada",
+          description: `Aviso enviado a ${result.notifiedCount} tutor${
+            result.notifiedCount === 1 ? "" : "es"
+          } de FCT.`,
+        });
+      } else {
+        toast({
+          title: "Alerta publicada",
+          description: companyName.trim(),
+        });
+      }
       setOpen(false);
     } catch {
       setError("No se pudo publicar la alerta. Inténtalo de nuevo.");

@@ -316,6 +316,14 @@ export interface CompanyAlert {
   createdAt?: string;
 }
 
+export interface CompanyAlertCreated {
+  alert: CompanyAlert;
+  /** Number of FCT tutors the alert email was dispatched to */
+  notifiedCount: number;
+  /** True when Resend is not configured and notifications could not be sent */
+  emailPending: boolean;
+}
+
 export interface CreateCompanyAlertInput {
   companyName: string;
   sector?: string | null;

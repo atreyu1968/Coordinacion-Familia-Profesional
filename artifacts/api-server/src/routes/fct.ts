@@ -148,8 +148,9 @@ router.post(
       .returning();
 
     // Best-effort notification to FCT tutors (teachers) in the alert's
-    // province. Degrades gracefully when Resend is not configured.
-    void notifyFctTutors(created.id, provinceId, {
+    // province. Degrades gracefully when Resend is not configured; the result
+    // is surfaced so the UI can warn that email avisos are pending setup.
+    const notif = await notifyFctTutors(created.id, provinceId, {
       companyName: created.companyName,
       sector: created.sector,
       location: created.location,
@@ -159,9 +160,11 @@ router.post(
       publishedByName: caller.name,
     });
 
-    res.status(201).json(
-      toCompanyAlert({ ...created, createdByName: caller.name }),
-    );
+    res.status(201).json({
+      alert: toCompanyAlert({ ...created, createdByName: caller.name }),
+      notifiedCount: notif.notifiedCount,
+      emailPending: notif.emailPending,
+    });
   },
 );
 
@@ -210,6 +213,11 @@ router.delete(
   },
 );
 
+interface NotifyResult {
+  notifiedCount: number;
+  emailPending: boolean;
+}
+
 async function notifyFctTutors(
   alertId: number,
   provinceId: number | null,
@@ -222,7 +230,7 @@ async function notifyFctTutors(
     contact: string | null;
     publishedByName: string | null;
   },
-): Promise<void> {
+): Promise<NotifyResult> {
   try {
     const teacherFilters: SQL[] = [
       eq(usersTable.role, "teacher"),
@@ -231,9 +239,7 @@ async function notifyFctTutors(
     ];
     // Province-scoped alerts notify teachers whose center is in that province.
     if (provinceId != null) {
-      teacherFilters.push(
-        eq(centersTable.provinceId, provinceId),
-      );
+      teacherFilters.push(eq(centersTable.provinceId, provinceId));
     }
     const recipients = await db
       .select({ email: usersTable.email })
@@ -241,15 +247,29 @@ async function notifyFctTutors(
       .leftJoin(centersTable, eq(centersTable.id, usersTable.centerId))
       .where(and(...teacherFilters));
 
-    if (recipients.length === 0) return;
+    if (recipients.length === 0) {
+      return { notifiedCount: 0, emailPending: false };
+    }
     const email = buildCompanyAlertEmail(payload);
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       recipients.map((r) =>
         sendEmail({ to: r.email, subject: email.subject, html: email.html }),
       ),
     );
+
+    let notifiedCount = 0;
+    let emailPending = false;
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        if (r.value.sent) notifiedCount += 1;
+        // Resend not configured: nothing was sent but the aviso is "pending".
+        if (r.value.pending) emailPending = true;
+      }
+    }
+    return { notifiedCount, emailPending };
   } catch (err) {
     logger.error({ err, alertId }, "Company alert notification failed");
+    return { notifiedCount: 0, emailPending: false };
   }
 }
 

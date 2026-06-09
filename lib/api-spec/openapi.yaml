@@ -765,7 +765,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CompanyAlert"
+                $ref: "#/components/schemas/CompanyAlertCreated"
   /company-alerts/{id}:
     delete:
       operationId: deleteCompanyAlert
@@ -2105,6 +2105,18 @@ components:
           type: string
           format: date-time
       required: [id, companyName]
+    CompanyAlertCreated:
+      type: object
+      properties:
+        alert:
+          $ref: "#/components/schemas/CompanyAlert"
+        notifiedCount:
+          type: integer
+          description: Number of FCT tutors the alert email was dispatched to
+        emailPending:
+          type: boolean
+          description: True when Resend is not configured and notifications could not be sent
+      required: [alert, notifiedCount, emailPending]
     CreateCompanyAlertInput:
       type: object
       properties:

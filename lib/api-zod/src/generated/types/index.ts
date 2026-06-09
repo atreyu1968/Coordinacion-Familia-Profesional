@@ -26,6 +26,7 @@ export * from './chatGroup';
 export * from './checkInInput';
 export * from './checkInResult';
 export * from './companyAlert';
+export * from './companyAlertCreated';
 export * from './createAccreditationInput';
 export * from './createAccreditationInputRole';
 export * from './createAnnouncementInput';

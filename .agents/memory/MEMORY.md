@@ -1,2 +1,3 @@
 - [Scope checks: read vs manage](scope-authz.md) — resource/upload writes validate against read-scope; only management actions use hasScopeOver.
 - [api-server dev needs restart](api-server-dev-restart.md) — new routes/mounts only appear after restarting the API Server workflow (build+start, no hot reload).
+- [API contract changes need codegen](api-contract-codegen.md) — change response/request shapes in openapi.yaml then run api-spec codegen; never hand-edit generated/.

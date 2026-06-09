@@ -34,6 +34,7 @@ import type {
   CheckInInput,
   CheckInResult,
   CompanyAlert,
+  CompanyAlertCreated,
   CreateAccreditationInput,
   CreateAnnouncementInput,
   CreateCalendarEntryInput,
@@ -2974,9 +2975,9 @@ export const getCreateCompanyAlertUrl = () => {
   return `/api/company-alerts`
 }
 
-export const createCompanyAlert = async (createCompanyAlertInput: CreateCompanyAlertInput, options?: RequestInit): Promise<CompanyAlert> => {
+export const createCompanyAlert = async (createCompanyAlertInput: CreateCompanyAlertInput, options?: RequestInit): Promise<CompanyAlertCreated> => {
 
-  return customFetch<CompanyAlert>(getCreateCompanyAlertUrl(),
+  return customFetch<CompanyAlertCreated>(getCreateCompanyAlertUrl(),
   {
     ...options,
     method: 'POST',
