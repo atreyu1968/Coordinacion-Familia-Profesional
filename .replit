@@ -38,6 +38,9 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
+VAPID_PUBLIC_KEY = "BPbfwXNXq0Ji7qvwNzuIbTUy-m6cpo21uLz63Z0vndyf1EDNN3RoC7xlBcrHVDgGrfcfsooxG0GHMdj1eL4v1Do"
+VAPID_PRIVATE_KEY = "45V5ftnOD5t5G4QkMEY7A9EfG9QrvdOBJvmFE-KZ5HU"
+VAPID_SUBJECT = "mailto:admin@coordinaadg.es"
 
 [nix]
 channel = "stable-25_05"

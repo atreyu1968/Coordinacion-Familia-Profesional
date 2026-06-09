@@ -1235,9 +1235,18 @@ export const UpdateIntegrationSettingsResponse = zod.object({
  * @summary Mobile app access info (install QR targets)
  */
 export const GetMobileAppResponse = zod.object({
+  "webUrl": zod.string().optional().describe('https:\/\/ URL of the installable mobile web app (PWA)'),
   "expoGoUrl": zod.string().optional().describe('exp:\/\/ URL to open the app in Expo Go (development)'),
   "iosUrl": zod.string().optional().describe('App Store \/ install URL for iOS (when published)'),
   "androidUrl": zod.string().optional().describe('Play Store \/ install URL for Android (when published)')
+})
+
+
+/**
+ * @summary Web Push VAPID public key (for browser subscriptions)
+ */
+export const GetVapidPublicKeyResponse = zod.object({
+  "key": zod.string().optional().describe('Base64url VAPID public key, absent when web push is disabled')
 })
 
 

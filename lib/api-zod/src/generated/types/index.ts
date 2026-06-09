@@ -132,3 +132,4 @@ export * from './transferInput';
 export * from './updateIntegrationSettingsInput';
 export * from './updateUserInput';
 export * from './user';
+export * from './vapidPublicKey';

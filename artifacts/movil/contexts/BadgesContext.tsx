@@ -17,6 +17,7 @@ import {
 
 import { useAuth } from "@/contexts/AuthContext";
 import { connectSocket } from "@/lib/socket";
+import { showLocalNotification } from "@/lib/pwa";
 
 interface BadgesContextValue {
   /** Number of notifications the user has not yet read. */
@@ -89,10 +90,19 @@ export function BadgesProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    const onNotification = () => {
+    const onNotification = (payload?: {
+      title?: string;
+      body?: string | null;
+      type?: string | null;
+    }) => {
       void queryClient.invalidateQueries({
         queryKey: getListNotificationsQueryKey(),
       });
+      if (payload?.title) {
+        void showLocalNotification(payload.title, payload.body, {
+          type: payload.type ?? "general",
+        });
+      }
     };
 
     socket.on("chat_update", onChatUpdate);

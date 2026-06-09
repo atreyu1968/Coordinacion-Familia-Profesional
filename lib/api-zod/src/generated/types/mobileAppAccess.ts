@@ -7,6 +7,8 @@
  */
 
 export interface MobileAppAccess {
+  /** https:// URL of the installable mobile web app (PWA) */
+  webUrl?: string;
   /** exp:// URL to open the app in Expo Go (development) */
   expoGoUrl?: string;
   /** App Store / install URL for iOS (when published) */

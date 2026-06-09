@@ -26,11 +26,15 @@ import {
   registerForPushNotifications,
   useNotificationDeepLinks,
 } from "@/lib/push";
+import { registerWebPush, setupPwa } from "@/lib/pwa";
 
 // Expo bundles run outside the web proxy and need absolute URLs to reach
 // the API server, plus a bearer-token getter for authenticated calls.
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 setAuthTokenGetter(() => getAuthToken());
+
+// Register the PWA manifest + service worker on web (no-op on native).
+setupPwa();
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -55,6 +59,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (token) {
       void registerForPushNotifications();
+      void registerWebPush();
     }
   }, [token]);
 

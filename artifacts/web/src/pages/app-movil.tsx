@@ -4,7 +4,7 @@ import { useGetMobileApp } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Smartphone, Apple, Copy, Check, QrCode } from "lucide-react";
+import { Smartphone, Copy, Check, Download, Bell } from "lucide-react";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -60,10 +60,21 @@ function QrPanel({
   );
 }
 
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        {n}
+      </span>
+      <span>{children}</span>
+    </li>
+  );
+}
+
 export default function AppMovilPage() {
   const { data, isLoading } = useGetMobileApp();
 
-  const expoGoUrl = data?.expoGoUrl;
+  const webUrl = data?.webUrl;
   const iosUrl = data?.iosUrl;
   const androidUrl = data?.androidUrl;
 
@@ -72,21 +83,24 @@ export default function AppMovilPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">App Móvil</h1>
         <p className="text-muted-foreground">
-          Instala Coordina ADG en tu teléfono escaneando un código QR.
+          Instala Coordina ADG en tu teléfono escaneando el código QR. No
+          necesitas ninguna tienda de aplicaciones.
         </p>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando información de acceso...</p>
+        <p className="text-sm text-muted-foreground">
+          Cargando información de acceso...
+        </p>
       ) : (
         <div className="space-y-6">
-          {/* Production install links (shown only when published) */}
+          {/* Native store links (shown only when published to the stores) */}
           {(iosUrl || androidUrl) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Smartphone className="h-5 w-5" />
-                  Instalar la app
+                  Instalar desde la tienda
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -110,84 +124,57 @@ export default function AppMovilPage() {
             </Card>
           )}
 
-          {/* Expo Go development access */}
-          {expoGoUrl ? (
+          {/* Installable web app (PWA) */}
+          {webUrl ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <QrCode className="h-5 w-5" />
-                  Acceso mediante Expo Go
+                  <Download className="h-5 w-5" />
+                  Instalar la app web
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
                   <QrPanel
-                    title="Abrir en Expo Go"
-                    description="Escanea este código para abrir la app en tu teléfono."
-                    value={expoGoUrl}
+                    title="Abrir en el móvil"
+                    description="Escanea este código con la cámara del teléfono."
+                    value={webUrl}
                   />
                   <ol className="space-y-4 text-sm">
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        1
+                    <Step n={1}>
+                      Escanea el código QR con la{" "}
+                      <span className="font-semibold">cámara</span> del teléfono
+                      (o abre el enlace en el navegador del móvil).
+                    </Step>
+                    <Step n={2}>
+                      Para instalarla como una app:{" "}
+                      <span className="font-semibold">en iPhone</span> pulsa{" "}
+                      <span className="font-semibold">Compartir</span> →{" "}
+                      <span className="font-semibold">
+                        Añadir a pantalla de inicio
                       </span>
-                      <span>
-                        Instala la aplicación gratuita{" "}
-                        <span className="font-semibold">Expo Go</span> en tu teléfono
-                        desde la App Store (iOS) o Google Play (Android).
-                      </span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        2
-                      </span>
-                      <span>
-                        En <span className="font-semibold">iPhone</span>, escanea el QR
-                        con la cámara. En <span className="font-semibold">Android</span>,
-                        ábrelo desde la propia app Expo Go con la opción "Scan QR code".
-                      </span>
-                    </li>
-                    <li className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        3
-                      </span>
-                      <span>
-                        Inicia sesión con tus mismas credenciales del panel web.
-                      </span>
-                    </li>
+                      ;{" "}
+                      <span className="font-semibold">en Android</span> usa el
+                      menú del navegador →{" "}
+                      <span className="font-semibold">Instalar app</span> (o el
+                      botón <span className="font-semibold">Instalar app</span>{" "}
+                      dentro de la aplicación).
+                    </Step>
+                    <Step n={3}>
+                      Inicia sesión con tus mismas credenciales del panel web.
+                    </Step>
                   </ol>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <a
-                      href="https://apps.apple.com/app/expo-go/id982107779"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Apple className="h-4 w-4" />
-                      Expo Go (iOS)
-                    </a>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <a
-                      href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Smartphone className="h-4 w-4" />
-                      Expo Go (Android)
-                    </a>
-                  </Button>
+                <div className="flex items-start gap-3 rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+                  <Bell className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    Al instalarla, la app puede pedirte permiso para enviarte{" "}
+                    <span className="font-medium text-foreground">
+                      notificaciones del navegador
+                    </span>
+                    , de modo que recibas avisos de mensajes y alertas aunque no
+                    la tengas abierta.
+                  </span>
                 </div>
               </CardContent>
             </Card>

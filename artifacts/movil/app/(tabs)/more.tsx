@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 import { AppHeader } from "@/components/AppHeader";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { Avatar, Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -64,6 +65,8 @@ export default function MoreScreen() {
             </Pressable>
           ))}
         </View>
+
+        <InstallAppButton />
 
         <Pressable
           onPress={signOut}

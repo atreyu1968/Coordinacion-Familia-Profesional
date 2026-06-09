@@ -10,12 +10,19 @@ export interface HealthStatus {
 }
 
 export interface MobileAppAccess {
+  /** https:// URL of the installable mobile web app (PWA) */
+  webUrl?: string;
   /** exp:// URL to open the app in Expo Go (development) */
   expoGoUrl?: string;
   /** App Store / install URL for iOS (when published) */
   iosUrl?: string;
   /** Play Store / install URL for Android (when published) */
   androidUrl?: string;
+}
+
+export interface VapidPublicKey {
+  /** Base64url VAPID public key, absent when web push is disabled */
+  key?: string;
 }
 
 export interface Error {

@@ -7,5 +7,6 @@
 - [Backup & restore migration](backup-restore-migration.md) — full-DB ZIP export/import; validate completeness before destructive restore, single txn, realign sequences, revive dates, binary endpoints bypass orval.
 - [Expo push & web preview](expo-push-web-crash.md) — expo-notifications native APIs crash the web preview; guard with Platform.OS; push deep-link `data.type` contract; standalone creds are manual EAS.
 - [Generated API client](api-client-orval.md) — orval query hooks are `export function useListX` (grep misses `export const`); GET also emits plain async fns; mutation `mutate` var shapes vary, void mutations need `mutate()` no-args.
-- [Expo Go dev QR target](expo-go-qr-target.md) — in-app phone-install QR must encode `exp://${REPLIT_EXPO_DEV_DOMAIN}`, not Replit's HTTPS editor URL.
+- [Mobile install/QR target](expo-go-qr-target.md) — PWA-first now: web-panel QR encodes the HTTPS `webUrl` (Expo web build), not `exp://`; Expo Go retired from UI.
+- [PWA + Web Push](pwa-web-push.md) — SDK54 ignores +html.tsx so PWA is runtime-injected; web push via self-gen VAPID in lib/push.ts; void best-effort branches need .catch + wrapped db.delete.
 - [api-server testing harness](api-server-testing.md) — Vitest+supertest hit the real Postgres (db isn't injectable); seed via tagged helpers, sequential run for socket singleton, inline @workspace deps.
