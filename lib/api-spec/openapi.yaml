@@ -3,13 +3,42 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Coordina ADG API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication and cascade registration
+  - name: invitations
+    description: Cascade invitation codes
+  - name: users
+    description: User management
+  - name: geo
+    description: Provinces, islands and municipalities
+  - name: centers
+    description: Educational centers directory and training offer
+  - name: departments
+    description: Center departments
+  - name: academics
+    description: Modules, groups, teaching assignments and resources
+  - name: ai
+    description: DeepSeek AI assistant
+  - name: fct
+    description: FCT support, company alerts and GDCAN
+  - name: surveys
+    description: Surveys and voting
+  - name: events
+    description: Events, accreditations, staff, spaces and calendar
+  - name: messaging
+    description: Chat, announcements and notifications
+  - name: dashboard
+    description: Statistics and AI annual reports
+  - name: settings
+    description: Superadmin control panel and API credentials
+
 paths:
   /healthz:
     get:
@@ -24,13 +53,2752 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/invitations/{token}:
+    get:
+      operationId: getInvitationByToken
+      tags: [auth]
+      summary: Resolve a magic invitation token
+      description: Returns invitation details so the registration form can be prefilled. Fails if expired or used.
+      parameters:
+        - $ref: "#/components/parameters/TokenPath"
+      responses:
+        "200":
+          description: Invitation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationPublic"
+        "404":
+          $ref: "#/components/responses/Error"
+  /auth/register:
+    post:
+      operationId: registerWithToken
+      tags: [auth]
+      summary: Complete registration using an invitation token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "200":
+          description: Registered and authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResult"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  # ---------------------------------------------------------------------------
+  # Invitations (cascade codes)
+  # ---------------------------------------------------------------------------
+  /invitations:
+    get:
+      operationId: listInvitations
+      tags: [invitations]
+      summary: List invitation codes the caller has generated or can manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+      responses:
+        "200":
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invitation"
+    post:
+      operationId: createInvitation
+      tags: [invitations]
+      summary: Generate an invitation code and send it by email (Resend)
+      description: Coordinators generate codes for department heads and prospectors; department heads for teachers. Sends a magic link via Resend when configured.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvitationInput"
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCreated"
+        "403":
+          $ref: "#/components/responses/Error"
+  /invitations/{id}:
+    delete:
+      operationId: revokeInvitation
+      tags: [invitations]
+      summary: Revoke a pending invitation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Revoked
+  /invitations/{id}/resend:
+    post:
+      operationId: resendInvitation
+      tags: [invitations]
+      summary: Resend an invitation email
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Resent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCreated"
+
+  # ---------------------------------------------------------------------------
+  # Users
+  # ---------------------------------------------------------------------------
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users within the caller's scope
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleQuery"
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deactivateUser
+      tags: [users]
+      summary: Deactivate a user (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deactivated
+
+  # ---------------------------------------------------------------------------
+  # Geo
+  # ---------------------------------------------------------------------------
+  /provinces:
+    get:
+      operationId: listProvinces
+      tags: [geo]
+      summary: List provinces
+      responses:
+        "200":
+          description: Provinces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Province"
+    post:
+      operationId: createProvince
+      tags: [geo]
+      summary: Create a province coordination (superadmin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProvinceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Province"
+  /islands:
+    get:
+      operationId: listIslands
+      tags: [geo]
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Islands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Island"
+  /municipalities:
+    get:
+      operationId: listMunicipalities
+      tags: [geo]
+      parameters:
+        - $ref: "#/components/parameters/IslandQuery"
+      responses:
+        "200":
+          description: Municipalities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Municipality"
+
+  # ---------------------------------------------------------------------------
+  # Centers
+  # ---------------------------------------------------------------------------
+  /centers:
+    get:
+      operationId: listCenters
+      tags: [centers]
+      summary: List centers, filterable by province/island/municipality
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - $ref: "#/components/parameters/IslandQuery"
+        - $ref: "#/components/parameters/MunicipalityQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Center"
+    post:
+      operationId: createCenter
+      tags: [centers]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCenterInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+  /centers/{id}:
+    get:
+      operationId: getCenter
+      tags: [centers]
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CenterDetail"
+    patch:
+      operationId: updateCenter
+      tags: [centers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCenterInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+    delete:
+      operationId: deleteCenter
+      tags: [centers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+  /centers/{id}/training-offer:
+    get:
+      operationId: listTrainingOffer
+      tags: [centers]
+      summary: Training offer (cycles) for a center
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Training offer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrainingOffer"
+    post:
+      operationId: addTrainingOffer
+      tags: [centers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTrainingOfferInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingOffer"
+
+  # ---------------------------------------------------------------------------
+  # Departments
+  # ---------------------------------------------------------------------------
+  /departments:
+    get:
+      operationId: listDepartments
+      tags: [departments]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CenterQuery"
+      responses:
+        "200":
+          description: Departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+    post:
+      operationId: createDepartment
+      tags: [departments]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDepartmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+
+  # ---------------------------------------------------------------------------
+  # Academics
+  # ---------------------------------------------------------------------------
+  /modules:
+    get:
+      operationId: listModules
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Module"
+    post:
+      operationId: createModule
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateModuleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+  /groups:
+    get:
+      operationId: listGroups
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CenterQuery"
+      responses:
+        "200":
+          description: Groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Group"
+    post:
+      operationId: createGroup
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+  /teaching-assignments:
+    get:
+      operationId: listTeachingAssignments
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CenterQuery"
+        - name: teacherId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeachingAssignment"
+    post:
+      operationId: createTeachingAssignment
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeachingAssignmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeachingAssignment"
+  /teaching-assignments/transfer:
+    post:
+      operationId: transferTeachingAssignments
+      tags: [academics]
+      summary: Transfer a teacher's modules to another teacher, preserving resource authorship
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferInput"
+      responses:
+        "200":
+          description: Transferred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+  /resources:
+    get:
+      operationId: listResources
+      tags: [academics]
+      summary: Resource and programming repository
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: query
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Resource"
+    post:
+      operationId: createResource
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+  /resources/{id}:
+    delete:
+      operationId: deleteResource
+      tags: [academics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+
+  # ---------------------------------------------------------------------------
+  # AI assistant
+  # ---------------------------------------------------------------------------
+  /ai/status:
+    get:
+      operationId: getAiStatus
+      tags: [ai]
+      summary: Whether the DeepSeek assistant is configured
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationStatus"
+  /ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: Send a message to the DeepSeek assistant
+      description: context selects the knowledge base (curriculum or gdcan). Returns a configuration error when no key is set.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatInput"
+      responses:
+        "200":
+          description: Assistant reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatReply"
+        "503":
+          $ref: "#/components/responses/Error"
+
+  # ---------------------------------------------------------------------------
+  # FCT
+  # ---------------------------------------------------------------------------
+  /company-alerts:
+    get:
+      operationId: listCompanyAlerts
+      tags: [fct]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Company alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyAlert"
+    post:
+      operationId: createCompanyAlert
+      tags: [fct]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyAlertInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyAlert"
+  /company-alerts/{id}:
+    delete:
+      operationId: deleteCompanyAlert
+      tags: [fct]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+  /gdcan-resources:
+    get:
+      operationId: listGdcanResources
+      tags: [fct]
+      summary: GDCAN manuals and FAQs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [manual, faq, link]
+      responses:
+        "200":
+          description: GDCAN resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GdcanResource"
+    post:
+      operationId: createGdcanResource
+      tags: [fct]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGdcanResourceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GdcanResource"
+
+  # ---------------------------------------------------------------------------
+  # Surveys & voting
+  # ---------------------------------------------------------------------------
+  /surveys:
+    get:
+      operationId: listSurveys
+      tags: [surveys]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Surveys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Survey"
+    post:
+      operationId: createSurvey
+      tags: [surveys]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSurveyInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Survey"
+  /surveys/{id}:
+    get:
+      operationId: getSurvey
+      tags: [surveys]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Survey with questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyDetail"
+    delete:
+      operationId: deleteSurvey
+      tags: [surveys]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+  /surveys/{id}/responses:
+    post:
+      operationId: submitSurveyResponse
+      tags: [surveys]
+      summary: Submit a response or vote (anonymous when the survey is anonymous)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitSurveyResponseInput"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+  /surveys/{id}/results:
+    get:
+      operationId: getSurveyResults
+      tags: [surveys]
+      summary: Aggregated, real-time results
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyResults"
+
+  # ---------------------------------------------------------------------------
+  # Events
+  # ---------------------------------------------------------------------------
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [canarias_skills, jornada, other]
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      operationId: createEvent
+      tags: [events]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+    delete:
+      operationId: deleteEvent
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+  /events/{id}/accreditations:
+    get:
+      operationId: listAccreditations
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Accreditations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Accreditation"
+    post:
+      operationId: createAccreditation
+      tags: [events]
+      summary: Create an accreditation and send the QR pass by email (Resend)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccreditationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Accreditation"
+  /accreditations/check-in:
+    post:
+      operationId: checkInAccreditation
+      tags: [events]
+      summary: Validate a QR token at event check-in (used by the mobile scanner)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInInput"
+      responses:
+        "200":
+          description: Check-in result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInResult"
+  /events/{id}/staff:
+    get:
+      operationId: listEventStaff
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Staff assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventStaff"
+    post:
+      operationId: assignEventStaff
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignEventStaffInput"
+      responses:
+        "201":
+          description: Assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventStaff"
+  /events/{id}/spaces:
+    get:
+      operationId: listEventSpaces
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventSpace"
+    post:
+      operationId: createEventSpace
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventSpaceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventSpace"
+  /events/{id}/rsvp:
+    post:
+      operationId: rsvpEvent
+      tags: [events]
+      summary: RSVP to a provincial session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RsvpInput"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+  /events/{id}/certificates:
+    post:
+      operationId: issueCertificates
+      tags: [events]
+      summary: Generate and send attendance certificates (PDF) to attendees
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+  /calendar:
+    get:
+      operationId: listCalendarEvents
+      tags: [events]
+      summary: Unified provincial calendar
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Calendar entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEntry"
+    post:
+      operationId: createCalendarEntry
+      tags: [events]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCalendarEntryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEntry"
+
+  # ---------------------------------------------------------------------------
+  # Messaging
+  # ---------------------------------------------------------------------------
+  /chat/groups:
+    get:
+      operationId: listChatGroups
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Chat groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatGroup"
+    post:
+      operationId: createChatGroup
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatGroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatGroup"
+  /chat/groups/{id}/messages:
+    get:
+      operationId: listGroupMessages
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendGroupMessage
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageInput"
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [messaging]
+      summary: Bulletin board
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+    post:
+      operationId: createAnnouncement
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnnouncementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [messaging]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+  /push-tokens:
+    post:
+      operationId: registerPushToken
+      tags: [messaging]
+      summary: Register a device push token (mobile)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPushTokenInput"
+      responses:
+        "200":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+
+  # ---------------------------------------------------------------------------
+  # Dashboard
+  # ---------------------------------------------------------------------------
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Headline counts for the dashboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/statistics:
+    get:
+      operationId: getDashboardStatistics
+      tags: [dashboard]
+      summary: Time series and grouped stats for charts
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProvinceQuery"
+      responses:
+        "200":
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStatistics"
+  /reports:
+    get:
+      operationId: listReports
+      tags: [dashboard]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Annual reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnnualReport"
+    post:
+      operationId: generateReport
+      tags: [dashboard]
+      summary: Generate an AI annual report draft (DeepSeek)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateReportInput"
+      responses:
+        "201":
+          description: Generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReport"
+
+  # ---------------------------------------------------------------------------
+  # Settings (superadmin control panel)
+  # ---------------------------------------------------------------------------
+  /settings/integrations:
+    get:
+      operationId: getIntegrationSettings
+      tags: [settings]
+      summary: Configuration status of external integrations (no secret values returned)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Integration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationSettings"
+    put:
+      operationId: updateIntegrationSettings
+      tags: [settings]
+      summary: Store API keys for DeepSeek and Resend (superadmin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIntegrationSettingsInput"
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationSettings"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    TokenPath:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+    StatusQuery:
+      name: status
+      in: query
+      schema:
+        type: string
+    RoleQuery:
+      name: role
+      in: query
+      schema:
+        $ref: "#/components/schemas/Role"
+    ProvinceQuery:
+      name: provinceId
+      in: query
+      schema:
+        type: integer
+    IslandQuery:
+      name: islandId
+      in: query
+      schema:
+        type: integer
+    MunicipalityQuery:
+      name: municipalityId
+      in: query
+      schema:
+        type: integer
+    CenterQuery:
+      name: centerId
+      in: query
+      schema:
+        type: integer
+    SearchQuery:
+      name: search
+      in: query
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+      required: [message]
+    OkResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    IntegrationStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+      required: [configured]
+    Role:
+      type: string
+      enum:
+        - superadmin
+        - coordinator
+        - prospector
+        - department_head
+        - teacher
+        - student
+    LoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+    AuthResult:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required: [token, user]
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, email, role, status]
+    UpdateUserInput:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+    InvitationPublic:
+      type: object
+      properties:
+        email:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        inviterName:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required: [email, role, expiresAt]
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        usedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, code, email, role, status, expiresAt]
+    CreateInvitationInput:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+        expiresInHours:
+          type: integer
+          default: 72
+      required: [email, role]
+    InvitationCreated:
+      type: object
+      properties:
+        invitation:
+          $ref: "#/components/schemas/Invitation"
+        inviteUrl:
+          type: string
+        emailSent:
+          type: boolean
+        emailPending:
+          type: boolean
+          description: True when Resend is not configured and the email could not be sent
+      required: [invitation, inviteUrl, emailSent, emailPending]
+    RegisterInput:
+      type: object
+      properties:
+        token:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+      required: [token, password]
+    Province:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+      required: [id, name]
+    CreateProvinceInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+      required: [name]
+    Island:
+      type: object
+      properties:
+        id:
+          type: integer
+        provinceId:
+          type: integer
+        name:
+          type: string
+      required: [id, provinceId, name]
+    Municipality:
+      type: object
+      properties:
+        id:
+          type: integer
+        islandId:
+          type: integer
+        name:
+          type: string
+      required: [id, islandId, name]
+    Center:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        islandId:
+          type: integer
+          nullable: true
+        municipalityId:
+          type: integer
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+      required: [id, name]
+    CenterDetail:
+      allOf:
+        - $ref: "#/components/schemas/Center"
+        - type: object
+          properties:
+            trainingOffer:
+              type: array
+              items:
+                $ref: "#/components/schemas/TrainingOffer"
+    CreateCenterInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        islandId:
+          type: integer
+          nullable: true
+        municipalityId:
+          type: integer
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+      required: [name]
+    TrainingOffer:
+      type: object
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        cycleName:
+          type: string
+        level:
+          type: string
+        shift:
+          type: string
+          nullable: true
+      required: [id, centerId, cycleName]
+    CreateTrainingOfferInput:
+      type: object
+      properties:
+        cycleName:
+          type: string
+        level:
+          type: string
+        shift:
+          type: string
+          nullable: true
+      required: [cycleName]
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        name:
+          type: string
+        headUserId:
+          type: integer
+          nullable: true
+      required: [id, centerId, name]
+    CreateDepartmentInput:
+      type: object
+      properties:
+        centerId:
+          type: integer
+        name:
+          type: string
+        headUserId:
+          type: integer
+          nullable: true
+      required: [centerId, name]
+    Module:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+      required: [id, name]
+    CreateModuleInput:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+      required: [name]
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        schoolYear:
+          type: string
+          nullable: true
+      required: [id, centerId, name]
+    CreateGroupInput:
+      type: object
+      properties:
+        centerId:
+          type: integer
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        schoolYear:
+          type: string
+          nullable: true
+      required: [centerId, name]
+    TeachingAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        teacherId:
+          type: integer
+        teacherName:
+          type: string
+          nullable: true
+        moduleId:
+          type: integer
+        moduleName:
+          type: string
+          nullable: true
+        groupId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+        schoolYear:
+          type: string
+          nullable: true
+      required: [id, teacherId, moduleId, centerId]
+    CreateTeachingAssignmentInput:
+      type: object
+      properties:
+        teacherId:
+          type: integer
+        moduleId:
+          type: integer
+        groupId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+        schoolYear:
+          type: string
+          nullable: true
+      required: [teacherId, moduleId, centerId]
+    TransferInput:
+      type: object
+      properties:
+        fromTeacherId:
+          type: integer
+        toTeacherId:
+          type: integer
+        moduleIds:
+          type: array
+          items:
+            type: integer
+      required: [fromTeacherId, toTeacherId]
+    Resource:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+        fileUrl:
+          type: string
+          nullable: true
+        authorId:
+          type: integer
+          nullable: true
+        authorName:
+          type: string
+          nullable: true
+        originalAuthorName:
+          type: string
+          nullable: true
+        moduleId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, type]
+    CreateResourceInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+        fileUrl:
+          type: string
+          nullable: true
+        moduleId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+      required: [title, type]
+    AiChatInput:
+      type: object
+      properties:
+        message:
+          type: string
+        context:
+          type: string
+          enum: [curriculum, gdcan]
+          default: curriculum
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiMessage"
+      required: [message]
+    AiMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required: [role, content]
+    AiChatReply:
+      type: object
+      properties:
+        reply:
+          type: string
+      required: [reply]
+    CompanyAlert:
+      type: object
+      properties:
+        id:
+          type: integer
+        companyName:
+          type: string
+        sector:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        positions:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        contact:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        createdById:
+          type: integer
+          nullable: true
+        createdByName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, companyName]
+    CreateCompanyAlertInput:
+      type: object
+      properties:
+        companyName:
+          type: string
+        sector:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        positions:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        contact:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+      required: [companyName]
+    GdcanResource:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [manual, faq, link]
+        url:
+          type: string
+          nullable: true
+        content:
+          type: string
+          nullable: true
+      required: [id, title, type]
+    CreateGdcanResourceInput:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [manual, faq, link]
+        url:
+          type: string
+          nullable: true
+        content:
+          type: string
+          nullable: true
+      required: [title, type]
+    Survey:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [survey, vote]
+        anonymous:
+          type: boolean
+        status:
+          type: string
+          enum: [draft, open, closed]
+        provinceId:
+          type: integer
+          nullable: true
+        opensAt:
+          type: string
+          format: date-time
+          nullable: true
+        closesAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, type, anonymous, status]
+    SurveyQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        type:
+          type: string
+          enum: [single, multiple, text, scale]
+        options:
+          type: array
+          items:
+            type: string
+        order:
+          type: integer
+      required: [id, text, type]
+    SurveyDetail:
+      allOf:
+        - $ref: "#/components/schemas/Survey"
+        - type: object
+          properties:
+            questions:
+              type: array
+              items:
+                $ref: "#/components/schemas/SurveyQuestion"
+            hasVoted:
+              type: boolean
+    CreateSurveyInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [survey, vote]
+        anonymous:
+          type: boolean
+          default: false
+        provinceId:
+          type: integer
+          nullable: true
+        opensAt:
+          type: string
+          format: date-time
+          nullable: true
+        closesAt:
+          type: string
+          format: date-time
+          nullable: true
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateSurveyQuestionInput"
+      required: [title, type, questions]
+    CreateSurveyQuestionInput:
+      type: object
+      properties:
+        text:
+          type: string
+        type:
+          type: string
+          enum: [single, multiple, text, scale]
+        options:
+          type: array
+          items:
+            type: string
+        order:
+          type: integer
+      required: [text, type]
+    SubmitSurveyResponseInput:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyAnswerInput"
+      required: [answers]
+    SurveyAnswerInput:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        value:
+          type: array
+          items:
+            type: string
+      required: [questionId, value]
+    SurveyResults:
+      type: object
+      properties:
+        surveyId:
+          type: integer
+        totalResponses:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyQuestionResult"
+      required: [surveyId, totalResponses, questions]
+    SurveyQuestionResult:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyOptionResult"
+        textAnswers:
+          type: array
+          items:
+            type: string
+      required: [questionId, text]
+    SurveyOptionResult:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required: [label, count]
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [canarias_skills, jornada, other]
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, type]
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          properties:
+            accreditationsCount:
+              type: integer
+            checkedInCount:
+              type: integer
+            spaces:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventSpace"
+    CreateEventInput:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [canarias_skills, jornada, other]
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [name, type]
+    Accreditation:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        holderName:
+          type: string
+        holderEmail:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [participant, jury, authority, staff]
+        qrToken:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        checkedInAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, eventId, holderName, role, qrToken]
+    CreateAccreditationInput:
+      type: object
+      properties:
+        holderName:
+          type: string
+        holderEmail:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [participant, jury, authority, staff]
+      required: [holderName, role]
+    CheckInInput:
+      type: object
+      properties:
+        qrToken:
+          type: string
+      required: [qrToken]
+    CheckInResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        alreadyCheckedIn:
+          type: boolean
+        accreditation:
+          $ref: "#/components/schemas/Accreditation"
+      required: [ok, alreadyCheckedIn]
+    EventStaff:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+          nullable: true
+        task:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        shiftStart:
+          type: string
+          format: date-time
+          nullable: true
+        shiftEnd:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, eventId, userId]
+    AssignEventStaffInput:
+      type: object
+      properties:
+        userId:
+          type: integer
+        task:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        shiftStart:
+          type: string
+          format: date-time
+          nullable: true
+        shiftEnd:
+          type: string
+          format: date-time
+          nullable: true
+      required: [userId]
+    EventSpace:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+          nullable: true
+        resources:
+          type: array
+          items:
+            type: string
+      required: [id, eventId, name]
+    CreateEventSpaceInput:
+      type: object
+      properties:
+        name:
+          type: string
+        capacity:
+          type: integer
+          nullable: true
+        resources:
+          type: array
+          items:
+            type: string
+      required: [name]
+    RsvpInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [yes, "no", maybe]
+      required: [status]
+    CalendarEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+        date:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      required: [id, title, date]
+    CreateCalendarEntryInput:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+        date:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      required: [title, date]
+    ChatGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, name]
+    CreateChatGroupInput:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        memberIds:
+          type: array
+          items:
+            type: integer
+      required: [name]
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        groupId:
+          type: integer
+          nullable: true
+        senderId:
+          type: integer
+        senderName:
+          type: string
+          nullable: true
+        recipientId:
+          type: integer
+          nullable: true
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, senderId, content, createdAt]
+    SendMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+      required: [content]
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        authorId:
+          type: integer
+          nullable: true
+        authorName:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, body]
+    CreateAnnouncementInput:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+      required: [title, body]
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        type:
+          type: string
+          nullable: true
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title]
+    RegisterPushTokenInput:
+      type: object
+      properties:
+        token:
+          type: string
+        platform:
+          type: string
+          enum: [ios, android, web]
+      required: [token]
+    DashboardSummary:
+      type: object
+      properties:
+        centers:
+          type: integer
+        teachers:
+          type: integer
+        resources:
+          type: integer
+        activeSurveys:
+          type: integer
+        upcomingEvents:
+          type: integer
+        companyAlerts:
+          type: integer
+      required: [centers, teachers, resources, activeSurveys, upcomingEvents, companyAlerts]
+    DashboardStatistics:
+      type: object
+      properties:
+        resourcesByMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPoint"
+        usersByRole:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryCount"
+        centersByIsland:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryCount"
+      required: [resourcesByMonth, usersByRole, centersByIsland]
+    TimeSeriesPoint:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: number
+      required: [label, value]
+    CategoryCount:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: number
+      required: [label, value]
+    AnnualReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        schoolYear:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        content:
+          type: string
+        status:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+      required: [id, schoolYear, content, status]
+    GenerateReportInput:
+      type: object
+      properties:
+        schoolYear:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+      required: [schoolYear]
+    IntegrationSettings:
+      type: object
+      properties:
+        deepseekConfigured:
+          type: boolean
+        resendConfigured:
+          type: boolean
+        resendFromEmail:
+          type: string
+          nullable: true
+      required: [deepseekConfigured, resendConfigured]
+    UpdateIntegrationSettingsInput:
+      type: object
+      properties:
+        deepseekApiKey:
+          type: string
+          nullable: true
+        resendApiKey:
+          type: string
+          nullable: true
+        resendFromEmail:
+          type: string
+          nullable: true
