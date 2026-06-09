@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   useGetIntegrationSettings,
   useUpdateIntegrationSettings,
@@ -14,7 +14,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, KeyRound, Mail, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  KeyRound,
+  Mail,
+  Sparkles,
+  DatabaseBackup,
+  Download,
+  Upload,
+  AlertTriangle,
+} from "lucide-react";
+
+const TOKEN_KEY = "coordina_adg_token";
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export default function PanelControlPage() {
   const { user } = useAuth();
@@ -26,6 +43,12 @@ export default function PanelControlPage() {
   const [resendFromEmail, setResendFromEmail] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings?.resendFromEmail) {
@@ -43,6 +66,86 @@ export default function PanelControlPage() {
       </div>
     );
   }
+
+  const onDownloadBackup = async () => {
+    setBackupMessage(null);
+    setBackupError(null);
+    setIsDownloading(true);
+    try {
+      const res = await fetch("/api/backup", { headers: authHeaders() });
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename =
+        match?.[1] ??
+        `coordina-adg-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setBackupMessage("Copia de seguridad descargada correctamente.");
+    } catch {
+      setBackupError("No se pudo generar la copia de seguridad.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const onRestoreFile = async (e: FormEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setBackupMessage(null);
+    setBackupError(null);
+
+    const confirmed = window.confirm(
+      "Vas a RESTAURAR una copia de seguridad. Esto BORRARÁ todos los datos " +
+        "actuales y los sustituirá por los del archivo. Esta acción no se " +
+        "puede deshacer. ¿Deseas continuar?",
+    );
+    if (!confirmed) {
+      input.value = "";
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const res = await fetch("/api/restore", {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/zip" },
+        body: buffer,
+      });
+      if (!res.ok) {
+        let message = "No se pudo restaurar la copia de seguridad.";
+        try {
+          const data = (await res.json()) as { message?: string };
+          if (data?.message) message = data.message;
+        } catch {
+          /* keep default message */
+        }
+        throw new Error(message);
+      }
+      setBackupMessage(
+        "Copia de seguridad restaurada correctamente. Recargando la aplicación...",
+      );
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      setBackupError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo restaurar la copia de seguridad.",
+      );
+    } finally {
+      setIsRestoring(false);
+      input.value = "";
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -194,6 +297,70 @@ export default function PanelControlPage() {
               {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <DatabaseBackup className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">
+              Copias de seguridad y migración
+            </CardTitle>
+          </div>
+          <CardDescription>
+            Descarga una copia completa de todos los datos en un archivo ZIP
+            para guardarla o trasladar la plataforma a otro servidor. La
+            restauración sustituye todos los datos actuales por los del archivo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onDownloadBackup}
+              disabled={isDownloading || isRestoring}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isDownloading
+                ? "Generando copia..."
+                : "Descargar copia de seguridad"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isDownloading || isRestoring}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {isRestoring ? "Restaurando..." : "Restaurar copia de seguridad"}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="hidden"
+              onChange={onRestoreFile}
+            />
+          </div>
+
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Al restaurar, se eliminarán todos los datos actuales (centros,
+              usuarios, encuestas, eventos, etc.) y se reemplazarán por los del
+              archivo. Esta acción no se puede deshacer.
+            </p>
+          </div>
+
+          {backupMessage && (
+            <p className="text-sm font-medium text-green-600">{backupMessage}</p>
+          )}
+          {backupError && (
+            <p className="text-sm font-medium text-destructive">{backupError}</p>
+          )}
         </CardContent>
       </Card>
     </div>

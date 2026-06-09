@@ -13,6 +13,7 @@ import eventsRouter from "./events";
 import aiRouter from "./ai";
 import dashboardRouter from "./dashboard";
 import settingsRouter from "./settings";
+import backupRouter from "./backup";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(eventsRouter);
 router.use(aiRouter);
 router.use(dashboardRouter);
 router.use(settingsRouter);
+router.use(backupRouter);
 
 export default router;

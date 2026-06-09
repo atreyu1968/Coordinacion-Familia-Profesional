@@ -4,3 +4,4 @@
 - [Survey/vote anonymity model](surveys-anonymity.md) — anonymous answers store NULL responseId AND NULL createdAt; timestamps correlate to the participation marker and break anonymity.
 - [Events module contract & calendar mirror](events-module.md) — events use name/startAt/endAt (not title/date); event delete must also delete its calendar_entries mirror row.
 - [Dashboard & annual reports module](dashboard-reports-module.md) — scoping rules (resources via center, regional-null visibility, empty=default-deny) + /reports auth & DeepSeek graceful-503 gotchas.
+- [Backup & restore migration](backup-restore-migration.md) — full-DB ZIP export/import; validate completeness before destructive restore, single txn, realign sequences, revive dates, binary endpoints bypass orval.
