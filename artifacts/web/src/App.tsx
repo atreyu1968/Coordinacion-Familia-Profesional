@@ -9,6 +9,9 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import PanelControlPage from "@/pages/panel-control";
+import UsuariosPage from "@/pages/usuarios";
+import InvitacionesPage from "@/pages/invitaciones";
+import DepartamentosPage from "@/pages/departamentos";
 import CentrosPage from "@/pages/centros";
 import CentroDetallePage from "@/pages/centro-detalle";
 import AcademicaPage from "@/pages/academica";
@@ -26,6 +29,9 @@ function AuthedRoutes() {
     <AppLayout>
       <Switch>
         <Route path="/" component={DashboardPage} />
+        <Route path="/usuarios" component={UsuariosPage} />
+        <Route path="/invitaciones" component={InvitacionesPage} />
+        <Route path="/departamentos" component={DepartamentosPage} />
         <Route path="/centros" component={CentrosPage} />
         <Route path="/centros/:id" component={CentroDetallePage} />
         <Route path="/academica" component={AcademicaPage} />
