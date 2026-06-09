@@ -16,6 +16,7 @@ import type {
   Announcement,
   Notification,
   AppFeedback,
+  Meeting,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -327,6 +328,19 @@ export function toFeedback(row: AppFeedback & { userName?: string | null }) {
     subject: row.subject,
     message: row.message,
     status: row.status as "open" | "reviewed" | "resolved",
+    createdAt: row.createdAt,
+  };
+}
+
+export function toMeeting(row: Meeting & { hostName?: string | null }) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    roomName: row.roomName,
+    hostId: row.hostId,
+    hostName: row.hostName ?? null,
+    scheduledAt: row.scheduledAt,
     createdAt: row.createdAt,
   };
 }

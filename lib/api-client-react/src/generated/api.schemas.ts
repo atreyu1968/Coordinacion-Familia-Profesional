@@ -694,6 +694,23 @@ export interface UpdateFeedbackInput {
   status: UpdateFeedbackInputStatus;
 }
 
+export interface Meeting {
+  id: number;
+  title: string;
+  description?: string | null;
+  roomName: string;
+  hostId: number;
+  hostName?: string | null;
+  scheduledAt?: string | null;
+  createdAt: string;
+}
+
+export interface CreateMeetingInput {
+  title: string;
+  description?: string | null;
+  scheduledAt?: string | null;
+}
+
 export type EventType = typeof EventType[keyof typeof EventType];
 
 

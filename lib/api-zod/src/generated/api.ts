@@ -257,6 +257,40 @@ export const UpdateFeedbackResponse = zod.object({
 
 
 /**
+ * @summary List videoconference meeting rooms
+ */
+export const ListMeetingsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "roomName": zod.string(),
+  "hostId": zod.number(),
+  "hostName": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
+
+
+/**
+ * @summary Create a meeting room (coordinator or superadmin only)
+ */
+export const CreateMeetingBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "scheduledAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Delete a meeting room (host or superadmin)
+ */
+export const DeleteMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

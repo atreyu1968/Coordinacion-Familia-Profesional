@@ -42,6 +42,8 @@ tags:
     description: Object storage upload and serving endpoints
   - name: feedback
     description: In-app improvement suggestions and incident reports
+  - name: meetings
+    description: Videoconference meeting rooms (Jitsi)
 
 paths:
   /storage/uploads/request-url:
@@ -324,6 +326,77 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Feedback"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /meetings:
+    get:
+      operationId: listMeetings
+      tags: [meetings]
+      summary: List videoconference meeting rooms
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Meeting list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Meeting"
+    post:
+      operationId: createMeeting
+      tags: [meetings]
+      summary: Create a meeting room (coordinator or superadmin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMeetingInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /meetings/{id}:
+    delete:
+      operationId: deleteMeeting
+      tags: [meetings]
+      summary: Delete a meeting room (host or superadmin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted.
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Not found.
           content:
@@ -2970,6 +3043,44 @@ components:
           type: string
           enum: [open, reviewed, resolved]
       required: [status]
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        roomName:
+          type: string
+        hostId:
+          type: integer
+        hostName:
+          type: string
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, roomName, hostId, createdAt]
+    CreateMeetingInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [title]
     Event:
       type: object
       properties:

@@ -18,6 +18,7 @@ import mobileRouter from "./mobile";
 import storageRouter from "./storage";
 import documentFormsRouter from "./documentForms";
 import feedbackRouter from "./feedback";
+import meetingsRouter from "./meetings";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(mobileRouter);
 router.use(storageRouter);
 router.use(documentFormsRouter);
 router.use(feedbackRouter);
+router.use(meetingsRouter);
 
 export default router;
