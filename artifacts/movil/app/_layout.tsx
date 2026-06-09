@@ -22,7 +22,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loading } from "@/components/ui";
 import { AuthProvider, getAuthToken, useAuth } from "@/contexts/AuthContext";
 import { BadgesProvider } from "@/contexts/BadgesContext";
-import { registerForPushNotifications } from "@/lib/push";
+import {
+  registerForPushNotifications,
+  useNotificationDeepLinks,
+} from "@/lib/push";
 
 // Expo bundles run outside the web proxy and need absolute URLs to reach
 // the API server, plus a bearer-token getter for authenticated calls.
@@ -54,6 +57,8 @@ function RootLayoutNav() {
       void registerForPushNotifications();
     }
   }, [token]);
+
+  useNotificationDeepLinks(!!token && !isLoading);
 
   if (isLoading) {
     return <Loading />;

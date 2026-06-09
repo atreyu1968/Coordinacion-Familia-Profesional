@@ -39,6 +39,7 @@ import {
   notifyUsers,
   resolveProvinceAudience,
 } from "../lib/notify";
+import { sendPushToUsers } from "../lib/push";
 import { sendEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
@@ -314,10 +315,28 @@ router.post(
       .select({ userId: chatGroupMembersTable.userId })
       .from(chatGroupMembersTable)
       .where(eq(chatGroupMembersTable.groupId, groupId));
-    for (const m of members) {
-      if (m.userId !== caller.id) {
-        emitToUser(m.userId, "chat_update", { groupId });
-      }
+    const otherMemberIds = members
+      .map((m) => m.userId)
+      .filter((id) => id !== caller.id);
+    for (const userId of otherMemberIds) {
+      emitToUser(userId, "chat_update", { groupId });
+    }
+
+    // Best-effort device push so members are alerted when the app is closed.
+    // Real-time socket delivery (above) covers the foreground case; chat
+    // messages are intentionally not persisted as in-app notifications, so we
+    // push directly. The `groupId` lets a tapped notification deep-link to the
+    // chat. Fire-and-forget: push failures never block sending a message.
+    if (otherMemberIds.length > 0) {
+      const [group] = await db
+        .select({ name: chatGroupsTable.name })
+        .from(chatGroupsTable)
+        .where(eq(chatGroupsTable.id, groupId));
+      void sendPushToUsers(otherMemberIds, {
+        title: group?.name ?? "Nuevo mensaje",
+        body: `${caller.name}: ${created!.content}`,
+        data: { type: "message", groupId },
+      });
     }
 
     res.status(201).json(mapped);
