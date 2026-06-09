@@ -304,6 +304,34 @@ export const GetCurrentUserResponse = zod.object({
 
 
 /**
+ * Lets a user edit their own name, email and password. Role, status and scope are not editable here.
+ * @summary Update the authenticated user's own profile
+ */
+
+export const updateProfileBodyNewPasswordMin = 8;
+
+
+
+export const UpdateProfileBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().email().optional(),
+  "currentPassword": zod.string().optional(),
+  "newPassword": zod.string().min(updateProfileBodyNewPasswordMin).optional()
+})
+
+export const UpdateProfileResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "status": zod.string(),
+  "provinceId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
  * Returns invitation details so the registration form can be prefilled. Fails if expired or used.
  * @summary Resolve a magic invitation token
  */

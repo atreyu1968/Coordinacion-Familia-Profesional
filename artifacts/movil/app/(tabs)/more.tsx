@@ -31,17 +31,23 @@ export default function MoreScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Más" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
-        <Card style={styles.profile}>
-          <Avatar text={initials(user?.name)} size={56} />
-          <View style={styles.profileBody}>
-            <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
-              {user?.name ?? "Usuario"}
-            </Text>
-            <Text style={[styles.role, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {roleLabel(user?.role)}
-            </Text>
-          </View>
-        </Card>
+        <Pressable
+          onPress={() => router.push("/perfil")}
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <Card style={styles.profile}>
+            <Avatar text={initials(user?.name)} size={56} />
+            <View style={styles.profileBody}>
+              <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+                {user?.name ?? "Usuario"}
+              </Text>
+              <Text style={[styles.role, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {roleLabel(user?.role)}
+              </Text>
+            </View>
+            <Feather name="edit-2" size={18} color={colors.mutedForeground} />
+          </Card>
+        </Pressable>
 
         <View style={styles.section}>
           {items.map((item, idx) => (

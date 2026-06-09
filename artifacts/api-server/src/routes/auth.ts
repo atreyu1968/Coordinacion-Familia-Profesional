@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, ne } from "drizzle-orm";
 import { db, usersTable, invitationsTable } from "@workspace/db";
 import {
   LoginBody,
@@ -9,6 +9,8 @@ import {
   GetInvitationByTokenResponse,
   RegisterWithTokenBody,
   RegisterWithTokenResponse,
+  UpdateProfileBody,
+  UpdateProfileResponse,
 } from "@workspace/api-zod";
 import {
   hashPassword,
@@ -58,6 +60,78 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json(GetCurrentUserResponse.parse(req.user));
+});
+
+router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
+  const parsed = UpdateProfileBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.message });
+    return;
+  }
+
+  const caller = req.user!;
+  const updates: {
+    name?: string;
+    email?: string;
+    passwordHash?: string;
+  } = {};
+
+  if (parsed.data.name !== undefined) {
+    const name = parsed.data.name.trim();
+    if (!name) {
+      res.status(400).json({ message: "El nombre no puede estar vacío" });
+      return;
+    }
+    updates.name = name;
+  }
+
+  if (parsed.data.email !== undefined) {
+    const email = parsed.data.email.trim().toLowerCase();
+    if (!email) {
+      res.status(400).json({ message: "El correo no puede estar vacío" });
+      return;
+    }
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(and(eq(usersTable.email, email), ne(usersTable.id, caller.id)));
+    if (existing) {
+      res.status(400).json({ message: "Ya existe una cuenta con este correo" });
+      return;
+    }
+    updates.email = email;
+  }
+
+  if (parsed.data.newPassword !== undefined) {
+    if (!parsed.data.currentPassword) {
+      res
+        .status(400)
+        .json({ message: "Introduce tu contraseña actual para cambiarla" });
+      return;
+    }
+    const ok = await verifyPassword(
+      parsed.data.currentPassword,
+      caller.passwordHash,
+    );
+    if (!ok) {
+      res.status(400).json({ message: "La contraseña actual no es correcta" });
+      return;
+    }
+    updates.passwordHash = await hashPassword(parsed.data.newPassword);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.json(UpdateProfileResponse.parse(caller));
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set(updates)
+    .where(eq(usersTable.id, caller.id))
+    .returning();
+
+  res.json(UpdateProfileResponse.parse(user));
 });
 
 router.get("/auth/invitations/:token", async (req, res): Promise<void> => {

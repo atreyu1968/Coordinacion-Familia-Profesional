@@ -231,6 +231,15 @@ export interface UpdateUserInput {
   centerId?: number | null;
 }
 
+export interface UpdateProfileInput {
+  /** @minLength 1 */
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  /** @minLength 8 */
+  newPassword?: string;
+}
+
 export interface InvitationPublic {
   role: Role;
   inviterName?: string;

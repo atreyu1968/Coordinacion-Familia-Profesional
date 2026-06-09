@@ -22,6 +22,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { ProfileDialog } from "./profile-dialog";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -102,15 +103,22 @@ export function AppLayout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="overflow-hidden hidden sm:block text-right">
-              <div className="text-sm font-medium truncate">{user.name}</div>
-              <div className="text-xs text-sidebar-foreground/60 capitalize">{user.role.replace("_", " ")}</div>
-            </div>
-          </div>
+          <ProfileDialog user={user}>
+            <button
+              type="button"
+              title="Editar perfil"
+              aria-label="Editar perfil"
+              className="flex items-center gap-3 rounded-md p-1 -m-1 hover:bg-sidebar-accent transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="overflow-hidden hidden sm:block text-right">
+                <div className="text-sm font-medium truncate">{user.name}</div>
+                <div className="text-xs text-sidebar-foreground/60 capitalize">{user.role.replace("_", " ")}</div>
+              </div>
+            </button>
+          </ProfileDialog>
           <Button
             variant="outline"
             size="sm"

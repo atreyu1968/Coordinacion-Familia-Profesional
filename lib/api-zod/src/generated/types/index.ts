@@ -154,6 +154,7 @@ export * from './transferInput';
 export * from './updateFeedbackInput';
 export * from './updateFeedbackInputStatus';
 export * from './updateIntegrationSettingsInput';
+export * from './updateProfileInput';
 export * from './updateUserInput';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';

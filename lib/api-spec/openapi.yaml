@@ -383,6 +383,30 @@ paths:
                 $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update the authenticated user's own profile
+      description: Lets a user edit their own name, email and password. Role, status and scope are not editable here.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
   /auth/invitations/{token}:
     get:
       operationId: getInvitationByToken
@@ -2209,6 +2233,20 @@ components:
         centerId:
           type: integer
           nullable: true
+    UpdateProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
     InvitationPublic:
       type: object
       properties:

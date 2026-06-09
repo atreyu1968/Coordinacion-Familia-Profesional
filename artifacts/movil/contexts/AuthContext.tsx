@@ -27,6 +27,7 @@ interface AuthContextValue {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUser: (user: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,6 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, []);
 
+  const updateUser = useCallback(async (next: User) => {
+    setUser(next);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+  }, []);
+
   const signOut = useCallback(async () => {
     currentToken = null;
     disconnectSocket();
@@ -81,7 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, token, isLoading, signIn, signOut, updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
