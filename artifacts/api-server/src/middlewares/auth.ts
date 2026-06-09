@@ -91,6 +91,40 @@ export function roleRank(role: string): number {
 type Scope = { provinceId?: number | null; centerId?: number | null };
 
 /**
+ * Read-visibility scope for list/aggregate endpoints. This is ROLE-DRIVEN (not
+ * field-presence-driven) so that a center-bound role whose record also carries a
+ * provinceId cannot widen its visibility to the whole province.
+ *
+ * - superadmin: global
+ * - province roles (coordinator, prospector): bound to their province
+ * - center roles (department_head, teacher, student): bound to their center
+ * - anyone missing the required id: "none" (default-deny)
+ */
+export type ReadScope =
+  | { kind: "global" }
+  | { kind: "province"; provinceId: number }
+  | { kind: "center"; centerId: number }
+  | { kind: "none" };
+
+const PROVINCE_ROLES = new Set(["coordinator", "prospector"]);
+const CENTER_ROLES = new Set(["department_head", "teacher", "student"]);
+
+export function resolveReadScope(caller: User): ReadScope {
+  if (caller.role === "superadmin") return { kind: "global" };
+  if (PROVINCE_ROLES.has(caller.role)) {
+    return caller.provinceId != null
+      ? { kind: "province", provinceId: caller.provinceId }
+      : { kind: "none" };
+  }
+  if (CENTER_ROLES.has(caller.role)) {
+    return caller.centerId != null
+      ? { kind: "center", centerId: caller.centerId }
+      : { kind: "none" };
+  }
+  return { kind: "none" };
+}
+
+/**
  * Whether `caller` has administrative authority over a resource located in the
  * given scope (province/center). Superadmin is global; coordinator is bound to
  * its province; department_head is bound to its center; everyone else has none.

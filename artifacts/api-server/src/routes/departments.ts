@@ -1,12 +1,17 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray, type SQL } from "drizzle-orm";
 import { db, departmentsTable, centersTable } from "@workspace/db";
 import {
   ListDepartmentsQueryParams,
   ListDepartmentsResponse,
   CreateDepartmentBody,
 } from "@workspace/api-zod";
-import { requireAuth, requireRole, hasScopeOver } from "../middlewares/auth";
+import {
+  requireAuth,
+  requireRole,
+  hasScopeOver,
+  resolveReadScope,
+} from "../middlewares/auth";
 import { toDepartment } from "../lib/mappers";
 
 const router: IRouter = Router();
@@ -17,10 +22,36 @@ router.get("/departments", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ message: query.error.message });
     return;
   }
-  const filters = [isNull(departmentsTable.deletedAt)];
+  const scope = resolveReadScope(req.user!);
+  if (scope.kind === "none") {
+    res.json(ListDepartmentsResponse.parse([]));
+    return;
+  }
+
+  const filters: SQL[] = [isNull(departmentsTable.deletedAt)];
   if (query.data.centerId != null) {
     filters.push(eq(departmentsTable.centerId, query.data.centerId));
   }
+
+  if (scope.kind === "province") {
+    filters.push(
+      inArray(
+        departmentsTable.centerId,
+        db
+          .select({ id: centersTable.id })
+          .from(centersTable)
+          .where(
+            and(
+              eq(centersTable.provinceId, scope.provinceId),
+              isNull(centersTable.deletedAt),
+            ),
+          ),
+      ),
+    );
+  } else if (scope.kind === "center") {
+    filters.push(eq(departmentsTable.centerId, scope.centerId));
+  }
+
   const rows = await db
     .select()
     .from(departmentsTable)

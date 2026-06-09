@@ -19,3 +19,10 @@ Patterns:
 **Why:** A code review found IDOR / privilege escalation / cross-tenant exposure in invitations, users, centers, departments because routes only had `requireAuth` (or broad `requireRole`) without per-object scope/hierarchy checks.
 
 **How to apply:** When adding any new resource, replicate this pattern (role guard + object-level scope check) on every write and detail endpoint. On user-update endpoints, validate the *post-update* role/scope, not just the current row — a manager must not be able to set a role >= their own or move a user outside their scope. IDs in this DB are integers, so scope fields are `number | null`.
+
+## Read/list/aggregate scoping must be ROLE-driven, not field-presence-driven
+For list/aggregate endpoints (e.g. `/departments`, `/dashboard/*`), use `resolveReadScope(caller)` in `middlewares/auth.ts` — returns `{kind: "global"|"province"|"center"|"none"}`. Province roles = coordinator, prospector (use `provinceId`); center roles = department_head, teacher, student (use `centerId`); superadmin = global (+ optional `?provinceId=` filter). `none` => default-deny (return empty).
+
+**Why:** A code review found that branching on `caller.provinceId != null` *before* `caller.centerId` leaked province-wide data to center-bound roles, because a center user's record also carries the `provinceId` of its center. The fix keys scope off ROLE, never off which id happens to be populated.
+
+**How to apply:** Never write `if (caller.provinceId) {...} else if (caller.centerId) {...}` for scoping. Call `resolveReadScope` and switch on `.kind`. Only superadmin may honor a caller-supplied `provinceId` filter; ignore it for everyone else.
