@@ -1218,3 +1218,13 @@ export const UpdateIntegrationSettingsResponse = zod.object({
 })
 
 
+/**
+ * @summary Mobile app access info (install QR targets)
+ */
+export const GetMobileAppResponse = zod.object({
+  "expoGoUrl": zod.string().optional().describe('exp:\/\/ URL to open the app in Expo Go (development)'),
+  "iosUrl": zod.string().optional().describe('App Store \/ install URL for iOS (when published)'),
+  "androidUrl": zod.string().optional().describe('Play Store \/ install URL for Android (when published)')
+})
+
+

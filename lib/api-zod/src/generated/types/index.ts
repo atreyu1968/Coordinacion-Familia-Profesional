@@ -95,6 +95,7 @@ export * from './listTeachingAssignmentsParams';
 export * from './listUsersParams';
 export * from './loginInput';
 export * from './message';
+export * from './mobileAppAccess';
 export * from './module';
 export * from './municipality';
 export * from './municipalityQueryParameter';

@@ -91,6 +91,7 @@ import type {
   ListUsersParams,
   LoginInput,
   Message,
+  MobileAppAccess,
   Module,
   Municipality,
   Notification,
@@ -5890,4 +5891,81 @@ export const useUpdateIntegrationSettings = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateIntegrationSettingsMutationOptions(options));
     }
+
+export const getGetMobileAppUrl = () => {
+
+
+
+
+  return `/api/mobile-app`
+}
+
+/**
+ * @summary Mobile app access info (install QR targets)
+ */
+export const getMobileApp = async ( options?: RequestInit): Promise<MobileAppAccess> => {
+
+  return customFetch<MobileAppAccess>(getGetMobileAppUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMobileAppQueryKey = () => {
+    return [
+    `/api/mobile-app`
+    ] as const;
+    }
+
+
+export const getGetMobileAppQueryOptions = <TData = Awaited<ReturnType<typeof getMobileApp>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMobileApp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMobileAppQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMobileApp>>> = ({ signal }) => getMobileApp({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMobileApp>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMobileAppQueryResult = NonNullable<Awaited<ReturnType<typeof getMobileApp>>>
+export type GetMobileAppQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Mobile app access info (install QR targets)
+ */
+
+export function useGetMobileApp<TData = Awaited<ReturnType<typeof getMobileApp>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMobileApp>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMobileAppQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

@@ -15,6 +15,7 @@ import dashboardRouter from "./dashboard";
 import settingsRouter from "./settings";
 import backupRouter from "./backup";
 import messagingRouter from "./messaging";
+import mobileRouter from "./mobile";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(dashboardRouter);
 router.use(settingsRouter);
 router.use(backupRouter);
 router.use(messagingRouter);
+router.use(mobileRouter);
 
 export default router;

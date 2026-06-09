@@ -9,6 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface MobileAppAccess {
+  /** exp:// URL to open the app in Expo Go (development) */
+  expoGoUrl?: string;
+  /** App Store / install URL for iOS (when published) */
+  iosUrl?: string;
+  /** Play Store / install URL for Android (when published) */
+  androidUrl?: string;
+}
+
 export interface Error {
   message: string;
   code?: string;
