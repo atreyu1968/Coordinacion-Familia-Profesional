@@ -634,6 +634,61 @@ export interface SurveyResults {
   questions: SurveyQuestionResult[];
 }
 
+export type FeedbackType = typeof FeedbackType[keyof typeof FeedbackType];
+
+
+export const FeedbackType = {
+  suggestion: 'suggestion',
+  incident: 'incident',
+} as const;
+
+export type FeedbackStatus = typeof FeedbackStatus[keyof typeof FeedbackStatus];
+
+
+export const FeedbackStatus = {
+  open: 'open',
+  reviewed: 'reviewed',
+  resolved: 'resolved',
+} as const;
+
+export interface Feedback {
+  id: number;
+  userId: number;
+  userName?: string | null;
+  type: FeedbackType;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  createdAt: string;
+}
+
+export type CreateFeedbackInputType = typeof CreateFeedbackInputType[keyof typeof CreateFeedbackInputType];
+
+
+export const CreateFeedbackInputType = {
+  suggestion: 'suggestion',
+  incident: 'incident',
+} as const;
+
+export interface CreateFeedbackInput {
+  type: CreateFeedbackInputType;
+  subject: string;
+  message: string;
+}
+
+export type UpdateFeedbackInputStatus = typeof UpdateFeedbackInputStatus[keyof typeof UpdateFeedbackInputStatus];
+
+
+export const UpdateFeedbackInputStatus = {
+  open: 'open',
+  reviewed: 'reviewed',
+  resolved: 'resolved',
+} as const;
+
+export interface UpdateFeedbackInput {
+  status: UpdateFeedbackInputStatus;
+}
+
 export type EventType = typeof EventType[keyof typeof EventType];
 
 
@@ -947,6 +1002,28 @@ export const ListDocumentFormsStatus = {
   draft: 'draft',
   open: 'open',
   closed: 'closed',
+} as const;
+
+export type ListFeedbackParams = {
+type?: ListFeedbackType;
+status?: ListFeedbackStatus;
+};
+
+export type ListFeedbackType = typeof ListFeedbackType[keyof typeof ListFeedbackType];
+
+
+export const ListFeedbackType = {
+  suggestion: 'suggestion',
+  incident: 'incident',
+} as const;
+
+export type ListFeedbackStatus = typeof ListFeedbackStatus[keyof typeof ListFeedbackStatus];
+
+
+export const ListFeedbackStatus = {
+  open: 'open',
+  reviewed: 'reviewed',
+  resolved: 'resolved',
 } as const;
 
 export type ListInvitationsParams = {

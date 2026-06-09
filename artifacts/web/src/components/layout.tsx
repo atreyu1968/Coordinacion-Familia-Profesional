@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Sparkles,
   Smartphone,
+  MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -71,6 +72,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Recursos", path: "/recursos", icon: FolderOpen, visible: true },
     { label: "Memorias", path: "/memorias", icon: FileText, visible: true },
     { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: true },
+    { label: "Sugerencias", path: "/sugerencias", icon: MessageSquarePlus, visible: true },
     { label: "App Móvil", path: "/app-movil", icon: Smartphone, visible: true },
     { label: "Panel de Control", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
   ];

@@ -15,6 +15,7 @@ import type {
   AnnualReport,
   Announcement,
   Notification,
+  AppFeedback,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -313,6 +314,19 @@ export function toNotification(row: Notification) {
     body: row.body,
     type: row.type,
     readAt: row.readAt,
+    createdAt: row.createdAt,
+  };
+}
+
+export function toFeedback(row: AppFeedback & { userName?: string | null }) {
+  return {
+    id: row.id,
+    userId: row.userId,
+    userName: row.userName ?? null,
+    type: row.type as "suggestion" | "incident",
+    subject: row.subject,
+    message: row.message,
+    status: row.status as "open" | "reviewed" | "resolved",
     createdAt: row.createdAt,
   };
 }

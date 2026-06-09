@@ -1,1 +1,2 @@
 - [Jefe de Departamento model](jefe-departamento-model.md) — ADG "Jefe de Departamento ADG por centro" is the `department_head` ROLE scoped to a center, NOT a departments entity.
+- [Tool-output display redaction](tooling-display-redaction.md) — some tokens render as `ln` in read/rg/bash output though file bytes are fine; trust `rg -c` counts and `tsc`, not rendered text.

@@ -203,6 +203,60 @@ export const SubmitDocumentFormResponse = zod.object({
 
 
 /**
+ * @summary List feedback (own for regular users, all for superadmin)
+ */
+export const ListFeedbackQueryParams = zod.object({
+  "type": zod.enum(['suggestion', 'incident']).optional(),
+  "status": zod.enum(['open', 'reviewed', 'resolved']).optional()
+})
+
+export const ListFeedbackResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "type": zod.enum(['suggestion', 'incident']),
+  "subject": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'reviewed', 'resolved']),
+  "createdAt": zod.coerce.date()
+})
+export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem)
+
+
+/**
+ * @summary Submit a suggestion or incident report
+ */
+export const CreateFeedbackBody = zod.object({
+  "type": zod.enum(['suggestion', 'incident']),
+  "subject": zod.string(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Update feedback status (superadmin only)
+ */
+export const UpdateFeedbackParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateFeedbackBody = zod.object({
+  "status": zod.enum(['open', 'reviewed', 'resolved'])
+})
+
+export const UpdateFeedbackResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "type": zod.enum(['suggestion', 'incident']),
+  "subject": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'reviewed', 'resolved']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

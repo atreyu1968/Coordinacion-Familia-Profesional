@@ -40,6 +40,8 @@ tags:
     description: Document-submission forms and submissions dashboard
   - name: storage
     description: Object storage upload and serving endpoints
+  - name: feedback
+    description: In-app improvement suggestions and incident reports
 
 paths:
   /storage/uploads/request-url:
@@ -242,6 +244,88 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: Form not open.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feedback:
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: List feedback (own for regular users, all for superadmin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [suggestion, incident]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, reviewed, resolved]
+      responses:
+        "200":
+          description: Feedback list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feedback"
+    post:
+      operationId: createFeedback
+      tags: [feedback]
+      summary: Submit a suggestion or incident report
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feedback/{id}:
+    patch:
+      operationId: updateFeedback
+      tags: [feedback]
+      summary: Update feedback status (superadmin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedbackInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "404":
+          description: Not found.
           content:
             application/json:
               schema:
@@ -2813,6 +2897,48 @@ components:
         count:
           type: integer
       required: [label, count]
+    Feedback:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [suggestion, incident]
+        subject:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [open, reviewed, resolved]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userId, type, subject, message, status, createdAt]
+    CreateFeedbackInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [suggestion, incident]
+        subject:
+          type: string
+        message:
+          type: string
+      required: [type, subject, message]
+    UpdateFeedbackInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, reviewed, resolved]
+      required: [status]
     Event:
       type: object
       properties:

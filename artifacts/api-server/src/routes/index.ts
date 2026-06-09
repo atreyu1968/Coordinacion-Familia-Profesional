@@ -17,6 +17,7 @@ import messagingRouter from "./messaging";
 import mobileRouter from "./mobile";
 import storageRouter from "./storage";
 import documentFormsRouter from "./documentForms";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(messagingRouter);
 router.use(mobileRouter);
 router.use(storageRouter);
 router.use(documentFormsRouter);
+router.use(feedbackRouter);
 
 export default router;
