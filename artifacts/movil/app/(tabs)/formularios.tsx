@@ -1,5 +1,5 @@
 import React from "react";
-import { FlatList, StyleSheet, Text, View, Pressable } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -20,9 +20,11 @@ export default function FormulariosScreen() {
   const colors = useColors();
   const { data, isLoading, isError, refetch, isRefetching } = useListDocumentForms();
 
+  const bottomPad = Platform.OS === "web" ? 100 : 90;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Formularios" subtitle="Entrega de documentos" showBack />
+      <AppHeader title="Formularios" subtitle="Entrega de documentos" />
       {isLoading ? (
         <Loading />
       ) : isError ? (
@@ -31,7 +33,7 @@ export default function FormulariosScreen() {
         <FlatList
           data={data ?? []}
           keyExtractor={(item: DocumentFormSummary) => String(item.id)}
-          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomPad, flexGrow: 1 }]}
           onRefresh={refetch}
           refreshing={isRefetching}
           scrollEnabled={!!data && data.length > 0}

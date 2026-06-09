@@ -5,7 +5,6 @@ import {
   invitationsTable,
   usersTable,
   centersTable,
-  departmentsTable,
 } from "@workspace/db";
 import {
   ListInvitationsQueryParams,
@@ -64,12 +63,10 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
   const isSuper = inviter.role === "superadmin";
   let provinceId: number | null;
   let centerId: number | null;
-  let departmentId: number | null;
 
   if (isSuper) {
     provinceId = parsed.data.provinceId ?? null;
     centerId = parsed.data.centerId ?? null;
-    departmentId = parsed.data.departmentId ?? null;
   } else if (inviter.role === "coordinator") {
     // Tenant boundary: province is forced to the coordinator's own province.
     provinceId = inviter.provinceId ?? null;
@@ -92,28 +89,10 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
     } else {
       centerId = null;
     }
-    departmentId = null;
-    if (parsed.data.departmentId != null) {
-      const [department] = await db
-        .select()
-        .from(departmentsTable)
-        .where(
-          and(
-            eq(departmentsTable.id, parsed.data.departmentId),
-            isNull(departmentsTable.deletedAt),
-          ),
-        );
-      if (!department || department.centerId !== centerId) {
-        res.status(403).json({ message: "Departamento fuera de tu ámbito" });
-        return;
-      }
-      departmentId = department.id;
-    }
   } else {
     // department_head: scope is fully forced to the inviter's own center.
     provinceId = inviter.provinceId ?? null;
     centerId = inviter.centerId ?? null;
-    departmentId = inviter.departmentId ?? null;
   }
 
   const code = generateInvitationCode();
@@ -129,7 +108,6 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
       role: parsed.data.role,
       provinceId,
       centerId,
-      departmentId,
       status: "pending",
       invitedBy: inviter.id,
       expiresAt,

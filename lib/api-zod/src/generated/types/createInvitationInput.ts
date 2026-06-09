@@ -13,6 +13,5 @@ export interface CreateInvitationInput {
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   expiresInHours?: number;
 }

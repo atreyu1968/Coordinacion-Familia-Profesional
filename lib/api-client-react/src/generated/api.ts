@@ -41,7 +41,6 @@ import type {
   CreateCenterInput,
   CreateChatGroupInput,
   CreateCompanyAlertInput,
-  CreateDepartmentInput,
   CreateDocumentFormInput,
   CreateEventInput,
   CreateEventSpaceInput,
@@ -56,7 +55,6 @@ import type {
   CreateTrainingOfferInput,
   DashboardStatistics,
   DashboardSummary,
-  Department,
   DocumentFormDetail,
   DocumentFormSubmissionsResponse,
   DocumentFormSummary,
@@ -82,7 +80,6 @@ import type {
   ListCalendarEventsParams,
   ListCentersParams,
   ListCompanyAlertsParams,
-  ListDepartmentsParams,
   ListDocumentFormsParams,
   ListEventsParams,
   ListGdcanResourcesParams,
@@ -2495,149 +2492,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getAddTrainingOfferMutationOptions(options));
-    }
-
-export const getListDepartmentsUrl = (params?: ListDepartmentsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/departments?${stringifiedParams}` : `/api/departments`
-}
-
-export const listDepartments = async (params?: ListDepartmentsParams, options?: RequestInit): Promise<Department[]> => {
-
-  return customFetch<Department[]>(getListDepartmentsUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getListDepartmentsQueryKey = (params?: ListDepartmentsParams,) => {
-    return [
-    `/api/departments`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getListDepartmentsQueryOptions = <TData = Awaited<ReturnType<typeof listDepartments>>, TError = ErrorType<unknown>>(params?: ListDepartmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDepartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListDepartmentsQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDepartments>>> = ({ signal }) => listDepartments(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDepartments>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type ListDepartmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listDepartments>>>
-export type ListDepartmentsQueryError = ErrorType<unknown>
-
-
-
-export function useListDepartments<TData = Awaited<ReturnType<typeof listDepartments>>, TError = ErrorType<unknown>>(
- params?: ListDepartmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDepartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getListDepartmentsQueryOptions(params,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export const getCreateDepartmentUrl = () => {
-
-
-
-
-  return `/api/departments`
-}
-
-export const createDepartment = async (createDepartmentInput: CreateDepartmentInput, options?: RequestInit): Promise<Department> => {
-
-  return customFetch<Department>(getCreateDepartmentUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createDepartmentInput,)
-  }
-);}
-
-
-
-
-export const getCreateDepartmentMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<CreateDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<CreateDepartmentInput>}, TContext> => {
-
-const mutationKey = ['createDepartment'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDepartment>>, {data: BodyType<CreateDepartmentInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createDepartment(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof createDepartment>>>
-    export type CreateDepartmentMutationBody = BodyType<CreateDepartmentInput>
-    export type CreateDepartmentMutationError = ErrorType<unknown>
-
-    export const useCreateDepartment = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<CreateDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createDepartment>>,
-        TError,
-        {data: BodyType<CreateDepartmentInput>},
-        TContext
-      > => {
-      return useMutation(getCreateDepartmentMutationOptions(options));
     }
 
 export const getListModulesUrl = (params?: ListModulesParams,) => {

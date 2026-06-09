@@ -229,7 +229,6 @@ export const LoginResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -246,7 +245,6 @@ export const GetCurrentUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -286,7 +284,6 @@ export const RegisterWithTokenResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -306,7 +303,6 @@ export const ListInvitationsResponseItem = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "status": zod.string(),
   "expiresAt": zod.coerce.date(),
   "usedAt": zod.coerce.date().nullish(),
@@ -327,7 +323,6 @@ export const CreateInvitationBody = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "expiresInHours": zod.number().default(createInvitationBodyExpiresInHoursDefault)
 })
 
@@ -355,7 +350,6 @@ export const ResendInvitationResponse = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "status": zod.string(),
   "expiresAt": zod.coerce.date(),
   "usedAt": zod.coerce.date().nullish(),
@@ -385,7 +379,6 @@ export const ListUsersResponseItem = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -403,7 +396,6 @@ export const GetUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -417,8 +409,7 @@ export const UpdateUserBody = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']).optional(),
   "status": zod.string().optional(),
   "provinceId": zod.number().nullish(),
-  "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish()
+  "centerId": zod.number().nullish()
 })
 
 export const UpdateUserResponse = zod.object({
@@ -429,7 +420,6 @@ export const UpdateUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "departmentId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -620,26 +610,6 @@ export const AddTrainingOfferBody = zod.object({
   "cycleName": zod.string(),
   "level": zod.string().optional(),
   "shift": zod.string().nullish()
-})
-
-
-export const ListDepartmentsQueryParams = zod.object({
-  "centerId": zod.coerce.number().optional()
-})
-
-export const ListDepartmentsResponseItem = zod.object({
-  "id": zod.number(),
-  "centerId": zod.number(),
-  "name": zod.string(),
-  "headUserId": zod.number().nullish()
-})
-export const ListDepartmentsResponse = zod.array(ListDepartmentsResponseItem)
-
-
-export const CreateDepartmentBody = zod.object({
-  "centerId": zod.number(),
-  "name": zod.string(),
-  "headUserId": zod.number().nullish()
 })
 
 

@@ -73,6 +73,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="formularios"
+        options={{
+          title: "Formularios",
+          tabBarIcon: ({ color }) => (
+            <Feather name="file-text" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="more"
         options={{
           title: "Más",

@@ -78,7 +78,6 @@ function RootLayoutNav() {
       <Stack.Screen name="scan" options={{ presentation: "modal" }} />
       <Stack.Screen name="surveys" />
       <Stack.Screen name="survey/[id]" />
-      <Stack.Screen name="formularios" />
       <Stack.Screen name="form/[id]" />
       <Stack.Screen name="alerts" />
     </Stack>

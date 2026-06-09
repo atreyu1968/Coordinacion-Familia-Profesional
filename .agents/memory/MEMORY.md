@@ -1,13 +1,1 @@
-- [Scope checks: read vs manage](scope-authz.md) — resource/upload writes validate against read-scope; only management actions use hasScopeOver.
-- [api-server dev needs restart](api-server-dev-restart.md) — new routes/mounts only appear after restarting the API Server workflow (build+start, no hot reload).
-- [API contract changes need codegen](api-contract-codegen.md) — change response/request shapes in openapi.yaml then run api-spec codegen; never hand-edit generated/.
-- [Survey/vote anonymity model](surveys-anonymity.md) — anonymous answers store NULL responseId AND NULL createdAt; timestamps correlate to the participation marker and break anonymity.
-- [Events module contract & calendar mirror](events-module.md) — events use name/startAt/endAt (not title/date); event delete must also delete its calendar_entries mirror row.
-- [Dashboard & annual reports module](dashboard-reports-module.md) — scoping rules (resources via center, regional-null visibility, empty=default-deny) + /reports auth & DeepSeek graceful-503 gotchas.
-- [Backup & restore migration](backup-restore-migration.md) — full-DB ZIP export/import; validate completeness before destructive restore, single txn, realign sequences, revive dates, binary endpoints bypass orval.
-- [Expo push & web preview](expo-push-web-crash.md) — expo-notifications native APIs crash the web preview; guard with Platform.OS; push deep-link `data.type` contract; standalone creds are manual EAS.
-- [Generated API client](api-client-orval.md) — orval query hooks are `export function useListX` (grep misses `export const`); GET also emits plain async fns; mutation `mutate` var shapes vary, void mutations need `mutate()` no-args.
-- [Mobile install/QR target](expo-go-qr-target.md) — PWA-first now: web-panel QR encodes the HTTPS `webUrl` (Expo web build), not `exp://`; Expo Go retired from UI.
-- [PWA + Web Push](pwa-web-push.md) — SDK54 ignores +html.tsx so PWA is runtime-injected; web push via self-gen VAPID in lib/push.ts; void best-effort branches need .catch + wrapped db.delete.
-- [api-server testing harness](api-server-testing.md) — Vitest+supertest hit the real Postgres (db isn't injectable); seed via tagged helpers, sequential run for socket singleton, inline @workspace deps.
-- [Document/file upload security](document-uploads.md) — bind client objectPath to caller before persisting; dedup submission fieldIds; keep coordinator scope consistent across list/delete/download.
+- [Jefe de Departamento model](jefe-departamento-model.md) — ADG "Jefe de Departamento ADG por centro" is the `department_head` ROLE scoped to a center, NOT a departments entity.

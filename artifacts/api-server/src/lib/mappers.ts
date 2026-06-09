@@ -1,7 +1,6 @@
 import type {
   Center,
   Province,
-  Department,
   TrainingOffer,
   Invitation,
   Module,
@@ -36,15 +35,6 @@ export function toCenter(row: Center) {
     phone: row.phone,
     email: row.email,
     website: row.website,
-  };
-}
-
-export function toDepartment(row: Department) {
-  return {
-    id: row.id,
-    centerId: row.centerId,
-    name: row.name,
-    headUserId: row.headUserId,
   };
 }
 
@@ -335,7 +325,6 @@ export function toInvitation(row: Invitation) {
     role: row.role,
     provinceId: row.provinceId,
     centerId: row.centerId,
-    departmentId: row.departmentId,
     status: row.status,
     expiresAt: row.expiresAt,
     usedAt: row.usedAt,

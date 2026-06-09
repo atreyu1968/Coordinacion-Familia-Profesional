@@ -5,14 +5,19 @@ import {
   useCreateDocumentForm,
   useDeleteDocumentForm,
   useListDocumentFormSubmissions,
+  useGetDocumentForm,
+  useSubmitDocumentForm,
+  useRequestUploadUrl,
   getListDocumentFormsQueryKey,
   getListDocumentFormSubmissionsQueryKey,
+  getGetDocumentFormQueryKey,
   useListProvinces,
   type CreateDocumentFormInput,
   type CreateDocumentFormFieldInput,
   type CreateDocumentFormFieldInputType,
   type DocumentFormSummary,
   type DocumentFormField,
+  type SubmitDocumentFormValueInput,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,6 +72,9 @@ import {
   X,
   Download,
   Inbox,
+  CheckCircle2,
+  Paperclip,
+  PencilLine,
 } from "lucide-react";
 
 const GLOBAL = "global";
@@ -605,6 +613,285 @@ function SubmissionsDialog({
 }
 
 // ---------------------------------------------------------------------------
+// Fill form dialog (participant view)
+// ---------------------------------------------------------------------------
+function FillFormDialog({
+  formId,
+  open,
+  onOpenChange,
+}: {
+  formId: number | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const submitMut = useSubmitDocumentForm();
+  const uploadMut = useRequestUploadUrl();
+
+  const { data: form, isLoading } = useGetDocumentForm(formId ?? 0, {
+    query: {
+      queryKey: getGetDocumentFormQueryKey(formId ?? 0),
+      enabled: open && formId != null,
+    },
+  });
+
+  const [textValues, setTextValues] = useState<Record<number, string>>({});
+  const [files, setFiles] = useState<Record<number, File | null>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const fields = form?.fields ?? [];
+  const submissionByField = new Map(
+    (form?.mySubmission?.values ?? []).map((v) => [v.fieldId, v]),
+  );
+
+  useEffect(() => {
+    if (open && form) {
+      const initial: Record<number, string> = {};
+      for (const field of form.fields) {
+        if (field.type === "file") continue;
+        const existing = (form.mySubmission?.values ?? []).find(
+          (v) => v.fieldId === field.id,
+        );
+        if (existing?.value != null) initial[field.id] = existing.value;
+      }
+      setTextValues(initial);
+      setFiles({});
+      setError(null);
+    }
+  }, [open, form]);
+
+  const setText = (fieldId: number, value: string) =>
+    setTextValues((t) => ({ ...t, [fieldId]: value }));
+
+  const closed = form?.status !== "open";
+  const hasSubmitted = form?.mySubmission != null;
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    for (const field of fields) {
+      if (!field.required) continue;
+      if (field.type === "file") {
+        const hasNew = files[field.id] != null;
+        const hasExisting = submissionByField.get(field.id)?.objectPath != null;
+        if (!hasNew && !hasExisting) {
+          setError(`El campo «${field.label}» es obligatorio.`);
+          return;
+        }
+      } else {
+        if (!(textValues[field.id] ?? "").trim()) {
+          setError(`El campo «${field.label}» es obligatorio.`);
+          return;
+        }
+      }
+    }
+
+    try {
+      setUploading(true);
+      const values: SubmitDocumentFormValueInput[] = [];
+      for (const field of fields) {
+        if (field.type === "file") {
+          const file = files[field.id];
+          if (file) {
+            const res = await uploadMut.mutateAsync({
+              data: {
+                name: file.name,
+                size: file.size,
+                contentType: file.type,
+              },
+            });
+            await fetch(res.uploadURL, {
+              method: "PUT",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+            values.push({
+              fieldId: field.id,
+              objectPath: res.objectPath,
+              fileName: file.name,
+              fileSize: file.size,
+              contentType: file.type,
+            });
+          } else {
+            const existing = submissionByField.get(field.id);
+            if (existing?.objectPath) {
+              values.push({
+                fieldId: field.id,
+                objectPath: existing.objectPath,
+                fileName: existing.fileName,
+                fileSize: existing.fileSize,
+                contentType: existing.contentType,
+              });
+            }
+          }
+        } else {
+          const val = (textValues[field.id] ?? "").trim();
+          if (val) values.push({ fieldId: field.id, value: val });
+        }
+      }
+
+      await submitMut.mutateAsync({ id: form!.id, data: { values } });
+      await qc.invalidateQueries({ queryKey: getListDocumentFormsQueryKey() });
+      await qc.invalidateQueries({
+        queryKey: getGetDocumentFormQueryKey(form!.id),
+      });
+      await qc.invalidateQueries({
+        queryKey: getListDocumentFormSubmissionsQueryKey(form!.id),
+      });
+      toast({
+        title: "Entrega registrada",
+        description: "¡Gracias! Tu entrega se ha guardado.",
+      });
+      onOpenChange(false);
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      if (status === 409) {
+        toast({
+          title: "Formulario cerrado",
+          description: "Este formulario ya no está abierto a entregas.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+      } else {
+        setError("No se pudo enviar tu entrega. Inténtalo de nuevo.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pending = submitMut.isPending || uploading;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        {isLoading || !form ? (
+          <p className="text-muted-foreground py-8 text-center">Cargando...</p>
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline">
+                  {STATUS_LABELS[form.status] ?? form.status}
+                </Badge>
+                {form.closesAt && (
+                  <Badge variant="outline" className="text-xs">
+                    Cierra {formatDate(form.closesAt)}
+                  </Badge>
+                )}
+              </div>
+              <DialogTitle className="pt-1">{form.title}</DialogTitle>
+              {form.description && (
+                <DialogDescription>{form.description}</DialogDescription>
+              )}
+            </DialogHeader>
+
+            {hasSubmitted && (
+              <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" /> Ya has realizado una entrega.
+                Puedes editarla.
+              </div>
+            )}
+
+            {closed ? (
+              <p className="text-sm text-muted-foreground py-4">
+                Este formulario ya no está abierto a entregas.
+              </p>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-5">
+                {fields.map((field) => {
+                  const existing = submissionByField.get(field.id);
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={`field-${field.id}`}>
+                        {field.label}
+                        {field.required && (
+                          <span className="text-destructive"> *</span>
+                        )}
+                      </Label>
+                      {field.type === "text" && (
+                        <Input
+                          id={`field-${field.id}`}
+                          value={textValues[field.id] ?? ""}
+                          onChange={(e) => setText(field.id, e.target.value)}
+                        />
+                      )}
+                      {field.type === "textarea" && (
+                        <Textarea
+                          id={`field-${field.id}`}
+                          value={textValues[field.id] ?? ""}
+                          onChange={(e) => setText(field.id, e.target.value)}
+                          rows={3}
+                        />
+                      )}
+                      {field.type === "select" && (
+                        <Select
+                          value={textValues[field.id] ?? ""}
+                          onValueChange={(v) => setText(field.id, v)}
+                        >
+                          <SelectTrigger id={`field-${field.id}`}>
+                            <SelectValue placeholder="Selecciona una opción" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(field.options ?? []).map((o) => (
+                              <SelectItem key={o} value={o}>
+                                {o}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {field.type === "file" && (
+                        <div className="space-y-1.5">
+                          <Input
+                            id={`field-${field.id}`}
+                            type="file"
+                            onChange={(e) =>
+                              setFiles((f) => ({
+                                ...f,
+                                [field.id]: e.target.files?.[0] ?? null,
+                              }))
+                            }
+                          />
+                          {!files[field.id] && existing?.fileName && (
+                            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Paperclip className="w-3.5 h-3.5" />
+                              Documento actual: {existing.fileName}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {error && (
+                  <p className="text-sm font-medium text-destructive">
+                    {error}
+                  </p>
+                )}
+
+                <DialogFooter>
+                  <Button type="submit" disabled={pending}>
+                    {pending
+                      ? "Enviando..."
+                      : hasSubmitted
+                        ? "Actualizar entrega"
+                        : "Enviar entrega"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function FormulariosPage() {
@@ -617,8 +904,15 @@ export default function FormulariosPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedTitle, setSelectedTitle] = useState("");
   const [submissionsOpen, setSubmissionsOpen] = useState(false);
+  const [fillId, setFillId] = useState<number | null>(null);
+  const [fillOpen, setFillOpen] = useState(false);
 
   const manager = canManageForms(user?.role);
+
+  const openFill = (form: DocumentFormSummary) => {
+    setFillId(form.id);
+    setFillOpen(true);
+  };
 
   const provinceName = (id: number | null | undefined) =>
     id == null ? "Global" : provinces.find((p) => p.id === id)?.name ?? "—";
@@ -707,6 +1001,24 @@ export default function FormulariosPage() {
                     </Badge>
                   )}
                 </div>
+                {f.status === "open" && (
+                  <Button
+                    size="sm"
+                    variant={f.hasSubmitted ? "outline" : "default"}
+                    className="gap-1.5 w-full"
+                    onClick={() => openFill(f)}
+                  >
+                    {f.hasSubmitted ? (
+                      <>
+                        <PencilLine className="w-4 h-4" /> Editar entrega
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4" /> Rellenar
+                      </>
+                    )}
+                  </Button>
+                )}
                 {manager && (
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <Button
@@ -760,6 +1072,12 @@ export default function FormulariosPage() {
         formTitle={selectedTitle}
         open={submissionsOpen}
         onOpenChange={setSubmissionsOpen}
+      />
+
+      <FillFormDialog
+        formId={fillId}
+        open={fillOpen}
+        onOpenChange={setFillOpen}
       />
     </div>
   );

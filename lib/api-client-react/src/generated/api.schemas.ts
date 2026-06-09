@@ -215,7 +215,6 @@ export interface User {
   status: string;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   createdAt?: string;
 }
 
@@ -230,7 +229,6 @@ export interface UpdateUserInput {
   status?: string;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
 }
 
 export interface InvitationPublic {
@@ -247,7 +245,6 @@ export interface Invitation {
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   status: string;
   expiresAt: string;
   usedAt?: string | null;
@@ -260,7 +257,6 @@ export interface CreateInvitationInput {
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   expiresInHours?: number;
 }
 
@@ -346,19 +342,6 @@ export interface CreateTrainingOfferInput {
   cycleName: string;
   level?: string;
   shift?: string | null;
-}
-
-export interface Department {
-  id: number;
-  centerId: number;
-  name: string;
-  headUserId?: number | null;
-}
-
-export interface CreateDepartmentInput {
-  centerId: number;
-  name: string;
-  headUserId?: number | null;
 }
 
 export interface Module {
@@ -990,10 +973,6 @@ provinceId?: ProvinceQueryParameter;
 islandId?: IslandQueryParameter;
 municipalityId?: MunicipalityQueryParameter;
 search?: SearchQueryParameter;
-};
-
-export type ListDepartmentsParams = {
-centerId?: CenterQueryParameter;
 };
 
 export type ListModulesParams = {

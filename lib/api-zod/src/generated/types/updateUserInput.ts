@@ -13,5 +13,4 @@ export interface UpdateUserInput {
   status?: string;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
 }

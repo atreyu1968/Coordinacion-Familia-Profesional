@@ -20,8 +20,6 @@ tags:
     description: Provinces, islands and municipalities
   - name: centers
     description: Educational centers directory and training offer
-  - name: departments
-    description: Center departments
   - name: academics
     description: Modules, groups, teaching assignments and resources
   - name: ai
@@ -668,45 +666,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrainingOffer"
-
-  # ---------------------------------------------------------------------------
-  # Departments
-  # ---------------------------------------------------------------------------
-  /departments:
-    get:
-      operationId: listDepartments
-      tags: [departments]
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/CenterQuery"
-      responses:
-        "200":
-          description: Departments
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Department"
-    post:
-      operationId: createDepartment
-      tags: [departments]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDepartmentInput"
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
 
   # ---------------------------------------------------------------------------
   # Academics
@@ -2147,9 +2106,6 @@ components:
         centerId:
           type: integer
           nullable: true
-        departmentId:
-          type: integer
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2167,9 +2123,6 @@ components:
           type: integer
           nullable: true
         centerId:
-          type: integer
-          nullable: true
-        departmentId:
           type: integer
           nullable: true
     InvitationPublic:
@@ -2202,9 +2155,6 @@ components:
         centerId:
           type: integer
           nullable: true
-        departmentId:
-          type: integer
-          nullable: true
         status:
           type: string
         expiresAt:
@@ -2231,9 +2181,6 @@ components:
           type: integer
           nullable: true
         centerId:
-          type: integer
-          nullable: true
-        departmentId:
           type: integer
           nullable: true
         expiresInHours:
@@ -2408,30 +2355,6 @@ components:
           type: string
           nullable: true
       required: [cycleName]
-    Department:
-      type: object
-      properties:
-        id:
-          type: integer
-        centerId:
-          type: integer
-        name:
-          type: string
-        headUserId:
-          type: integer
-          nullable: true
-      required: [id, centerId, name]
-    CreateDepartmentInput:
-      type: object
-      properties:
-        centerId:
-          type: integer
-        name:
-          type: string
-        headUserId:
-          type: integer
-          nullable: true
-      required: [centerId, name]
     Module:
       type: object
       properties:

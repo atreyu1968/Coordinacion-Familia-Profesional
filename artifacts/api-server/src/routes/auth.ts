@@ -146,7 +146,6 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       status: "active",
       provinceId: invitation.provinceId,
       centerId: invitation.centerId,
-      departmentId: invitation.departmentId,
       createdBy: invitation.invitedBy,
     })
     .returning();

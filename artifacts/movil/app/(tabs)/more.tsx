@@ -21,7 +21,6 @@ export default function MoreScreen() {
   }[] = [
     { icon: "maximize", label: "Escanear acreditación (QR)", onPress: () => router.push("/scan") },
     { icon: "bar-chart-2", label: "Encuestas y votaciones", onPress: () => router.push("/surveys") },
-    { icon: "file-text", label: "Formularios", onPress: () => router.push("/formularios") },
     { icon: "briefcase", label: "Alertas de empresa (FCT)", onPress: () => router.push("/alerts") },
   ];
 

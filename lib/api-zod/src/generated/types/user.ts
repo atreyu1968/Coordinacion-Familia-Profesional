@@ -15,6 +15,5 @@ export interface User {
   status: string;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   createdAt?: Date;
 }

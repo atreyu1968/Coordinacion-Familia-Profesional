@@ -14,7 +14,6 @@ export interface Invitation {
   role: Role;
   provinceId?: number | null;
   centerId?: number | null;
-  departmentId?: number | null;
   status: string;
   expiresAt: Date;
   usedAt?: Date | null;
