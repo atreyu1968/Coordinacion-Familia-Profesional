@@ -82,6 +82,7 @@ function RootLayoutNav() {
         <Stack.Screen name="survey/[id]" />
         <Stack.Screen name="form/[id]" />
         <Stack.Screen name="alerts" />
+        <Stack.Screen name="videoconferencias" />
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
       </Stack>

@@ -3,6 +3,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 
 import {
   listGroupMessages,
@@ -27,6 +29,21 @@ import { useColors } from "@/hooks/useColors";
 import { connectSocket } from "@/lib/socket";
 import { formatRelative } from "@/lib/format";
 
+const EMOJIS = [
+  "😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎",
+  "🤔", "😅", "🙂", "😉", "😢", "😡", "🥳", "😴",
+  "👍", "👎", "🙏", "👏", "🙌", "💪", "🤝", "👀",
+  "❤️", "🔥", "🎉", "💯", "✅", "❌", "⚠️", "✨",
+  "📌", "📅", "📍", "📎", "📝", "☕", "🚀", "⭐",
+];
+
+const JITSI_RE = /(https:\/\/meet\.jit\.si\/[^\s]+)/;
+
+function extractCallUrl(content: string): string | null {
+  const match = content.match(JITSI_RE);
+  return match ? match[1] : null;
+}
+
 export default function ChatDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -39,6 +56,7 @@ export default function ChatDetailScreen() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
 
   const sendMutation = useSendGroupMessage();
 
@@ -101,6 +119,7 @@ export default function ChatDetailScreen() {
     const content = draft.trim();
     if (!content) return;
     setDraft("");
+    setShowEmojis(false);
     sendMutation.mutate(
       { id: groupId, data: { content } },
       {
@@ -109,11 +128,61 @@ export default function ChatDetailScreen() {
     );
   };
 
+  const onStartCall = () => {
+    if (!Number.isInteger(groupId) || sendMutation.isPending) return;
+    const slug =
+      `coordinaadg-chat-${groupId}-` +
+      `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    const url = `https://meet.jit.si/${slug}`;
+    // Post the join link first; only open the room once the message has been
+    // persisted, so every member can discover and join the same call.
+    sendMutation.mutate(
+      {
+        id: groupId,
+        data: { content: `📹 Videollamada iniciada — únete aquí: ${url}` },
+      },
+      {
+        onSuccess: (msg) => {
+          mergeMessages([msg]);
+          void WebBrowser.openBrowserAsync(url);
+        },
+      },
+    );
+  };
+
+  const onJoinCall = (url: string) => {
+    void WebBrowser.openBrowserAsync(url);
+  };
+
+  const addEmoji = (emoji: string) => {
+    setDraft((prev) => prev + emoji);
+  };
+
   const bottomInset = Platform.OS === "web" ? 16 : insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title={params.name ?? "Conversación"} showBack />
+      <AppHeader
+        title={params.name ?? "Conversación"}
+        showBack
+        right={
+          <Pressable
+            onPress={onStartCall}
+            hitSlop={10}
+            disabled={sendMutation.isPending}
+            style={({ pressed }) => [
+              styles.callBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+            accessibilityLabel="Iniciar videollamada"
+          >
+            <Feather name="video" size={18} color={colors.primaryForeground} />
+          </Pressable>
+        }
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior="padding"
@@ -142,6 +211,7 @@ export default function ChatDetailScreen() {
             }
             renderItem={({ item }) => {
               const mine = item.senderId === user?.id;
+              const callUrl = extractCallUrl(item.content);
               return (
                 <View
                   style={[
@@ -173,6 +243,38 @@ export default function ChatDetailScreen() {
                     >
                       {item.content}
                     </Text>
+                    {callUrl ? (
+                      <Pressable
+                        onPress={() => onJoinCall(callUrl)}
+                        style={({ pressed }) => [
+                          styles.joinBtn,
+                          {
+                            backgroundColor: mine
+                              ? colors.primaryForeground
+                              : colors.primary,
+                            opacity: pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="video"
+                          size={15}
+                          color={mine ? colors.primary : colors.primaryForeground}
+                        />
+                        <Text
+                          style={[
+                            styles.joinText,
+                            {
+                              color: mine
+                                ? colors.primary
+                                : colors.primaryForeground,
+                            },
+                          ]}
+                        >
+                          Unirse a la videollamada
+                        </Text>
+                      </Pressable>
+                    ) : null}
                     <Text
                       style={[
                         styles.msgTime,
@@ -192,6 +294,32 @@ export default function ChatDetailScreen() {
             }}
           />
         )}
+        {showEmojis ? (
+          <View
+            style={[
+              styles.emojiPanel,
+              { backgroundColor: colors.card, borderTopColor: colors.border },
+            ]}
+          >
+            <ScrollView
+              contentContainerStyle={styles.emojiGrid}
+              keyboardShouldPersistTaps="handled"
+            >
+              {EMOJIS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  onPress={() => addEmoji(emoji)}
+                  style={({ pressed }) => [
+                    styles.emojiBtn,
+                    { opacity: pressed ? 0.5 : 1 },
+                  ]}
+                >
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
         <View
           style={[
             styles.inputBar,
@@ -202,9 +330,22 @@ export default function ChatDetailScreen() {
             },
           ]}
         >
+          <Pressable
+            onPress={() => setShowEmojis((v) => !v)}
+            hitSlop={8}
+            style={({ pressed }) => [styles.emojiToggle, { opacity: pressed ? 0.5 : 1 }]}
+            accessibilityLabel="Emoticonos"
+          >
+            <Feather
+              name="smile"
+              size={24}
+              color={showEmojis ? colors.primary : colors.mutedForeground}
+            />
+          </Pressable>
           <TextInput
             value={draft}
             onChangeText={setDraft}
+            onFocus={() => setShowEmojis(false)}
             placeholder="Mensaje"
             placeholderTextColor={colors.mutedForeground}
             multiline
@@ -242,6 +383,13 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: 16, gap: 8, flexGrow: 1 },
   emptyWrap: { flex: 1, transform: [{ scaleY: -1 }], minHeight: 300 },
+  callBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   bubbleRow: { flexDirection: "row" },
   bubble: {
     maxWidth: "82%",
@@ -254,13 +402,46 @@ const styles = StyleSheet.create({
   sender: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   msgText: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
   msgTime: { fontSize: 10, fontFamily: "Inter_400Regular", alignSelf: "flex-end" },
+  joinBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  joinText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  emojiPanel: {
+    maxHeight: 200,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  emojiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 8,
+  },
+  emojiBtn: {
+    width: "12.5%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiText: { fontSize: 26 },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 12,
     paddingTop: 10,
-    gap: 10,
+    gap: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  emojiToggle: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
   },
   input: {
     flex: 1,

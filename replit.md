@@ -34,7 +34,7 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- The mobile app icon and the web favicon must always be the same image. Source of truth is the mobile app icon (`artifacts/movil/assets/images/icon.png`, 1024×1024); regenerate the favicon as a downscale of it (`artifacts/web/public/favicon.png`, 256×256).
 
 ## Gotchas
 
