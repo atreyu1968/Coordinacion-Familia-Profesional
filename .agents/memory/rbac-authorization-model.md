@@ -18,4 +18,4 @@ Patterns:
 
 **Why:** A code review found IDOR / privilege escalation / cross-tenant exposure in invitations, users, centers, departments because routes only had `requireAuth` (or broad `requireRole`) without per-object scope/hierarchy checks.
 
-**How to apply:** Tasks #2–#8 add new resources — replicate this pattern (role guard + object-level scope check) on every write and detail endpoint. IDs in this DB are integers, so scope fields are `number | null`.
+**How to apply:** When adding any new resource, replicate this pattern (role guard + object-level scope check) on every write and detail endpoint. On user-update endpoints, validate the *post-update* role/scope, not just the current row — a manager must not be able to set a role >= their own or move a user outside their scope. IDs in this DB are integers, so scope fields are `number | null`.
