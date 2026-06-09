@@ -22,6 +22,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBadges } from "@/contexts/BadgesContext";
 import { useColors } from "@/hooks/useColors";
 import { connectSocket } from "@/lib/socket";
 import { formatRelative } from "@/lib/format";
@@ -30,6 +31,7 @@ export default function ChatDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, token } = useAuth();
+  const { markChatRead, setActiveChat } = useBadges();
   const params = useLocalSearchParams<{ id: string; name?: string }>();
   const groupId = Number(params.id);
 
@@ -74,18 +76,25 @@ export default function ChatDetailScreen() {
     if (!token || !Number.isInteger(groupId)) return;
     const socket = connectSocket(token);
     socket.emit("join", groupId);
+    // Viewing the chat clears its badge and silences its unread updates.
+    setActiveChat(groupId);
+    markChatRead(groupId);
 
     const onMessage = (msg: Message) => {
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
+      // Messages arriving while the chat is open are already read.
+      markChatRead(groupId);
     };
 
     socket.on("message", onMessage);
     return () => {
       socket.emit("leave", groupId);
       socket.off("message", onMessage);
+      // Leaving the chat re-enables its unread badge for future messages.
+      setActiveChat(null);
     };
-  }, [token, groupId, mergeMessages]);
+  }, [token, groupId, mergeMessages, markChatRead, setActiveChat]);
 
   const onSend = () => {
     const content = draft.trim();

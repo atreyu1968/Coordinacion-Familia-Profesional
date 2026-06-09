@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
+import { useBadges } from "@/contexts/BadgesContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function TabLayout() {
@@ -12,6 +13,10 @@ export default function TabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const { unreadChats, unreadNotifications } = useBadges();
+
+  const badge = (count: number) =>
+    count > 0 ? (count > 99 ? "99+" : count) : undefined;
 
   return (
     <Tabs
@@ -51,6 +56,8 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: "Mensajes",
+          tabBarBadge: badge(unreadChats),
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#fff" },
           tabBarIcon: ({ color }) => (
             <Feather name="message-circle" size={22} color={color} />
           ),
@@ -60,6 +67,8 @@ export default function TabLayout() {
         name="notifications"
         options={{
           title: "Avisos",
+          tabBarBadge: badge(unreadNotifications),
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#fff" },
           tabBarIcon: ({ color }) => <Feather name="bell" size={22} color={color} />,
         }}
       />

@@ -21,6 +21,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loading } from "@/components/ui";
 import { AuthProvider, getAuthToken, useAuth } from "@/contexts/AuthContext";
+import { BadgesProvider } from "@/contexts/BadgesContext";
 import { registerForPushNotifications } from "@/lib/push";
 
 // Expo bundles run outside the web proxy and need absolute URLs to reach
@@ -95,7 +96,9 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <AuthProvider>
-                <RootLayoutNav />
+                <BadgesProvider>
+                  <RootLayoutNav />
+                </BadgesProvider>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
