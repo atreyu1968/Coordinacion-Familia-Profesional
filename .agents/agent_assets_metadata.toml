@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "g9_9V9eSFLRF-ZK2Rwqph"
+uri = "file://artifacts/web/src/assets/login-hero.png"
+type = "image"
+title = "fp login hero"

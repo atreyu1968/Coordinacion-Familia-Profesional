@@ -7,6 +7,7 @@ import type {
   Module,
   Group,
   Resource,
+  GdcanResource,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -116,6 +117,44 @@ export function toResource(row: {
     moduleId: row.moduleId,
     centerId: row.centerId,
     createdAt: row.createdAt,
+  };
+}
+
+export function toCompanyAlert(row: {
+  id: number;
+  companyName: string;
+  sector: string | null;
+  location: string | null;
+  positions: number | null;
+  description: string | null;
+  contact: string | null;
+  provinceId: number | null;
+  createdById: number | null;
+  createdByName?: string | null;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    companyName: row.companyName,
+    sector: row.sector,
+    location: row.location,
+    positions: row.positions,
+    description: row.description,
+    contact: row.contact,
+    provinceId: row.provinceId,
+    createdById: row.createdById,
+    createdByName: row.createdByName ?? null,
+    createdAt: row.createdAt,
+  };
+}
+
+export function toGdcanResource(row: GdcanResource) {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    url: row.url,
+    content: row.content,
   };
 }
 

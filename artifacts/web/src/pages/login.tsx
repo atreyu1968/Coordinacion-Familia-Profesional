@@ -5,19 +5,15 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Eye, EyeOff } from "lucide-react";
+import heroImage from "@/assets/login-hero.png";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loginMutation = useLogin();
 
@@ -36,20 +32,57 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto w-12 h-12 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-            ADG
+    <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background">
+      {/* Left visual panel */}
+      <div className="relative hidden lg:flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/40 p-12">
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-16 -right-10 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative z-10 flex flex-col items-center text-center gap-8 max-w-md">
+          <div className="rounded-full ring-8 ring-background shadow-xl overflow-hidden w-80 h-80">
+            <img
+              src={heroImage}
+              alt="Profesionales de Formación Profesional colaborando"
+              className="w-full h-full object-cover"
+            />
           </div>
-          <CardTitle className="text-2xl">Coordina ADG</CardTitle>
-          <CardDescription>
-            Accede a la plataforma de coordinación de la familia profesional de
-            Administración y Gestión
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              Tu futuro es la Formación Profesional
+            </h2>
+            <p className="text-muted-foreground">
+              Plataforma de coordinación de la familia profesional de
+              Administración y Gestión en Canarias.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md space-y-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0">
+              ADG
+            </div>
+            <div className="leading-tight">
+              <p className="font-bold text-lg">Coordina ADG</p>
+              <p className="text-sm text-muted-foreground">
+                Administración y Gestión · Canarias
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Acceso usuarios
+            </h1>
+            <p className="text-muted-foreground">
+              Herramienta de coordinación de FP y prospección de la familia de
+              Administración y Gestión.
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
               <Input
@@ -64,14 +97,31 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={
+                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-destructive" role="alert">
@@ -81,17 +131,30 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
+              size="lg"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? "Accediendo…" : "Iniciar sesión"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
+
+          <p className="text-center text-xs text-muted-foreground">
             ¿Tienes un código de invitación? Usa el enlace recibido por correo
             para registrarte.
           </p>
-        </CardContent>
-      </Card>
+
+          <div className="pt-2 text-center">
+            <a
+              href="https://www.fpcanarias.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              www.fpcanarias.org
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

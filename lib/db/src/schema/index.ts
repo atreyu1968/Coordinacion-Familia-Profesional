@@ -11,4 +11,6 @@ export * from "./modules";
 export * from "./groups";
 export * from "./teachingAssignments";
 export * from "./resources";
+export * from "./companyAlerts";
+export * from "./gdcanResources";
 export * from "./integrationSettings";

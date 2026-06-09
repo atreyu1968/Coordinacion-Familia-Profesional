@@ -52,6 +52,38 @@ export async function sendEmail(params: {
   }
 }
 
+export function buildCompanyAlertEmail(params: {
+  companyName: string;
+  sector?: string | null;
+  location?: string | null;
+  positions?: number | null;
+  description?: string | null;
+  contact?: string | null;
+  publishedByName?: string | null;
+}): { subject: string; html: string } {
+  const rows: string[] = [];
+  if (params.sector) rows.push(`<strong>Sector:</strong> ${params.sector}`);
+  if (params.location)
+    rows.push(`<strong>Localidad:</strong> ${params.location}`);
+  if (params.positions != null)
+    rows.push(`<strong>Plazas:</strong> ${params.positions}`);
+  if (params.contact) rows.push(`<strong>Contacto:</strong> ${params.contact}`);
+
+  return {
+    subject: `Nueva empresa para FCT: ${params.companyName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
+        <h2>Coordina ADG · Nueva alerta de empresa</h2>
+        <p>${params.publishedByName ?? "Un prospector"} ha publicado una nueva empresa para prácticas (FCT/Dual):</p>
+        <h3 style="margin-bottom:4px;">${params.companyName}</h3>
+        ${rows.length ? `<p>${rows.join("<br>")}</p>` : ""}
+        ${params.description ? `<p>${params.description}</p>` : ""}
+        <p>Accede a la plataforma para consultar los detalles en el módulo de FCT y Prospección.</p>
+      </div>
+    `,
+  };
+}
+
 export function buildInvitationEmail(params: {
   inviterName: string;
   inviteUrl: string;

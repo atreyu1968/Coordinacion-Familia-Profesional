@@ -13,6 +13,7 @@ import CentrosPage from "@/pages/centros";
 import CentroDetallePage from "@/pages/centro-detalle";
 import AcademicaPage from "@/pages/academica";
 import RecursosPage from "@/pages/recursos";
+import FctPage from "@/pages/fct";
 import AsistenteIaPage from "@/pages/asistente-ia";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ function AuthedRoutes() {
         <Route path="/centros/:id" component={CentroDetallePage} />
         <Route path="/academica" component={AcademicaPage} />
         <Route path="/recursos" component={RecursosPage} />
+        <Route path="/fct" component={FctPage} />
         <Route path="/asistente-ia" component={AsistenteIaPage} />
         <Route path="/panel-control" component={PanelControlPage} />
         <Route component={NotFound} />
