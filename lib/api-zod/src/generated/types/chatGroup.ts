@@ -13,4 +13,5 @@ export interface ChatGroup {
   provinceId?: number | null;
   centerId?: number | null;
   lastMessageAt?: Date | null;
+  unreadCount?: number;
 }

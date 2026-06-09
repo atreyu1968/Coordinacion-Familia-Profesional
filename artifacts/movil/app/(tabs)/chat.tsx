@@ -80,11 +80,22 @@ export default function ChatListScreen() {
                   {item.type === "direct" ? "Mensaje directo" : "Grupo"}
                 </Text>
               </View>
-              {item.lastMessageAt ? (
-                <Text style={[styles.time, { color: colors.mutedForeground }]}>
-                  {formatRelative(item.lastMessageAt)}
-                </Text>
-              ) : null}
+              <View style={styles.rowEnd}>
+                {item.lastMessageAt ? (
+                  <Text style={[styles.time, { color: colors.mutedForeground }]}>
+                    {formatRelative(item.lastMessageAt)}
+                  </Text>
+                ) : null}
+                {(item.unreadCount ?? 0) > 0 ? (
+                  <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                    <Text
+                      style={[styles.badgeText, { color: colors.primaryForeground }]}
+                    >
+                      {(item.unreadCount ?? 0) > 99 ? "99+" : item.unreadCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </Pressable>
           )}
         />
@@ -104,7 +115,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowBody: { flex: 1, gap: 3 },
+  rowEnd: { alignItems: "flex-end", gap: 6 },
   name: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   preview: { fontSize: 13, fontFamily: "Inter_400Regular" },
   time: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 });

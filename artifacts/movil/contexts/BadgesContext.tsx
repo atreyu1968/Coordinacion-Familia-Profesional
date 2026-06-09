@@ -4,13 +4,14 @@ import React, {
   useContext,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
   getListChatGroupsQueryKey,
   getListNotificationsQueryKey,
+  markChatRead as markChatReadRequest,
+  useListChatGroups,
   useListNotifications,
 } from "@workspace/api-client-react";
 
@@ -33,16 +34,16 @@ const BadgesContext = createContext<BadgesContextValue | undefined>(undefined);
 /**
  * Tracks unread counts for the tab bar badges.
  *
- * Notification counts are derived from the cached server list (`readAt` is the
- * source of truth) and refreshed when a realtime "notification" arrives. Chat
- * unread state has no server-side read tracking, so it is tracked client-side:
- * each "chat_update" socket event flags the group as unread, and opening the
- * chat clears it.
+ * Both notification and chat unread state are derived from the cached server
+ * lists, which are the source of truth. Notifications use `readAt`; chat groups
+ * carry a server-computed `unreadCount` backed by a per-member "last read"
+ * marker, so unread state survives reinstalls and syncs across devices.
+ * Realtime "chat_update"/"notification" events simply refetch the relevant
+ * list, and opening a chat persists the read marker on the server.
  */
 export function BadgesProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const [unreadChatIds, setUnreadChatIds] = useState<Set<number>>(new Set());
   const activeChatRef = useRef<number | null>(null);
 
   const setActiveChat = useCallback((groupId: number | null) => {
@@ -56,35 +57,33 @@ export function BadgesProvider({ children }: { children: React.ReactNode }) {
     (n) => !n.readAt,
   ).length;
 
-  const markChatRead = useCallback((groupId: number) => {
-    setUnreadChatIds((prev) => {
-      if (!prev.has(groupId)) return prev;
-      const next = new Set(prev);
-      next.delete(groupId);
-      return next;
-    });
-  }, []);
+  const { data: chatGroups } = useListChatGroups({
+    query: { queryKey: getListChatGroupsQueryKey(), enabled: !!token },
+  });
+  const unreadChats = (chatGroups ?? []).filter(
+    (g) => (g.unreadCount ?? 0) > 0,
+  ).length;
+
+  const markChatRead = useCallback(
+    (groupId: number) => {
+      void markChatReadRequest(groupId)
+        .catch(() => {
+          // Network hiccups are non-fatal; the next list refresh reconciles.
+        })
+        .finally(() => {
+          void queryClient.invalidateQueries({
+            queryKey: getListChatGroupsQueryKey(),
+          });
+        });
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
-    if (!token) {
-      setUnreadChatIds(new Set());
-      return;
-    }
+    if (!token) return;
     const socket = connectSocket(token);
 
-    const onChatUpdate = (payload: { groupId?: unknown }) => {
-      if (typeof payload?.groupId === "number") {
-        const groupId = payload.groupId;
-        // Ignore updates for the chat the user is currently viewing — those
-        // messages are read on arrival, so they must not raise the badge.
-        if (groupId !== activeChatRef.current) {
-          setUnreadChatIds((prev) => {
-            const next = new Set(prev);
-            next.add(groupId);
-            return next;
-          });
-        }
-      }
+    const onChatUpdate = () => {
       void queryClient.invalidateQueries({
         queryKey: getListChatGroupsQueryKey(),
       });
@@ -108,7 +107,7 @@ export function BadgesProvider({ children }: { children: React.ReactNode }) {
     <BadgesContext.Provider
       value={{
         unreadNotifications,
-        unreadChats: unreadChatIds.size,
+        unreadChats,
         markChatRead,
         setActiveChat,
       }}

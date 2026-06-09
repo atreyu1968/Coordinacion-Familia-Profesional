@@ -658,6 +658,7 @@ export interface ChatGroup {
   provinceId?: number | null;
   centerId?: number | null;
   lastMessageAt?: string | null;
+  unreadCount?: number;
 }
 
 export interface CreateChatGroupInput {

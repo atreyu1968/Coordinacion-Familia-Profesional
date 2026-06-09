@@ -1015,7 +1015,8 @@ export const ListChatGroupsResponseItem = zod.object({
   "type": zod.string().optional(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "lastMessageAt": zod.coerce.date().nullish()
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "unreadCount": zod.number().optional()
 })
 export const ListChatGroupsResponse = zod.array(ListChatGroupsResponseItem)
 
@@ -1026,6 +1027,18 @@ export const CreateChatGroupBody = zod.object({
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "memberIds": zod.array(zod.number()).optional()
+})
+
+
+/**
+ * @summary Mark a chat group as read for the caller
+ */
+export const MarkChatReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkChatReadResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 

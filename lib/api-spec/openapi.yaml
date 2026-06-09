@@ -1242,6 +1242,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatGroup"
+  /chat/groups/{id}/read:
+    post:
+      operationId: markChatRead
+      tags: [messaging]
+      summary: Mark a chat group as read for the caller
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
   /chat/groups/{id}/messages:
     get:
       operationId: listGroupMessages
@@ -2664,6 +2680,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        unreadCount:
+          type: integer
       required: [id, name]
     CreateChatGroupInput:
       type: object

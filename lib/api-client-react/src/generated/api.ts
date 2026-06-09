@@ -4866,6 +4866,76 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateChatGroupMutationOptions(options));
     }
 
+export const getMarkChatReadUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/groups/${id}/read`
+}
+
+/**
+ * @summary Mark a chat group as read for the caller
+ */
+export const markChatRead = async (id: number, options?: RequestInit): Promise<OkResult> => {
+
+  return customFetch<OkResult>(getMarkChatReadUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getMarkChatReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markChatRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markChatRead>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['markChatRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markChatRead>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markChatRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkChatReadMutationResult = NonNullable<Awaited<ReturnType<typeof markChatRead>>>
+
+    export type MarkChatReadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark a chat group as read for the caller
+ */
+export const useMarkChatRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markChatRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markChatRead>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getMarkChatReadMutationOptions(options));
+    }
+
 export const getListGroupMessagesUrl = (id: number,) => {
 
 

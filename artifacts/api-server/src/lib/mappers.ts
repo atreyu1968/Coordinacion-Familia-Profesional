@@ -271,6 +271,7 @@ export function toChatGroup(row: {
   provinceId: number | null;
   centerId: number | null;
   lastMessageAt: Date | null;
+  unreadCount?: number;
 }) {
   return {
     id: row.id,
@@ -279,6 +280,7 @@ export function toChatGroup(row: {
     provinceId: row.provinceId,
     centerId: row.centerId,
     lastMessageAt: row.lastMessageAt,
+    unreadCount: row.unreadCount ?? 0,
   };
 }
 

@@ -13,6 +13,7 @@ import {
 import {
   ListChatGroupsResponse,
   CreateChatGroupBody,
+  MarkChatReadParams,
   ListGroupMessagesParams,
   ListGroupMessagesResponse,
   SendGroupMessageParams,
@@ -85,6 +86,42 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     .where(inArray(chatGroupsTable.id, groupIds))
     .orderBy(desc(chatGroupsTable.lastMessageAt));
 
+  // The caller's per-group "last read" markers drive the unread counts.
+  const callerMemberships = await db
+    .select({
+      groupId: chatGroupMembersTable.groupId,
+      lastReadAt: chatGroupMembersTable.lastReadAt,
+    })
+    .from(chatGroupMembersTable)
+    .where(
+      and(
+        eq(chatGroupMembersTable.userId, caller.id),
+        inArray(chatGroupMembersTable.groupId, groupIds),
+      ),
+    );
+  const lastReadByGroup = new Map<number, Date | null>();
+  for (const m of callerMemberships) {
+    lastReadByGroup.set(m.groupId, m.lastReadAt);
+  }
+
+  // Count messages from other members newer than the caller's read marker.
+  const unreadRows = await db
+    .select({
+      groupId: messagesTable.groupId,
+      createdAt: messagesTable.createdAt,
+      senderId: messagesTable.senderId,
+    })
+    .from(messagesTable)
+    .where(inArray(messagesTable.groupId, groupIds));
+  const unreadByGroup = new Map<number, number>();
+  for (const m of unreadRows) {
+    if (m.groupId == null) continue;
+    if (m.senderId === caller.id) continue;
+    const lastRead = lastReadByGroup.get(m.groupId) ?? null;
+    if (lastRead && m.createdAt.getTime() <= lastRead.getTime()) continue;
+    unreadByGroup.set(m.groupId, (unreadByGroup.get(m.groupId) ?? 0) + 1);
+  }
+
   // Member names, used to derive a display name for direct messages.
   const allMembers = await db
     .select({
@@ -114,7 +151,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       );
       if (other?.name) name = other.name;
     }
-    return toChatGroup({ ...g, name });
+    return toChatGroup({ ...g, name, unreadCount: unreadByGroup.get(g.id) ?? 0 });
   });
 
   res.json(ListChatGroupsResponse.parse(result));
@@ -230,6 +267,36 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
 
   res.status(201).json(toChatGroup({ ...group, name: displayName }));
 });
+
+// Mark a chat group as read for the caller, persisting the marker server-side
+// so unread counts stay accurate across devices and reinstalls.
+router.post(
+  "/chat/groups/:id/read",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = MarkChatReadParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const groupId = params.data.id;
+    if (!(await isGroupMember(groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a este chat" });
+      return;
+    }
+    await db
+      .update(chatGroupMembersTable)
+      .set({ lastReadAt: new Date() })
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, groupId),
+          eq(chatGroupMembersTable.userId, caller.id),
+        ),
+      );
+    res.json({ ok: true });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Messages

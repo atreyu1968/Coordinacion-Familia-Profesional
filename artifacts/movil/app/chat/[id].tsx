@@ -83,14 +83,15 @@ export default function ChatDetailScreen() {
     const onMessage = (msg: Message) => {
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
-      // Messages arriving while the chat is open are already read.
-      markChatRead(groupId);
     };
 
     socket.on("message", onMessage);
     return () => {
       socket.emit("leave", groupId);
       socket.off("message", onMessage);
+      // Persist the read marker on leave so messages received while the chat
+      // was open are counted as read across devices.
+      markChatRead(groupId);
       // Leaving the chat re-enables its unread badge for future messages.
       setActiveChat(null);
     };
