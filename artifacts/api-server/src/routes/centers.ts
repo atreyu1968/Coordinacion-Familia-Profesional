@@ -135,9 +135,25 @@ router.patch(
       res.status(403).json({ message: "Centro fuera de tu ámbito" });
       return;
     }
+    // Only superadmin may move a center to a different province; for everyone
+    // else, validate the post-update province still falls within their scope so
+    // a coordinator cannot relocate a center out of (or into) their tenant.
+    const updates = { ...parsed.data };
+    if (req.user!.role !== "superadmin") {
+      if (
+        updates.provinceId !== undefined &&
+        updates.provinceId !== existing.provinceId
+      ) {
+        res.status(403).json({
+          message: "No puedes cambiar la provincia de un centro",
+        });
+        return;
+      }
+      delete updates.provinceId;
+    }
     const [center] = await db
       .update(centersTable)
-      .set(parsed.data)
+      .set(updates)
       .where(
         and(eq(centersTable.id, params.data.id), isNull(centersTable.deletedAt)),
       )

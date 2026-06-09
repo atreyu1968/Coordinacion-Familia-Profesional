@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
+import PanelControlPage from "@/pages/panel-control";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ function AuthedRoutes() {
     <AppLayout>
       <Switch>
         <Route path="/" component={DashboardPage} />
+        <Route path="/panel-control" component={PanelControlPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

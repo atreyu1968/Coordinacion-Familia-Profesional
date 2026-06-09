@@ -67,7 +67,7 @@ const INVITE_MATRIX: Record<string, string[]> = {
     "teacher",
     "student",
   ],
-  coordinator: ["prospector", "department_head", "teacher"],
+  coordinator: ["prospector", "department_head"],
   department_head: ["teacher"],
 };
 
