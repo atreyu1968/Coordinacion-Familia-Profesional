@@ -18,6 +18,8 @@ import {
   type DocumentFormSummary,
   type DocumentFormField,
   type SubmitDocumentFormValueInput,
+  type DocumentFormSubmissionDetail,
+  type DocumentSubmissionValue,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -462,6 +464,12 @@ function CreateFormDialog() {
                       </Button>
                     </div>
                   )}
+                  {f.type === "file" && (
+                    <p className="text-xs text-muted-foreground pl-5 flex items-center gap-1">
+                      <Paperclip className="w-3 h-3" /> El usuario subirá un
+                      documento desde la app.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -489,14 +497,7 @@ function ValueCell({
   value,
 }: {
   field: DocumentFormField;
-  value:
-    | {
-        id: number;
-        value?: string | null;
-        objectPath?: string | null;
-        fileName?: string | null;
-      }
-    | undefined;
+  value: DocumentSubmissionValue | undefined;
 }) {
   if (!value) {
     return <span className="text-muted-foreground">—</span>;
@@ -971,8 +972,8 @@ export default function FormulariosPage() {
           {forms.map((f) => (
             <Card key={f.id} className="flex flex-col">
               <CardContent className="p-4 flex flex-col gap-3 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                     <FileText className="w-4 h-4" />
                   </div>
                   <Badge variant="secondary" className="shrink-0">

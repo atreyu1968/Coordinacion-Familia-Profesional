@@ -12,6 +12,7 @@ import {
   Briefcase,
   BarChart,
   Calendar,
+  FileSignature,
   FileText,
   ClipboardList,
   FolderOpen,

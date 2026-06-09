@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +12,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Feather } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import * as Haptics from "expo-haptics";
 import * as DocumentPicker from "expo-document-picker";
 
 import {
@@ -31,6 +33,13 @@ interface FileValue {
   fileName: string;
   fileSize: number;
   contentType: string;
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function FormDetailScreen() {
@@ -84,6 +93,11 @@ export default function FormDetailScreen() {
         multiple: false,
       });
       if (result.canceled || !result.assets?.length) return;
+
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
       const asset = result.assets[0];
       const contentType = asset.mimeType ?? "application/octet-stream";
       const size = asset.size ?? 0;
@@ -146,6 +160,9 @@ export default function FormDetailScreen() {
       { id: formId, data: { values } },
       {
         onSuccess: () => {
+          if (Platform.OS !== "web") {
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
           void queryClient.invalidateQueries({ queryKey: getGetDocumentFormQueryKey(formId) });
           router.back();
         },
@@ -163,7 +180,7 @@ export default function FormDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Entregar" showBack />
+      <AppHeader title="Entregar documentos" showBack />
       {isLoading ? (
         <Loading />
       ) : isError || !data ? (
@@ -180,7 +197,9 @@ export default function FormDetailScreen() {
           keyboardShouldPersistTaps="handled"
           bottomOffset={20}
         >
-          <Text style={[styles.formTitle, { color: colors.foreground }]}>{data.title}</Text>
+          <Text style={[styles.formTitle, { color: colors.foreground }]}>
+            {data.title}
+          </Text>
           {data.description ? (
             <Text style={[styles.formDesc, { color: colors.mutedForeground }]}>
               {data.description}
@@ -214,7 +233,9 @@ export default function FormDetailScreen() {
           ))}
 
           {error ? (
-            <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
+            <Text style={[styles.error, { color: colors.destructive }]}>
+              {error}
+            </Text>
           ) : null}
 
           <Button
@@ -259,12 +280,13 @@ function FieldInput({
         multiline={multiline}
         style={[
           styles.textInput,
-          multiline && styles.textArea,
           {
             backgroundColor: colors.background,
             borderColor: colors.border,
             color: colors.foreground,
             borderRadius: colors.radius,
+            minHeight: multiline ? 90 : 48,
+            textAlignVertical: multiline ? "top" : "center",
           },
         ]}
       />
@@ -320,8 +342,8 @@ function FieldInput({
         style={({ pressed }) => [
           styles.fileBtn,
           {
-            borderColor: colors.border,
-            backgroundColor: colors.background,
+            borderColor: file ? colors.primary : colors.border,
+            backgroundColor: file ? colors.accent : colors.background,
             borderRadius: colors.radius,
             opacity: uploading ? 0.6 : pressed ? 0.7 : 1,
           },
@@ -330,23 +352,40 @@ function FieldInput({
         {uploading ? (
           <ActivityIndicator color={colors.primary} />
         ) : (
-          <Feather name="paperclip" size={18} color={colors.primary} />
+          <Feather
+            name={file ? "file" : "paperclip"}
+            size={18}
+            color={file ? colors.primary : colors.mutedForeground}
+          />
         )}
-        <Text style={[styles.fileBtnText, { color: colors.primary }]}>
-          {uploading ? "Subiendo…" : "Seleccionar documento"}
-        </Text>
-      </Pressable>
-      {file ? (
-        <View style={styles.fileRow}>
-          <Feather name="file" size={16} color={colors.mutedForeground} />
+        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text
-            style={[styles.fileName, { color: colors.foreground }]}
+            style={[
+              styles.fileBtnText,
+              { color: file ? colors.foreground : colors.primary },
+            ]}
             numberOfLines={1}
           >
-            {file.fileName}
+            {uploading
+              ? "Subiendo…"
+              : file
+              ? file.fileName
+              : "Seleccionar documento"}
           </Text>
+          {file && !uploading && (
+            <Text style={[styles.fileMeta, { color: colors.mutedForeground }]}>
+              ({formatBytes(file.fileSize)})
+            </Text>
+          )}
         </View>
-      ) : null}
+        {!uploading && (
+          <Feather
+            name={file ? "refresh-cw" : "chevron-right"}
+            size={18}
+            color={colors.mutedForeground}
+          />
+        )}
+      </Pressable>
     </View>
   );
 }
@@ -381,21 +420,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  textArea: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
   fileWrap: { gap: 10 },
   fileBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    gap: 12,
     padding: 14,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  fileBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  fileRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  fileName: { fontSize: 14, fontFamily: "Inter_500Medium", flex: 1 },
+  fileBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", flex: 1 },
+  fileMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
   error: { fontSize: 14, fontFamily: "Inter_400Regular" },
 });
