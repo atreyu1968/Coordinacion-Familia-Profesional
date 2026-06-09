@@ -18,6 +18,7 @@ import {
   setBaseUrl,
 } from "@workspace/api-client-react";
 
+import { AppLock } from "@/components/AppLock";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loading } from "@/components/ui";
 import { AuthProvider, getAuthToken, useAuth } from "@/contexts/AuthContext";
@@ -42,7 +43,7 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, locked } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -70,19 +71,22 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="chat/[id]" />
-      <Stack.Screen name="new-chat" options={{ presentation: "modal" }} />
-      <Stack.Screen name="scan" options={{ presentation: "modal" }} />
-      <Stack.Screen name="surveys" />
-      <Stack.Screen name="survey/[id]" />
-      <Stack.Screen name="form/[id]" />
-      <Stack.Screen name="alerts" />
-      <Stack.Screen name="feedback" />
-      <Stack.Screen name="perfil" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="chat/[id]" />
+        <Stack.Screen name="new-chat" options={{ presentation: "modal" }} />
+        <Stack.Screen name="scan" options={{ presentation: "modal" }} />
+        <Stack.Screen name="surveys" />
+        <Stack.Screen name="survey/[id]" />
+        <Stack.Screen name="form/[id]" />
+        <Stack.Screen name="alerts" />
+        <Stack.Screen name="feedback" />
+        <Stack.Screen name="perfil" />
+      </Stack>
+      {token && locked ? <AppLock /> : null}
+    </>
   );
 }
 

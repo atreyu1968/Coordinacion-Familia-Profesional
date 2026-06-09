@@ -1,5 +1,13 @@
-import React from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -12,7 +20,33 @@ import { initials, roleLabel } from "@/lib/format";
 
 export default function MoreScreen() {
   const colors = useColors();
-  const { user, signOut } = useAuth();
+  const {
+    user,
+    signOut,
+    biometricEnabled,
+    biometricAvailable,
+    enableBiometricUnlock,
+    disableBiometricUnlock,
+  } = useAuth();
+  const [bioBusy, setBioBusy] = useState(false);
+  const [bioError, setBioError] = useState<string | null>(null);
+
+  const onToggleBiometric = async (next: boolean) => {
+    setBioError(null);
+    setBioBusy(true);
+    try {
+      if (next) {
+        const ok = await enableBiometricUnlock();
+        if (!ok) {
+          setBioError("No se pudo activar. Comprueba la biometría de tu dispositivo.");
+        }
+      } else {
+        await disableBiometricUnlock();
+      }
+    } finally {
+      setBioBusy(false);
+    }
+  };
 
   const items: {
     icon: React.ComponentProps<typeof Feather>["name"];
@@ -73,6 +107,33 @@ export default function MoreScreen() {
           ))}
         </View>
 
+        {biometricAvailable ? (
+          <View style={styles.section}>
+            <View style={[styles.bioRow, { backgroundColor: colors.card }]}>
+              <View style={[styles.iconWrap, { backgroundColor: colors.accent }]}>
+                <Feather name="lock" size={18} color={colors.accentForeground} />
+              </View>
+              <View style={styles.bioTextWrap}>
+                <Text style={[styles.bioLabel, { color: colors.foreground }]}>
+                  Desbloqueo con huella / Face ID
+                </Text>
+                <Text style={[styles.bioSub, { color: colors.mutedForeground }]}>
+                  Protege la app con tu biometría
+                </Text>
+              </View>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={onToggleBiometric}
+                disabled={bioBusy}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+            {bioError ? (
+              <Text style={[styles.bioError, { color: colors.destructive }]}>{bioError}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <InstallAppButton />
 
         <Pressable
@@ -116,6 +177,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   itemLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  bioLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  bioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 14,
+  },
+  bioTextWrap: { flex: 1, gap: 2 },
+  bioSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  bioError: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 14,
+    paddingTop: 8,
+  },
   logout: {
     flexDirection: "row",
     alignItems: "center",

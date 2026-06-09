@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Image,
   Platform,
@@ -20,13 +20,45 @@ export default function LoginScreen() {
   const colors = useColors();
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const { signIn } = useAuth();
+  const {
+    signIn,
+    loginWithBiometric,
+    hasLockedSession,
+    biometricEnabled,
+    biometricAvailable,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const showBiometric = hasLockedSession && biometricEnabled && biometricAvailable;
+
+  const onBiometric = useCallback(async () => {
+    setError(null);
+    setBioLoading(true);
+    try {
+      const ok = await loginWithBiometric();
+      if (!ok) {
+        setError("No se pudo verificar. Inténtalo de nuevo o usa tu contraseña.");
+        if (Platform.OS !== "web") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      }
+    } finally {
+      setBioLoading(false);
+    }
+  }, [loginWithBiometric]);
+
+  // Prompt for biometrics automatically when a saved session is locked.
+  useEffect(() => {
+    if (showBiometric) {
+      void onBiometric();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBiometric]);
 
   const onSubmit = async () => {
     if (!email.trim() || !password) {
@@ -71,6 +103,20 @@ export default function LoginScreen() {
         </Text>
 
         <View style={styles.form}>
+          {showBiometric ? (
+            <View style={styles.bioBlock}>
+              <Button
+                label="Entrar con huella / Face ID"
+                icon="unlock"
+                onPress={onBiometric}
+                loading={bioLoading}
+              />
+              <Text style={[styles.bioHint, { color: colors.mutedForeground }]}>
+                o inicia sesión con tu contraseña
+              </Text>
+            </View>
+          ) : null}
+
           <Text style={[styles.label, { color: colors.foreground }]}>Correo electrónico</Text>
           <TextInput
             value={email}
@@ -169,5 +215,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     marginTop: 14,
+  },
+  bioBlock: {
+    marginBottom: 28,
+    gap: 12,
+    alignItems: "center",
+  },
+  bioHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
 });

@@ -16,3 +16,4 @@
 - [Document-submission forms](document-forms-module.md) — file upload via generic presigned flow; download endpoint + GCS PUT are hand-written authed fetches outside orval.
 - [api-server testing harness](api-server-testing.md) — Vitest+supertest hit the real Postgres (db isn't injectable); seed via tagged helpers, sequential run for socket singleton, inline @workspace deps.
 - [Document/file upload security](document-uploads.md) — bind client objectPath to caller before persisting; dedup submission fieldIds; keep coordinator scope consistent across list/delete/download.
+- [Biometric unlock (movil)](biometric-unlock-mobile.md) — local device lock over saved session; native LocalAuth vs web WebAuthn; expo-secure-store is a no-op on web (use lib/secureStore.ts).
