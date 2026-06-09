@@ -351,13 +351,18 @@ router.get("/announcements", requireAuth, async (req, res): Promise<void> => {
     .limit(200);
 
   // Visibility: global announcements (provinceId null) plus those of the
-  // caller's province. Superadmins see everything; an explicit province filter
-  // narrows the result.
+  // caller's province. Superadmins see everything. An optional provinceId
+  // filter may only NARROW within what the caller can already see — it must
+  // never expand visibility to other provinces.
   const filterProvince = query.data.provinceId;
   const visible = rows.filter((r) => {
+    const allowed =
+      caller.role === "superadmin" ||
+      r.provinceId == null ||
+      r.provinceId === caller.provinceId;
+    if (!allowed) return false;
     if (filterProvince != null) return r.provinceId === filterProvince;
-    if (caller.role === "superadmin") return true;
-    return r.provinceId == null || r.provinceId === caller.provinceId;
+    return true;
   });
 
   res.json(ListAnnouncementsResponse.parse(visible.map(toAnnouncement)));
