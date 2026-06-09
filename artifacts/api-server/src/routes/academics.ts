@@ -333,6 +333,72 @@ router.post(
       res.status(403).json({ message: "Centro fuera de tu ámbito" });
       return;
     }
+
+    // The teacher must be a real, active teacher bound to this same center.
+    const [teacher] = await db
+      .select()
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.id, parsed.data.teacherId),
+          isNull(usersTable.deletedAt),
+        ),
+      );
+    if (!teacher || teacher.role !== "teacher") {
+      res.status(400).json({ message: "Profesor no válido" });
+      return;
+    }
+    if (teacher.centerId !== parsed.data.centerId) {
+      res
+        .status(403)
+        .json({ message: "El profesor no pertenece a este centro" });
+      return;
+    }
+
+    // The module must exist and be either global or belong to this center.
+    const [module] = await db
+      .select()
+      .from(modulesTable)
+      .where(
+        and(
+          eq(modulesTable.id, parsed.data.moduleId),
+          isNull(modulesTable.deletedAt),
+        ),
+      );
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (module.centerId != null && module.centerId !== parsed.data.centerId) {
+      res
+        .status(403)
+        .json({ message: "El módulo pertenece a otro centro" });
+      return;
+    }
+
+    // If a group is given it must exist and belong to this center.
+    if (parsed.data.groupId != null) {
+      const [group] = await db
+        .select()
+        .from(groupsTable)
+        .where(
+          and(
+            eq(groupsTable.id, parsed.data.groupId),
+            isNull(groupsTable.deletedAt),
+          ),
+        );
+      if (!group) {
+        res.status(404).json({ message: "Grupo no encontrado" });
+        return;
+      }
+      if (group.centerId !== parsed.data.centerId) {
+        res
+          .status(403)
+          .json({ message: "El grupo pertenece a otro centro" });
+        return;
+      }
+    }
+
     const [created] = await db
       .insert(teachingAssignmentsTable)
       .values({
