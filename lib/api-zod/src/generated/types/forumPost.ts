@@ -12,5 +12,6 @@ export interface ForumPost {
   authorId?: number | null;
   authorName?: string | null;
   content: string;
+  editedAt?: Date | null;
   createdAt: Date;
 }

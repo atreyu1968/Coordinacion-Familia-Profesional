@@ -6,10 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListForumThreadsParams = {
-moduleId: number;
-/**
- * Optional case-insensitive filter on thread title.
- */
-q?: string;
-};
+export interface UpdateForumPostInput {
+  /** @minLength 1 */
+  content: string;
+}

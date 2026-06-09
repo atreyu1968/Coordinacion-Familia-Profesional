@@ -432,6 +432,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: q
+          in: query
+          required: false
+          description: Optional case-insensitive filter on thread title.
+          schema:
+            type: string
       responses:
         "200":
           description: Thread list.
@@ -441,6 +447,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ForumThread"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     post:
       operationId: createForumThread
       tags: [forum]
@@ -467,6 +479,33 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
   /forum/threads/{id}:
+    patch:
+      operationId: updateForumThread
+      tags: [forum]
+      summary: Edit a thread title (author only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateForumThreadInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumThread"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     delete:
       operationId: deleteForumThread
       tags: [forum]
@@ -478,6 +517,50 @@ paths:
       responses:
         "204":
           description: Deleted.
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /forum/threads/{id}/pinned:
+    put:
+      operationId: pinForumThread
+      tags: [forum]
+      summary: Pin or unpin a thread (manager only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinForumThreadInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumThread"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /forum/threads/{id}/read:
+    post:
+      operationId: markForumThreadRead
+      tags: [forum]
+      summary: Mark a thread as read for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Marked read.
         "403":
           $ref: "#/components/responses/Error"
         "404":
@@ -532,6 +615,33 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
   /forum/posts/{id}:
+    patch:
+      operationId: updateForumPost
+      tags: [forum]
+      summary: Edit a message (author only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateForumPostInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     delete:
       operationId: deleteForumPost
       tags: [forum]
@@ -3243,7 +3353,9 @@ components:
           nullable: true
         threadCount:
           type: integer
-      required: [id, name, threadCount]
+        unreadCount:
+          type: integer
+      required: [id, name, threadCount, unreadCount]
     ForumThread:
       type: object
       properties:
@@ -3270,13 +3382,23 @@ components:
           nullable: true
         postCount:
           type: integer
+        unreadCount:
+          type: integer
+        pinnedAt:
+          type: string
+          format: date-time
+          nullable: true
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
         lastPostAt:
           type: string
           format: date-time
-      required: [id, moduleId, title, postCount, createdAt, lastPostAt]
+      required: [id, moduleId, title, postCount, unreadCount, createdAt, lastPostAt]
     ForumPost:
       type: object
       properties:
@@ -3292,6 +3414,10 @@ components:
           nullable: true
         content:
           type: string
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -3315,6 +3441,26 @@ components:
           type: string
           minLength: 1
       required: [content]
+    UpdateForumThreadInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+      required: [title]
+    UpdateForumPostInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
+    PinForumThreadInput:
+      type: object
+      properties:
+        pinned:
+          type: boolean
+      required: [pinned]
     Event:
       type: object
       properties:

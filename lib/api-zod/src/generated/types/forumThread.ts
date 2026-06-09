@@ -16,6 +16,9 @@ export interface ForumThread {
   authorId?: number | null;
   authorName?: string | null;
   postCount: number;
+  unreadCount: number;
+  pinnedAt?: Date | null;
+  editedAt?: Date | null;
   createdAt: Date;
   lastPostAt: Date;
 }

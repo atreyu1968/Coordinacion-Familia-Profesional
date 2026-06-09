@@ -367,6 +367,7 @@ export function toForumModule(row: {
   cycleName: string | null;
   centerId: number | null;
   threadCount: number;
+  unreadCount: number;
 }) {
   return {
     id: row.id,
@@ -375,6 +376,7 @@ export function toForumModule(row: {
     cycleName: row.cycleName,
     centerId: row.centerId,
     threadCount: row.threadCount,
+    unreadCount: row.unreadCount,
   };
 }
 
@@ -388,6 +390,9 @@ export function toForumThread(row: {
   authorId: number | null;
   authorName?: string | null;
   postCount: number;
+  unreadCount: number;
+  pinnedAt?: Date | null;
+  editedAt?: Date | null;
   createdAt: Date;
   lastPostAt: Date;
 }) {
@@ -401,6 +406,9 @@ export function toForumThread(row: {
     authorId: row.authorId,
     authorName: row.authorName ?? null,
     postCount: row.postCount,
+    unreadCount: row.unreadCount,
+    pinnedAt: row.pinnedAt ?? null,
+    editedAt: row.editedAt ?? null,
     createdAt: row.createdAt,
     lastPostAt: row.lastPostAt,
   };
@@ -412,6 +420,7 @@ export function toForumPost(row: {
   authorId: number | null;
   authorName?: string | null;
   content: string;
+  editedAt?: Date | null;
   createdAt: Date;
 }) {
   return {
@@ -420,6 +429,7 @@ export function toForumPost(row: {
     authorId: row.authorId,
     authorName: row.authorName ?? null,
     content: row.content,
+    editedAt: row.editedAt ?? null,
     createdAt: row.createdAt,
   };
 }

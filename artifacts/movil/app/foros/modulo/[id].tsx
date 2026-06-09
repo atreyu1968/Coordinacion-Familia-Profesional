@@ -16,6 +16,8 @@ import {
   useListForumThreads,
   useCreateForumThread,
   useDeleteForumThread,
+  useUpdateForumThread,
+  usePinForumThread,
   getListForumThreadsQueryKey,
   getListForumModulesQueryKey,
   type ForumThread,
@@ -38,14 +40,22 @@ export default function ForoModuloScreen() {
   const isManager =
     user?.role === "coordinator" || user?.role === "department_head";
 
-  const { data: threads = [], isLoading } = useListForumThreads({ moduleId });
+  const [search, setSearch] = useState("");
+  const { data: threads = [], isLoading } = useListForumThreads({
+    moduleId,
+    ...(search.trim() ? { q: search.trim() } : {}),
+  });
   const createMut = useCreateForumThread();
   const deleteMut = useDeleteForumThread();
+  const updateMut = useUpdateForumThread();
+  const pinMut = usePinForumThread();
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: getListForumThreadsQueryKey({ moduleId }) });
@@ -77,6 +87,27 @@ export default function ForoModuloScreen() {
       await refresh();
     } catch {
       setError("No se pudo eliminar el tema.");
+    }
+  };
+
+  const onSaveEdit = async () => {
+    if (editId == null || !editTitle.trim()) return;
+    try {
+      await updateMut.mutateAsync({ id: editId, data: { title: editTitle.trim() } });
+      setEditId(null);
+      setEditTitle("");
+      await refresh();
+    } catch {
+      setError("No se pudo editar el tema.");
+    }
+  };
+
+  const onTogglePin = async (t: ForumThread) => {
+    try {
+      await pinMut.mutateAsync({ id: t.id, data: { pinned: !t.pinnedAt } });
+      await refresh();
+    } catch {
+      setError("No se pudo cambiar el estado del tema.");
     }
   };
 
@@ -153,70 +184,163 @@ export default function ForoModuloScreen() {
           </Card>
         ) : null}
 
+        {!showForm ? (
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar temas por título"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.searchInput, { color: colors.foreground }]}
+            />
+          </View>
+        ) : null}
+
         {isLoading ? (
           <Loading />
         ) : threads.length === 0 ? (
           <EmptyState
             icon="message-square"
-            title="Sin temas"
-            message="Aún no hay temas en este foro. ¡Crea el primero!"
+            title={search.trim() ? "Sin resultados" : "Sin temas"}
+            message={
+              search.trim()
+                ? "Ningún tema coincide con tu búsqueda."
+                : "Aún no hay temas en este foro. ¡Crea el primero!"
+            }
           />
         ) : (
           threads.map((t: ForumThread) => {
+            const isAuthor = t.authorId === user?.id;
             const canDelete =
-              user?.role === "superadmin" ||
-              t.authorId === user?.id ||
-              (isManager && t.centerId != null);
+              user?.role === "superadmin" || isAuthor || (isManager && t.centerId != null);
+            const canPin =
+              user?.role === "superadmin" || (isManager && t.centerId != null);
+            const isEditing = editId === t.id;
             return (
-              <Pressable
-                key={t.id}
-                onPress={() =>
-                  router.push({
-                    pathname: "/foros/tema/[id]",
-                    params: {
-                      id: String(t.id),
-                      title: t.title,
-                      module: t.moduleName ?? "",
-                      center: t.centerId == null ? "" : String(t.centerId),
-                    },
-                  })
-                }
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                <Card style={styles.itemCard}>
-                  <View style={styles.itemHead}>
-                    <Text
-                      style={[styles.itemTitle, { color: colors.foreground }]}
-                      numberOfLines={2}
-                    >
-                      {t.title}
-                    </Text>
-                    {canDelete ? (
-                      <Pressable
-                        onPress={() => onDelete(t.id)}
-                        disabled={deleteMut.isPending}
-                        hitSlop={8}
-                      >
-                        <Feather name="trash-2" size={18} color={colors.destructive} />
-                      </Pressable>
-                    ) : null}
+              <Card key={t.id} style={styles.itemCard}>
+                {isEditing ? (
+                  <View style={styles.editWrap}>
+                    <TextInput
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                      maxLength={160}
+                      style={inputStyle}
+                      autoFocus
+                    />
+                    <View style={styles.editActions}>
+                      <Button
+                        label="Cancelar"
+                        variant="secondary"
+                        onPress={() => {
+                          setEditId(null);
+                          setEditTitle("");
+                        }}
+                        style={styles.editBtn}
+                      />
+                      <Button
+                        label="Guardar"
+                        onPress={onSaveEdit}
+                        loading={updateMut.isPending}
+                        style={styles.editBtn}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.metaRow}>
-                    <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                      {t.authorName ?? "Usuario"}
-                    </Text>
-                    <View style={styles.metaItem}>
-                      <Feather name="message-circle" size={12} color={colors.mutedForeground} />
+                ) : (
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/foros/tema/[id]",
+                        params: {
+                          id: String(t.id),
+                          title: t.title,
+                          module: t.moduleName ?? "",
+                          center: t.centerId == null ? "" : String(t.centerId),
+                        },
+                      })
+                    }
+                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  >
+                    <View style={styles.itemHead}>
+                      <View style={styles.titleWrap}>
+                        {t.pinnedAt ? (
+                          <Feather name="bookmark" size={14} color={colors.primary} />
+                        ) : null}
+                        <Text
+                          style={[styles.itemTitle, { color: colors.foreground }]}
+                          numberOfLines={2}
+                        >
+                          {t.title}
+                        </Text>
+                        {t.unreadCount > 0 ? (
+                          <View style={[styles.unread, { backgroundColor: colors.primary }]}>
+                            <Text
+                              style={[styles.unreadText, { color: colors.primaryForeground }]}
+                            >
+                              {t.unreadCount}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.actions}>
+                        {canPin ? (
+                          <Pressable onPress={() => onTogglePin(t)} disabled={pinMut.isPending} hitSlop={8}>
+                            <Feather
+                              name="bookmark"
+                              size={17}
+                              color={t.pinnedAt ? colors.primary : colors.mutedForeground}
+                            />
+                          </Pressable>
+                        ) : null}
+                        {isAuthor ? (
+                          <Pressable
+                            onPress={() => {
+                              setEditId(t.id);
+                              setEditTitle(t.title);
+                            }}
+                            hitSlop={8}
+                          >
+                            <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                          </Pressable>
+                        ) : null}
+                        {canDelete ? (
+                          <Pressable
+                            onPress={() => onDelete(t.id)}
+                            disabled={deleteMut.isPending}
+                            hitSlop={8}
+                          >
+                            <Feather name="trash-2" size={17} color={colors.destructive} />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                    <View style={styles.metaRow}>
                       <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                        {t.postCount}
+                        {t.authorName ?? "Usuario"}
+                      </Text>
+                      <View style={styles.metaItem}>
+                        <Feather name="message-circle" size={12} color={colors.mutedForeground} />
+                        <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+                          {t.postCount}
+                        </Text>
+                      </View>
+                      <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+                        {formatRelative(t.lastPostAt)}
+                        {t.editedAt ? " · editado" : ""}
                       </Text>
                     </View>
-                    <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                      {formatRelative(t.lastPostAt)}
-                    </Text>
-                  </View>
-                </Card>
-              </Pressable>
+                  </Pressable>
+                )}
+              </Card>
             );
           })
         )}
@@ -235,6 +359,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   formCard: { gap: 6 },
   cardTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", marginBottom: 6 },
   label: { fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 8 },
@@ -248,13 +381,27 @@ const styles = StyleSheet.create({
   textarea: { minHeight: 100, textAlignVertical: "top" },
   error: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 12 },
   itemCard: { gap: 8 },
+  editWrap: { gap: 12 },
+  editActions: { flexDirection: "row", gap: 10 },
+  editBtn: { flex: 1 },
   itemHead: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
-  itemTitle: { flex: 1, fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  titleWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  itemTitle: { flexShrink: 1, fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  actions: { flexDirection: "row", alignItems: "center", gap: 14 },
+  unread: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unreadText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   metaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   meta: { fontSize: 12, fontFamily: "Inter_500Medium" },

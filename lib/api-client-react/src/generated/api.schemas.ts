@@ -718,6 +718,7 @@ export interface ForumModule {
   cycleName?: string | null;
   centerId?: number | null;
   threadCount: number;
+  unreadCount: number;
 }
 
 export interface ForumThread {
@@ -730,6 +731,9 @@ export interface ForumThread {
   authorId?: number | null;
   authorName?: string | null;
   postCount: number;
+  unreadCount: number;
+  pinnedAt?: string | null;
+  editedAt?: string | null;
   createdAt: string;
   lastPostAt: string;
 }
@@ -740,6 +744,7 @@ export interface ForumPost {
   authorId?: number | null;
   authorName?: string | null;
   content: string;
+  editedAt?: string | null;
   createdAt: string;
 }
 
@@ -754,6 +759,20 @@ export interface CreateForumThreadInput {
 export interface CreateForumPostInput {
   /** @minLength 1 */
   content: string;
+}
+
+export interface UpdateForumThreadInput {
+  /** @minLength 1 */
+  title: string;
+}
+
+export interface UpdateForumPostInput {
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface PinForumThreadInput {
+  pinned: boolean;
 }
 
 export type EventType = typeof EventType[keyof typeof EventType];
@@ -1095,6 +1114,10 @@ export const ListFeedbackStatus = {
 
 export type ListForumThreadsParams = {
 moduleId: number;
+/**
+ * Optional case-insensitive filter on thread title.
+ */
+q?: string;
 };
 
 export type ListInvitationsParams = {

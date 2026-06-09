@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -18,12 +18,16 @@ import {
   useListForumPosts,
   useCreateForumPost,
   useDeleteForumPost,
+  useUpdateForumPost,
+  useMarkForumThreadRead,
   getListForumPostsQueryKey,
+  getListForumThreadsQueryKey,
+  getListForumModulesQueryKey,
   type ForumPost,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
-import { EmptyState, ErrorState, Loading } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatRelative } from "@/lib/format";
@@ -54,8 +58,26 @@ export default function ForoTemaScreen() {
   const { data: posts = [], isLoading, isError, refetch } = useListForumPosts(threadId);
   const createMut = useCreateForumPost();
   const deleteMut = useDeleteForumPost();
+  const updateMut = useUpdateForumPost();
+  const markReadMut = useMarkForumThreadRead();
 
   const [draft, setDraft] = useState("");
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+
+  // Mark the thread read on open, then refresh the unread badges upstream.
+  useEffect(() => {
+    markReadMut.mutate(
+      { id: threadId },
+      {
+        onSuccess: () => {
+          void qc.invalidateQueries({ queryKey: getListForumModulesQueryKey() });
+          void qc.invalidateQueries({ queryKey: getListForumThreadsQueryKey() });
+        },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
 
   const ordered = [...posts].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -63,6 +85,7 @@ export default function ForoTemaScreen() {
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: getListForumPostsQueryKey(threadId) });
+    await qc.invalidateQueries({ queryKey: getListForumThreadsQueryKey() });
   };
 
   const onSend = async () => {
@@ -72,6 +95,7 @@ export default function ForoTemaScreen() {
     try {
       await createMut.mutateAsync({ id: threadId, data: { content } });
       await refresh();
+      markReadMut.mutate({ id: threadId });
     } catch {
       setDraft(content);
     }
@@ -83,6 +107,19 @@ export default function ForoTemaScreen() {
       await refresh();
     } catch {
       // ignore; surface nothing destructive
+    }
+  };
+
+  const onSaveEdit = async () => {
+    const content = editText.trim();
+    if (editId == null || !content) return;
+    try {
+      await updateMut.mutateAsync({ id: editId, data: { content } });
+      setEditId(null);
+      setEditText("");
+      await refresh();
+    } catch {
+      // ignore
     }
   };
 
@@ -116,7 +153,9 @@ export default function ForoTemaScreen() {
               </View>
             }
             renderItem={({ item }: { item: ForumPost }) => {
-              const canDelete = canManagePost(item.authorId);
+              const canManage = canManagePost(item.authorId);
+              const isAuthor = item.authorId != null && item.authorId === user?.id;
+              const isEditing = editId === item.id;
               return (
                 <View
                   style={[styles.post, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -128,8 +167,20 @@ export default function ForoTemaScreen() {
                     <View style={styles.postHeadRight}>
                       <Text style={[styles.time, { color: colors.mutedForeground }]}>
                         {formatRelative(item.createdAt)}
+                        {item.editedAt ? " · editado" : ""}
                       </Text>
-                      {canDelete ? (
+                      {isAuthor && !isEditing ? (
+                        <Pressable
+                          onPress={() => {
+                            setEditId(item.id);
+                            setEditText(item.content);
+                          }}
+                          hitSlop={8}
+                        >
+                          <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+                        </Pressable>
+                      ) : null}
+                      {canManage ? (
                         <Pressable
                           onPress={() => onDelete(item.id)}
                           disabled={deleteMut.isPending}
@@ -140,9 +191,46 @@ export default function ForoTemaScreen() {
                       ) : null}
                     </View>
                   </View>
-                  <Text style={[styles.postText, { color: colors.foreground }]}>
-                    {item.content}
-                  </Text>
+                  {isEditing ? (
+                    <View style={styles.editWrap}>
+                      <TextInput
+                        value={editText}
+                        onChangeText={setEditText}
+                        multiline
+                        autoFocus
+                        style={[
+                          styles.editInput,
+                          {
+                            backgroundColor: colors.background,
+                            borderColor: colors.border,
+                            color: colors.foreground,
+                            borderRadius: colors.radius,
+                          },
+                        ]}
+                      />
+                      <View style={styles.editActions}>
+                        <Button
+                          label="Cancelar"
+                          variant="secondary"
+                          onPress={() => {
+                            setEditId(null);
+                            setEditText("");
+                          }}
+                          style={styles.editBtn}
+                        />
+                        <Button
+                          label="Guardar"
+                          onPress={onSaveEdit}
+                          loading={updateMut.isPending}
+                          style={styles.editBtn}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={[styles.postText, { color: colors.foreground }]}>
+                      {item.content}
+                    </Text>
+                  )}
                 </View>
               );
             }}
@@ -215,6 +303,18 @@ const styles = StyleSheet.create({
   author: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   time: { fontSize: 11, fontFamily: "Inter_400Regular" },
   postText: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  editWrap: { gap: 10 },
+  editInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    minHeight: 70,
+    textAlignVertical: "top",
+  },
+  editActions: { flexDirection: "row", gap: 10 },
+  editBtn: { flex: 1 },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",

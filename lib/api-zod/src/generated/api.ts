@@ -299,7 +299,8 @@ export const ListForumModulesResponseItem = zod.object({
   "name": zod.string(),
   "cycleName": zod.string().nullish(),
   "centerId": zod.number().nullish(),
-  "threadCount": zod.number()
+  "threadCount": zod.number(),
+  "unreadCount": zod.number()
 })
 export const ListForumModulesResponse = zod.array(ListForumModulesResponseItem)
 
@@ -308,7 +309,8 @@ export const ListForumModulesResponse = zod.array(ListForumModulesResponseItem)
  * @summary List discussion threads for a module
  */
 export const ListForumThreadsQueryParams = zod.object({
-  "moduleId": zod.coerce.number()
+  "moduleId": zod.coerce.number(),
+  "q": zod.coerce.string().optional().describe('Optional case-insensitive filter on thread title.')
 })
 
 export const ListForumThreadsResponseItem = zod.object({
@@ -321,6 +323,9 @@ export const ListForumThreadsResponseItem = zod.object({
   "authorId": zod.number().nullish(),
   "authorName": zod.string().nullish(),
   "postCount": zod.number(),
+  "unreadCount": zod.number(),
+  "pinnedAt": zod.coerce.date().nullish(),
+  "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "lastPostAt": zod.coerce.date()
 })
@@ -342,9 +347,78 @@ export const CreateForumThreadBody = zod.object({
 
 
 /**
+ * @summary Edit a thread title (author only)
+ */
+export const UpdateForumThreadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateForumThreadBody = zod.object({
+  "title": zod.string().min(1)
+})
+
+export const UpdateForumThreadResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "moduleName": zod.string().nullish(),
+  "cycleName": zod.string().nullish(),
+  "centerId": zod.number().nullish(),
+  "title": zod.string(),
+  "authorId": zod.number().nullish(),
+  "authorName": zod.string().nullish(),
+  "postCount": zod.number(),
+  "unreadCount": zod.number(),
+  "pinnedAt": zod.coerce.date().nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "lastPostAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Delete a thread (author or manager)
  */
 export const DeleteForumThreadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Pin or unpin a thread (manager only)
+ */
+export const PinForumThreadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const PinForumThreadBody = zod.object({
+  "pinned": zod.boolean()
+})
+
+export const PinForumThreadResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "moduleName": zod.string().nullish(),
+  "cycleName": zod.string().nullish(),
+  "centerId": zod.number().nullish(),
+  "title": zod.string(),
+  "authorId": zod.number().nullish(),
+  "authorName": zod.string().nullish(),
+  "postCount": zod.number(),
+  "unreadCount": zod.number(),
+  "pinnedAt": zod.coerce.date().nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "lastPostAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Mark a thread as read for the current user
+ */
+export const MarkForumThreadReadParams = zod.object({
   "id": zod.coerce.number()
 })
 
@@ -362,6 +436,7 @@ export const ListForumPostsResponseItem = zod.object({
   "authorId": zod.number().nullish(),
   "authorName": zod.string().nullish(),
   "content": zod.string(),
+  "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListForumPostsResponse = zod.array(ListForumPostsResponseItem)
@@ -379,6 +454,31 @@ export const CreateForumPostParams = zod.object({
 
 export const CreateForumPostBody = zod.object({
   "content": zod.string().min(1)
+})
+
+
+/**
+ * @summary Edit a message (author only)
+ */
+export const UpdateForumPostParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateForumPostBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+export const UpdateForumPostResponse = zod.object({
+  "id": zod.number(),
+  "threadId": zod.number(),
+  "authorId": zod.number().nullish(),
+  "authorName": zod.string().nullish(),
+  "content": zod.string(),
+  "editedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
 })
 
 

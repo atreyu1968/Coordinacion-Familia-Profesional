@@ -15,6 +15,7 @@ import {
   modulesTable,
   forumThreadsTable,
   forumPostsTable,
+  forumThreadReadsTable,
   type User,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
@@ -139,6 +140,9 @@ export function authHeader(token: string): { Authorization: string } {
 // first anyway to keep things tidy.
 export async function cleanup(): Promise<void> {
   if (created.threadIds.length > 0) {
+    await db
+      .delete(forumThreadReadsTable)
+      .where(inArray(forumThreadReadsTable.threadId, created.threadIds));
     await db
       .delete(forumPostsTable)
       .where(inArray(forumPostsTable.threadId, created.threadIds));

@@ -13,4 +13,5 @@ export interface ForumModule {
   cycleName?: string | null;
   centerId?: number | null;
   threadCount: number;
+  unreadCount: number;
 }

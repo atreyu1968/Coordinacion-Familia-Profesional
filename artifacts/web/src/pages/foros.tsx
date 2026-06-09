@@ -1,18 +1,23 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListForumModules,
   useListForumThreads,
   useCreateForumThread,
   useDeleteForumThread,
+  useUpdateForumThread,
+  usePinForumThread,
+  useMarkForumThreadRead,
   useListForumPosts,
   useCreateForumPost,
   useDeleteForumPost,
+  useUpdateForumPost,
   getListForumModulesQueryKey,
   getListForumThreadsQueryKey,
   getListForumPostsQueryKey,
   type ForumModule,
   type ForumThread,
+  type ForumPost,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,6 +53,10 @@ import {
   ChevronLeft,
   MessageSquare,
   Trash2,
+  Pencil,
+  Pin,
+  PinOff,
+  Search,
   User as UserIcon,
   Send,
 } from "lucide-react";
@@ -85,6 +94,28 @@ function useCanManage() {
     }
     return false;
   };
+}
+
+// Pin/unpin is a moderation action: managers only (no author shortcut), and
+// only over scoped content, mirroring the backend hasScopeOver check.
+function useCanModerate() {
+  const { user } = useAuth();
+  return (centerId: number | null | undefined) => {
+    if (user?.role === "superadmin") return true;
+    if (
+      (user?.role === "coordinator" || user?.role === "department_head") &&
+      centerId != null
+    ) {
+      return true;
+    }
+    return false;
+  };
+}
+
+function useIsAuthor() {
+  const { user } = useAuth();
+  return (authorId: number | null | undefined) =>
+    authorId != null && authorId === user?.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +204,205 @@ function NewThreadDialog({ module }: { module: ForumModule }) {
 }
 
 // ---------------------------------------------------------------------------
+// Edit thread title dialog (author only)
+// ---------------------------------------------------------------------------
+function EditThreadDialog({
+  thread,
+  onDone,
+}: {
+  thread: ForumThread;
+  onDone: () => void;
+}) {
+  const updateMut = useUpdateForumThread();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(thread.title);
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    try {
+      await updateMut.mutateAsync({ id: thread.id, data: { title: title.trim() } });
+      toast({ title: "Tema actualizado" });
+      setOpen(false);
+      onDone();
+    } catch {
+      toast({
+        title: "No se pudo editar",
+        description: "Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setTitle(thread.title); }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Editar tema</DialogTitle>
+          <DialogDescription>Cambia el título del tema.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="e-title">Título *</Label>
+            <Input
+              id="e-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={updateMut.isPending || !title.trim()}>
+              {updateMut.isPending ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Single post with inline edit (author only) + delete
+// ---------------------------------------------------------------------------
+function PostCard({
+  post,
+  centerId,
+  onChanged,
+}: {
+  post: ForumPost;
+  centerId: number | null | undefined;
+  onChanged: () => void;
+}) {
+  const canManage = useCanManage();
+  const isAuthor = useIsAuthor();
+  const updateMut = useUpdateForumPost();
+  const deleteMut = useDeleteForumPost();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(post.content);
+
+  const onSaveEdit = async () => {
+    if (!draft.trim()) return;
+    try {
+      await updateMut.mutateAsync({ id: post.id, data: { content: draft.trim() } });
+      setEditing(false);
+      onChanged();
+      toast({ title: "Mensaje actualizado" });
+    } catch {
+      toast({
+        title: "No se pudo editar",
+        description: "Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onDelete = async () => {
+    try {
+      await deleteMut.mutateAsync({ id: post.id });
+      onChanged();
+      toast({ title: "Mensaje eliminado" });
+    } catch {
+      toast({
+        title: "No se pudo eliminar",
+        description: "Comprueba tus permisos.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5 text-sm font-medium">
+            <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />
+            {post.authorName ?? "Usuario"}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {formatDate(post.createdAt)}
+              {post.editedAt ? " · editado" : ""}
+            </span>
+            {isAuthor(post.authorId) && !editing && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={() => {
+                  setDraft(post.content);
+                  setEditing(true);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {canManage(post.authorId, centerId) && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Eliminar mensaje?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDelete}>
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </div>
+        {editing ? (
+          <div className="space-y-2">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={3}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={onSaveEdit}
+                disabled={updateMut.isPending || !draft.trim()}
+              >
+                Guardar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Thread detail (posts list + reply box)
 // ---------------------------------------------------------------------------
 function ThreadDetail({
@@ -183,11 +413,26 @@ function ThreadDetail({
   onBack: () => void;
 }) {
   const qc = useQueryClient();
-  const canManage = useCanManage();
   const { data: posts = [], isLoading } = useListForumPosts(thread.id);
   const createMut = useCreateForumPost();
-  const deletePostMut = useDeleteForumPost();
+  const markReadMut = useMarkForumThreadRead();
   const [reply, setReply] = useState("");
+
+  // Mark the thread read on open, then refresh the unread badges.
+  useEffect(() => {
+    markReadMut.mutate(
+      { id: thread.id },
+      {
+        onSuccess: () => {
+          void qc.invalidateQueries({ queryKey: getListForumModulesQueryKey() });
+          void qc.invalidateQueries({
+            queryKey: getListForumThreadsQueryKey({ moduleId: thread.moduleId }),
+          });
+        },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread.id]);
 
   const refresh = async () => {
     await qc.invalidateQueries({
@@ -208,24 +453,12 @@ function ThreadDetail({
       });
       setReply("");
       await refresh();
+      // Replying counts as reading the thread.
+      markReadMut.mutate({ id: thread.id });
     } catch {
       toast({
         title: "No se pudo enviar",
         description: "Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const onDeletePost = async (id: number) => {
-    try {
-      await deletePostMut.mutateAsync({ id });
-      await refresh();
-      toast({ title: "Mensaje eliminado" });
-    } catch {
-      toast({
-        title: "No se pudo eliminar",
-        description: "Comprueba tus permisos.",
         variant: "destructive",
       });
     }
@@ -237,10 +470,14 @@ function ThreadDetail({
         <ChevronLeft className="w-4 h-4" /> Volver a los temas
       </Button>
       <div>
-        <h2 className="text-xl font-bold tracking-tight">{thread.title}</h2>
+        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+          {thread.pinnedAt && <Pin className="w-4 h-4 text-primary" />}
+          {thread.title}
+        </h2>
         <p className="text-sm text-muted-foreground">
           {thread.moduleName}
           {thread.authorName ? ` · ${thread.authorName}` : ""}
+          {thread.editedAt ? " · editado" : ""}
         </p>
       </div>
 
@@ -249,51 +486,12 @@ function ThreadDetail({
       ) : (
         <div className="space-y-3">
           {posts.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 text-sm font-medium">
-                    <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                    {p.authorName ?? "Usuario"}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(p.createdAt)}
-                    </span>
-                    {canManage(p.authorId, thread.centerId) && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              ¿Eliminar mensaje?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDeletePost(p.id)}>
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{p.content}</p>
-              </CardContent>
-            </Card>
+            <PostCard
+              key={p.id}
+              post={p}
+              centerId={thread.centerId}
+              onChanged={refresh}
+            />
           ))}
         </div>
       )}
@@ -330,23 +528,46 @@ function ModuleThreads({
 }) {
   const qc = useQueryClient();
   const canManage = useCanManage();
+  const canModerate = useCanModerate();
+  const isAuthor = useIsAuthor();
+  const [search, setSearch] = useState("");
   const { data: threads = [], isLoading } = useListForumThreads({
     moduleId: module.id,
+    ...(search.trim() ? { q: search.trim() } : {}),
   });
   const deleteThreadMut = useDeleteForumThread();
+  const pinMut = usePinForumThread();
   const [active, setActive] = useState<ForumThread | null>(null);
+
+  const invalidate = async () => {
+    await qc.invalidateQueries({
+      queryKey: getListForumThreadsQueryKey({ moduleId: module.id }),
+    });
+    await qc.invalidateQueries({ queryKey: getListForumModulesQueryKey() });
+  };
 
   const onDeleteThread = async (id: number) => {
     try {
       await deleteThreadMut.mutateAsync({ id });
-      await qc.invalidateQueries({
-        queryKey: getListForumThreadsQueryKey({ moduleId: module.id }),
-      });
-      await qc.invalidateQueries({ queryKey: getListForumModulesQueryKey() });
+      await invalidate();
       toast({ title: "Tema eliminado" });
     } catch {
       toast({
         title: "No se pudo eliminar",
+        description: "Comprueba tus permisos.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onTogglePin = async (t: ForumThread) => {
+    try {
+      await pinMut.mutateAsync({ id: t.id, data: { pinned: !t.pinnedAt } });
+      await invalidate();
+      toast({ title: t.pinnedAt ? "Tema desfijado" : "Tema fijado" });
+    } catch {
+      toast({
+        title: "No se pudo cambiar",
         description: "Comprueba tus permisos.",
         variant: "destructive",
       });
@@ -372,12 +593,24 @@ function ModuleThreads({
         <NewThreadDialog module={module} />
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar temas por título..."
+          className="pl-9"
+        />
+      </div>
+
       {isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>
       ) : threads.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Aún no hay temas en este foro. ¡Crea el primero!
+            {search.trim()
+              ? "Ningún tema coincide con tu búsqueda."
+              : "Aún no hay temas en este foro. ¡Crea el primero!"}
           </CardContent>
         </Card>
       ) : (
@@ -393,7 +626,15 @@ function ModuleThreads({
                   className="flex-1 text-left"
                   onClick={() => setActive(t)}
                 >
-                  <h3 className="font-semibold leading-tight">{t.title}</h3>
+                  <h3 className="font-semibold leading-tight flex items-center gap-1.5">
+                    {t.pinnedAt && (
+                      <Pin className="w-3.5 h-3.5 text-primary shrink-0" />
+                    )}
+                    {t.title}
+                    {t.unreadCount > 0 && (
+                      <Badge className="ml-1 h-5 px-1.5">{t.unreadCount}</Badge>
+                    )}
+                  </h3>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                     <span className="flex items-center gap-1">
                       <UserIcon className="w-3 h-3" />
@@ -406,6 +647,24 @@ function ModuleThreads({
                     <span>{formatDate(t.lastPostAt)}</span>
                   </div>
                 </button>
+                {isAuthor(t.authorId) && (
+                  <EditThreadDialog thread={t} onDone={invalidate} />
+                )}
+                {canModerate(t.centerId) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    title={t.pinnedAt ? "Desfijar" : "Fijar"}
+                    onClick={() => onTogglePin(t)}
+                  >
+                    {t.pinnedAt ? (
+                      <PinOff className="w-4 h-4" />
+                    ) : (
+                      <Pin className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
                 {canManage(t.authorId, t.centerId) && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -449,17 +708,29 @@ function ModuleThreads({
 export default function ForosPage() {
   const { data: modules = [], isLoading } = useListForumModules();
   const [active, setActive] = useState<ForumModule | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return modules;
+    return modules.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.code ?? "").toLowerCase().includes(q) ||
+        (m.cycleName ?? "").toLowerCase().includes(q),
+    );
+  }, [modules, search]);
 
   const groups = useMemo(() => {
     const map = new Map<string, ForumModule[]>();
-    for (const m of modules) {
+    for (const m of filtered) {
       const key = m.cycleName ?? SIN_CICLO;
       const list = map.get(key) ?? [];
       list.push(m);
       map.set(key, list);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [modules]);
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -489,41 +760,62 @@ export default function ForosPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {groups.map(([cycle, mods]) => (
-            <div key={cycle} className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                {cycle}
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {mods.map((m) => (
-                  <Card
-                    key={m.id}
-                    className="hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => setActive(m)}
-                  >
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                        <MessagesSquare className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold leading-tight">
-                          {m.name}
-                        </h3>
-                        {m.code && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {m.code}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        {m.threadCount}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                ))}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar módulo o ciclo..."
+              className="pl-9"
+            />
+          </div>
+
+          {groups.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Ningún módulo coincide con tu búsqueda.
+              </CardContent>
+            </Card>
+          ) : (
+            groups.map(([cycle, mods]) => (
+              <div key={cycle} className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  {cycle}
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {mods.map((m) => (
+                    <Card
+                      key={m.id}
+                      className="hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => setActive(m)}
+                    >
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                          <MessagesSquare className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold leading-tight">
+                            {m.name}
+                          </h3>
+                          {m.code && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {m.code}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <Badge variant="secondary">{m.threadCount}</Badge>
+                          {m.unreadCount > 0 && (
+                            <Badge>{m.unreadCount} nuevos</Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
     </div>
