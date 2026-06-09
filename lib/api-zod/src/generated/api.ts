@@ -9,6 +9,200 @@ import * as zod from 'zod';
 
 
 /**
+ * Returns a presigned URL for direct upload. The client sends JSON
+metadata here, then uploads the file directly to the returned URL.
+
+ * @summary Request a presigned URL for file upload
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+
+
+
+
+
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+}).optional()
+})
+
+
+/**
+ * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+ */
+export const GetPublicObjectParams = zod.object({
+  "filePath": zod.coerce.string()
+})
+
+
+/**
+ * @summary List document forms (province + global scoped)
+ */
+export const ListDocumentFormsQueryParams = zod.object({
+  "status": zod.enum(['draft', 'open', 'closed']).optional()
+})
+
+export const ListDocumentFormsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['draft', 'open', 'closed']),
+  "provinceId": zod.number().nullish(),
+  "closesAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "hasSubmitted": zod.boolean(),
+  "fieldCount": zod.number()
+})
+export const ListDocumentFormsResponse = zod.array(ListDocumentFormsResponseItem)
+
+
+/**
+ * @summary Create a document form with its fields
+ */
+
+
+
+
+
+export const CreateDocumentFormBody = zod.object({
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "provinceId": zod.number().nullish(),
+  "closesAt": zod.coerce.date().nullish(),
+  "fields": zod.array(zod.object({
+  "label": zod.string().min(1),
+  "type": zod.enum(['text', 'textarea', 'select', 'file']),
+  "options": zod.array(zod.string()).optional(),
+  "required": zod.boolean().optional(),
+  "order": zod.number().optional()
+})).min(1)
+})
+
+
+/**
+ * @summary Get a document form with its fields and the caller's submission
+ */
+export const GetDocumentFormParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetDocumentFormResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['draft', 'open', 'closed']),
+  "provinceId": zod.number().nullish(),
+  "closesAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "fields": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "type": zod.enum(['text', 'textarea', 'select', 'file']),
+  "options": zod.array(zod.string()).optional(),
+  "required": zod.boolean(),
+  "order": zod.number()
+})),
+  "mySubmission": zod.object({
+  "id": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "values": zod.array(zod.object({
+  "id": zod.number(),
+  "fieldId": zod.number(),
+  "value": zod.string().nullish(),
+  "objectPath": zod.string().nullish(),
+  "fileName": zod.string().nullish(),
+  "fileSize": zod.number().nullish(),
+  "contentType": zod.string().nullish()
+}))
+}).nullish()
+})
+
+
+/**
+ * @summary Soft-delete a document form
+ */
+export const DeleteDocumentFormParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List submissions for a form (managers only)
+ */
+export const ListDocumentFormSubmissionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListDocumentFormSubmissionsResponse = zod.object({
+  "formId": zod.number(),
+  "total": zod.number(),
+  "fields": zod.array(zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "type": zod.enum(['text', 'textarea', 'select', 'file']),
+  "options": zod.array(zod.string()).optional(),
+  "required": zod.boolean(),
+  "order": zod.number()
+})),
+  "submissions": zod.array(zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "values": zod.array(zod.object({
+  "id": zod.number(),
+  "fieldId": zod.number(),
+  "value": zod.string().nullish(),
+  "objectPath": zod.string().nullish(),
+  "fileName": zod.string().nullish(),
+  "fileSize": zod.number().nullish(),
+  "contentType": zod.string().nullish()
+}))
+}))
+})
+
+
+/**
+ * @summary Submit or update the caller's submission for a form
+ */
+export const SubmitDocumentFormParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SubmitDocumentFormBody = zod.object({
+  "values": zod.array(zod.object({
+  "fieldId": zod.number(),
+  "value": zod.string().nullish(),
+  "objectPath": zod.string().nullish(),
+  "fileName": zod.string().nullish(),
+  "fileSize": zod.number().nullish(),
+  "contentType": zod.string().nullish()
+}))
+})
+
+export const SubmitDocumentFormResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

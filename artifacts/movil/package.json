@@ -58,6 +58,7 @@
   "dependencies": {
     "expo-camera": "~17.0.10",
     "expo-device": "~8.0.10",
+    "expo-document-picker": "~14.0.8",
     "expo-notifications": "~0.32.17",
     "expo-secure-store": "~15.0.8",
     "jsqr": "^1.4.0",

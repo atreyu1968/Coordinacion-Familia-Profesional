@@ -9,6 +9,158 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
+export type DocumentFormFieldType = typeof DocumentFormFieldType[keyof typeof DocumentFormFieldType];
+
+
+export const DocumentFormFieldType = {
+  text: 'text',
+  textarea: 'textarea',
+  select: 'select',
+  file: 'file',
+} as const;
+
+export interface DocumentFormField {
+  id: number;
+  label: string;
+  type: DocumentFormFieldType;
+  options?: string[];
+  required: boolean;
+  order: number;
+}
+
+export type DocumentFormSummaryStatus = typeof DocumentFormSummaryStatus[keyof typeof DocumentFormSummaryStatus];
+
+
+export const DocumentFormSummaryStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface DocumentFormSummary {
+  id: number;
+  title: string;
+  description?: string | null;
+  status: DocumentFormSummaryStatus;
+  provinceId?: number | null;
+  closesAt?: string | null;
+  createdAt: string;
+  hasSubmitted: boolean;
+  fieldCount: number;
+}
+
+export interface DocumentSubmissionValue {
+  id: number;
+  fieldId: number;
+  value?: string | null;
+  objectPath?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  contentType?: string | null;
+}
+
+export interface OwnSubmission {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  values: DocumentSubmissionValue[];
+}
+
+export type DocumentFormDetailStatus = typeof DocumentFormDetailStatus[keyof typeof DocumentFormDetailStatus];
+
+
+export const DocumentFormDetailStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface DocumentFormDetail {
+  id: number;
+  title: string;
+  description?: string | null;
+  status: DocumentFormDetailStatus;
+  provinceId?: number | null;
+  closesAt?: string | null;
+  createdAt: string;
+  fields: DocumentFormField[];
+  mySubmission?: OwnSubmission | null;
+}
+
+export type CreateDocumentFormFieldInputType = typeof CreateDocumentFormFieldInputType[keyof typeof CreateDocumentFormFieldInputType];
+
+
+export const CreateDocumentFormFieldInputType = {
+  text: 'text',
+  textarea: 'textarea',
+  select: 'select',
+  file: 'file',
+} as const;
+
+export interface CreateDocumentFormFieldInput {
+  /** @minLength 1 */
+  label: string;
+  type: CreateDocumentFormFieldInputType;
+  options?: string[];
+  required?: boolean;
+  order?: number;
+}
+
+export interface CreateDocumentFormInput {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  provinceId?: number | null;
+  closesAt?: string | null;
+  /** @minItems 1 */
+  fields: CreateDocumentFormFieldInput[];
+}
+
+export interface SubmitDocumentFormValueInput {
+  fieldId: number;
+  value?: string | null;
+  objectPath?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  contentType?: string | null;
+}
+
+export interface SubmitDocumentFormInput {
+  values: SubmitDocumentFormValueInput[];
+}
+
+export interface DocumentFormSubmissionDetail {
+  id: number;
+  userId: number;
+  userName?: string | null;
+  userEmail?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  values: DocumentSubmissionValue[];
+}
+
+export interface DocumentFormSubmissionsResponse {
+  formId: number;
+  total: number;
+  fields: DocumentFormField[];
+  submissions: DocumentFormSubmissionDetail[];
+}
+
 export interface MobileAppAccess {
   /** https:// URL of the installable mobile web app (PWA) */
   webUrl?: string;
@@ -800,6 +952,19 @@ export type MunicipalityQueryParameter = number;
 export type CenterQueryParameter = number;
 
 export type SearchQueryParameter = string;
+
+export type ListDocumentFormsParams = {
+status?: ListDocumentFormsStatus;
+};
+
+export type ListDocumentFormsStatus = typeof ListDocumentFormsStatus[keyof typeof ListDocumentFormsStatus];
+
+
+export const ListDocumentFormsStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
 
 export type ListInvitationsParams = {
 status?: StatusQueryParameter;

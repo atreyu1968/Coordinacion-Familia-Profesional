@@ -18,6 +18,7 @@ import AcademicaPage from "@/pages/academica";
 import RecursosPage from "@/pages/recursos";
 import FctPage from "@/pages/fct";
 import EncuestasPage from "@/pages/encuestas";
+import FormulariosPage from "@/pages/formularios";
 import EventosPage from "@/pages/eventos";
 import MemoriasPage from "@/pages/memorias";
 import AsistenteIaPage from "@/pages/asistente-ia";
@@ -39,6 +40,7 @@ function AuthedRoutes() {
         <Route path="/recursos" component={RecursosPage} />
         <Route path="/fct" component={FctPage} />
         <Route path="/encuestas" component={EncuestasPage} />
+        <Route path="/formularios" component={FormulariosPage} />
         <Route path="/eventos" component={EventosPage} />
         <Route path="/memorias" component={MemoriasPage} />
         <Route path="/asistente-ia" component={AsistenteIaPage} />

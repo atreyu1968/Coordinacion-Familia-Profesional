@@ -10,3 +10,4 @@
 - [Mobile install/QR target](expo-go-qr-target.md) — PWA-first now: web-panel QR encodes the HTTPS `webUrl` (Expo web build), not `exp://`; Expo Go retired from UI.
 - [PWA + Web Push](pwa-web-push.md) — SDK54 ignores +html.tsx so PWA is runtime-injected; web push via self-gen VAPID in lib/push.ts; void best-effort branches need .catch + wrapped db.delete.
 - [api-server testing harness](api-server-testing.md) — Vitest+supertest hit the real Postgres (db isn't injectable); seed via tagged helpers, sequential run for socket singleton, inline @workspace deps.
+- [Document/file upload security](document-uploads.md) — bind client objectPath to caller before persisting; dedup submission fieldIds; keep coordinator scope consistent across list/delete/download.

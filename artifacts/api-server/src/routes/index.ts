@@ -16,6 +16,8 @@ import settingsRouter from "./settings";
 import backupRouter from "./backup";
 import messagingRouter from "./messaging";
 import mobileRouter from "./mobile";
+import storageRouter from "./storage";
+import documentFormsRouter from "./documentForms";
 
 const router: IRouter = Router();
 
@@ -36,5 +38,7 @@ router.use(settingsRouter);
 router.use(backupRouter);
 router.use(messagingRouter);
 router.use(mobileRouter);
+router.use(storageRouter);
+router.use(documentFormsRouter);
 
 export default router;

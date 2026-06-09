@@ -14,6 +14,7 @@ export * from "./resources";
 export * from "./companyAlerts";
 export * from "./gdcanResources";
 export * from "./surveys";
+export * from "./documentForms";
 export * from "./events";
 export * from "./annualReports";
 export * from "./integrationSettings";
