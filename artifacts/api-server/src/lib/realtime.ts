@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from "node:http";
 import { Server as IOServer, type Socket } from "socket.io";
-import { eq, and } from "drizzle-orm";
-import { db, chatGroupMembersTable } from "@workspace/db";
+import { eq, and, isNull } from "drizzle-orm";
+import { db, chatGroupMembersTable, usersTable } from "@workspace/db";
 import { verifyToken } from "./auth";
 import { logger } from "./logger";
 
@@ -18,7 +18,7 @@ export function initRealtime(server: HttpServer): void {
     serveClient: false,
   });
 
-  io.use((socket: AuthedSocket, next) => {
+  io.use(async (socket: AuthedSocket, next) => {
     const token =
       (socket.handshake.auth?.["token"] as string | undefined) ??
       (socket.handshake.query?.["token"] as string | undefined);
@@ -31,7 +31,18 @@ export function initRealtime(server: HttpServer): void {
       next(new Error("Token inválido"));
       return;
     }
-    socket.userId = payload.sub;
+    // Mirror requireAuth: the user must still exist and be active. A JWT alone
+    // is not enough — tokens are long-lived, so a deactivated/deleted user must
+    // not keep a realtime session.
+    const [user] = await db
+      .select({ id: usersTable.id, status: usersTable.status })
+      .from(usersTable)
+      .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
+    if (!user || user.status !== "active") {
+      next(new Error("Usuario no válido"));
+      return;
+    }
+    socket.userId = user.id;
     next();
   });
 
