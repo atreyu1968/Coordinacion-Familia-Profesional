@@ -91,13 +91,11 @@ export default function CentroDetallePage() {
   }, [user, center]);
 
   const canManageCenter =
-    (user?.role === "superadmin" || user?.role === "coordinator") &&
-    hasScopeOver;
-  const canManageOffer =
     (user?.role === "superadmin" ||
       user?.role === "coordinator" ||
       user?.role === "department_head") &&
     hasScopeOver;
+  const canManageOffer = canManageCenter;
   const { data: provinces = [] } = useListProvinces();
   const { data: islands = [] } = useListIslands();
   const { data: municipalities = [] } = useListMunicipalities();

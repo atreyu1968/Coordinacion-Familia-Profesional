@@ -45,6 +45,10 @@ router.get("/centers", async (req, res): Promise<void> => {
   res.json(ListCentersResponse.parse(rows.map(toCenter)));
 });
 
+// Creating a center is a province-level administrative action: only superadmin
+// and coordinators may do it. A department head's scope is a single existing
+// center, so "alta" of new centers does not apply to them; they manage
+// (edición/baja lógica) their own center via PATCH/DELETE below.
 router.post(
   "/centers",
   requireAuth,
@@ -109,7 +113,7 @@ router.get("/centers/:id", async (req, res): Promise<void> => {
 router.patch(
   "/centers/:id",
   requireAuth,
-  requireRole("superadmin", "coordinator"),
+  requireRole("superadmin", "coordinator", "department_head"),
   async (req, res): Promise<void> => {
     const params = UpdateCenterParams.safeParse(req.params);
     if (!params.success) {
@@ -131,7 +135,12 @@ router.patch(
       res.status(404).json({ message: "Centro no encontrado" });
       return;
     }
-    if (!hasScopeOver(req.user!, existing)) {
+    if (
+      !hasScopeOver(req.user!, {
+        provinceId: existing.provinceId,
+        centerId: existing.id,
+      })
+    ) {
       res.status(403).json({ message: "Centro fuera de tu ámbito" });
       return;
     }
@@ -165,7 +174,7 @@ router.patch(
 router.delete(
   "/centers/:id",
   requireAuth,
-  requireRole("superadmin", "coordinator"),
+  requireRole("superadmin", "coordinator", "department_head"),
   async (req, res): Promise<void> => {
     const params = DeleteCenterParams.safeParse(req.params);
     if (!params.success) {
@@ -182,7 +191,12 @@ router.delete(
       res.status(404).json({ message: "Centro no encontrado" });
       return;
     }
-    if (!hasScopeOver(req.user!, existing)) {
+    if (
+      !hasScopeOver(req.user!, {
+        provinceId: existing.provinceId,
+        centerId: existing.id,
+      })
+    ) {
       res.status(403).json({ message: "Centro fuera de tu ámbito" });
       return;
     }
