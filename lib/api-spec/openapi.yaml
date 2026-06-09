@@ -1330,6 +1330,36 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Notification"
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [messaging]
+      summary: Mark all of the caller's notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [messaging]
+      summary: Mark a single notification as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
   /push-tokens:
     post:
       operationId: registerPushToken

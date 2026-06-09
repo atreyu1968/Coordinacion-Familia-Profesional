@@ -23,6 +23,7 @@ import {
 } from "../middlewares/auth";
 import { toCompanyAlert, toGdcanResource } from "../lib/mappers";
 import { sendEmail, buildCompanyAlertEmail } from "../lib/email";
+import { notifyUsers, resolveRoleAudienceInProvince } from "../lib/notify";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -158,6 +159,20 @@ router.post(
       description: created.description,
       contact: created.contact,
       publishedByName: caller.name,
+    });
+
+    // In-app + push to FCT tutors (teachers) in the alert's province.
+    const tutorIds = await resolveRoleAudienceInProvince(
+      "teacher",
+      provinceId,
+      caller.id,
+    );
+    await notifyUsers(tutorIds, {
+      title: `Nueva empresa FCT: ${created.companyName}`,
+      body: created.location
+        ? `${created.location}${created.sector ? " · " + created.sector : ""}`
+        : (created.sector ?? "Nueva oferta de empresa"),
+      type: "company_alert",
     });
 
     res.status(201).json({

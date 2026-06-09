@@ -1092,6 +1092,26 @@ export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem
 
 
 /**
+ * @summary Mark all of the caller's notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
  * @summary Register a device push token (mobile)
  */
 export const RegisterPushTokenBody = zod.object({

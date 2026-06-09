@@ -14,6 +14,8 @@ import type {
   EventSpace,
   CalendarEntry,
   AnnualReport,
+  Announcement,
+  Notification,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -259,6 +261,67 @@ export function toAnnualReport(row: AnnualReport) {
     content: row.content,
     status: row.status,
     generatedAt: row.generatedAt,
+  };
+}
+
+export function toChatGroup(row: {
+  id: number;
+  name: string;
+  type: string;
+  provinceId: number | null;
+  centerId: number | null;
+  lastMessageAt: Date | null;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    provinceId: row.provinceId,
+    centerId: row.centerId,
+    lastMessageAt: row.lastMessageAt,
+  };
+}
+
+export function toMessage(row: {
+  id: number;
+  groupId: number | null;
+  senderId: number;
+  senderName?: string | null;
+  recipientId: number | null;
+  content: string;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    senderId: row.senderId,
+    senderName: row.senderName ?? null,
+    recipientId: row.recipientId,
+    content: row.content,
+    createdAt: row.createdAt,
+  };
+}
+
+export function toAnnouncement(row: Announcement & { authorName?: string | null }) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    authorId: row.authorId,
+    authorName: row.authorName ?? null,
+    provinceId: row.provinceId,
+    createdAt: row.createdAt,
+  };
+}
+
+export function toNotification(row: Notification) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    type: row.type,
+    readAt: row.readAt,
+    createdAt: row.createdAt,
   };
 }
 
