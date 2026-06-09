@@ -7,3 +7,4 @@
 - [Backup & restore migration](backup-restore-migration.md) — full-DB ZIP export/import; validate completeness before destructive restore, single txn, realign sequences, revive dates, binary endpoints bypass orval.
 - [Generated API client](api-client-orval.md) — orval query hooks are `export function useListX` (grep misses `export const`); GET also emits plain async fns; mutation `mutate` var shapes vary, void mutations need `mutate()` no-args.
 - [Expo Go dev QR target](expo-go-qr-target.md) — in-app phone-install QR must encode `exp://${REPLIT_EXPO_DEV_DOMAIN}`, not Replit's HTTPS editor URL.
+- [api-server testing harness](api-server-testing.md) — Vitest+supertest hit the real Postgres (db isn't injectable); seed via tagged helpers, sequential run for socket singleton, inline @workspace deps.
