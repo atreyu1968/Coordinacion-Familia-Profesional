@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 
 import { useCheckInAccreditation } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { QrScanner } from "@/components/QrScanner";
 import { Button } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 
@@ -16,7 +16,6 @@ type Result =
 
 export default function ScanScreen() {
   const colors = useColors();
-  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const checkIn = useCheckInAccreditation();
@@ -59,58 +58,12 @@ export default function ScanScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Escanear QR" subtitle="Control de acceso a eventos" showBack />
       <View style={styles.body}>
-        {Platform.OS === "web" ? (
-          <Info
-            colors={colors}
-            icon="smartphone"
-            text="El escaneo de QR requiere la cámara de un dispositivo móvil. Abre la app en Expo Go para usarlo."
-          />
-        ) : !permission ? (
-          <Info colors={colors} icon="camera" text="Comprobando permisos de cámara…" />
-        ) : !permission.granted ? (
-          <View style={styles.center}>
-            <Feather name="camera-off" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.permText, { color: colors.foreground }]}>
-              Necesitamos acceso a la cámara para escanear acreditaciones.
-            </Text>
-            <Button label="Permitir cámara" icon="camera" onPress={requestPermission} />
-          </View>
-        ) : result ? (
+        {result ? (
           <ResultView colors={colors} result={result} onReset={reset} />
         ) : (
-          <View style={styles.cameraWrap}>
-            <CameraView
-              style={StyleSheet.absoluteFill}
-              facing="back"
-              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-              onBarcodeScanned={
-                scanned ? undefined : ({ data }) => handleScan(data)
-              }
-            />
-            <View style={styles.overlay}>
-              <View style={[styles.frame, { borderColor: colors.secondary }]} />
-              <Text style={styles.hint}>Apunta al código QR de la acreditación</Text>
-            </View>
-          </View>
+          <QrScanner onScan={handleScan} enabled={!scanned} />
         )}
       </View>
-    </View>
-  );
-}
-
-function Info({
-  colors,
-  icon,
-  text,
-}: {
-  colors: ReturnType<typeof useColors>;
-  icon: React.ComponentProps<typeof Feather>["name"];
-  text: string;
-}) {
-  return (
-    <View style={styles.center}>
-      <Feather name={icon} size={48} color={colors.mutedForeground} />
-      <Text style={[styles.permText, { color: colors.mutedForeground }]}>{text}</Text>
     </View>
   );
 }
@@ -161,32 +114,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 32,
     gap: 16,
-  },
-  permText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  cameraWrap: { flex: 1, overflow: "hidden" },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 24,
-  },
-  frame: {
-    width: 240,
-    height: 240,
-    borderWidth: 3,
-    borderRadius: 24,
-  },
-  hint: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-    paddingHorizontal: 32,
   },
   resultIcon: {
     width: 96,

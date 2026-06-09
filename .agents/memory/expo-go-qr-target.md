@@ -20,6 +20,16 @@ in-app "Instalar app" button). No store, no Expo Go, no native build needed.
 still returned by the API but is no longer surfaced in the UI. Keep store URLs
 (`MOBILE_IOS_URL`/`MOBILE_ANDROID_URL`) graceful — omit when unset.
 
+## Web/PWA QR scanning (check-in)
+The scanner is a platform-resolved component: native `QrScanner.tsx` (expo-camera)
+vs `QrScanner.web.tsx` (browser `getUserMedia({video:{facingMode:"environment"}})`
++ canvas + `jsqr` decode loop). Do NOT block scanning on web — the PWA is the
+promoted runtime, so check-in must work there.
+
+**Why:** expo-camera web barcode scanning depends on `BarcodeDetector` (absent on
+iOS Safari); jsQR is pure-JS and works cross-browser. An earlier "usa Expo Go"
+web fallback was rejected in review as a functional gap.
+
 ## Legacy note (Expo Go, no longer used in UI)
 For Expo Go a QR had to encode `exp://${REPLIT_EXPO_DEV_DOMAIN}` (scheme `exp://`, bare
 domain, no port — Replit proxy serves 443; `EXPO_PACKAGER_PROXY_URL` points at the same
