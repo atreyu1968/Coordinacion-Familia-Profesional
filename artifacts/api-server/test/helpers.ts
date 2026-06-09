@@ -12,6 +12,9 @@ import {
   surveyQuestionsTable,
   surveyResponsesTable,
   surveyAnswersTable,
+  modulesTable,
+  forumThreadsTable,
+  forumPostsTable,
   type User,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
@@ -30,6 +33,8 @@ const created = {
   centerIds: [] as number[],
   groupIds: [] as number[],
   surveyIds: [] as number[],
+  moduleIds: [] as number[],
+  threadIds: [] as number[],
 };
 
 let userSeq = 0;
@@ -98,6 +103,29 @@ export function trackGroup(id: number): void {
   created.groupIds.push(id);
 }
 
+export async function createModule(opts: {
+  centerId?: number | null;
+  cycleName?: string | null;
+  code?: string | null;
+  name?: string;
+} = {}): Promise<number> {
+  const [row] = await db
+    .insert(modulesTable)
+    .values({
+      name: opts.name ?? `Módulo ${RUN_TAG}`,
+      code: opts.code ?? null,
+      cycleName: opts.cycleName ?? `Ciclo ${RUN_TAG}`,
+      centerId: opts.centerId ?? null,
+    })
+    .returning();
+  created.moduleIds.push(row!.id);
+  return row!.id;
+}
+
+export function trackThread(id: number): void {
+  created.threadIds.push(id);
+}
+
 export function trackSurvey(id: number): void {
   created.surveyIds.push(id);
 }
@@ -110,6 +138,19 @@ export function authHeader(token: string): { Authorization: string } {
 // schema uses logical (not enforced) foreign keys, but we delete children
 // first anyway to keep things tidy.
 export async function cleanup(): Promise<void> {
+  if (created.threadIds.length > 0) {
+    await db
+      .delete(forumPostsTable)
+      .where(inArray(forumPostsTable.threadId, created.threadIds));
+    await db
+      .delete(forumThreadsTable)
+      .where(inArray(forumThreadsTable.id, created.threadIds));
+  }
+  if (created.moduleIds.length > 0) {
+    await db
+      .delete(modulesTable)
+      .where(inArray(modulesTable.id, created.moduleIds));
+  }
   if (created.surveyIds.length > 0) {
     await db
       .delete(surveyAnswersTable)
@@ -164,4 +205,6 @@ export async function cleanup(): Promise<void> {
   created.centerIds.length = 0;
   created.groupIds.length = 0;
   created.surveyIds.length = 0;
+  created.moduleIds.length = 0;
+  created.threadIds.length = 0;
 }

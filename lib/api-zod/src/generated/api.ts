@@ -291,6 +291,106 @@ export const DeleteMeetingParams = zod.object({
 
 
 /**
+ * @summary List modules with forum thread counts (grouped by cycle in UI)
+ */
+export const ListForumModulesResponseItem = zod.object({
+  "id": zod.number(),
+  "code": zod.string().nullish(),
+  "name": zod.string(),
+  "cycleName": zod.string().nullish(),
+  "centerId": zod.number().nullish(),
+  "threadCount": zod.number()
+})
+export const ListForumModulesResponse = zod.array(ListForumModulesResponseItem)
+
+
+/**
+ * @summary List discussion threads for a module
+ */
+export const ListForumThreadsQueryParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const ListForumThreadsResponseItem = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "moduleName": zod.string().nullish(),
+  "cycleName": zod.string().nullish(),
+  "centerId": zod.number().nullish(),
+  "title": zod.string(),
+  "authorId": zod.number().nullish(),
+  "authorName": zod.string().nullish(),
+  "postCount": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "lastPostAt": zod.coerce.date()
+})
+export const ListForumThreadsResponse = zod.array(ListForumThreadsResponseItem)
+
+
+/**
+ * @summary Open a new discussion thread
+ */
+
+
+
+
+export const CreateForumThreadBody = zod.object({
+  "moduleId": zod.number(),
+  "title": zod.string().min(1),
+  "content": zod.string().min(1)
+})
+
+
+/**
+ * @summary Delete a thread (author or manager)
+ */
+export const DeleteForumThreadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List the messages in a thread
+ */
+export const ListForumPostsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListForumPostsResponseItem = zod.object({
+  "id": zod.number(),
+  "threadId": zod.number(),
+  "authorId": zod.number().nullish(),
+  "authorName": zod.string().nullish(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListForumPostsResponse = zod.array(ListForumPostsResponseItem)
+
+
+/**
+ * @summary Reply in a thread
+ */
+export const CreateForumPostParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateForumPostBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+
+/**
+ * @summary Delete a post (author or manager)
+ */
+export const DeleteForumPostParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Smartphone,
   MessageSquarePlus,
+  MessagesSquare,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -72,6 +73,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: true },
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
+    { label: "Foros", path: "/foros", icon: MessagesSquare, visible: true },
     { label: "Encuestas", path: "/encuestas", icon: BarChart, visible: true },
     { label: "Formularios", path: "/formularios", icon: ClipboardList, visible: true },
     { label: "Recursos", path: "/recursos", icon: FolderOpen, visible: true },

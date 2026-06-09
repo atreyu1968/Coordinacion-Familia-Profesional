@@ -19,6 +19,7 @@ import storageRouter from "./storage";
 import documentFormsRouter from "./documentForms";
 import feedbackRouter from "./feedback";
 import meetingsRouter from "./meetings";
+import forumsRouter from "./forums";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(storageRouter);
 router.use(documentFormsRouter);
 router.use(feedbackRouter);
 router.use(meetingsRouter);
+router.use(forumsRouter);
 
 export default router;

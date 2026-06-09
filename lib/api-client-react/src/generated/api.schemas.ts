@@ -711,6 +711,51 @@ export interface CreateMeetingInput {
   scheduledAt?: string | null;
 }
 
+export interface ForumModule {
+  id: number;
+  code?: string | null;
+  name: string;
+  cycleName?: string | null;
+  centerId?: number | null;
+  threadCount: number;
+}
+
+export interface ForumThread {
+  id: number;
+  moduleId: number;
+  moduleName?: string | null;
+  cycleName?: string | null;
+  centerId?: number | null;
+  title: string;
+  authorId?: number | null;
+  authorName?: string | null;
+  postCount: number;
+  createdAt: string;
+  lastPostAt: string;
+}
+
+export interface ForumPost {
+  id: number;
+  threadId: number;
+  authorId?: number | null;
+  authorName?: string | null;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateForumThreadInput {
+  moduleId: number;
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface CreateForumPostInput {
+  /** @minLength 1 */
+  content: string;
+}
+
 export type EventType = typeof EventType[keyof typeof EventType];
 
 
@@ -1047,6 +1092,10 @@ export const ListFeedbackStatus = {
   reviewed: 'reviewed',
   resolved: 'resolved',
 } as const;
+
+export type ListForumThreadsParams = {
+moduleId: number;
+};
 
 export type ListInvitationsParams = {
 status?: StatusQueryParameter;

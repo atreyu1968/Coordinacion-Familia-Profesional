@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import {
   Video,
+  Phone,
   Plus,
   Trash2,
   ExternalLink,
@@ -26,8 +27,13 @@ import {
 
 const JITSI_BASE = "https://meet.jit.si";
 
-function meetingUrl(roomName: string): string {
-  return `${JITSI_BASE}/${roomName}`;
+function meetingUrl(roomName: string, audioOnly = false): string {
+  const cfg = [
+    "config.disableDeepLinking=true",
+    "config.prejoinPageEnabled=false",
+  ];
+  if (audioOnly) cfg.push("config.startAudioOnly=true");
+  return `${JITSI_BASE}/${roomName}#${cfg.join("&")}`;
 }
 
 function formatDate(value?: string | null): string {
@@ -138,7 +144,7 @@ function MeetingRow({
 }: {
   item: Meeting;
   canDelete: boolean;
-  onJoin: (m: Meeting) => void;
+  onJoin: (m: Meeting, audioOnly: boolean) => void;
 }) {
   const qc = useQueryClient();
   const deleteMut = useDeleteMeeting();
@@ -193,9 +199,16 @@ function MeetingRow({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2 pt-1">
-        <Button size="sm" onClick={() => onJoin(item)}>
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button size="sm" onClick={() => onJoin(item, false)}>
           <Video className="w-4 h-4 mr-1.5" /> Unirse
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => onJoin(item, true)}
+        >
+          <Phone className="w-4 h-4 mr-1.5" /> Solo audio
         </Button>
         <a
           href={meetingUrl(item.roomName)}
@@ -215,20 +228,32 @@ function MeetingRow({
 // ---------------------------------------------------------------------------
 function CallOverlay({
   meeting,
+  audioOnly,
   onClose,
 }: {
   meeting: Meeting;
+  audioOnly: boolean;
   onClose: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="flex items-center justify-between gap-3 px-4 h-12 bg-zinc-900 text-white shrink-0">
         <span className="font-medium truncate flex items-center gap-2">
-          <Video className="w-4 h-4" /> {meeting.title}
+          {audioOnly ? (
+            <Phone className="w-4 h-4" />
+          ) : (
+            <Video className="w-4 h-4" />
+          )}
+          {meeting.title}
+          {audioOnly && (
+            <span className="text-xs text-zinc-400 font-normal">
+              (solo audio)
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-3">
           <a
-            href={meetingUrl(meeting.roomName)}
+            href={meetingUrl(meeting.roomName, audioOnly)}
             target="_blank"
             rel="noreferrer"
             className="text-sm text-zinc-300 hover:text-white inline-flex items-center gap-1"
@@ -246,7 +271,7 @@ function CallOverlay({
       </div>
       <iframe
         title={meeting.title}
-        src={meetingUrl(meeting.roomName)}
+        src={meetingUrl(meeting.roomName, audioOnly)}
         className="flex-1 w-full border-0"
         allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
       />
@@ -262,7 +287,10 @@ export default function VideoconferenciasPage() {
   const canCreate =
     user?.role === "superadmin" || user?.role === "coordinator";
   const { data: items = [], isLoading } = useListMeetings();
-  const [active, setActive] = useState<Meeting | null>(null);
+  const [active, setActive] = useState<{
+    meeting: Meeting;
+    audioOnly: boolean;
+  } | null>(null);
 
   return (
     <div className="space-y-6">
@@ -304,7 +332,9 @@ export default function VideoconferenciasPage() {
                     canDelete={
                       user?.role === "superadmin" || item.hostId === user?.id
                     }
-                    onJoin={setActive}
+                    onJoin={(meeting, audioOnly) =>
+                      setActive({ meeting, audioOnly })
+                    }
                   />
                 ))}
               </div>
@@ -314,7 +344,11 @@ export default function VideoconferenciasPage() {
       </div>
 
       {active && (
-        <CallOverlay meeting={active} onClose={() => setActive(null)} />
+        <CallOverlay
+          meeting={active.meeting}
+          audioOnly={active.audioOnly}
+          onClose={() => setActive(null)}
+        />
       )}
     </div>
   );

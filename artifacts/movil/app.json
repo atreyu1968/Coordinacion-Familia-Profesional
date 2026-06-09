@@ -15,10 +15,19 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.coordinaadg.movil"
+      "bundleIdentifier": "com.coordinaadg.movil",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Coordina ADG usa la cámara para las videollamadas y el escaneo de acreditaciones.",
+        "NSMicrophoneUsageDescription": "Coordina ADG usa el micrófono para las llamadas de audio y vídeo."
+      }
     },
     "android": {
-      "package": "com.coordinaadg.movil"
+      "package": "com.coordinaadg.movil",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"

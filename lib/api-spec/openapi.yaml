@@ -403,6 +403,150 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /forum/modules:
+    get:
+      operationId: listForumModules
+      tags: [forum]
+      summary: List modules with forum thread counts (grouped by cycle in UI)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Forum modules.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumModule"
+  /forum/threads:
+    get:
+      operationId: listForumThreads
+      tags: [forum]
+      summary: List discussion threads for a module
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Thread list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumThread"
+    post:
+      operationId: createForumThread
+      tags: [forum]
+      summary: Open a new discussion thread
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateForumThreadInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumThread"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /forum/threads/{id}:
+    delete:
+      operationId: deleteForumThread
+      tags: [forum]
+      summary: Delete a thread (author or manager)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted.
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /forum/threads/{id}/posts:
+    get:
+      operationId: listForumPosts
+      tags: [forum]
+      summary: List the messages in a thread
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Post list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumPost"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createForumPost
+      tags: [forum]
+      summary: Reply in a thread
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateForumPostInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumPost"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /forum/posts/{id}:
+    delete:
+      operationId: deleteForumPost
+      tags: [forum]
+      summary: Delete a post (author or manager)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted.
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /healthz:
     get:
       operationId: healthCheck
@@ -3081,6 +3225,96 @@ components:
           format: date-time
           nullable: true
       required: [title]
+    ForumModule:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        threadCount:
+          type: integer
+      required: [id, name, threadCount]
+    ForumThread:
+      type: object
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: integer
+        moduleName:
+          type: string
+          nullable: true
+        cycleName:
+          type: string
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        authorId:
+          type: integer
+          nullable: true
+        authorName:
+          type: string
+          nullable: true
+        postCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        lastPostAt:
+          type: string
+          format: date-time
+      required: [id, moduleId, title, postCount, createdAt, lastPostAt]
+    ForumPost:
+      type: object
+      properties:
+        id:
+          type: integer
+        threadId:
+          type: integer
+        authorId:
+          type: integer
+          nullable: true
+        authorName:
+          type: string
+          nullable: true
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, threadId, content, createdAt]
+    CreateForumThreadInput:
+      type: object
+      properties:
+        moduleId:
+          type: integer
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+      required: [moduleId, title, content]
+    CreateForumPostInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
     Event:
       type: object
       properties:

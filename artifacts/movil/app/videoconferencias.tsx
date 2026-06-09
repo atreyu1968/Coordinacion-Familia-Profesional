@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Feather } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
+import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -25,16 +25,12 @@ import { Button, Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatDate } from "@/lib/format";
-
-const JITSI_BASE = "https://meet.jit.si";
-
-function meetingUrl(roomName: string): string {
-  return `${JITSI_BASE}/${roomName}`;
-}
+import { startCall } from "@/lib/call";
 
 export default function VideoconferenciasScreen() {
   const colors = useColors();
   const qc = useQueryClient();
+  const router = useRouter();
   const { user } = useAuth();
   const canCreate =
     user?.role === "superadmin" || user?.role === "coordinator";
@@ -49,8 +45,12 @@ export default function VideoconferenciasScreen() {
 
   const bottomPad = Platform.OS === "web" ? 100 : 40;
 
-  const onJoin = async (roomName: string) => {
-    await WebBrowser.openBrowserAsync(meetingUrl(roomName));
+  const onJoin = (meeting: Meeting, audioOnly: boolean) => {
+    startCall(router, {
+      room: meeting.roomName,
+      title: meeting.title,
+      audioOnly,
+    });
   };
 
   const onCreate = async () => {
@@ -218,11 +218,21 @@ export default function VideoconferenciasScreen() {
                   ) : null}
                 </View>
 
-                <Button
-                  label="Unirse"
-                  onPress={() => onJoin(item.roomName)}
-                  style={{ marginTop: 12 }}
-                />
+                <View style={styles.actions}>
+                  <Button
+                    label="Vídeo"
+                    icon="video"
+                    onPress={() => onJoin(item, false)}
+                    style={styles.actionBtn}
+                  />
+                  <Button
+                    label="Audio"
+                    icon="phone"
+                    variant="secondary"
+                    onPress={() => onJoin(item, true)}
+                    style={styles.actionBtn}
+                  />
+                </View>
               </Card>
             );
           })
@@ -265,4 +275,6 @@ const styles = StyleSheet.create({
   itemDesc: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 2 },
   meta: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  actions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  actionBtn: { flex: 1 },
 });

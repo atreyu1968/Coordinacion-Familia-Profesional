@@ -57,6 +57,7 @@ export default function MoreScreen() {
     { icon: "bar-chart-2", label: "Encuestas y votaciones", onPress: () => router.push("/surveys") },
     { icon: "briefcase", label: "Alertas de empresa (FCT)", onPress: () => router.push("/alerts") },
     { icon: "video", label: "Videoconferencias", onPress: () => router.push("/videoconferencias") },
+    { icon: "message-square", label: "Foros por módulos", onPress: () => router.push("/foros") },
     { icon: "message-square", label: "Sugerencias e incidencias", onPress: () => router.push("/feedback") },
   ];
 

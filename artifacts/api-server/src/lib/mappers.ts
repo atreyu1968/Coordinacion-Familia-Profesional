@@ -359,3 +359,67 @@ export function toInvitation(row: Invitation) {
     createdAt: row.createdAt,
   };
 }
+
+export function toForumModule(row: {
+  id: number;
+  code: string | null;
+  name: string;
+  cycleName: string | null;
+  centerId: number | null;
+  threadCount: number;
+}) {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    cycleName: row.cycleName,
+    centerId: row.centerId,
+    threadCount: row.threadCount,
+  };
+}
+
+export function toForumThread(row: {
+  id: number;
+  moduleId: number;
+  moduleName?: string | null;
+  cycleName?: string | null;
+  centerId: number | null;
+  title: string;
+  authorId: number | null;
+  authorName?: string | null;
+  postCount: number;
+  createdAt: Date;
+  lastPostAt: Date;
+}) {
+  return {
+    id: row.id,
+    moduleId: row.moduleId,
+    moduleName: row.moduleName ?? null,
+    cycleName: row.cycleName ?? null,
+    centerId: row.centerId,
+    title: row.title,
+    authorId: row.authorId,
+    authorName: row.authorName ?? null,
+    postCount: row.postCount,
+    createdAt: row.createdAt,
+    lastPostAt: row.lastPostAt,
+  };
+}
+
+export function toForumPost(row: {
+  id: number;
+  threadId: number;
+  authorId: number | null;
+  authorName?: string | null;
+  content: string;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    threadId: row.threadId,
+    authorId: row.authorId,
+    authorName: row.authorName ?? null,
+    content: row.content,
+    createdAt: row.createdAt,
+  };
+}

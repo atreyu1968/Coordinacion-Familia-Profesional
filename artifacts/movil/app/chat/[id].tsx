@@ -12,8 +12,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
   listGroupMessages,
@@ -28,6 +27,7 @@ import { useBadges } from "@/contexts/BadgesContext";
 import { useColors } from "@/hooks/useColors";
 import { connectSocket } from "@/lib/socket";
 import { formatRelative } from "@/lib/format";
+import { startCall, roomFromUrl } from "@/lib/call";
 
 const EMOJIS = [
   "😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎",
@@ -47,6 +47,7 @@ function extractCallUrl(content: string): string | null {
 export default function ChatDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user, token } = useAuth();
   const { markChatRead, setActiveChat } = useBadges();
   const params = useLocalSearchParams<{ id: string; name?: string }>();
@@ -128,30 +129,40 @@ export default function ChatDetailScreen() {
     );
   };
 
-  const onStartCall = () => {
+  const startGroupCall = (audioOnly: boolean) => {
     if (!Number.isInteger(groupId) || sendMutation.isPending) return;
     const slug =
       `coordinaadg-chat-${groupId}-` +
       `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
     const url = `https://meet.jit.si/${slug}`;
+    const content = audioOnly
+      ? `🔊 Llamada de audio iniciada — únete aquí: ${url}`
+      : `📹 Videollamada iniciada — únete aquí: ${url}`;
     // Post the join link first; only open the room once the message has been
     // persisted, so every member can discover and join the same call.
     sendMutation.mutate(
-      {
-        id: groupId,
-        data: { content: `📹 Videollamada iniciada — únete aquí: ${url}` },
-      },
+      { id: groupId, data: { content } },
       {
         onSuccess: (msg) => {
           mergeMessages([msg]);
-          void WebBrowser.openBrowserAsync(url);
+          startCall(router, {
+            room: slug,
+            title: params.name ?? "Llamada",
+            audioOnly,
+          });
         },
       },
     );
   };
 
-  const onJoinCall = (url: string) => {
-    void WebBrowser.openBrowserAsync(url);
+  const onJoinCall = (url: string, audioOnly: boolean) => {
+    const room = roomFromUrl(url);
+    if (!room) return;
+    startCall(router, {
+      room,
+      title: params.name ?? "Llamada",
+      audioOnly,
+    });
   };
 
   const addEmoji = (emoji: string) => {
@@ -166,21 +177,32 @@ export default function ChatDetailScreen() {
         title={params.name ?? "Conversación"}
         showBack
         right={
-          <Pressable
-            onPress={onStartCall}
-            hitSlop={10}
-            disabled={sendMutation.isPending}
-            style={({ pressed }) => [
-              styles.callBtn,
-              {
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-            accessibilityLabel="Iniciar videollamada"
-          >
-            <Feather name="video" size={18} color={colors.primaryForeground} />
-          </Pressable>
+          <View style={styles.callActions}>
+            <Pressable
+              onPress={() => startGroupCall(true)}
+              hitSlop={10}
+              disabled={sendMutation.isPending}
+              style={({ pressed }) => [
+                styles.callBtn,
+                { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              ]}
+              accessibilityLabel="Iniciar llamada de audio"
+            >
+              <Feather name="phone" size={18} color={colors.primaryForeground} />
+            </Pressable>
+            <Pressable
+              onPress={() => startGroupCall(false)}
+              hitSlop={10}
+              disabled={sendMutation.isPending}
+              style={({ pressed }) => [
+                styles.callBtn,
+                { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              ]}
+              accessibilityLabel="Iniciar videollamada"
+            >
+              <Feather name="video" size={18} color={colors.primaryForeground} />
+            </Pressable>
+          </View>
         }
       />
       <KeyboardAvoidingView
@@ -212,6 +234,10 @@ export default function ChatDetailScreen() {
             renderItem={({ item }) => {
               const mine = item.senderId === user?.id;
               const callUrl = extractCallUrl(item.content);
+              const audioCall =
+                !!callUrl &&
+                (item.content.includes("🔊") ||
+                  /llamada de audio/i.test(item.content));
               return (
                 <View
                   style={[
@@ -245,7 +271,7 @@ export default function ChatDetailScreen() {
                     </Text>
                     {callUrl ? (
                       <Pressable
-                        onPress={() => onJoinCall(callUrl)}
+                        onPress={() => onJoinCall(callUrl, audioCall)}
                         style={({ pressed }) => [
                           styles.joinBtn,
                           {
@@ -257,7 +283,7 @@ export default function ChatDetailScreen() {
                         ]}
                       >
                         <Feather
-                          name="video"
+                          name={audioCall ? "phone" : "video"}
                           size={15}
                           color={mine ? colors.primary : colors.primaryForeground}
                         />
@@ -271,7 +297,9 @@ export default function ChatDetailScreen() {
                             },
                           ]}
                         >
-                          Unirse a la videollamada
+                          {audioCall
+                            ? "Unirse a la llamada"
+                            : "Unirse a la videollamada"}
                         </Text>
                       </Pressable>
                     ) : null}
@@ -383,6 +411,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: 16, gap: 8, flexGrow: 1 },
   emptyWrap: { flex: 1, transform: [{ scaleY: -1 }], minHeight: 300 },
+  callActions: { flexDirection: "row", gap: 8 },
   callBtn: {
     width: 38,
     height: 38,

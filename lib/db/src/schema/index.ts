@@ -25,3 +25,4 @@ export * from "./notifications";
 export * from "./pushTokens";
 export * from "./feedback";
 export * from "./meetings";
+export * from "./forums";
