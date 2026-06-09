@@ -17,6 +17,8 @@ export function jitsiUrl(roomName: string, audioOnly = false): string {
   const cfg = [
     "config.disableDeepLinking=true",
     "config.prejoinPageEnabled=false",
+    // Cut analytics/promo calls so hang-up doesn't bounce to meet.jit.si ads.
+    "config.disableThirdPartyRequests=true",
   ];
   if (audioOnly) cfg.push("config.startAudioOnly=true");
   return `${JITSI_BASE}/${roomName}#${cfg.join("&")}`;

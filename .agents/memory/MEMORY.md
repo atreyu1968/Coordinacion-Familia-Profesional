@@ -1,2 +1,1 @@
-- [Scope-based delete affordances](scope-delete-affordances.md) — UI manage/delete buttons must mirror backend `hasScopeOver`; managers can't act on global (centerId null) content, only superadmin/author.
-- [Contract-driven workflow](contract-driven-workflow.md) — edit openapi.yaml → run api-spec codegen → db push; declare every status the backend can return (e.g. 403 from visibility checks).
+- [Keyless Jitsi videoconferencing](videoconferencias-jitsi.md) — meet.jit.si rooms, no keys; in-app WebView on native; hang-up handling.

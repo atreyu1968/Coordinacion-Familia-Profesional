@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -39,6 +39,26 @@ export default function CallScreen() {
   const [, requestMicrophone] = useMicrophonePermissions();
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Close the screen exactly once, whether the user taps "Salir" or hangs up
+  // inside Jitsi (which redirects meet.jit.si away from the room).
+  const closedRef = useRef(false);
+  const leave = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    router.back();
+  }, [router]);
+
+  // True while the WebView URL still points at our room. Once Jitsi navigates
+  // away (hang-up → welcome/promo page, or an `intent://`/`market://` deep link
+  // to the native Jitsi app), we bail out of the screen instead of letting that
+  // page load and crash the WebView. Only the room URL and the blank/initial
+  // states are allowed through — every other scheme is treated as "leaving".
+  const isRoomUrl = useCallback(
+    (url: string) =>
+      !url || url === "about:blank" || url.includes(`/${room}`),
+    [room],
+  );
 
   // The WebView can't be granted camera/mic on web — fall back to a new tab.
   useEffect(() => {
@@ -83,7 +103,7 @@ export default function CallScreen() {
           </Text>
         </View>
         <Pressable
-          onPress={() => router.back()}
+          onPress={leave}
           hitSlop={10}
           style={styles.closeBtn}
           accessibilityLabel="Salir de la llamada"
@@ -104,6 +124,14 @@ export default function CallScreen() {
           mediaPlaybackRequiresUserAction={false}
           mediaCapturePermissionGrantHandler={() => "grant"}
           onLoadEnd={() => setLoading(false)}
+          onShouldStartLoadWithRequest={(req) => {
+            if (isRoomUrl(req.url)) return true;
+            leave();
+            return false;
+          }}
+          onNavigationStateChange={(nav) => {
+            if (!isRoomUrl(nav.url)) leave();
+          }}
         />
       ) : null}
 
