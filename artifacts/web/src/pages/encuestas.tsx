@@ -65,6 +65,7 @@ import {
   Users,
   ArrowLeft,
   X,
+  Download,
 } from "lucide-react";
 
 const GLOBAL = "global";
@@ -598,7 +599,50 @@ function VoteForm({
 // Results view
 // ---------------------------------------------------------------------------
 function ResultsView({ surveyId }: { surveyId: number }) {
-  const { data: results, isLoading } = useGetSurveyResults(surveyId);
+  const { data: results, isLoading } = useGetSurveyResults(surveyId, {
+    query: {
+      queryKey: getGetSurveyResultsQueryKey(surveyId),
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    },
+  });
+
+  const handleExportCsv = () => {
+    if (!results) return;
+    const escape = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: string[] = [];
+    rows.push(["Pregunta", "Tipo", "Respuesta", "Recuento"].map(escape).join(","));
+    results.questions.forEach((q, qi) => {
+      const label = `${qi + 1}. ${q.text}`;
+      if (q.options && q.options.length > 0) {
+        q.options.forEach((o) => {
+          rows.push([label, "opción", o.label, o.count].map(escape).join(","));
+        });
+      }
+      if (q.textAnswers) {
+        if (q.textAnswers.length === 0) {
+          rows.push([label, "texto", "", 0].map(escape).join(","));
+        } else {
+          q.textAnswers.forEach((t) => {
+            rows.push([label, "texto", t, ""].map(escape).join(","));
+          });
+        }
+      }
+    });
+    const csv = "\uFEFF" + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `resultados-encuesta-${surveyId}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   if (isLoading) {
     return (
@@ -611,10 +655,28 @@ function ResultsView({ surveyId }: { surveyId: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Users className="w-4 h-4" />
-        {results.totalResponses}{" "}
-        {results.totalResponses === 1 ? "participación" : "participaciones"}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Users className="w-4 h-4" />
+          {results.totalResponses}{" "}
+          {results.totalResponses === 1 ? "participación" : "participaciones"}
+          <span className="flex items-center gap-1 ml-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+            </span>
+            En vivo
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCsv}
+          disabled={results.totalResponses === 0}
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Exportar CSV
+        </Button>
       </div>
       {results.questions.map((q, qi) => {
         const totalForOptions = (q.options ?? []).reduce(
