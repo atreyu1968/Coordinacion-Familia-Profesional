@@ -8,6 +8,7 @@ import type {
   Group,
   Resource,
   GdcanResource,
+  Survey,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -155,6 +156,21 @@ export function toGdcanResource(row: GdcanResource) {
     type: row.type,
     url: row.url,
     content: row.content,
+  };
+}
+
+export function toSurvey(row: Survey) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    type: row.type as "survey" | "vote",
+    anonymous: row.anonymous,
+    status: row.status as "draft" | "open" | "closed",
+    provinceId: row.provinceId,
+    opensAt: row.opensAt,
+    closesAt: row.closesAt,
+    createdAt: row.createdAt,
   };
 }
 

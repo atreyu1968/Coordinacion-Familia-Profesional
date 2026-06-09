@@ -13,4 +13,5 @@ export * from "./teachingAssignments";
 export * from "./resources";
 export * from "./companyAlerts";
 export * from "./gdcanResources";
+export * from "./surveys";
 export * from "./integrationSettings";
