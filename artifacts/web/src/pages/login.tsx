@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import heroImage from "@/assets/login-hero.png";
+import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -60,17 +61,7 @@ export default function LoginPage() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0">
-              ADG
-            </div>
-            <div className="leading-tight">
-              <p className="font-bold text-lg">Coordina ADG</p>
-              <p className="text-sm text-muted-foreground">
-                Administración y Gestión · Canarias
-              </p>
-            </div>
-          </div>
+          <img src={logo} alt="Coordina ADG" className="h-14 w-auto" />
 
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">

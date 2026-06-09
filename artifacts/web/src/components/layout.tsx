@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
+import logoWhite from "@/assets/logo-white.png";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -94,12 +95,11 @@ export function AppLayout({ children }: LayoutProps) {
           >
             {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
           </Button>
-          <div className="flex items-center gap-2 font-bold text-lg tracking-tight text-sidebar-primary">
-            <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center text-primary-foreground text-sm">
-              ADG
-            </div>
-            <span className="hidden sm:inline">Coordina ADG</span>
-          </div>
+          <img
+            src={logoWhite}
+            alt="Coordina ADG"
+            className="h-8 w-auto"
+          />
         </div>
 
         <div className="flex items-center gap-3">

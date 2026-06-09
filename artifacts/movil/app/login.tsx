@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useColorScheme,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -17,6 +18,7 @@ import { useColors } from "@/hooks/useColors";
 
 export default function LoginScreen() {
   const colors = useColors();
+  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
@@ -56,11 +58,14 @@ export default function LoginScreen() {
         bottomOffset={20}
       >
         <Image
-          source={require("@/assets/images/icon.png")}
+          source={
+            scheme === "dark"
+              ? require("@/assets/images/logo-white.png")
+              : require("@/assets/images/logo.png")
+          }
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={[styles.title, { color: colors.foreground }]}>Coordina ADG</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Coordinación de Administración y Gestión · Canarias
         </Text>
@@ -132,20 +137,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 96,
-    height: 96,
-    borderRadius: 22,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: "Inter_700Bold",
+    width: 240,
+    height: 56,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginTop: 8,
+    marginTop: 4,
     lineHeight: 20,
   },
   form: {
