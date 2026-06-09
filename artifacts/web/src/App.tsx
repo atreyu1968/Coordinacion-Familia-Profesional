@@ -9,6 +9,8 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import PanelControlPage from "@/pages/panel-control";
+import CentrosPage from "@/pages/centros";
+import CentroDetallePage from "@/pages/centro-detalle";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,8 @@ function AuthedRoutes() {
     <AppLayout>
       <Switch>
         <Route path="/" component={DashboardPage} />
+        <Route path="/centros" component={CentrosPage} />
+        <Route path="/centros/:id" component={CentroDetallePage} />
         <Route path="/panel-control" component={PanelControlPage} />
         <Route component={NotFound} />
       </Switch>

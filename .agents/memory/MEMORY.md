@@ -1,4 +1,5 @@
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via `<link>` in index.html, never CSS `@import url()`; Tailwind v4 reorders it after inlined CSS and breaks the build.
 - [lib/db dist declarations](lib-db-dist.md) — after schema changes in lib/db, rebuild dist/ or api-server typecheck can't see @workspace/db exports.
 - [Express per-route auth guards](express-auth-guards.md) — never `router.use(requireAuth)` in a sub-router mounted without a path prefix; it blocks sibling routers. Use per-route guards.
-- [Coordina ADG authorization model](rbac-authorization-model.md) — every write/detail route needs role hierarchy + object-level scope checks (hasScopeOver/canManageUser), not just requireAuth.
+- [Coordina ADG authorization model](rbac-authorization-model.md) — every write/detail route needs role hierarchy + object-level scope checks (hasScopeOver/canManageUser), not just requireAuth. UI action-button gating must mirror the same scope, not role alone, or out-of-scope users hit 403 on submit.
+- [react-query orval queryKey](react-query-orval-querykey.md) — passing custom `query` options to generated useGetX hooks requires `queryKey: getGetXQueryKey(...)`, or typecheck fails TS2741.
