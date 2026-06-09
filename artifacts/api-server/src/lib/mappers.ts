@@ -13,6 +13,7 @@ import type {
   EventAccreditation,
   EventSpace,
   CalendarEntry,
+  AnnualReport,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -247,6 +248,17 @@ export function toCalendarEntry(row: CalendarEntry) {
     endDate: row.endDate,
     provinceId: row.provinceId,
     description: row.description,
+  };
+}
+
+export function toAnnualReport(row: AnnualReport) {
+  return {
+    id: row.id,
+    schoolYear: row.schoolYear,
+    provinceId: row.provinceId,
+    content: row.content,
+    status: row.status,
+    generatedAt: row.generatedAt,
   };
 }
 

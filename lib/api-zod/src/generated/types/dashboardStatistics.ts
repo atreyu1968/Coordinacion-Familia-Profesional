@@ -12,4 +12,6 @@ export interface DashboardStatistics {
   resourcesByMonth: TimeSeriesPoint[];
   usersByRole: CategoryCount[];
   centersByIsland: CategoryCount[];
+  eventsByMonth: TimeSeriesPoint[];
+  surveysByStatus: CategoryCount[];
 }

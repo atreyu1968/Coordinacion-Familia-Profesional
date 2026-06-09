@@ -16,6 +16,7 @@ import RecursosPage from "@/pages/recursos";
 import FctPage from "@/pages/fct";
 import EncuestasPage from "@/pages/encuestas";
 import EventosPage from "@/pages/eventos";
+import MemoriasPage from "@/pages/memorias";
 import AsistenteIaPage from "@/pages/asistente-ia";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ function AuthedRoutes() {
         <Route path="/fct" component={FctPage} />
         <Route path="/encuestas" component={EncuestasPage} />
         <Route path="/eventos" component={EventosPage} />
+        <Route path="/memorias" component={MemoriasPage} />
         <Route path="/asistente-ia" component={AsistenteIaPage} />
         <Route path="/panel-control" component={PanelControlPage} />
         <Route component={NotFound} />

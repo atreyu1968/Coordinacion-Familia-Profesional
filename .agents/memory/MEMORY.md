@@ -3,3 +3,4 @@
 - [API contract changes need codegen](api-contract-codegen.md) — change response/request shapes in openapi.yaml then run api-spec codegen; never hand-edit generated/.
 - [Survey/vote anonymity model](surveys-anonymity.md) — anonymous answers store NULL responseId AND NULL createdAt; timestamps correlate to the participation marker and break anonymity.
 - [Events module contract & calendar mirror](events-module.md) — events use name/startAt/endAt (not title/date); event delete must also delete its calendar_entries mirror row.
+- [Dashboard & annual reports module](dashboard-reports-module.md) — scoping rules (resources via center, regional-null visibility, empty=default-deny) + /reports auth & DeepSeek graceful-503 gotchas.

@@ -1140,6 +1140,14 @@ export const GetDashboardStatisticsResponse = zod.object({
   "centersByIsland": zod.array(zod.object({
   "label": zod.string(),
   "value": zod.number()
+})),
+  "eventsByMonth": zod.array(zod.object({
+  "label": zod.string(),
+  "value": zod.number()
+})),
+  "surveysByStatus": zod.array(zod.object({
+  "label": zod.string(),
+  "value": zod.number()
 }))
 })
 

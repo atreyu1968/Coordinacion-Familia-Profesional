@@ -2747,7 +2747,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CategoryCount"
-      required: [resourcesByMonth, usersByRole, centersByIsland]
+        eventsByMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPoint"
+        surveysByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryCount"
+      required: [resourcesByMonth, usersByRole, centersByIsland, eventsByMonth, surveysByStatus]
     TimeSeriesPoint:
       type: object
       properties:
