@@ -1,1 +1,32 @@
+- [Self-hosting Coordina ADG](self-hosting.md) — non-obvious constraints for running outside Replit (no GCS); local storage driver + installer wiring.
 - [Móvil PWA install assets](movil-pwa-assets.md) — install icon comes from public/manifest.json + public/icon-*.png, NOT app.json; regenerate from brand logo.
+- [PWA + Web Push (Expo web build)](pwa-web-push.md) — how the mobile app is made installable and how browser/web-push notifications work, incl. SDK54 quirks.
+- [Integration settings (control panel)](integration-settings.md) — how external credentials (DeepSeek, Resend, JaaS, Nextcloud) are configured in-app + rules for adding more.
+- [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.
+- [Backup & restore (server migration)](backup-restore-migration.md) — design rules and gotchas for full-database ZIP backup/restore.
+- [Contract-driven workflow](contract-driven-workflow.md) — the OpenAPI-first edit/codegen/db-push loop for the monorepo.
+- [API contract changes need codegen](api-contract-codegen.md) — change a response/request shape via openapi → orval → zod + react client.
+- [orval-generated api client](api-client-orval.md) — how @workspace/api-client-react exposes hooks/functions; naming gotcha + mutation variable shapes.
+- [react-query orval queryKey requirement](react-query-orval-querykey.md) — custom query options to generated useGetX hooks require queryKey.
+- [API Server dev needs restart for new routes](api-server-dev-restart.md) — new Express routes 404 until the workflow restarts.
+- [api-server testing harness](api-server-testing.md) — how automated tests run (Vitest + supertest + real Postgres).
+- [lib/db dist declarations](lib-db-dist.md) — why api-server typecheck misses @workspace/db exports after schema edits.
+- [Coordina ADG authorization model](rbac-authorization-model.md) — role hierarchy + scope rules every protected route must enforce.
+- [Scope checks — read vs manage](scope-authz.md) — which authorization helper to use when validating a write target's center/province.
+- [Scope-based delete affordances](scope-delete-affordances.md) — client delete/manage buttons must align with backend role+scope authz.
+- [Express per-route auth guards](express-auth-guards.md) — why router.use(requireAuth) in path-less sub-routers breaks siblings.
+- [Self-service profile editing](self-service-profile.md) — profile edits use /auth/me, not the admin user-update route.
+- [Invitation token lifecycle](invitation-token-lifecycle.md) — single-use tokens; creation by role, renew guards, atomic consumption.
+- [Password reset OTP flow](password-reset-otp.md) — email-based recovery and the single-use atomicity constraint.
+- [Jefe de Departamento model](jefe-departamento-model.md) — modeled as a role, not an entity.
+- [Dashboard, statistics & annual reports](dashboard-reports-module.md) — scoping rules + gotchas for /dashboard/* and /reports.
+- [Document-submission forms module](document-forms-module.md) — frontend wiring, upload/download contract, field-type model.
+- [Document/file upload security](document-uploads.md) — rules for accepting client-supplied object-storage paths.
+- [Events module contract & calendar mirror](events-module.md) — field-naming gotchas + calendar-mirror lifecycle.
+- [Survey/vote anonymity model](surveys-anonymity.md) — how anonymous surveys guarantee unlinkability at the DB level.
+- [Biometric unlock (movil)](biometric-unlock-mobile.md) — cross-platform app-lock model and SecureStore-on-web gotcha.
+- [Mobile install/QR target on Replit](expo-go-qr-target.md) — what URL the QR must encode to install the mobile app.
+- [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
+- [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
+- [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.
+- [Tool-output display redaction](tooling-display-redaction.md) — some words show as "ln" in tool output but file bytes are unchanged.

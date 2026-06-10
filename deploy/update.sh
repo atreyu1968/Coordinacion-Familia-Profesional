@@ -31,8 +31,10 @@ DATABASE_URL="$(grep '^DATABASE_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
 # or MOBILE_WEB_URL=...), falling back to whatever is already in .env.
 MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(grep '^MOBILE_WEB_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(grep '^PUBLIC_APP_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-$(grep '^LETSENCRYPT_EMAIL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
 DOMAIN="${DOMAIN:-}"
 
+is_tty() { [[ -t 0 ]]; }
 url_host() { printf '%s' "$1" | sed -E 's#^https?://##; s#/.*$##'; }
 url_path() { printf '%s' "$1" | sed -E 's#^https?://[^/]+##; s#/$##'; }
 
@@ -82,6 +84,22 @@ fi
 # the catch-all "_", localhost, and bare IP addresses.
 if [[ "${MOBILE_HOST}" == "_" || "${MOBILE_HOST}" == "localhost" || "${MOBILE_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   MOBILE_HOST=""
+fi
+# If no real domain was ever configured, ask for it now (interactive runs only)
+# so this update can build the mobile app (/app) and install the collaborative
+# space. Non-interactive runs (e.g. cron) keep the old behavior and skip these
+# domain-only steps. Pass DOMAIN=... to set it without a prompt.
+if [[ -z "${MOBILE_HOST}" ]]; then
+  if [[ -n "${DOMAIN}" ]]; then
+    MOBILE_HOST="$(url_host "${DOMAIN}")"
+  elif is_tty; then
+    read -r -p "Public domain for Coordina ADG (e.g. adg.example.org), blank to skip: " ANSWER || true
+    MOBILE_HOST="$(url_host "${ANSWER}")"
+  fi
+  # Reject placeholders / bare IPs — HTTPS and SSO need a real registrable domain.
+  if [[ "${MOBILE_HOST}" == "_" || "${MOBILE_HOST}" == "localhost" || "${MOBILE_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    MOBILE_HOST=""
+  fi
 fi
 if [[ -n "${MOBILE_HOST}" && -z "${MOBILE_PATH}" ]]; then
   MOBILE_PATH="/app"
@@ -185,13 +203,36 @@ run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @wo
 echo "==> Restarting service"
 systemctl restart coordina-adg.service
 
-# Update the collaborative space too, but only if it was previously installed
-# (its .env exists). install-collab.sh is idempotent and reads its own .env.
-COLLAB_ENV="${SCRIPT_DIR}/nextcloud/.env"
+# Collaborative space (Nextcloud + Collabora). install-collab.sh is idempotent.
+#  - If it was already installed (its .env exists), refresh it.
+#  - If it was never installed but we now have a real domain, install it (default
+#    yes, matching install.sh). Opt out with INSTALL_COLLAB=no.
+COLLAB_DIR="${SCRIPT_DIR}/nextcloud"
+COLLAB_ENV="${COLLAB_DIR}/.env"
 if [[ -f "${COLLAB_ENV}" ]]; then
   echo "==> Updating the collaborative space (Nextcloud + Collabora)"
-  bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
+  bash "${COLLAB_DIR}/install-collab.sh" || \
     echo "WARNING: collaborative space update failed; re-run deploy/nextcloud/install-collab.sh" >&2
+elif [[ -n "${MOBILE_HOST}" ]]; then
+  WANT_COLLAB="${INSTALL_COLLAB:-yes}"
+  if is_tty && [[ -z "${INSTALL_COLLAB:-}" ]]; then
+    read -r -p "Install the collaborative space (Nextcloud + Collabora)? [yes/no] [yes]: " WANT_COLLAB || true
+    WANT_COLLAB="${WANT_COLLAB:-yes}"
+  fi
+  if [[ "${WANT_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
+    # HTTPS for the drive./office. subdomains needs an email. Reuse the saved one,
+    # else ask (interactive). Blank = the subdomains serve over HTTP only.
+    if [[ -z "${LETSENCRYPT_EMAIL}" ]] && is_tty; then
+      read -r -p "Email for HTTPS certificates (blank = HTTP only): " LETSENCRYPT_EMAIL || true
+    fi
+    [[ -n "${LETSENCRYPT_EMAIL}" ]] && set_env LETSENCRYPT_EMAIL "${LETSENCRYPT_EMAIL}"
+    echo "==> Installing the collaborative space (Nextcloud + Collabora)"
+    APP_DOMAIN="${MOBILE_HOST}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
+      bash "${COLLAB_DIR}/install-collab.sh" || \
+      echo "WARNING: collaborative space install failed; re-run deploy/nextcloud/install-collab.sh" >&2
+  fi
+else
+  echo "==> Skipping the collaborative space (no public domain configured)."
 fi
 
 echo "==> Done. Logs: journalctl -u coordina-adg -f"

@@ -190,6 +190,9 @@ JAAS_KID="${JAAS_KID:-$(env_get JAAS_KID)}"
 JAAS_PRIVATE_KEY="${JAAS_PRIVATE_KEY:-$(env_get JAAS_PRIVATE_KEY)}"
 RESEND_API_KEY="${RESEND_API_KEY:-$(env_get RESEND_API_KEY)}"
 RESEND_FROM="${RESEND_FROM:-$(env_get RESEND_FROM)}"
+# Persist the Let's Encrypt email so a later `deploy/update.sh` can install the
+# collaborative space (drive./office. subdomains) over HTTPS without re-asking.
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-$(env_get LETSENCRYPT_EMAIL)}"
 umask 077
 cat > "${ENV_FILE}" <<EOF
 NODE_ENV=production
@@ -209,6 +212,8 @@ JAAS_PRIVATE_KEY=${JAAS_PRIVATE_KEY:-}
 # Optional email (Resend) for password resets.
 RESEND_API_KEY=${RESEND_API_KEY:-}
 RESEND_FROM=${RESEND_FROM:-}
+# Email used for Let's Encrypt (HTTPS). Reused by deploy/update.sh.
+LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
 EOF
 umask 022
 chown "${SERVICE_USER}:${SERVICE_USER}" "${ENV_FILE}" 2>/dev/null || true
