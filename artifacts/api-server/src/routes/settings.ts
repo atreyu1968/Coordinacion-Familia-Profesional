@@ -12,6 +12,7 @@ import {
   isDeepseekConfigured,
   isResendConfigured,
   isJaasConfigured,
+  isNextcloudConfigured,
 } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -26,6 +27,13 @@ router.get("/settings/integrations", requireAuth, async (_req, res): Promise<voi
       jaasConfigured: isJaasConfigured(settings),
       jaasAppId: settings.jaasAppId,
       mobileWebUrl: settings.mobileWebUrl,
+      nextcloudConfigured: isNextcloudConfigured(settings),
+      nextcloudAdminPasswordConfigured: !!settings.nextcloudAdminPassword,
+      nextcloudOidcClientSecretConfigured: !!settings.nextcloudOidcClientSecret,
+      nextcloudUrl: settings.nextcloudUrl,
+      collaboraUrl: settings.collaboraUrl,
+      nextcloudAdminUser: settings.nextcloudAdminUser,
+      nextcloudOidcClientId: settings.nextcloudOidcClientId,
     }),
   );
 });
@@ -66,6 +74,30 @@ router.put(
         ? parsed.data.mobileWebUrl.trim().replace(/\/+$/, "")
         : null;
     }
+    if (parsed.data.nextcloudUrl !== undefined) {
+      updates["nextcloudUrl"] = parsed.data.nextcloudUrl
+        ? parsed.data.nextcloudUrl.trim().replace(/\/+$/, "")
+        : null;
+    }
+    if (parsed.data.collaboraUrl !== undefined) {
+      updates["collaboraUrl"] = parsed.data.collaboraUrl
+        ? parsed.data.collaboraUrl.trim().replace(/\/+$/, "")
+        : null;
+    }
+    if (parsed.data.nextcloudAdminUser !== undefined) {
+      updates["nextcloudAdminUser"] = parsed.data.nextcloudAdminUser || null;
+    }
+    if (parsed.data.nextcloudAdminPassword !== undefined) {
+      updates["nextcloudAdminPassword"] =
+        parsed.data.nextcloudAdminPassword || null;
+    }
+    if (parsed.data.nextcloudOidcClientId !== undefined) {
+      updates["nextcloudOidcClientId"] = parsed.data.nextcloudOidcClientId || null;
+    }
+    if (parsed.data.nextcloudOidcClientSecret !== undefined) {
+      updates["nextcloudOidcClientSecret"] =
+        parsed.data.nextcloudOidcClientSecret || null;
+    }
 
     const [updated] = await db
       .update(integrationSettingsTable)
@@ -81,6 +113,13 @@ router.put(
         jaasConfigured: isJaasConfigured(updated),
         jaasAppId: updated.jaasAppId,
         mobileWebUrl: updated.mobileWebUrl,
+        nextcloudConfigured: isNextcloudConfigured(updated),
+        nextcloudAdminPasswordConfigured: !!updated.nextcloudAdminPassword,
+        nextcloudOidcClientSecretConfigured: !!updated.nextcloudOidcClientSecret,
+        nextcloudUrl: updated.nextcloudUrl,
+        collaboraUrl: updated.collaboraUrl,
+        nextcloudAdminUser: updated.nextcloudAdminUser,
+        nextcloudOidcClientId: updated.nextcloudOidcClientId,
       }),
     );
   },

@@ -1,6 +1,6 @@
 ---
 name: Integration settings (control panel)
-description: How external credentials (DeepSeek, Resend, JaaS) are configured in-app and the rules for adding more.
+description: How external credentials (DeepSeek, Resend, JaaS, Nextcloud) are configured in-app and the rules for adding more.
 ---
 
 # Integration settings configurable from the Panel de Control
@@ -39,3 +39,18 @@ a partially-saved DB row + leftover env vars) silently fails to authenticate and
 falls back to the 5-minute public meet.jit.si server. **How to apply:** keep the
 "all-or-nothing per source" logic in `resolveJaasCreds`; don't reintroduce per-field
 `db || env` defaulting.
+
+## Nextcloud/Collabora collaborative space — app is its own OIDC provider, SSO needs same registrable domain
+The per-module collaborative space self-hosts Nextcloud + Collabora (Docker Compose in
+`deploy/nextcloud/`). The api-server itself acts as a **minimal OIDC provider** (discovery,
+JWKS, authorize, token, userinfo under `/api/oidc`); Nextcloud's `user_oidc` app is the
+client. The id_token signing key (RSA) resolves env `OIDC_SIGNING_KEY` → DB
+`oidc_signing_key` → auto-generated-and-persisted, so it stays stable across restarts.
+Nextcloud admin config (url+user+password) and the OIDC client (id+secret) each follow the
+same all-or-nothing DB-then-env triplet rule as JaaS; `isNextcloudConfigured` requires
+**both**. The Nextcloud uid / OIDC `sub` is `coordina-<userId>`; module group is
+`coordina-mod-<id>`. **Why:** the SSO start flow sets a cookie scoped to `/api/oidc`, so
+Nextcloud must be served from a **subdomain of the same registrable domain** as the app
+(e.g. `drive.example.org` next to `adg.example.org`) or the cookie/redirect handoff breaks.
+**How to apply:** keep the installer defaulting the NC/Collabora hosts to subdomains of
+`APP_DOMAIN`; OIDC stores are in-memory (single systemd process) — don't assume multi-process.

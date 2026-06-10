@@ -33,6 +33,7 @@ import type {
   ChatGroup,
   CheckInInput,
   CheckInResult,
+  CollabStatus,
   CompanyAlert,
   CompanyAlertCreated,
   CreateAccreditationInput,
@@ -110,6 +111,7 @@ import type {
   Message,
   MobileAppAccess,
   Module,
+  ModuleSpaceAccess,
   Municipality,
   Notification,
   OkResult,
@@ -7984,6 +7986,153 @@ export const useUpdateIntegrationSettings = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateIntegrationSettingsMutationOptions(options));
+    }
+
+export const getGetCollabStatusUrl = () => {
+
+
+
+
+  return `/api/collab/status`
+}
+
+/**
+ * @summary Whether the collaborative space is configured (URL for embedding)
+ */
+export const getCollabStatus = async ( options?: RequestInit): Promise<CollabStatus> => {
+
+  return customFetch<CollabStatus>(getGetCollabStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCollabStatusQueryKey = () => {
+    return [
+    `/api/collab/status`
+    ] as const;
+    }
+
+
+export const getGetCollabStatusQueryOptions = <TData = Awaited<ReturnType<typeof getCollabStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCollabStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCollabStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCollabStatus>>> = ({ signal }) => getCollabStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCollabStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCollabStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getCollabStatus>>>
+export type GetCollabStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Whether the collaborative space is configured (URL for embedding)
+ */
+
+export function useGetCollabStatus<TData = Awaited<ReturnType<typeof getCollabStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCollabStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCollabStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOpenModuleSpaceUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/collab/modules/${moduleId}/space`
+}
+
+/**
+ * @summary Provision and open the collaborative space for a module
+ */
+export const openModuleSpace = async (moduleId: number, options?: RequestInit): Promise<ModuleSpaceAccess> => {
+
+  return customFetch<ModuleSpaceAccess>(getOpenModuleSpaceUrl(moduleId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getOpenModuleSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleSpace>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openModuleSpace>>, TError,{moduleId: number}, TContext> => {
+
+const mutationKey = ['openModuleSpace'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openModuleSpace>>, {moduleId: number}> = (props) => {
+          const {moduleId} = props ?? {};
+
+          return  openModuleSpace(moduleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenModuleSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof openModuleSpace>>>
+
+    export type OpenModuleSpaceMutationError = ErrorType<void>
+
+    /**
+ * @summary Provision and open the collaborative space for a module
+ */
+export const useOpenModuleSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleSpace>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof openModuleSpace>>,
+        TError,
+        {moduleId: number},
+        TContext
+      > => {
+      return useMutation(getOpenModuleSpaceMutationOptions(options));
     }
 
 export const getGetMobileAppUrl = () => {

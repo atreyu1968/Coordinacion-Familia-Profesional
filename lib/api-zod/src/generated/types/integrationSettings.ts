@@ -13,4 +13,11 @@ export interface IntegrationSettings {
   jaasConfigured: boolean;
   jaasAppId?: string | null;
   mobileWebUrl?: string | null;
+  nextcloudConfigured: boolean;
+  nextcloudAdminPasswordConfigured: boolean;
+  nextcloudOidcClientSecretConfigured: boolean;
+  nextcloudUrl?: string | null;
+  collaboraUrl?: string | null;
+  nextcloudAdminUser?: string | null;
+  nextcloudOidcClientId?: string | null;
 }

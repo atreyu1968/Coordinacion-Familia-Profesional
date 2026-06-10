@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+# ===========================================================================
+# Coordina ADG — collaborative space installer (Nextcloud + Collabora).
+#
+# Optional add-on, run AFTER the main deploy/install.sh. It:
+#   - brings up the dockerized Nextcloud + Collabora stack (compose),
+#   - configures host nginx subdomains (and HTTPS via certbot),
+#   - installs/enables the Nextcloud apps used by the platform
+#     (group folders + OIDC login) and registers the OIDC provider,
+#   - prints the values to paste into the control panel.
+#
+# Safe to re-run (idempotent). Usage from the repo root:
+#   sudo bash deploy/nextcloud/install-collab.sh
+#
+# Non-interactive: pre-set the variables, e.g.
+#   sudo NEXTCLOUD_DOMAIN=drive.example.org COLLABORA_DOMAIN=office.example.org \
+#        APP_DOMAIN=adg.example.org LETSENCRYPT_EMAIL=you@example.org \
+#        bash deploy/nextcloud/install-collab.sh
+# ===========================================================================
+set -euo pipefail
+
+if [[ "${EUID}" -ne 0 ]]; then
+  echo "Run as root: sudo bash deploy/nextcloud/install-collab.sh" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+APP_DIR="$(cd "${DEPLOY_DIR}/.." && pwd)"
+ENV_FILE="${SCRIPT_DIR}/.env"
+
+log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+
+is_tty() { [[ -t 0 ]]; }
+prompt_default() {
+  local var="$1" message="$2" default="$3" current
+  current="${!var:-}"
+  if [[ -n "${current}" ]]; then return; fi
+  if is_tty; then read -r -p "${message} [${default}]: " current || true; fi
+  printf -v "${var}" '%s' "${current:-${default}}"
+}
+
+# Read a value from the existing .env so reruns preserve generated secrets.
+env_get() { [[ -f "${ENV_FILE}" ]] || return 0; grep "^$1=" "${ENV_FILE}" | head -n1 | cut -d= -f2-; }
+rand() { openssl rand -hex 16; }
+
+# --- Docker (install once) -------------------------------------------------
+log "Ensuring Docker is installed"
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://get.docker.com | sh
+fi
+systemctl enable --now docker
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose v2 plugin is required (docker compose). Aborting." >&2
+  exit 1
+fi
+
+# --- Configuration ---------------------------------------------------------
+log "Gathering configuration"
+APP_DOMAIN="${APP_DOMAIN:-_}"
+# Default the sub-domains to the main domain so SSO cookies are shared.
+DEFAULT_NC="drive.${APP_DOMAIN}"; DEFAULT_CO="office.${APP_DOMAIN}"
+[[ "${APP_DOMAIN}" == "_" ]] && { DEFAULT_NC=""; DEFAULT_CO=""; }
+# Prefer a previously-saved value (rerun idempotency), otherwise the derived
+# subdomain default. Never concatenate the two.
+NC_DEFAULT="$(env_get NEXTCLOUD_DOMAIN)"; NC_DEFAULT="${NC_DEFAULT:-${DEFAULT_NC}}"
+CO_DEFAULT="$(env_get COLLABORA_DOMAIN)"; CO_DEFAULT="${CO_DEFAULT:-${DEFAULT_CO}}"
+prompt_default NEXTCLOUD_DOMAIN "Nextcloud subdomain" "${NC_DEFAULT}"
+prompt_default COLLABORA_DOMAIN "Collabora subdomain" "${CO_DEFAULT}"
+if [[ -z "${NEXTCLOUD_DOMAIN:-}" || -z "${COLLABORA_DOMAIN:-}" ]]; then
+  echo "NEXTCLOUD_DOMAIN and COLLABORA_DOMAIN are required." >&2
+  exit 1
+fi
+
+NEXTCLOUD_PORT="${NEXTCLOUD_PORT:-$(env_get NEXTCLOUD_PORT)}"; NEXTCLOUD_PORT="${NEXTCLOUD_PORT:-8081}"
+COLLABORA_PORT="${COLLABORA_PORT:-$(env_get COLLABORA_PORT)}"; COLLABORA_PORT="${COLLABORA_PORT:-9980}"
+NEXTCLOUD_DB_NAME="${NEXTCLOUD_DB_NAME:-$(env_get NEXTCLOUD_DB_NAME)}"; NEXTCLOUD_DB_NAME="${NEXTCLOUD_DB_NAME:-nextcloud}"
+NEXTCLOUD_DB_USER="${NEXTCLOUD_DB_USER:-$(env_get NEXTCLOUD_DB_USER)}"; NEXTCLOUD_DB_USER="${NEXTCLOUD_DB_USER:-nextcloud}"
+NEXTCLOUD_ADMIN_USER="${NEXTCLOUD_ADMIN_USER:-$(env_get NEXTCLOUD_ADMIN_USER)}"; NEXTCLOUD_ADMIN_USER="${NEXTCLOUD_ADMIN_USER:-admin}"
+COLLABORA_ADMIN_USER="${COLLABORA_ADMIN_USER:-$(env_get COLLABORA_ADMIN_USER)}"; COLLABORA_ADMIN_USER="${COLLABORA_ADMIN_USER:-admin}"
+# Preserve generated secrets across reruns; generate on first install.
+NEXTCLOUD_DB_PASSWORD="${NEXTCLOUD_DB_PASSWORD:-$(env_get NEXTCLOUD_DB_PASSWORD)}"; NEXTCLOUD_DB_PASSWORD="${NEXTCLOUD_DB_PASSWORD:-$(rand)}"
+NEXTCLOUD_ADMIN_PASSWORD="${NEXTCLOUD_ADMIN_PASSWORD:-$(env_get NEXTCLOUD_ADMIN_PASSWORD)}"; NEXTCLOUD_ADMIN_PASSWORD="${NEXTCLOUD_ADMIN_PASSWORD:-$(rand)}"
+COLLABORA_ADMIN_PASSWORD="${COLLABORA_ADMIN_PASSWORD:-$(env_get COLLABORA_ADMIN_PASSWORD)}"; COLLABORA_ADMIN_PASSWORD="${COLLABORA_ADMIN_PASSWORD:-$(rand)}"
+# OIDC client the Nextcloud user_oidc app uses against the api-server.
+OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-$(env_get OIDC_CLIENT_ID)}"; OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-coordina-nextcloud}"
+OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(env_get OIDC_CLIENT_SECRET)}"; OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(openssl rand -hex 24)}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
+
+# --- Write the compose .env (idempotent) -----------------------------------
+log "Writing ${ENV_FILE}"
+umask 077
+cat > "${ENV_FILE}" <<EOF
+NEXTCLOUD_DOMAIN=${NEXTCLOUD_DOMAIN}
+COLLABORA_DOMAIN=${COLLABORA_DOMAIN}
+NEXTCLOUD_PORT=${NEXTCLOUD_PORT}
+COLLABORA_PORT=${COLLABORA_PORT}
+NEXTCLOUD_DB_NAME=${NEXTCLOUD_DB_NAME}
+NEXTCLOUD_DB_USER=${NEXTCLOUD_DB_USER}
+NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+COLLABORA_ADMIN_USER=${COLLABORA_ADMIN_USER}
+COLLABORA_ADMIN_PASSWORD=${COLLABORA_ADMIN_PASSWORD}
+OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+EOF
+umask 022
+
+# --- Bring up the stack ----------------------------------------------------
+log "Starting Nextcloud + Collabora (docker compose up -d)"
+( cd "${SCRIPT_DIR}" && docker compose pull && docker compose up -d )
+
+# Wait for Nextcloud to finish first-run installation.
+log "Waiting for Nextcloud to become ready"
+occ() { docker compose -f "${SCRIPT_DIR}/docker-compose.yml" exec -T -u www-data nextcloud php occ "$@"; }
+for _ in $(seq 1 60); do
+  if occ status 2>/dev/null | grep -q "installed: true"; then break; fi
+  sleep 5
+done
+occ status | grep -q "installed: true" || { echo "Nextcloud did not become ready in time." >&2; exit 1; }
+
+# --- Configure Nextcloud apps + OIDC (idempotent) --------------------------
+log "Configuring Nextcloud apps and OIDC provider"
+occ config:system:set trusted_domains 1 --value="${NEXTCLOUD_DOMAIN}" >/dev/null || true
+occ app:install groupfolders >/dev/null 2>&1 || true
+occ app:enable  groupfolders >/dev/null 2>&1 || true
+occ app:install user_oidc    >/dev/null 2>&1 || true
+occ app:enable  user_oidc    >/dev/null 2>&1 || true
+
+# The api-server publishes its discovery at https://APP_DOMAIN/api/oidc.
+ISSUER_BASE="https://${APP_DOMAIN}/api/oidc"
+if [[ "${APP_DOMAIN}" == "_" ]]; then
+  note "APP_DOMAIN not set — skipping automatic OIDC provider registration."
+  note "Register it later with: occ user_oidc:provider Coordina ..."
+else
+  # Re-register so reruns pick up secret/URL changes (idempotent upsert).
+  occ user_oidc:provider Coordina \
+    --clientid="${OIDC_CLIENT_ID}" \
+    --clientsecret="${OIDC_CLIENT_SECRET}" \
+    --discoveryuri="${ISSUER_BASE}/.well-known/openid-configuration" \
+    --scope="openid profile email" \
+    --unique-uid=0 \
+    --mapping-uid=sub \
+    --mapping-display-name=name \
+    --mapping-email=email >/dev/null 2>&1 || \
+    note "Could not auto-register the OIDC provider; configure it in Nextcloud → user_oidc."
+fi
+
+# --- Configure Collabora in Nextcloud --------------------------------------
+occ app:install richdocuments >/dev/null 2>&1 || true
+occ app:enable  richdocuments >/dev/null 2>&1 || true
+occ config:app:set richdocuments wopi_url --value="https://${COLLABORA_DOMAIN}" >/dev/null 2>&1 || true
+
+# --- Host nginx subdomains -------------------------------------------------
+log "Configuring nginx for ${NEXTCLOUD_DOMAIN} and ${COLLABORA_DOMAIN}"
+# Reuse the upgrade map from the main install; define a local fallback if absent.
+if [[ ! -f /etc/nginx/conf.d/coordina-adg-upgrade.conf ]]; then
+  cat > /etc/nginx/conf.d/coordina-adg-upgrade.conf <<'EOF'
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+EOF
+fi
+sed -e "s|__NEXTCLOUD_DOMAIN__|${NEXTCLOUD_DOMAIN}|g" \
+    -e "s|__COLLABORA_DOMAIN__|${COLLABORA_DOMAIN}|g" \
+    -e "s|__NEXTCLOUD_PORT__|${NEXTCLOUD_PORT}|g" \
+    -e "s|__COLLABORA_PORT__|${COLLABORA_PORT}|g" \
+    "${DEPLOY_DIR}/nginx-collab.conf.template" > /etc/nginx/sites-available/coordina-adg-collab
+ln -sf /etc/nginx/sites-available/coordina-adg-collab /etc/nginx/sites-enabled/coordina-adg-collab
+nginx -t
+systemctl reload nginx
+
+# --- HTTPS -----------------------------------------------------------------
+if [[ -n "${LETSENCRYPT_EMAIL}" ]]; then
+  log "Requesting HTTPS certificates"
+  apt-get install -y certbot python3-certbot-nginx >/dev/null 2>&1 || true
+  certbot --nginx -d "${NEXTCLOUD_DOMAIN}" -d "${COLLABORA_DOMAIN}" \
+    --non-interactive --agree-tos -m "${LETSENCRYPT_EMAIL}" --redirect || \
+    note "certbot failed — sites still work over HTTP. Re-run once DNS resolves."
+fi
+
+# ---------------------------------------------------------------------------
+log "Done! Paste these into the control panel → Espacio colaborativo:"
+note "URL de Nextcloud   : https://${NEXTCLOUD_DOMAIN}"
+note "URL de Collabora   : https://${COLLABORA_DOMAIN}"
+note "Usuario admin      : ${NEXTCLOUD_ADMIN_USER}"
+note "Contraseña admin   : ${NEXTCLOUD_ADMIN_PASSWORD}"
+note "OIDC Client ID     : ${OIDC_CLIENT_ID}"
+note "OIDC Client Secret : ${OIDC_CLIENT_SECRET}"
+note ""
+note "Secrets are also stored in ${ENV_FILE} (root-only)."

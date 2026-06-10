@@ -2173,6 +2173,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationSettings"
 
+  # ---------------------------------------------------------------------------
+  # Collaborative space (Nextcloud Drive + Collabora)
+  # ---------------------------------------------------------------------------
+  /collab/status:
+    get:
+      operationId: getCollabStatus
+      tags: [collab]
+      summary: Whether the collaborative space is configured (URL for embedding)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Collaborative space status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollabStatus"
+  /collab/modules/{moduleId}/space:
+    post:
+      operationId: openModuleSpace
+      tags: [collab]
+      summary: Provision and open the collaborative space for a module
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Single-use SSO URL for the module space
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleSpaceAccess"
+        "403":
+          description: No access to this module
+        "404":
+          description: Module not found
+        "503":
+          description: Collaborative space not configured
+
   /mobile-app:
     get:
       operationId: getMobileApp
@@ -4052,7 +4096,33 @@ components:
         mobileWebUrl:
           type: string
           nullable: true
-      required: [deepseekConfigured, resendConfigured, jaasConfigured]
+        nextcloudConfigured:
+          type: boolean
+        nextcloudAdminPasswordConfigured:
+          type: boolean
+        nextcloudOidcClientSecretConfigured:
+          type: boolean
+        nextcloudUrl:
+          type: string
+          nullable: true
+        collaboraUrl:
+          type: string
+          nullable: true
+        nextcloudAdminUser:
+          type: string
+          nullable: true
+        nextcloudOidcClientId:
+          type: string
+          nullable: true
+      required:
+        [
+          deepseekConfigured,
+          resendConfigured,
+          jaasConfigured,
+          nextcloudConfigured,
+          nextcloudAdminPasswordConfigured,
+          nextcloudOidcClientSecretConfigured,
+        ]
     UpdateIntegrationSettingsInput:
       type: object
       properties:
@@ -4077,3 +4147,39 @@ components:
         mobileWebUrl:
           type: string
           nullable: true
+        nextcloudUrl:
+          type: string
+          nullable: true
+        collaboraUrl:
+          type: string
+          nullable: true
+        nextcloudAdminUser:
+          type: string
+          nullable: true
+        nextcloudAdminPassword:
+          type: string
+          nullable: true
+        nextcloudOidcClientId:
+          type: string
+          nullable: true
+        nextcloudOidcClientSecret:
+          type: string
+          nullable: true
+    CollabStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        nextcloudUrl:
+          type: string
+          nullable: true
+      required: [configured]
+    ModuleSpaceAccess:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Single-use URL that establishes SSO and opens the module space.
+        nextcloudUrl:
+          type: string
+      required: [url, nextcloudUrl]

@@ -66,4 +66,14 @@ run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @wo
 
 echo "==> Restarting service"
 systemctl restart coordina-adg.service
+
+# Update the collaborative space too, but only if it was previously installed
+# (its .env exists). install-collab.sh is idempotent and reads its own .env.
+COLLAB_ENV="${SCRIPT_DIR}/nextcloud/.env"
+if [[ -f "${COLLAB_ENV}" ]]; then
+  echo "==> Updating the collaborative space (Nextcloud + Collabora)"
+  bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
+    echo "WARNING: collaborative space update failed; re-run deploy/nextcloud/install-collab.sh" >&2
+fi
+
 echo "==> Done. Logs: journalctl -u coordina-adg -f"

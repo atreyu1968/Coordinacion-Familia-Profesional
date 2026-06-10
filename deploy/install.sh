@@ -92,6 +92,11 @@ if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$
   MOBILE_WEB_URL="https://${DOMAIN}"
 fi
 prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable later in the panel)" "${MOBILE_WEB_URL}"
+# Optional collaborative space (Nextcloud Drive + Collabora). Off by default: it
+# pulls a dockerized stack and is only needed for per-module workspaces. When
+# enabled, it runs deploy/nextcloud/install-collab.sh after the main install.
+INSTALL_COLLAB="${INSTALL_COLLAB:-no}"
+prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${INSTALL_COLLAB}"
 if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
   echo "ADMIN_PASSWORD is required (set it via env for non-interactive installs)." >&2
   exit 1
@@ -276,6 +281,14 @@ if [[ -n "${LETSENCRYPT_EMAIL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.
   apt-get install -y certbot python3-certbot-nginx
   certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${LETSENCRYPT_EMAIL}" --redirect || \
     note "certbot failed — the site still works over HTTP. Re-run certbot once DNS points here."
+fi
+
+# ---------------------------------------------------------------------------
+if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
+  log "Installing the collaborative space (Nextcloud + Collabora)"
+  APP_DOMAIN="${DOMAIN}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
+    bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
+    note "Collaborative space install failed — the main app still works. Re-run later: sudo bash deploy/nextcloud/install-collab.sh"
 fi
 
 # ---------------------------------------------------------------------------

@@ -14,4 +14,10 @@ export interface UpdateIntegrationSettingsInput {
   jaasKid?: string | null;
   jaasPrivateKey?: string | null;
   mobileWebUrl?: string | null;
+  nextcloudUrl?: string | null;
+  collaboraUrl?: string | null;
+  nextcloudAdminUser?: string | null;
+  nextcloudAdminPassword?: string | null;
+  nextcloudOidcClientId?: string | null;
+  nextcloudOidcClientSecret?: string | null;
 }

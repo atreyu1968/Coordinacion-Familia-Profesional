@@ -135,6 +135,9 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `MOBILE_WEB_URL` | no | URL pública (HTTPS) para activar la página *App Móvil* |
 | `JAAS_APP_ID` / `JAAS_KID` / `JAAS_PRIVATE_KEY` | no | Videollamadas con JaaS (8x8) |
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
+| `NEXTCLOUD_URL` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` | no | Espacio colaborativo (provisión de carpetas) |
+| `NEXTCLOUD_OIDC_CLIENT_ID` / `NEXTCLOUD_OIDC_CLIENT_SECRET` | no | Cliente OIDC que usa Nextcloud para el inicio de sesión único |
+| `OIDC_SIGNING_KEY` | no | Clave RSA (PEM) para firmar los *id_token* (si no, se genera y guarda sola) |
 
 ### Funciones opcionales
 
@@ -150,6 +153,44 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   QR de instalación solo si `MOBILE_WEB_URL` apunta a tu URL pública HTTPS. El
   instalador la rellena automáticamente cuando indicas un dominio real. La
   instalación como app y las notificaciones push requieren HTTPS.
+- **Espacio colaborativo (Nextcloud + Collabora):** cada módulo dispone de una
+  carpeta compartida y un editor de documentos en tiempo real. Es un componente
+  opcional autoalojado; ver la sección *Espacio colaborativo* más abajo. Sin
+  configurar, la página *Espacio colaborativo* avisa de que no está disponible y
+  el resto de la app funciona con normalidad. Las credenciales se introducen en
+  el **Panel de Control** (nunca se muestran de nuevo) o por variables de entorno.
+
+---
+
+## 4.b Espacio colaborativo (Nextcloud + Collabora)
+
+Componente **opcional** que añade a cada módulo una carpeta compartida (Nextcloud
+Drive) y edición de documentos en tiempo real (Collabora). El inicio de sesión es
+único: el propio API actúa como proveedor de identidad (OIDC) y Nextcloud
+(app `user_oidc`) es el cliente, así que el profesorado no ve una segunda pantalla
+de acceso. Los miembros de cada espacio se calculan a partir de las asignaciones
+docentes (`teaching_assignments`) y del rol/ámbito de cada usuario.
+
+Requisitos: un servidor con **Docker** y dos subdominios del dominio principal
+(p. ej. `drive.tu-dominio.com` y `office.tu-dominio.com`); usar subdominios del
+mismo dominio registrable es importante para que el SSO funcione.
+
+```bash
+# 1) Levantar Nextcloud + Collabora, configurar nginx, HTTPS y la app user_oidc.
+#    Ejecútalo DESPUÉS de deploy/install.sh. Es idempotente (se puede repetir).
+sudo APP_DOMAIN=adg.tu-dominio.com LETSENCRYPT_EMAIL=tu@correo.com \
+     bash deploy/nextcloud/install-collab.sh
+
+# Alternativa manual del stack (sin nginx/SSO automáticos):
+cd deploy/nextcloud && cp .env.example .env && $EDITOR .env
+docker compose up -d
+```
+
+Al terminar, el script imprime la URL de Nextcloud y Collabora, el usuario y
+contraseña de administración y el *Client ID/Secret* OIDC. Pégalos en
+**Panel de Control → Espacio colaborativo** (o expórtalos como variables de
+entorno `NEXTCLOUD_*`). A partir de ahí, cada usuario abre el espacio de su
+módulo desde la página *Espacio colaborativo* de la web.
 
 ---
 

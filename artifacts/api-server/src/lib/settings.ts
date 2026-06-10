@@ -20,3 +20,4 @@ export function isResendConfigured(s: IntegrationSettings): boolean {
 }
 
 export { isJaasConfigured } from "./jaas";
+export { isNextcloudConfigured } from "./nextcloud";

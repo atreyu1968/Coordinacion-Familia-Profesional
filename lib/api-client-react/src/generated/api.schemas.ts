@@ -1086,6 +1086,13 @@ export interface IntegrationSettings {
   jaasConfigured: boolean;
   jaasAppId?: string | null;
   mobileWebUrl?: string | null;
+  nextcloudConfigured: boolean;
+  nextcloudAdminPasswordConfigured: boolean;
+  nextcloudOidcClientSecretConfigured: boolean;
+  nextcloudUrl?: string | null;
+  collaboraUrl?: string | null;
+  nextcloudAdminUser?: string | null;
+  nextcloudOidcClientId?: string | null;
 }
 
 export interface UpdateIntegrationSettingsInput {
@@ -1096,6 +1103,23 @@ export interface UpdateIntegrationSettingsInput {
   jaasKid?: string | null;
   jaasPrivateKey?: string | null;
   mobileWebUrl?: string | null;
+  nextcloudUrl?: string | null;
+  collaboraUrl?: string | null;
+  nextcloudAdminUser?: string | null;
+  nextcloudAdminPassword?: string | null;
+  nextcloudOidcClientId?: string | null;
+  nextcloudOidcClientSecret?: string | null;
+}
+
+export interface CollabStatus {
+  configured: boolean;
+  nextcloudUrl?: string | null;
+}
+
+export interface ModuleSpaceAccess {
+  /** Single-use URL that establishes SSO and opens the module space. */
+  url: string;
+  nextcloudUrl: string;
 }
 
 /**

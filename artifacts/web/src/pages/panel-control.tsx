@@ -21,6 +21,7 @@ import {
   Mail,
   Sparkles,
   Video,
+  FolderKanban,
   DatabaseBackup,
   Download,
   Upload,
@@ -46,6 +47,12 @@ export default function PanelControlPage() {
   const [jaasKid, setJaasKid] = useState("");
   const [jaasPrivateKey, setJaasPrivateKey] = useState("");
   const [mobileWebUrl, setMobileWebUrl] = useState("");
+  const [nextcloudUrl, setNextcloudUrl] = useState("");
+  const [collaboraUrl, setCollaboraUrl] = useState("");
+  const [nextcloudAdminUser, setNextcloudAdminUser] = useState("");
+  const [nextcloudAdminPassword, setNextcloudAdminPassword] = useState("");
+  const [nextcloudOidcClientId, setNextcloudOidcClientId] = useState("");
+  const [nextcloudOidcClientSecret, setNextcloudOidcClientSecret] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -72,6 +79,24 @@ export default function PanelControlPage() {
       setMobileWebUrl(settings.mobileWebUrl);
     }
   }, [settings?.mobileWebUrl]);
+
+  useEffect(() => {
+    if (settings?.nextcloudUrl) setNextcloudUrl(settings.nextcloudUrl);
+  }, [settings?.nextcloudUrl]);
+
+  useEffect(() => {
+    if (settings?.collaboraUrl) setCollaboraUrl(settings.collaboraUrl);
+  }, [settings?.collaboraUrl]);
+
+  useEffect(() => {
+    if (settings?.nextcloudAdminUser)
+      setNextcloudAdminUser(settings.nextcloudAdminUser);
+  }, [settings?.nextcloudAdminUser]);
+
+  useEffect(() => {
+    if (settings?.nextcloudOidcClientId)
+      setNextcloudOidcClientId(settings.nextcloudOidcClientId);
+  }, [settings?.nextcloudOidcClientId]);
 
   if (user && user.role !== "superadmin") {
     return (
@@ -177,6 +202,12 @@ export default function PanelControlPage() {
       jaasKid?: string;
       jaasPrivateKey?: string;
       mobileWebUrl?: string;
+      nextcloudUrl?: string;
+      collaboraUrl?: string;
+      nextcloudAdminUser?: string;
+      nextcloudAdminPassword?: string;
+      nextcloudOidcClientId?: string;
+      nextcloudOidcClientSecret?: string;
     } = {};
     if (deepseekApiKey.trim()) payload.deepseekApiKey = deepseekApiKey.trim();
     if (resendApiKey.trim()) payload.resendApiKey = resendApiKey.trim();
@@ -187,6 +218,24 @@ export default function PanelControlPage() {
     if (mobileWebUrl !== (settings?.mobileWebUrl ?? "")) {
       payload.mobileWebUrl = mobileWebUrl.trim();
     }
+    if (nextcloudUrl !== (settings?.nextcloudUrl ?? "")) {
+      payload.nextcloudUrl = nextcloudUrl.trim();
+    }
+    if (collaboraUrl !== (settings?.collaboraUrl ?? "")) {
+      payload.collaboraUrl = collaboraUrl.trim();
+    }
+    if (nextcloudAdminUser !== (settings?.nextcloudAdminUser ?? "")) {
+      payload.nextcloudAdminUser = nextcloudAdminUser.trim();
+    }
+    if (nextcloudAdminPassword.trim()) {
+      payload.nextcloudAdminPassword = nextcloudAdminPassword.trim();
+    }
+    if (nextcloudOidcClientId !== (settings?.nextcloudOidcClientId ?? "")) {
+      payload.nextcloudOidcClientId = nextcloudOidcClientId.trim();
+    }
+    if (nextcloudOidcClientSecret.trim()) {
+      payload.nextcloudOidcClientSecret = nextcloudOidcClientSecret.trim();
+    }
 
     try {
       await updateMutation.mutateAsync({ data: payload });
@@ -194,6 +243,8 @@ export default function PanelControlPage() {
       setResendApiKey("");
       setJaasKid("");
       setJaasPrivateKey("");
+      setNextcloudAdminPassword("");
+      setNextcloudOidcClientSecret("");
       setSavedMessage("Configuración guardada correctamente.");
       await refetch();
     } catch {
@@ -270,6 +321,25 @@ export default function PanelControlPage() {
               Videollamadas sin límite de tiempo con Jitsi as a Service (8x8).
               Sin configurar, las llamadas usan el servidor público meet.jit.si,
               que corta las sesiones a los 5 minutos.
+            </CardDescription>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+              <FolderKanban className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">
+                Espacio colaborativo (Nextcloud)
+              </CardTitle>
+            </div>
+            <StatusBadge active={!!settings?.nextcloudConfigured} />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              Carpetas compartidas por módulo y edición de documentos en tiempo
+              real (Collabora) con inicio de sesión único. Requiere la URL de
+              Nextcloud, las credenciales de administración y el cliente OIDC.
             </CardDescription>
           </CardContent>
         </Card>
@@ -381,6 +451,112 @@ export default function PanelControlPage() {
                 página «App Móvil» y su código QR de instalación. Si la dejas
                 vacía, se usará la URL configurada en el servidor durante la
                 instalación (si existe).
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">
+                  Espacio colaborativo (Nextcloud + Collabora)
+                </h3>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="nextcloudUrl">URL de Nextcloud</Label>
+                  <Input
+                    id="nextcloudUrl"
+                    type="url"
+                    placeholder="https://drive.tu-dominio.com"
+                    value={nextcloudUrl}
+                    onChange={(e) => setNextcloudUrl(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="collaboraUrl">URL de Collabora</Label>
+                  <Input
+                    id="collaboraUrl"
+                    type="url"
+                    placeholder="https://office.tu-dominio.com"
+                    value={collaboraUrl}
+                    onChange={(e) => setCollaboraUrl(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextcloudAdminUser">
+                    Usuario administrador de Nextcloud
+                  </Label>
+                  <Input
+                    id="nextcloudAdminUser"
+                    placeholder="admin"
+                    value={nextcloudAdminUser}
+                    onChange={(e) => setNextcloudAdminUser(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextcloudAdminPassword">
+                    Contraseña del administrador
+                  </Label>
+                  <Input
+                    id="nextcloudAdminPassword"
+                    type="password"
+                    placeholder={
+                      settings?.nextcloudAdminPasswordConfigured
+                        ? "•••••••• (sin cambios)"
+                        : "Contraseña de administración"
+                    }
+                    value={nextcloudAdminPassword}
+                    onChange={(e) => setNextcloudAdminPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextcloudOidcClientId">
+                    Client ID (OIDC)
+                  </Label>
+                  <Input
+                    id="nextcloudOidcClientId"
+                    placeholder="coordina-nextcloud"
+                    value={nextcloudOidcClientId}
+                    onChange={(e) => setNextcloudOidcClientId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextcloudOidcClientSecret">
+                    Client Secret (OIDC)
+                  </Label>
+                  <Input
+                    id="nextcloudOidcClientSecret"
+                    type="password"
+                    placeholder={
+                      settings?.nextcloudOidcClientSecretConfigured
+                        ? "•••••••• (sin cambios)"
+                        : "Secreto del cliente OIDC"
+                    }
+                    value={nextcloudOidcClientSecret}
+                    onChange={(e) =>
+                      setNextcloudOidcClientSecret(e.target.value)
+                    }
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Las contraseñas y secretos no se muestran nunca: déjalos en
+                blanco para conservar el valor guardado. El cliente OIDC debe
+                registrarse en Nextcloud (app «user_oidc») apuntando a esta
+                plataforma como proveedor de identidad.
               </p>
             </div>
 

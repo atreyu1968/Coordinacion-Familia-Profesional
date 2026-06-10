@@ -1738,7 +1738,14 @@ export const GetIntegrationSettingsResponse = zod.object({
   "resendFromEmail": zod.string().nullish(),
   "jaasConfigured": zod.boolean(),
   "jaasAppId": zod.string().nullish(),
-  "mobileWebUrl": zod.string().nullish()
+  "mobileWebUrl": zod.string().nullish(),
+  "nextcloudConfigured": zod.boolean(),
+  "nextcloudAdminPasswordConfigured": zod.boolean(),
+  "nextcloudOidcClientSecretConfigured": zod.boolean(),
+  "nextcloudUrl": zod.string().nullish(),
+  "collaboraUrl": zod.string().nullish(),
+  "nextcloudAdminUser": zod.string().nullish(),
+  "nextcloudOidcClientId": zod.string().nullish()
 })
 
 
@@ -1752,7 +1759,13 @@ export const UpdateIntegrationSettingsBody = zod.object({
   "jaasAppId": zod.string().nullish(),
   "jaasKid": zod.string().nullish(),
   "jaasPrivateKey": zod.string().nullish(),
-  "mobileWebUrl": zod.string().nullish()
+  "mobileWebUrl": zod.string().nullish(),
+  "nextcloudUrl": zod.string().nullish(),
+  "collaboraUrl": zod.string().nullish(),
+  "nextcloudAdminUser": zod.string().nullish(),
+  "nextcloudAdminPassword": zod.string().nullish(),
+  "nextcloudOidcClientId": zod.string().nullish(),
+  "nextcloudOidcClientSecret": zod.string().nullish()
 })
 
 export const UpdateIntegrationSettingsResponse = zod.object({
@@ -1761,7 +1774,36 @@ export const UpdateIntegrationSettingsResponse = zod.object({
   "resendFromEmail": zod.string().nullish(),
   "jaasConfigured": zod.boolean(),
   "jaasAppId": zod.string().nullish(),
-  "mobileWebUrl": zod.string().nullish()
+  "mobileWebUrl": zod.string().nullish(),
+  "nextcloudConfigured": zod.boolean(),
+  "nextcloudAdminPasswordConfigured": zod.boolean(),
+  "nextcloudOidcClientSecretConfigured": zod.boolean(),
+  "nextcloudUrl": zod.string().nullish(),
+  "collaboraUrl": zod.string().nullish(),
+  "nextcloudAdminUser": zod.string().nullish(),
+  "nextcloudOidcClientId": zod.string().nullish()
+})
+
+
+/**
+ * @summary Whether the collaborative space is configured (URL for embedding)
+ */
+export const GetCollabStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "nextcloudUrl": zod.string().nullish()
+})
+
+
+/**
+ * @summary Provision and open the collaborative space for a module
+ */
+export const OpenModuleSpaceParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const OpenModuleSpaceResponse = zod.object({
+  "url": zod.string().describe('Single-use URL that establishes SSO and opens the module space.'),
+  "nextcloudUrl": zod.string()
 })
 
 

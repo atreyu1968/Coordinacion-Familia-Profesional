@@ -20,6 +20,8 @@ import documentFormsRouter from "./documentForms";
 import feedbackRouter from "./feedback";
 import meetingsRouter from "./meetings";
 import forumsRouter from "./forums";
+import oidcRouter from "./oidc";
+import collabRouter from "./collab";
 
 const router: IRouter = Router();
 
@@ -44,5 +46,7 @@ router.use(documentFormsRouter);
 router.use(feedbackRouter);
 router.use(meetingsRouter);
 router.use(forumsRouter);
+router.use(oidcRouter);
+router.use(collabRouter);
 
 export default router;

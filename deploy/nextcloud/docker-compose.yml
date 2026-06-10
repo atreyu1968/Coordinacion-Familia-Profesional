@@ -1,0 +1,83 @@
+# ===========================================================================
+# Coordina ADG — collaborative space stack (Nextcloud Drive + Collabora).
+#
+# Self-hosted, optional add-on for the main platform. Nextcloud stores the
+# per-module shared folders (Group Folders) and Collabora provides real-time
+# document editing. Single sign-on is handled by the api-server acting as an
+# OIDC provider (Nextcloud's "user_oidc" app is the client).
+#
+# Bring it up with:
+#   cd deploy/nextcloud && cp .env.example .env && $EDITOR .env
+#   docker compose up -d
+#
+# All values come from the local .env (see .env.example). Nothing here is
+# specific to a machine, so the file is safe to commit.
+# ===========================================================================
+
+services:
+  nextcloud-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - nextcloud-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${NEXTCLOUD_DB_NAME:-nextcloud}
+      POSTGRES_USER: ${NEXTCLOUD_DB_USER:-nextcloud}
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD:?set NEXTCLOUD_DB_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NEXTCLOUD_DB_USER:-nextcloud}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextcloud-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+  nextcloud:
+    image: nextcloud:30-apache
+    restart: unless-stopped
+    depends_on:
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_started
+    ports:
+      # Bind to loopback only; the host nginx terminates TLS and proxies in.
+      - "127.0.0.1:${NEXTCLOUD_PORT:-8081}:80"
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      POSTGRES_HOST: nextcloud-db
+      POSTGRES_DB: ${NEXTCLOUD_DB_NAME:-nextcloud}
+      POSTGRES_USER: ${NEXTCLOUD_DB_USER:-nextcloud}
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD:?set NEXTCLOUD_DB_PASSWORD in .env}
+      REDIS_HOST: nextcloud-redis
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:?set NEXTCLOUD_ADMIN_USER in .env}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:?set NEXTCLOUD_ADMIN_PASSWORD in .env}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_DOMAIN:?set NEXTCLOUD_DOMAIN in .env}
+      OVERWRITEHOST: ${NEXTCLOUD_DOMAIN}
+      OVERWRITEPROTOCOL: https
+      OVERWRITECLIURL: https://${NEXTCLOUD_DOMAIN}
+      TRUSTED_PROXIES: 127.0.0.1/32
+
+  collabora:
+    image: collabora/code:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${COLLABORA_PORT:-9980}:9980"
+    environment:
+      # Allow the Nextcloud host to embed Collabora (dots escaped for regex).
+      aliasgroup1: https://${NEXTCLOUD_DOMAIN}:443
+      server_name: ${COLLABORA_DOMAIN:?set COLLABORA_DOMAIN in .env}
+      # Admin console credentials (optional, for the /browser admin UI).
+      username: ${COLLABORA_ADMIN_USER:-admin}
+      password: ${COLLABORA_ADMIN_PASSWORD:?set COLLABORA_ADMIN_PASSWORD in .env}
+      extra_params: --o:ssl.enable=false --o:ssl.termination=true
+    cap_add:
+      - MKNOD
+
+volumes:
+  nextcloud-db:
+  nextcloud-data:
