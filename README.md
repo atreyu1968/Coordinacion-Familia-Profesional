@@ -189,19 +189,17 @@ Cada aplicación se ejecuta con su propio comando `dev` (`pnpm --filter
 
 ## 7. Resolución de problemas
 
-- **Toda la web da 500 (también detrás de Cloudflare):** casi siempre nginx no
-  puede leer los archivos web. Revisa `sudo tail -50 /var/log/nginx/error.log`:
-  - `Permission denied` → nginx (`www-data`) no puede atravesar las carpetas
-    hasta la web. Suele pasar al clonar en `/home/usuario` (permisos `700`).
-    Solución:
-    ```bash
-    d="$(pwd)/artifacts/web/dist/public"
-    while [ "$d" != "/" ]; do sudo chmod o+x "$d"; d="$(dirname "$d")"; done
-    sudo chmod -R o+rX "$(pwd)/artifacts/web/dist/public"
-    sudo systemctl reload nginx
-    ```
-  - `rewrite or internal redirection cycle` → falta `index.html`. Recompila la
-    web: `sudo bash deploy/update.sh` (o reinstala con `deploy/install.sh`).
+- **Toda la web da 500 (también detrás de Cloudflare):** nginx no puede leer los
+  archivos web. El instalador publica la web en `/var/www/coordina-adg` (una
+  ubicación que nginx siempre puede leer), justo para evitar esto. Si vienes de
+  una instalación antigua que servía desde la carpeta del repo (p. ej.
+  `/root/...` o `/home/usuario/...`), el `error.log` mostrará `Permission denied`
+  y un `rewrite or internal redirection cycle`. Soluciónalo recompilando con la
+  versión nueva, que copia la web a `/var/www`:
+  ```bash
+  cd /ruta/al/proyecto
+  sudo bash deploy/update.sh
+  ```
 - **La web carga pero falla todo lo del API:** revisa el servicio con
   `journalctl -u coordina-adg -f`. Causas típicas: `DATABASE_URL` incorrecta o
   PostgreSQL parado (`systemctl status postgresql`).

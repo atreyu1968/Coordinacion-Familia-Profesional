@@ -232,7 +232,14 @@ systemctl restart coordina-adg.service
 
 # ---------------------------------------------------------------------------
 log "Configuring nginx"
-WEB_ROOT="${APP_DIR}/artifacts/web/dist/public"
+# Serve the web from a standard location nginx can always read. Serving directly
+# from the clone (e.g. /root/... or /home/user/...) fails because those home
+# directories are not traversable by www-data, producing a site-wide 500.
+WEB_ROOT="/var/www/coordina-adg"
+mkdir -p "${WEB_ROOT}"
+rm -rf "${WEB_ROOT:?}/"*
+cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
+chown -R www-data:www-data "${WEB_ROOT}"
 # Map needed for WebSocket (Socket.io) upgrades — http-level, set once.
 cat > /etc/nginx/conf.d/coordina-adg-upgrade.conf <<'EOF'
 map $http_upgrade $connection_upgrade {
@@ -246,16 +253,6 @@ sed -e "s|__SERVER_NAME__|${DOMAIN}|g" \
     "${SCRIPT_DIR}/nginx-site.conf.template" > /etc/nginx/sites-available/coordina-adg
 ln -sf /etc/nginx/sites-available/coordina-adg /etc/nginx/sites-enabled/coordina-adg
 rm -f /etc/nginx/sites-enabled/default
-# nginx (www-data) must be able to traverse EVERY parent dir down to the web
-# root. Home directories are 700 on modern Ubuntu, which otherwise blocks www-data
-# and makes the whole site return 500. Grant execute-only (traverse, no listing)
-# up the chain, and make the built web files world-readable.
-traverse_dir="${WEB_ROOT}"
-while [[ -n "${traverse_dir}" && "${traverse_dir}" != "/" ]]; do
-  chmod o+x "${traverse_dir}" 2>/dev/null || true
-  traverse_dir="$(dirname "${traverse_dir}")"
-done
-chmod -R o+rX "${WEB_ROOT}" 2>/dev/null || true
 nginx -t
 systemctl enable nginx
 systemctl restart nginx

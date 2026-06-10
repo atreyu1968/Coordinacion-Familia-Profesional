@@ -40,6 +40,13 @@ echo "==> Building web + API"
 run_as_user "cd '${APP_DIR}' && PORT=5173 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/web run build"
 run_as_user "cd '${APP_DIR}' && pnpm --filter @workspace/api-server run build"
 
+echo "==> Publishing web files to /var/www/coordina-adg"
+WEB_ROOT="/var/www/coordina-adg"
+mkdir -p "${WEB_ROOT}"
+rm -rf "${WEB_ROOT:?}/"*
+cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
+chown -R www-data:www-data "${WEB_ROOT}"
+
 echo "==> Applying database schema"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
 

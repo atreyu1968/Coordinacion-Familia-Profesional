@@ -1,0 +1,29 @@
+root@coordinador:~/Coordinacion-Familia-Profesional# # 1) Ver la causa exacta
+sudo tail -n 15 /var/log/nginx/error.log
+
+# 2) Arreglo de permisos (paso por las carpetas + lectura de los ficheros web)
+d="$(pwd)/artifacts/web/dist/public"
+while [ "$d" != "/" ]; do sudo chmod o+x "$d"; d="$(dirname "$d")"; done
+sudo chmod -R o+rX "$(pwd)/artifacts/web/dist/public"
+
+# 3) ¿Existe el index.html? (si no aparece, hay que recompilar)
+ls -l "$(pwd)/artifacts/web/dist/public/index.html"
+
+sudo systemctl reload nginx
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [crit] 5393#5393: *12 stat() "/root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html" failed (13: Permission denied), client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+2026/06/10 17:47:04 [error] 5393#5393: *12 rewrite or internal redirection cycle while internally redirecting to "/index.html", client: 172.16.180.186, server: _, request: "GET /favicon.ico HTTP/1.1", host: "xn--coordinacinag-klb.iesmmg.org", referrer: "https://xn--coordinacinag-klb.iesmmg.org/"
+-rw-r--r-- 1 root root 1426 Jun 10 17:45 /root/Coordinacion-Familia-Profesional/artifacts/web/dist/public/index.html
+root@coordinador:~/Coordinacion-Familia-Profesional# 
