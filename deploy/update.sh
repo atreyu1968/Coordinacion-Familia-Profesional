@@ -232,14 +232,11 @@ elif [[ -n "${MOBILE_HOST}" ]]; then
     WANT_COLLAB="${WANT_COLLAB:-yes}"
   fi
   if [[ "${WANT_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
-    # HTTPS for the drive./office. subdomains needs an email. Reuse the saved one,
-    # else ask (interactive). Blank = the subdomains serve over HTTP only.
-    if [[ -z "${LETSENCRYPT_EMAIL}" ]] && is_tty; then
-      read -r -p "Email for HTTPS certificates (blank = HTTP only): " LETSENCRYPT_EMAIL || true
-    fi
-    [[ -n "${LETSENCRYPT_EMAIL}" ]] && set_env LETSENCRYPT_EMAIL "${LETSENCRYPT_EMAIL}"
+    # The collaborative space is served as subpaths (/nextcloud, /collabora) of
+    # the main domain, so it needs no certificate of its own — it reuses the main
+    # domain's HTTPS certificate.
     echo "==> Installing the collaborative space (Nextcloud + Collabora)"
-    APP_DOMAIN="${MOBILE_HOST}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
+    APP_DOMAIN="${MOBILE_HOST}" \
       bash "${COLLAB_DIR}/install-collab.sh" || \
       echo "WARNING: collaborative space install failed; re-run deploy/nextcloud/install-collab.sh" >&2
   fi

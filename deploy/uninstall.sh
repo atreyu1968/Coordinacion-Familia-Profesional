@@ -70,7 +70,7 @@ if command -v docker >/dev/null 2>&1; then
   DOWN_FLAGS="--remove-orphans"
   [[ "${PURGE}" -eq 1 ]] && DOWN_FLAGS="${DOWN_FLAGS} --volumes"
   # shellcheck disable=SC2086
-  NEXTCLOUD_DOMAIN=x COLLABORA_DOMAIN=x NEXTCLOUD_DB_PASSWORD=x \
+  APP_DOMAIN=x NEXTCLOUD_DB_PASSWORD=x \
   NEXTCLOUD_ADMIN_USER=x NEXTCLOUD_ADMIN_PASSWORD=x COLLABORA_ADMIN_PASSWORD=x \
     docker compose -f "${COLLAB_DIR}/docker-compose.yml" down ${DOWN_FLAGS} 2>/dev/null || true
   if [[ "${PURGE}" -eq 1 ]]; then
@@ -87,6 +87,7 @@ rm -f /etc/nginx/sites-enabled/coordina-adg \
       /etc/nginx/sites-enabled/coordina-adg-collab \
       /etc/nginx/sites-available/coordina-adg \
       /etc/nginx/sites-available/coordina-adg-collab \
+      /etc/nginx/snippets/coordina-adg-collab-locations.conf \
       /etc/nginx/conf.d/coordina-adg-upgrade.conf
 if command -v nginx >/dev/null 2>&1; then
   # Restore the stock default site if nothing else is enabled, so nginx still

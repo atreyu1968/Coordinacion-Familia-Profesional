@@ -186,4 +186,35 @@ describe("isAllowedRedirectUri", () => {
     expect(isAllowedRedirectUri("not a url", nc)).toBe(false);
     expect(isAllowedRedirectUri("", nc)).toBe(false);
   });
+
+  describe("subpath install (Nextcloud under /nextcloud)", () => {
+    const sub = "https://coordinacionag.iesmmg.es/nextcloud";
+
+    it("accepts the user_oidc callback under the base subpath", () => {
+      expect(
+        isAllowedRedirectUri(`${sub}/apps/user_oidc/code`, sub),
+      ).toBe(true);
+      expect(
+        isAllowedRedirectUri(`${sub}/index.php/apps/user_oidc/code`, sub),
+      ).toBe(true);
+    });
+
+    it("rejects the callback without the base subpath prefix", () => {
+      expect(
+        isAllowedRedirectUri(
+          "https://coordinacionag.iesmmg.es/apps/user_oidc/code",
+          sub,
+        ),
+      ).toBe(false);
+    });
+
+    it("rejects prefix-confusable subpaths", () => {
+      expect(
+        isAllowedRedirectUri(
+          "https://coordinacionag.iesmmg.es/nextcloud-evil/apps/user_oidc/code",
+          sub,
+        ),
+      ).toBe(false);
+    });
+  });
 });

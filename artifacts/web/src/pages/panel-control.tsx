@@ -468,7 +468,7 @@ export default function PanelControlPage() {
                   <Input
                     id="nextcloudUrl"
                     type="url"
-                    placeholder="https://drive.tu-dominio.com"
+                    placeholder="https://tu-dominio.com/nextcloud"
                     value={nextcloudUrl}
                     onChange={(e) => setNextcloudUrl(e.target.value)}
                     autoComplete="off"
@@ -480,7 +480,7 @@ export default function PanelControlPage() {
                   <Input
                     id="collaboraUrl"
                     type="url"
-                    placeholder="https://office.tu-dominio.com"
+                    placeholder="https://tu-dominio.com/collabora"
                     value={collaboraUrl}
                     onChange={(e) => setCollaboraUrl(e.target.value)}
                     autoComplete="off"

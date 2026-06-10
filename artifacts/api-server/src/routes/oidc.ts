@@ -50,6 +50,9 @@ function isSecure(req: Request): boolean {
 // (scheme + host + port) as the configured Nextcloud base URL, and under the
 // user_oidc callback path. A naive `startsWith(nextcloudUrl)` would accept
 // prefix-confusable hosts such as `https://drive.example.org.attacker.tld/...`.
+// Nextcloud may be served under a subpath (e.g. https://domain/nextcloud), in
+// which case the callback carries that base prefix; we strip it before matching
+// the user_oidc path so both root and subpath installs work.
 export function isAllowedRedirectUri(redirectUri: string, nextcloudUrl: string): boolean {
   let target: URL;
   let base: URL;
@@ -61,9 +64,16 @@ export function isAllowedRedirectUri(redirectUri: string, nextcloudUrl: string):
   }
   if (target.protocol !== base.protocol) return false;
   if (target.host !== base.host) return false;
+  // Strip the configured base path prefix ("" at the domain root, "/nextcloud"
+  // for a subpath install) before matching the callback path. The leading-slash
+  // anchor in the regex below rejects prefix-confusable paths such as
+  // "/nextcloud-evil/apps/user_oidc/..." (whose remainder lacks a leading "/").
+  const basePath = base.pathname.replace(/\/+$/, "");
+  if (!target.pathname.startsWith(basePath)) return false;
+  const rest = target.pathname.slice(basePath.length);
   // Only allow the Nextcloud user_oidc callback path (with or without the
   // index.php front controller prefix).
-  return /^\/(index\.php\/)?apps\/user_oidc\//.test(target.pathname);
+  return /^\/(index\.php\/)?apps\/user_oidc\//.test(rest);
 }
 
 function claimsFor(user: User): OidcClaims {

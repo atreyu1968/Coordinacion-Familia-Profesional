@@ -122,8 +122,9 @@ prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable lat
 # Collaborative space (Nextcloud Drive + Collabora). It self-installs AND
 # integrates automatically (running deploy/nextcloud/install-collab.sh, which
 # also writes the connection details into this app's .env). Defaults to "yes"
-# when a real HTTPS domain is present — SSO needs subdomains of the same
-# registrable domain (drive./office.) and HTTPS — and to "no" for a bare IP / "_".
+# when a real HTTPS domain is present — the space is served as subpaths of it
+# (/nextcloud, /collabora), so no extra subdomains are needed — and to "no" for
+# a bare IP / "_".
 DEFAULT_COLLAB="no"
 if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="yes"; fi
 # Keep INSTALL_COLLAB empty unless explicitly set via env, otherwise prompt_default
@@ -140,13 +141,13 @@ note "Domain        : ${DOMAIN}"
 note "API port      : ${API_PORT}"
 note "Storage dir   : ${LOCAL_STORAGE_DIR}"
 # With a real domain we also publish the mobile app (PWA) at https://DOMAIN/app
-# automatically, and (when enabled) the collaborative space on subdomains of it.
+# automatically, and (when enabled) the collaborative space as subpaths of it.
 if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
   note "Mobile app    : https://${DOMAIN}/app (built and published automatically)"
   if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
-    note "Collaborative : https://drive.${DOMAIN} + https://office.${DOMAIN}"
-    note "  → Point DNS A/AAAA records for drive.${DOMAIN} and office.${DOMAIN}"
-    note "    at this server so their HTTPS certificates can be issued."
+    note "Collaborative : https://${DOMAIN}/nextcloud + https://${DOMAIN}/collabora"
+    note "  → No extra DNS records or certificates needed: both are served as"
+    note "    subpaths of ${DOMAIN}, covered by its HTTPS certificate."
   fi
 fi
 
@@ -218,7 +219,7 @@ JAAS_PRIVATE_KEY="${JAAS_PRIVATE_KEY:-$(env_get JAAS_PRIVATE_KEY)}"
 RESEND_API_KEY="${RESEND_API_KEY:-$(env_get RESEND_API_KEY)}"
 RESEND_FROM="${RESEND_FROM:-$(env_get RESEND_FROM)}"
 # Persist the Let's Encrypt email so a later `deploy/update.sh` can install the
-# collaborative space (drive./office. subdomains) over HTTPS without re-asking.
+# main domain over HTTPS without re-asking (the collaborative space reuses it).
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-$(env_get LETSENCRYPT_EMAIL)}"
 umask 077
 cat > "${ENV_FILE}" <<EOF

@@ -235,34 +235,33 @@ de cada espacio se calculan a partir de las asignaciones docentes
 
 **Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
 dominio HTTPS real, este componente se instala e integra **solo** (instala Docker,
-levanta el stack, configura nginx + HTTPS, registra el SSO y escribe las
-credenciales en el `.env` de la app, reiniciando el servicio). No tienes que pegar
-nada en el panel. Cada `deploy/update.sh` lo vuelve a actualizar.
+levanta el stack, configura nginx, registra el SSO y escribe las credenciales en
+el `.env` de la app, reiniciando el servicio). No tienes que pegar nada en el
+panel. Cada `deploy/update.sh` lo vuelve a actualizar.
 
-**Solo pides el dominio principal:** el instalador coloca Nextcloud y Collabora en
-subdominios de tu dominio automáticamente — `drive.<tu-dominio>` (Nextcloud Drive)
-y `office.<tu-dominio>` (Collabora) — sin preguntarte por ellos por separado.
-Ambos comparten el dominio registrable, que es lo que necesita el SSO.
+**Un solo dominio, sin subdominios:** el instalador sirve Nextcloud y Collabora
+como **subrutas** de tu dominio principal — `https://<tu-dominio>/nextcloud`
+(Nextcloud Drive) y `https://<tu-dominio>/collabora` (Collabora) — sin pedirte
+nada más. Al estar en el mismo origen, el SSO comparte la cookie de forma natural.
+Esto es ideal para dominios institucionales donde **no puedes crear subdominios**.
 
-Requisitos: el servidor instala **Docker** automáticamente, pero necesitas que esos
-dos subdominios apunten por DNS al servidor (registros A/AAAA de
-`drive.tu-dominio.com` y `office.tu-dominio.com`) para que se puedan emitir sus
-certificados HTTPS. Si necesitas nombres distintos a `drive.`/`office.`, defínelos
-con las variables `NEXTCLOUD_DOMAIN` / `COLLABORA_DOMAIN`.
+Requisitos: el servidor instala **Docker** automáticamente. No necesitas registros
+DNS ni certificados adicionales: ambas subrutas viven en tu dominio principal y
+quedan cubiertas por su certificado HTTPS.
 
 Si lo instalaste sin dominio (solo IP) o quieres montarlo aparte después, puedes
 lanzarlo a mano (es idempotente, se puede repetir). Detecta el dominio principal
 desde el `.env` de la app, así que normalmente basta con:
 
 ```bash
-# Levantar Nextcloud + Collabora, configurar nginx, HTTPS, la app user_oidc y
-# escribir las credenciales en el .env de la app. Ejecútalo DESPUÉS de install.sh.
-# Autodetecta el dominio del .env; pásalo con APP_DOMAIN si no lo encuentra.
-sudo LETSENCRYPT_EMAIL=tu@correo.com bash deploy/nextcloud/install-collab.sh
+# Levantar Nextcloud + Collabora, configurar las subrutas de nginx, la app
+# user_oidc y escribir las credenciales en el .env de la app. Ejecútalo DESPUÉS
+# de install.sh. Autodetecta el dominio del .env; pásalo con APP_DOMAIN si no
+# lo encuentra.
+sudo bash deploy/nextcloud/install-collab.sh
 
 # Forzando el dominio principal explícitamente:
-sudo APP_DOMAIN=adg.tu-dominio.com LETSENCRYPT_EMAIL=tu@correo.com \
-     bash deploy/nextcloud/install-collab.sh
+sudo APP_DOMAIN=adg.tu-dominio.com bash deploy/nextcloud/install-collab.sh
 
 # Alternativa manual del stack (sin nginx/SSO automáticos):
 cd deploy/nextcloud && cp .env.example .env && $EDITOR .env

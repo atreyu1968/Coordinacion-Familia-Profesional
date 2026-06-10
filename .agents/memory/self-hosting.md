@@ -68,21 +68,25 @@ desktop web at `/`, Expo web export at `/app` on the same domain.
   root is wiped, so a failed build aborts (set -e) and leaves the live `/app`
   untouched.
 
-## Collaborative space: ask only for the main domain, derive subdomains
-The collab installer (`install-collab.sh`) takes only the MAIN app domain and
-derives Nextcloud at `drive.<domain>` and Collabora at `office.<domain>`. It does
-NOT prompt for the two subdomains separately. SSO needs both on the same
-registrable domain, so they must be subdomains of the app.
-**Why:** operators only think in terms of one domain; asking for two subdomains was
-confusing and easy to misconfigure (one wrong host breaks the shared SSO cookie).
-**How to apply:** `install.sh` passes `APP_DOMAIN=DOMAIN`; a standalone run
-auto-detects the domain from the main app `.env` (`PUBLIC_APP_URL` → `MOBILE_WEB_URL`
-host), and only prompts if still unresolved. Subdomain resolution precedence is
-explicit env override (`NEXTCLOUD_DOMAIN`/`COLLABORA_DOMAIN`) → saved collab `.env`
-value (rerun idempotency) → derived `drive.`/`office.` default. Bare IP / `_` is
-rejected. DNS A/AAAA for `drive.`/`office.` must point at the server for certbot.
-The mobile PWA at `/app` is already built/published automatically by `install.sh`
-whenever DOMAIN is a real HTTPS host — same single-domain input drives both.
+## Collaborative space: served as SUBPATHS of the single main domain
+The collab installer (`install-collab.sh`) takes only the MAIN app domain and serves
+Nextcloud at `https://<domain>/nextcloud` and Collabora at `https://<domain>/collabora`
+— NOT `drive.`/`office.` subdomains. No extra DNS records or certificates: the subpaths
+are covered by the main domain's TLS cert.
+**Why:** institutional domains (e.g. `coordinacionag.iesmmg.es`) often can't create
+subdomains; same-origin subpaths also make the SSO cookie shared naturally.
+**How to apply:** `install.sh` passes `APP_DOMAIN=DOMAIN`; a standalone run auto-detects
+the domain from the main app `.env` (`PUBLIC_APP_URL` → `MOBILE_WEB_URL` host). nginx:
+the location blocks live in a `/etc/nginx/snippets/coordina-adg-collab-locations.conf`
+snippet `include`d by the main site server block (the template has a zero-match wildcard
+include; `install-collab.sh` self-injects the include line into existing configs before
+`location / {`). Nextcloud `/nextcloud/` proxy uses a TRAILING-SLASH `proxy_pass` to STRIP
+the prefix (container serves at root; `OVERWRITEWEBROOT=/nextcloud` re-adds it in URLs);
+Collabora `/collabora/` proxy KEEPS the prefix (no trailing slash) to match
+`--o:net.service_root=/collabora`. `occ` sets `overwrite*`/`trusted_*` explicitly so reruns
+and migrations from old subdomain installs are corrected (image only applies OVERWRITE* on
+first install). Bare IP / `_` is rejected. The mobile PWA at `/app` is built/published by
+`install.sh` whenever DOMAIN is a real HTTPS host — same single-domain input drives all.
 
 ## "/app 404" recovery when the server doesn't know its own domain
 **Why:** A very common self-host shape is install with `DOMAIN=_` (or IP) and then
