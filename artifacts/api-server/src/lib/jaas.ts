@@ -83,10 +83,15 @@ function signToken(room: string, user: JaasUser): string | null {
       },
     },
   };
+  // The JWT header `kid` must be `${appId}/${keyId}`. JaaS shows the key in the
+  // console already in that full form, so accept either: a bare key id (prepend
+  // the app id) or the full `appId/keyId` value (use as-is) — avoids doubling
+  // the prefix if the operator pasted the whole kid.
+  const headerKid = keyId.includes("/") ? keyId : `${id}/${keyId}`;
   try {
     return jwt.sign(payload, key, {
       algorithm: "RS256",
-      header: { alg: "RS256", kid: `${id}/${keyId}`, typ: "JWT" },
+      header: { alg: "RS256", kid: headerKid, typ: "JWT" },
     });
   } catch (err) {
     logger.error({ err }, "Failed to sign JaaS token");
