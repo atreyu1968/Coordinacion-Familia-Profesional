@@ -23,13 +23,51 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   exit 1
 fi
 
+NGINX_CONF="/etc/nginx/sites-available/coordina-adg"
+
 # shellcheck disable=SC1090
 DATABASE_URL="$(grep '^DATABASE_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
 MOBILE_WEB_URL="$(grep '^MOBILE_WEB_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
+PUBLIC_APP_URL="$(grep '^PUBLIC_APP_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
+
+url_host() { printf '%s' "$1" | sed -E 's#^https?://##; s#/.*$##'; }
+url_path() { printf '%s' "$1" | sed -E 's#^https?://[^/]+##; s#/$##'; }
+
 # Derive the API host and sub-path the mobile app is served under, e.g.
 # https://adg.example.org/app -> host "adg.example.org", path "/app".
-MOBILE_HOST="$(printf '%s' "${MOBILE_WEB_URL}" | sed -E 's#^https?://##; s#/.*$##')"
-MOBILE_PATH="$(printf '%s' "${MOBILE_WEB_URL}" | sed -E 's#^https?://[^/]+##; s#/$##')"
+MOBILE_HOST="$(url_host "${MOBILE_WEB_URL}")"
+MOBILE_PATH="$(url_path "${MOBILE_WEB_URL}")"
+
+# Self-heal installs created before the /app mobile PWA existed: their
+# MOBILE_WEB_URL is empty or points at the bare domain (no path), so the mobile
+# app was never built and /app 404s. Recover the domain from PUBLIC_APP_URL or
+# nginx, default the path to /app, and persist it so the QR code and the baked-in
+# API base URL stay consistent.
+if [[ -z "${MOBILE_HOST}" ]]; then
+  MOBILE_HOST="$(url_host "${PUBLIC_APP_URL}")"
+fi
+if [[ -z "${MOBILE_HOST}" && -f "${NGINX_CONF}" ]]; then
+  MOBILE_HOST="$(grep -E '^[[:space:]]*server_name' "${NGINX_CONF}" | head -n1 | sed -E 's/.*server_name[[:space:]]+//; s/;.*//; s/[[:space:]].*//')"
+fi
+# A real HTTPS domain is required for the PWA to install and receive push, so
+# ignore the catch-all "_", localhost, and bare IP addresses.
+if [[ "${MOBILE_HOST}" == "_" || "${MOBILE_HOST}" == "localhost" || "${MOBILE_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  MOBILE_HOST=""
+fi
+if [[ -n "${MOBILE_HOST}" && -z "${MOBILE_PATH}" ]]; then
+  MOBILE_PATH="/app"
+fi
+if [[ -n "${MOBILE_HOST}" && -n "${MOBILE_PATH}" ]]; then
+  DESIRED_MOBILE_WEB_URL="https://${MOBILE_HOST}${MOBILE_PATH}"
+  if [[ "${DESIRED_MOBILE_WEB_URL}" != "${MOBILE_WEB_URL}" ]]; then
+    echo "==> Setting MOBILE_WEB_URL=${DESIRED_MOBILE_WEB_URL} in .env"
+    if grep -q '^MOBILE_WEB_URL=' "${ENV_FILE}"; then
+      sed -i -E "s#^MOBILE_WEB_URL=.*#MOBILE_WEB_URL=${DESIRED_MOBILE_WEB_URL}#" "${ENV_FILE}"
+    else
+      printf 'MOBILE_WEB_URL=%s\n' "${DESIRED_MOBILE_WEB_URL}" >> "${ENV_FILE}"
+    fi
+  fi
+fi
 
 run_as_user() {
   if [[ "${SERVICE_USER}" == "root" ]]; then bash -lc "$*"; else sudo -u "${SERVICE_USER}" -H bash -lc "$*"; fi
@@ -75,7 +113,6 @@ chown -R www-data:www-data "${WEB_ROOT}"
 # Migrate older installs whose nginx root still points inside the repo (e.g.
 # /root/... or /home/user/...) — those home dirs are not traversable by www-data
 # and cause a site-wide 500. Repoint nginx at the new web root and reload.
-NGINX_CONF="/etc/nginx/sites-available/coordina-adg"
 if [[ -f "${NGINX_CONF}" ]]; then
   echo "==> Ensuring nginx serves from ${WEB_ROOT}"
   sed -i -E "s#^([[:space:]]*)root[[:space:]]+[^;]*;#\\1root ${WEB_ROOT};#" "${NGINX_CONF}"
