@@ -2,6 +2,7 @@ import http from "node:http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
+import { seedIntegrationSettingsFromEnv } from "./lib/settings";
 
 const rawPort = process.env["PORT"];
 
@@ -25,6 +26,18 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
-server.listen(port, () => {
-  logger.info({ port }, "Server listening");
-});
+async function start(): Promise<void> {
+  try {
+    await seedIntegrationSettingsFromEnv();
+  } catch (err) {
+    logger.error(
+      { err },
+      "Failed to seed integration settings from environment",
+    );
+  }
+  server.listen(port, () => {
+    logger.info({ port }, "Server listening");
+  });
+}
+
+void start();

@@ -88,6 +88,28 @@ and migrations from old subdomain installs are corrected (image only applies OVE
 first install). Bare IP / `_` is rejected. The mobile PWA at `/app` is built/published by
 `install.sh` whenever DOMAIN is a real HTTPS host — same single-domain input drives all.
 
+## Collab credentials must be SEEDED env→DB or the panel looks empty
+**Why:** the collab installer writes the connection details to the api-server `.env`
+(`NEXTCLOUD_URL`, `COLLABORA_URL`, `NEXTCLOUD_ADMIN_USER/PASSWORD`,
+`NEXTCLOUD_OIDC_CLIENT_ID/SECRET`). The `resolveNextcloud*` helpers fall back to those
+env vars so the space WORKS, but `GET /settings/integrations` returns the RAW DB row, so
+the in-app control panel shows EMPTY fields and admins think nothing was saved.
+**How to apply:** `seedIntegrationSettingsFromEnv()` (lib/settings.ts) runs on api-server
+startup (called from index.ts `start()` before `listen`, errors caught so boot never blocks)
+and backfills ONLY empty collab DB fields from env. DB always wins (never overwrites a
+non-empty field), so panel edits are preserved. Consequence: clearing a field in the panel
+while env still has it gets RE-seeded on next restart — to truly disable, clear the env var
+too. The installer must write `COLLABORA_URL` (it was previously missing).
+
+## tsc in this monorepo: use `tsc --build`, NOT `tsc --noEmit` standalone
+**Why:** artifacts use TypeScript project references (`references` to `lib/db`, `lib/api-zod`).
+Running `tsc --noEmit` directly in an artifact resolves referenced packages to their (often
+STALE or absent) `dist/*.d.ts` and emits bogus errors (TS6305, or "property X does not exist"
+when the dist predates a schema change). The authoritative gate is root `pnpm run typecheck`
+(= `tsc --build` for libs, then per-artifact `tsc -p tsconfig.json --noEmit`). `lib/*/dist` and
+`*.tsbuildinfo` are gitignored build artifacts; deleting them is safe (dev runs via tsx/esbuild,
+package `exports` point at `./src`), and `tsc -b` regenerates them.
+
 ## Optional Cloudflare Tunnel (cloudflared) in the installer
 `install.sh` optionally prompts for a `CLOUDFLARE_TUNNEL_TOKEN` (blank = skip; persisted
 in `.env` for rerun idempotency, the app never reads it). If set and `cloudflared` isn't on

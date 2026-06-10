@@ -247,6 +247,7 @@ if [[ -f "${MAIN_ENV}" ]]; then
     rm -f "${tmp}"
   }
   set_main_env NEXTCLOUD_URL "${NEXTCLOUD_URL_PUBLIC}"
+  set_main_env COLLABORA_URL "${COLLABORA_URL_PUBLIC}"
   set_main_env NEXTCLOUD_ADMIN_USER "${NEXTCLOUD_ADMIN_USER}"
   set_main_env NEXTCLOUD_ADMIN_PASSWORD "${NEXTCLOUD_ADMIN_PASSWORD}"
   set_main_env NEXTCLOUD_OIDC_CLIENT_ID "${OIDC_CLIENT_ID}"
