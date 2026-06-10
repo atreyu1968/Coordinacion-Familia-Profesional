@@ -45,6 +45,7 @@ export default function PanelControlPage() {
   const [jaasAppId, setJaasAppId] = useState("");
   const [jaasKid, setJaasKid] = useState("");
   const [jaasPrivateKey, setJaasPrivateKey] = useState("");
+  const [mobileWebUrl, setMobileWebUrl] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -65,6 +66,12 @@ export default function PanelControlPage() {
       setJaasAppId(settings.jaasAppId);
     }
   }, [settings?.jaasAppId]);
+
+  useEffect(() => {
+    if (settings?.mobileWebUrl) {
+      setMobileWebUrl(settings.mobileWebUrl);
+    }
+  }, [settings?.mobileWebUrl]);
 
   if (user && user.role !== "superadmin") {
     return (
@@ -169,6 +176,7 @@ export default function PanelControlPage() {
       jaasAppId?: string;
       jaasKid?: string;
       jaasPrivateKey?: string;
+      mobileWebUrl?: string;
     } = {};
     if (deepseekApiKey.trim()) payload.deepseekApiKey = deepseekApiKey.trim();
     if (resendApiKey.trim()) payload.resendApiKey = resendApiKey.trim();
@@ -176,6 +184,9 @@ export default function PanelControlPage() {
     if (jaasAppId.trim()) payload.jaasAppId = jaasAppId.trim();
     if (jaasKid.trim()) payload.jaasKid = jaasKid.trim();
     if (jaasPrivateKey.trim()) payload.jaasPrivateKey = jaasPrivateKey.trim();
+    if (mobileWebUrl !== (settings?.mobileWebUrl ?? "")) {
+      payload.mobileWebUrl = mobileWebUrl.trim();
+    }
 
     try {
       await updateMutation.mutateAsync({ data: payload });
@@ -352,6 +363,24 @@ export default function PanelControlPage() {
               <p className="text-xs text-muted-foreground">
                 Pega la clave completa, con sus saltos de línea. Déjala vacía
                 para mantener la actual sin cambios.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="mobileWebUrl">URL pública de la app móvil</Label>
+              <Input
+                id="mobileWebUrl"
+                type="url"
+                placeholder="https://tu-dominio.com"
+                value={mobileWebUrl}
+                onChange={(e) => setMobileWebUrl(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Dirección HTTPS por la que se accede a la plataforma. Activa la
+                página «App Móvil» y su código QR de instalación. Si la dejas
+                vacía, se usará la URL configurada en el servidor durante la
+                instalación (si existe).
               </p>
             </div>
 

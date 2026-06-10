@@ -4049,6 +4049,9 @@ components:
         jaasAppId:
           type: string
           nullable: true
+        mobileWebUrl:
+          type: string
+          nullable: true
       required: [deepseekConfigured, resendConfigured, jaasConfigured]
     UpdateIntegrationSettingsInput:
       type: object
@@ -4069,5 +4072,8 @@ components:
           type: string
           nullable: true
         jaasPrivateKey:
+          type: string
+          nullable: true
+        mobileWebUrl:
           type: string
           nullable: true

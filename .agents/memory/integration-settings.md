@@ -19,6 +19,17 @@ private keys, the JaaS `kid`) are write-only: accepted on PUT, never echoed back
 JSON response would expose it. **How to apply:** when adding a new integration, add an
 `xConfigured: boolean` to the response and keep the secret out of it.
 
+## Mobile web URL (App Móvil page) — DB > env > Replit Expo domain
+The "App Móvil" page only shows its install QR when the API resolves a public web
+URL. It is **not** a secret, so it is returned in the settings GET and prefilled in
+the panel. Resolution order in the `/mobile-app` route: panel value (DB
+`mobile_web_url`) → `MOBILE_WEB_URL` env → `REPLIT_EXPO_DEV_DOMAIN` (Replit only).
+**Why:** on a self-hosted VPS there is no Expo domain, so without the env/DB value the
+page shows "El acceso a la app móvil no está disponible". The installer auto-derives
+`https://DOMAIN` for a real HTTPS domain and prompts for it. **How to apply:** PWA
+install + web push need HTTPS, so don't auto-fill it for a bare IP or the `_`
+catch-all host.
+
 ## JaaS (8x8) video credentials — resolve as a complete triplet, never mixed
 JaaS needs all three of `appId`, `kid`, `privateKey`. Resolution prefers the DB triplet
 and otherwise falls back to the env triplet (`JAAS_APP_ID` / `JAAS_KID` /

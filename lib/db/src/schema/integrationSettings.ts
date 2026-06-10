@@ -8,6 +8,7 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   jaasAppId: text("jaas_app_id"),
   jaasKid: text("jaas_kid"),
   jaasPrivateKey: text("jaas_private_key"),
+  mobileWebUrl: text("mobile_web_url"),
   vapidPublicKey: text("vapid_public_key"),
   vapidPrivateKey: text("vapid_private_key"),
   vapidSubject: text("vapid_subject"),

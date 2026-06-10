@@ -1737,7 +1737,8 @@ export const GetIntegrationSettingsResponse = zod.object({
   "resendConfigured": zod.boolean(),
   "resendFromEmail": zod.string().nullish(),
   "jaasConfigured": zod.boolean(),
-  "jaasAppId": zod.string().nullish()
+  "jaasAppId": zod.string().nullish(),
+  "mobileWebUrl": zod.string().nullish()
 })
 
 
@@ -1750,7 +1751,8 @@ export const UpdateIntegrationSettingsBody = zod.object({
   "resendFromEmail": zod.string().nullish(),
   "jaasAppId": zod.string().nullish(),
   "jaasKid": zod.string().nullish(),
-  "jaasPrivateKey": zod.string().nullish()
+  "jaasPrivateKey": zod.string().nullish(),
+  "mobileWebUrl": zod.string().nullish()
 })
 
 export const UpdateIntegrationSettingsResponse = zod.object({
@@ -1758,7 +1760,8 @@ export const UpdateIntegrationSettingsResponse = zod.object({
   "resendConfigured": zod.boolean(),
   "resendFromEmail": zod.string().nullish(),
   "jaasConfigured": zod.boolean(),
-  "jaasAppId": zod.string().nullish()
+  "jaasAppId": zod.string().nullish(),
+  "mobileWebUrl": zod.string().nullish()
 })
 
 

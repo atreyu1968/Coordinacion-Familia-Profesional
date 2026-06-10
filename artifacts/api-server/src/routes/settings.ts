@@ -25,6 +25,7 @@ router.get("/settings/integrations", requireAuth, async (_req, res): Promise<voi
       resendFromEmail: settings.resendFromEmail,
       jaasConfigured: isJaasConfigured(settings),
       jaasAppId: settings.jaasAppId,
+      mobileWebUrl: settings.mobileWebUrl,
     }),
   );
 });
@@ -60,6 +61,11 @@ router.put(
     if (parsed.data.jaasPrivateKey !== undefined) {
       updates["jaasPrivateKey"] = parsed.data.jaasPrivateKey || null;
     }
+    if (parsed.data.mobileWebUrl !== undefined) {
+      updates["mobileWebUrl"] = parsed.data.mobileWebUrl
+        ? parsed.data.mobileWebUrl.trim().replace(/\/+$/, "")
+        : null;
+    }
 
     const [updated] = await db
       .update(integrationSettingsTable)
@@ -74,6 +80,7 @@ router.put(
         resendFromEmail: updated.resendFromEmail,
         jaasConfigured: isJaasConfigured(updated),
         jaasAppId: updated.jaasAppId,
+        mobileWebUrl: updated.mobileWebUrl,
       }),
     );
   },

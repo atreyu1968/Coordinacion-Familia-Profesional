@@ -84,6 +84,14 @@ log "Gathering configuration"
 prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "${DOMAIN}"
 prompt_default ADMIN_EMAIL "Email for the first administrator" "${ADMIN_EMAIL:-admin@${DOMAIN/_/localhost}}"
 prompt_secret  ADMIN_PASSWORD "Password for the first administrator"
+# Public URL of the installable mobile app (PWA). Defaults to https://DOMAIN for a
+# real domain; can be edited here or later from the control panel. Leave blank to
+# keep the "App Móvil" page disabled (PWA install + push need HTTPS).
+MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(env_get MOBILE_WEB_URL)}"
+if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  MOBILE_WEB_URL="https://${DOMAIN}"
+fi
+prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable later in the panel)" "${MOBILE_WEB_URL}"
 if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
   echo "ADMIN_PASSWORD is required (set it via env for non-interactive installs)." >&2
   exit 1
@@ -153,13 +161,9 @@ if [[ -z "${JWT_SECRET:-}" ]]; then
 fi
 # Preserve optional integration settings across reruns unless overridden by env.
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(env_get PUBLIC_APP_URL)}"
-# Public URL of the installable mobile app (PWA). The "App Móvil" page shows the
-# install QR only when this is set. PWA install + web push require HTTPS, so we
-# only auto-fill it for a real domain (not an IP or the "_" catch-all).
-MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(env_get MOBILE_WEB_URL)}"
-if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
-  MOBILE_WEB_URL="https://${DOMAIN}"
-fi
+# MOBILE_WEB_URL was already resolved (and prompted) during configuration; it may
+# also be edited later from the control panel. The "App Móvil" page shows its
+# install QR only when this (or the panel value) is set.
 JAAS_APP_ID="${JAAS_APP_ID:-$(env_get JAAS_APP_ID)}"
 JAAS_KID="${JAAS_KID:-$(env_get JAAS_KID)}"
 JAAS_PRIVATE_KEY="${JAAS_PRIVATE_KEY:-$(env_get JAAS_PRIVATE_KEY)}"

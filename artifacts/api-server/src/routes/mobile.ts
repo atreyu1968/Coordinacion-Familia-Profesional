@@ -5,10 +5,11 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { getVapidPublicKey } from "../lib/push";
+import { getSettings } from "../lib/settings";
 
 const router: IRouter = Router();
 
-router.get("/mobile-app", requireAuth, (_req, res): void => {
+router.get("/mobile-app", requireAuth, async (_req, res): Promise<void> => {
   const result: {
     webUrl?: string;
     expoGoUrl?: string;
@@ -21,10 +22,14 @@ router.get("/mobile-app", requireAuth, (_req, res): void => {
     .replace(/^https?:\/\//, "")
     .replace(/\/+$/, "");
 
-  // Production override for the published web app URL; falls back to the Expo
-  // dev domain (where the web build is served at a clean root origin).
+  // Public web app URL: prefer the value set in the control panel (DB), then the
+  // MOBILE_WEB_URL env var, then the Replit Expo dev domain (clean root origin).
+  const settings = await getSettings();
+  const dbWebUrl = settings.mobileWebUrl?.trim().replace(/\/+$/, "");
   const webOverride = process.env["MOBILE_WEB_URL"]?.trim().replace(/\/+$/, "");
-  if (webOverride) {
+  if (dbWebUrl) {
+    result.webUrl = dbWebUrl;
+  } else if (webOverride) {
     result.webUrl = webOverride;
   } else if (expoDomain) {
     result.webUrl = `https://${expoDomain}`;

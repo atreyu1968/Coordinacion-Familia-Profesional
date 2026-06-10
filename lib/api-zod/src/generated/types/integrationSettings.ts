@@ -12,4 +12,5 @@ export interface IntegrationSettings {
   resendFromEmail?: string | null;
   jaasConfigured: boolean;
   jaasAppId?: string | null;
+  mobileWebUrl?: string | null;
 }

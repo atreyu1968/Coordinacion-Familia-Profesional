@@ -13,4 +13,5 @@ export interface UpdateIntegrationSettingsInput {
   jaasAppId?: string | null;
   jaasKid?: string | null;
   jaasPrivateKey?: string | null;
+  mobileWebUrl?: string | null;
 }

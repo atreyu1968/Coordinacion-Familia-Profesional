@@ -1085,6 +1085,7 @@ export interface IntegrationSettings {
   resendFromEmail?: string | null;
   jaasConfigured: boolean;
   jaasAppId?: string | null;
+  mobileWebUrl?: string | null;
 }
 
 export interface UpdateIntegrationSettingsInput {
@@ -1094,6 +1095,7 @@ export interface UpdateIntegrationSettingsInput {
   jaasAppId?: string | null;
   jaasKid?: string | null;
   jaasPrivateKey?: string | null;
+  mobileWebUrl?: string | null;
 }
 
 /**
