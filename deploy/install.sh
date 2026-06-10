@@ -32,7 +32,7 @@ cd "${APP_DIR}"
 SERVICE_USER="${SERVICE_USER:-${SUDO_USER:-root}}"
 
 # --- configuration (overridable via env) -----------------------------------
-DOMAIN="${DOMAIN:-_}"                       # nginx server_name; "_" = any host/IP
+DOMAIN="${DOMAIN:-}"                        # nginx server_name; prompted below ("_" = any host/IP)
 API_PORT="${API_PORT:-3001}"               # internal Node port (nginx proxies it)
 DB_NAME="${DB_NAME:-coordina_adg}"
 DB_USER="${DB_USER:-coordina_adg}"
@@ -54,7 +54,17 @@ env_get() {
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
 
-is_tty() { [[ -t 0 ]]; }
+# Resolve a terminal to read prompts from. When the script is piped to bash
+# (e.g. curl ... | sudo bash) stdin is the script itself, not the keyboard, so
+# fall back to the controlling terminal /dev/tty. If neither is available we run
+# fully non-interactive (values must come from env vars / defaults).
+TTY_DEV=""
+if [[ -t 0 ]]; then
+  TTY_DEV="/dev/stdin"
+elif [[ -r /dev/tty ]] && (exec 3</dev/tty) 2>/dev/null; then
+  TTY_DEV="/dev/tty"
+fi
+is_tty() { [[ -n "${TTY_DEV}" ]]; }
 
 # Prompt for a value with a default (only when interactive and unset).
 prompt_default() {
@@ -62,7 +72,7 @@ prompt_default() {
   current="${!var:-}"
   if [[ -n "${current}" ]]; then return; fi
   if is_tty; then
-    read -r -p "${message} [${default}]: " current || true
+    read -r -p "${message} [${default}]: " current <"${TTY_DEV}" || true
   fi
   printf -v "${var}" '%s' "${current:-${default}}"
 }
@@ -73,7 +83,7 @@ prompt_secret() {
   current="${!var:-}"
   if [[ -n "${current}" ]]; then return; fi
   if is_tty; then
-    read -r -s -p "${message}: " current || true
+    read -r -s -p "${message}: " current <"${TTY_DEV}" || true
     echo
   fi
   printf -v "${var}" '%s' "${current}"
@@ -81,7 +91,7 @@ prompt_secret() {
 
 # ---------------------------------------------------------------------------
 log "Gathering configuration"
-prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "${DOMAIN}"
+prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "_"
 # Normalize and validate the domain. Uppercase, spaces or accents (a common
 # copy/paste or typo mistake, e.g. "coordinación.example.org") would make nginx
 # and certbot fail later in confusing ways, so reject them up front. "_" (any
@@ -116,8 +126,10 @@ prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable lat
 # registrable domain (drive./office.) and HTTPS — and to "no" for a bare IP / "_".
 DEFAULT_COLLAB="no"
 if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="yes"; fi
-INSTALL_COLLAB="${INSTALL_COLLAB:-${DEFAULT_COLLAB}}"
-prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${INSTALL_COLLAB}"
+# Keep INSTALL_COLLAB empty unless explicitly set via env, otherwise prompt_default
+# would see a value and skip the question entirely (it returns when the var is set).
+INSTALL_COLLAB="${INSTALL_COLLAB:-}"
+prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${DEFAULT_COLLAB}"
 if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
   echo "ADMIN_PASSWORD is required (set it via env for non-interactive installs)." >&2
   exit 1
