@@ -68,6 +68,22 @@ desktop web at `/`, Expo web export at `/app` on the same domain.
   root is wiped, so a failed build aborts (set -e) and leaves the live `/app`
   untouched.
 
+## Collaborative space: ask only for the main domain, derive subdomains
+The collab installer (`install-collab.sh`) takes only the MAIN app domain and
+derives Nextcloud at `drive.<domain>` and Collabora at `office.<domain>`. It does
+NOT prompt for the two subdomains separately. SSO needs both on the same
+registrable domain, so they must be subdomains of the app.
+**Why:** operators only think in terms of one domain; asking for two subdomains was
+confusing and easy to misconfigure (one wrong host breaks the shared SSO cookie).
+**How to apply:** `install.sh` passes `APP_DOMAIN=DOMAIN`; a standalone run
+auto-detects the domain from the main app `.env` (`PUBLIC_APP_URL` → `MOBILE_WEB_URL`
+host), and only prompts if still unresolved. Subdomain resolution precedence is
+explicit env override (`NEXTCLOUD_DOMAIN`/`COLLABORA_DOMAIN`) → saved collab `.env`
+value (rerun idempotency) → derived `drive.`/`office.` default. Bare IP / `_` is
+rejected. DNS A/AAAA for `drive.`/`office.` must point at the server for certbot.
+The mobile PWA at `/app` is already built/published automatically by `install.sh`
+whenever DOMAIN is a real HTTPS host — same single-domain input drives both.
+
 ## "/app 404" recovery when the server doesn't know its own domain
 **Why:** A very common self-host shape is install with `DOMAIN=_` (or IP) and then
 put a real domain in front via Cloudflare/another proxy. Then `server_name` is `_`,

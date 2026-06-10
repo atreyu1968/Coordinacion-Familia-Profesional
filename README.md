@@ -199,17 +199,28 @@ levanta el stack, configura nginx + HTTPS, registra el SSO y escribe las
 credenciales en el `.env` de la app, reiniciando el servicio). No tienes que pegar
 nada en el panel. Cada `deploy/update.sh` lo vuelve a actualizar.
 
-Requisitos: el servidor instala **Docker** automáticamente, pero necesitas dos
-subdominios del dominio principal apuntando por DNS al servidor (p. ej.
-`drive.tu-dominio.com` y `office.tu-dominio.com`); usar subdominios del mismo
-dominio registrable es imprescindible para que el SSO funcione.
+**Solo pides el dominio principal:** el instalador coloca Nextcloud y Collabora en
+subdominios de tu dominio automáticamente — `drive.<tu-dominio>` (Nextcloud Drive)
+y `office.<tu-dominio>` (Collabora) — sin preguntarte por ellos por separado.
+Ambos comparten el dominio registrable, que es lo que necesita el SSO.
+
+Requisitos: el servidor instala **Docker** automáticamente, pero necesitas que esos
+dos subdominios apunten por DNS al servidor (registros A/AAAA de
+`drive.tu-dominio.com` y `office.tu-dominio.com`) para que se puedan emitir sus
+certificados HTTPS. Si necesitas nombres distintos a `drive.`/`office.`, defínelos
+con las variables `NEXTCLOUD_DOMAIN` / `COLLABORA_DOMAIN`.
 
 Si lo instalaste sin dominio (solo IP) o quieres montarlo aparte después, puedes
-lanzarlo a mano (es idempotente, se puede repetir):
+lanzarlo a mano (es idempotente, se puede repetir). Detecta el dominio principal
+desde el `.env` de la app, así que normalmente basta con:
 
 ```bash
 # Levantar Nextcloud + Collabora, configurar nginx, HTTPS, la app user_oidc y
 # escribir las credenciales en el .env de la app. Ejecútalo DESPUÉS de install.sh.
+# Autodetecta el dominio del .env; pásalo con APP_DOMAIN si no lo encuentra.
+sudo LETSENCRYPT_EMAIL=tu@correo.com bash deploy/nextcloud/install-collab.sh
+
+# Forzando el dominio principal explícitamente:
 sudo APP_DOMAIN=adg.tu-dominio.com LETSENCRYPT_EMAIL=tu@correo.com \
      bash deploy/nextcloud/install-collab.sh
 

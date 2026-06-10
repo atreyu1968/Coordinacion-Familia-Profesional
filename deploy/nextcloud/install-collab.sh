@@ -13,8 +13,14 @@
 #
 # Safe to re-run (idempotent). Usage from the repo root:
 #   sudo bash deploy/nextcloud/install-collab.sh
+# You only need the MAIN app domain: Nextcloud and Collabora are placed on
+# subdomains of it automatically (drive.<domain> and office.<domain>). On a
+# standalone run the domain is auto-detected from the main app .env.
 #
-# Non-interactive: pre-set the variables, e.g.
+# Non-interactive: pass just the main domain, e.g.
+#   sudo APP_DOMAIN=adg.example.org LETSENCRYPT_EMAIL=you@example.org \
+#        bash deploy/nextcloud/install-collab.sh
+# Optional overrides (only if you need custom subdomain names):
 #   sudo NEXTCLOUD_DOMAIN=drive.example.org COLLABORA_DOMAIN=office.example.org \
 #        APP_DOMAIN=adg.example.org LETSENCRYPT_EMAIL=you@example.org \
 #        bash deploy/nextcloud/install-collab.sh
@@ -45,6 +51,11 @@ prompt_default() {
 
 # Read a value from the existing .env so reruns preserve generated secrets.
 env_get() { [[ -f "${ENV_FILE}" ]] || return 0; grep "^$1=" "${ENV_FILE}" | head -n1 | cut -d= -f2-; }
+# Read a value from the MAIN app .env (to auto-detect the app domain on a
+# standalone run, so the admin only ever supplies the main domain).
+main_env_get() { [[ -f "${APP_DIR}/.env" ]] || return 0; grep "^$1=" "${APP_DIR}/.env" | head -n1 | cut -d= -f2-; }
+# Extract the bare host from a URL (drop scheme and any path).
+url_host() { printf '%s' "$1" | sed -E 's#^https?://##; s#/.*$##'; }
 rand() { openssl rand -hex 16; }
 
 # --- Docker (install once) -------------------------------------------------
@@ -60,20 +71,33 @@ fi
 
 # --- Configuration ---------------------------------------------------------
 log "Gathering configuration"
+# The admin only ever supplies the MAIN application domain. Nextcloud and
+# Collabora are placed on subdomains of it automatically (drive.<domain> and
+# office.<domain>) so the SSO cookie — scoped to the registrable domain — is
+# shared. install.sh passes APP_DOMAIN; on a standalone run we auto-detect it
+# from the main app .env, and only ask if we still can't find it.
 APP_DOMAIN="${APP_DOMAIN:-_}"
-# Default the sub-domains to the main domain so SSO cookies are shared.
-DEFAULT_NC="drive.${APP_DOMAIN}"; DEFAULT_CO="office.${APP_DOMAIN}"
-[[ "${APP_DOMAIN}" == "_" ]] && { DEFAULT_NC=""; DEFAULT_CO=""; }
-# Prefer a previously-saved value (rerun idempotency), otherwise the derived
-# subdomain default. Never concatenate the two.
-NC_DEFAULT="$(env_get NEXTCLOUD_DOMAIN)"; NC_DEFAULT="${NC_DEFAULT:-${DEFAULT_NC}}"
-CO_DEFAULT="$(env_get COLLABORA_DOMAIN)"; CO_DEFAULT="${CO_DEFAULT:-${DEFAULT_CO}}"
-prompt_default NEXTCLOUD_DOMAIN "Nextcloud subdomain" "${NC_DEFAULT}"
-prompt_default COLLABORA_DOMAIN "Collabora subdomain" "${CO_DEFAULT}"
-if [[ -z "${NEXTCLOUD_DOMAIN:-}" || -z "${COLLABORA_DOMAIN:-}" ]]; then
-  echo "NEXTCLOUD_DOMAIN and COLLABORA_DOMAIN are required." >&2
+if [[ "${APP_DOMAIN}" == "_" || -z "${APP_DOMAIN}" ]]; then
+  DETECTED="$(url_host "$(main_env_get PUBLIC_APP_URL)")"
+  [[ -z "${DETECTED}" ]] && DETECTED="$(url_host "$(main_env_get MOBILE_WEB_URL)")"
+  APP_DOMAIN=""
+  prompt_default APP_DOMAIN "Main application domain (e.g. adg.example.org)" "${DETECTED}"
+fi
+# Reject a missing / placeholder / bare-IP domain: SSO and HTTPS need real
+# subdomains of a registrable domain.
+if [[ -z "${APP_DOMAIN}" || "${APP_DOMAIN}" == "_" || "${APP_DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  echo "A real main domain is required (e.g. adg.example.org)." >&2
+  echo "The collaborative space needs subdomains of it (drive./office.) over HTTPS." >&2
   exit 1
 fi
+# Derive the subdomains from the main domain. Priority: explicit env override >
+# previously-saved value (rerun idempotency) > derived default. Never concatenate.
+DEFAULT_NC="drive.${APP_DOMAIN}"; DEFAULT_CO="office.${APP_DOMAIN}"
+NEXTCLOUD_DOMAIN="${NEXTCLOUD_DOMAIN:-$(env_get NEXTCLOUD_DOMAIN)}"; NEXTCLOUD_DOMAIN="${NEXTCLOUD_DOMAIN:-${DEFAULT_NC}}"
+COLLABORA_DOMAIN="${COLLABORA_DOMAIN:-$(env_get COLLABORA_DOMAIN)}"; COLLABORA_DOMAIN="${COLLABORA_DOMAIN:-${DEFAULT_CO}}"
+note "Main domain        : ${APP_DOMAIN}"
+note "Nextcloud (Drive)  : ${NEXTCLOUD_DOMAIN}"
+note "Collabora (Office) : ${COLLABORA_DOMAIN}"
 
 NEXTCLOUD_PORT="${NEXTCLOUD_PORT:-$(env_get NEXTCLOUD_PORT)}"; NEXTCLOUD_PORT="${NEXTCLOUD_PORT:-8081}"
 COLLABORA_PORT="${COLLABORA_PORT:-$(env_get COLLABORA_PORT)}"; COLLABORA_PORT="${COLLABORA_PORT:-9980}"

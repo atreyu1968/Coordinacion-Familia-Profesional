@@ -112,6 +112,16 @@ note "Service user  : ${SERVICE_USER}"
 note "Domain        : ${DOMAIN}"
 note "API port      : ${API_PORT}"
 note "Storage dir   : ${LOCAL_STORAGE_DIR}"
+# With a real domain we also publish the mobile app (PWA) at https://DOMAIN/app
+# automatically, and (when enabled) the collaborative space on subdomains of it.
+if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  note "Mobile app    : https://${DOMAIN}/app (built and published automatically)"
+  if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
+    note "Collaborative : https://drive.${DOMAIN} + https://office.${DOMAIN}"
+    note "  → Point DNS A/AAAA records for drive.${DOMAIN} and office.${DOMAIN}"
+    note "    at this server so their HTTPS certificates can be issued."
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 log "Installing system packages"
