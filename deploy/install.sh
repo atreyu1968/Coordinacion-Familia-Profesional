@@ -41,6 +41,7 @@ NODE_MAJOR="${NODE_MAJOR:-24}"
 PNPM_VERSION="${PNPM_VERSION:-10.26.1}"
 ADMIN_NAME="${ADMIN_NAME:-Administrador}"
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"  # set + real DOMAIN to enable HTTPS
+CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"  # optional cloudflared tunnel token
 
 ENV_FILE="${APP_DIR}/.env"
 
@@ -131,6 +132,14 @@ if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="
 # would see a value and skip the question entirely (it returns when the var is set).
 INSTALL_COLLAB="${INSTALL_COLLAB:-}"
 prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${DEFAULT_COLLAB}"
+# Optional Cloudflare Tunnel (cloudflared). If you paste a tunnel token, the
+# installer installs cloudflared (when missing) and runs it as a service, so the
+# server is reachable through Cloudflare without opening firewall ports or
+# managing local TLS — Cloudflare terminates HTTPS and forwards to the local
+# nginx. Point the tunnel's public hostname at http://localhost:80 in the
+# Cloudflare dashboard. Leave blank to skip; reused across reruns from .env.
+CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-$(env_get CLOUDFLARE_TUNNEL_TOKEN)}"
+prompt_secret CLOUDFLARE_TUNNEL_TOKEN "Cloudflare Tunnel token (optional, blank to skip)"
 if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
   echo "ADMIN_PASSWORD is required (set it via env for non-interactive installs)." >&2
   exit 1
@@ -242,6 +251,9 @@ RESEND_API_KEY=${RESEND_API_KEY:-}
 RESEND_FROM=${RESEND_FROM:-}
 # Email used for Let's Encrypt (HTTPS). Reused by deploy/update.sh.
 LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
+# Optional Cloudflare Tunnel (cloudflared) token. Used by the installer to set up
+# the cloudflared service; the app itself does not read it.
+CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
 EOF
 umask 022
 chown "${SERVICE_USER}:${SERVICE_USER}" "${ENV_FILE}" 2>/dev/null || true
@@ -360,6 +372,37 @@ if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
   APP_DOMAIN="${DOMAIN}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
     bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
     note "Collaborative space install failed — the main app still works. Re-run later: sudo bash deploy/nextcloud/install-collab.sh"
+fi
+
+# ---------------------------------------------------------------------------
+# Optional Cloudflare Tunnel (cloudflared). With a token, expose the server
+# through Cloudflare without opening firewall ports or managing local TLS.
+if [[ -n "${CLOUDFLARE_TUNNEL_TOKEN}" ]]; then
+  log "Setting up the Cloudflare Tunnel (cloudflared)"
+  if ! command -v cloudflared >/dev/null 2>&1; then
+    note "Installing cloudflared"
+    CF_ARCH="$(dpkg --print-architecture)"
+    if curl -fsSL -o /tmp/cloudflared.deb \
+        "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}.deb"; then
+      apt-get install -y /tmp/cloudflared.deb || \
+        note "cloudflared install failed; install it manually and re-run."
+      rm -f /tmp/cloudflared.deb
+    else
+      note "Could not download cloudflared for arch '${CF_ARCH}'; skipping the tunnel."
+    fi
+  fi
+  if command -v cloudflared >/dev/null 2>&1; then
+    # Idempotent: drop any previous service so the (possibly new) token applies,
+    # then (re)install. `cloudflared service install` also enables and starts it.
+    systemctl stop cloudflared 2>/dev/null || true
+    cloudflared service uninstall >/dev/null 2>&1 || true
+    if cloudflared service install "${CLOUDFLARE_TUNNEL_TOKEN}"; then
+      systemctl enable --now cloudflared 2>/dev/null || true
+      note "Cloudflare Tunnel active — manage public hostnames/routes in the Cloudflare dashboard."
+    else
+      note "cloudflared service install failed — check the token and re-run."
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------------------

@@ -211,6 +211,15 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
     Control → App Móvil**, así que muchas veces basta con `sudo bash
     deploy/update.sh`. El script compila y publica `/app`, añade su ruta a nginx,
     corrige el `server_name` y guarda `MOBILE_WEB_URL`/`PUBLIC_APP_URL` en el `.env`.
+- **Túnel de Cloudflare (cloudflared):** el instalador puede pedirte un *token de
+  túnel* de Cloudflare (opcional, déjalo en blanco para omitirlo). Si lo indicas,
+  instala `cloudflared` (si no estuviera) y lo arranca como servicio, de modo que
+  el servidor queda accesible a través de Cloudflare **sin abrir puertos ni
+  gestionar certificados en local**: Cloudflare termina el HTTPS y reenvía al
+  nginx local. En el panel de Cloudflare apunta el *public hostname* del túnel a
+  `http://localhost:80`; las subrutas (`/app`, `/api`, `/nextcloud`, `/collabora`)
+  quedan cubiertas por el certificado del dominio principal. El token se conserva
+  en el `.env` para reinstalaciones; `deploy/uninstall.sh` retira el servicio.
 - **Espacio colaborativo (Nextcloud + Collabora):** cada módulo dispone de una
   carpeta compartida y un editor de documentos en tiempo real. Si instalas con un
   dominio HTTPS real, el instalador lo **monta e integra automáticamente** (instala

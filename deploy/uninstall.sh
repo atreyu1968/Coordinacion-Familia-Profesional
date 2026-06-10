@@ -62,6 +62,18 @@ systemctl disable coordina-adg.service 2>/dev/null || true
 rm -f /etc/systemd/system/coordina-adg.service
 systemctl daemon-reload 2>/dev/null || true
 
+# Remove the optional Cloudflare Tunnel (cloudflared) service only if the
+# installer set it up — detected by a non-empty CLOUDFLARE_TUNNEL_TOKEN in our
+# .env. This avoids tearing down an unrelated cloudflared the admin runs for
+# other purposes. Leaves the binary in place (cheap to keep / reuse).
+if [[ -f "${ENV_FILE}" ]] && \
+   grep -qE '^CLOUDFLARE_TUNNEL_TOKEN=.+' "${ENV_FILE}" && \
+   command -v cloudflared >/dev/null 2>&1; then
+  log "Removing the Cloudflare Tunnel (cloudflared) service"
+  systemctl stop cloudflared 2>/dev/null || true
+  cloudflared service uninstall >/dev/null 2>&1 || true
+fi
+
 # --- 2. collaborative space (Docker) ---------------------------------------
 if command -v docker >/dev/null 2>&1; then
   log "Removing the collaborative space (Nextcloud + Collabora) containers"

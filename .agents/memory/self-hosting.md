@@ -88,6 +88,17 @@ and migrations from old subdomain installs are corrected (image only applies OVE
 first install). Bare IP / `_` is rejected. The mobile PWA at `/app` is built/published by
 `install.sh` whenever DOMAIN is a real HTTPS host — same single-domain input drives all.
 
+## Optional Cloudflare Tunnel (cloudflared) in the installer
+`install.sh` optionally prompts for a `CLOUDFLARE_TUNNEL_TOKEN` (blank = skip; persisted
+in `.env` for rerun idempotency, the app never reads it). If set and `cloudflared` isn't on
+PATH it installs the official `.deb` for `dpkg --print-architecture`, then runs `cloudflared
+service uninstall || true` + `service install <token>` (idempotent — re-applies a changed
+token). The tunnel terminates TLS at Cloudflare and forwards to local nginx :80, so subpaths
+(/app,/api,/nextcloud,/collabora) need no local certbot. `uninstall.sh` runs `cloudflared
+service uninstall` (keeps the binary).
+**Why:** lets admins expose the server via Cloudflare without opening ports or local TLS; the
+main domain's Cloudflare cert already covers all subpaths.
+
 ## "/app 404" recovery when the server doesn't know its own domain
 **Why:** A very common self-host shape is install with `DOMAIN=_` (or IP) and then
 put a real domain in front via Cloudflare/another proxy. Then `server_name` is `_`,
