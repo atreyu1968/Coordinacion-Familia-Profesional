@@ -1,5 +1,13 @@
 import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -11,11 +19,14 @@ interface AppHeaderProps {
   subtitle?: string;
   showBack?: boolean;
   right?: React.ReactNode;
+  /** Show the brand logo above the title (used on the main/home screen). */
+  logo?: boolean;
 }
 
-export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) {
+export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -29,6 +40,17 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
         },
       ]}
     >
+      {logo ? (
+        <Image
+          source={
+            scheme === "dark"
+              ? require("@/assets/images/logo-white.png")
+              : require("@/assets/images/logo.png")
+          }
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      ) : null}
       <View style={styles.row}>
         {showBack ? (
           <Pressable
@@ -63,6 +85,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  logo: {
+    height: 32,
+    width: 160,
+    marginBottom: 10,
+    marginLeft: -2,
   },
   row: {
     flexDirection: "row",
