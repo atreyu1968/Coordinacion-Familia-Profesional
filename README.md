@@ -40,7 +40,10 @@ sudo bash deploy/install.sh
 El instalador te preguntará:
 
 - **Dominio o IP** del sitio (usa `_` si todavía no tienes dominio y quieres
-  entrar por la IP del servidor).
+  entrar por la IP del servidor). Escribe solo letras, números, puntos y
+  guiones (sin tildes ni espacios): el instalador valida el dominio y se detiene
+  con un aviso claro si detecta caracteres no válidos, en lugar de fallar más
+  tarde con un error confuso de nginx o de certbot.
 - **Correo y contraseña** del primer administrador (rol *superadmin*).
 
 Al terminar, abre `http://TU_DOMINIO_O_IP/` e inicia sesión con esas credenciales.
@@ -106,6 +109,43 @@ sudo bash deploy/update.sh
 
 Descarga el último código, reinstala dependencias, recompila, aplica los
 cambios de esquema de la base de datos y reinicia el servicio.
+
+### Desinstalar o reinstalar desde cero
+
+Para quitar la aplicación o empezar con una instalación totalmente limpia:
+
+```bash
+cd /ruta/al/proyecto
+
+# Desinstalación conservadora: pregunta antes de borrar datos.
+# Quita el servicio, la configuración de nginx, el contenedor del espacio
+# colaborativo (Nextcloud + Collabora) y los ficheros web publicados.
+sudo bash deploy/uninstall.sh
+
+# Desinstalación completa para reinstalar desde cero: BORRA además la base de
+# datos, los ficheros subidos y los ficheros .env.
+sudo PURGE_DATA=yes bash deploy/uninstall.sh
+```
+
+El desinstalador **no** elimina los paquetes del sistema (Node.js, PostgreSQL,
+nginx, Docker) ni la copia del repositorio: son compartidos y es seguro
+conservarlos. Por defecto no borra datos (equivale a `PURGE_DATA=no`); usa
+`PURGE_DATA=yes` solo cuando quieras una pizarra en blanco.
+
+Una **reinstalación limpia** completa es entonces:
+
+```bash
+sudo PURGE_DATA=yes bash deploy/uninstall.sh
+sudo DOMAIN=adg.example.org \
+     ADMIN_EMAIL=admin@example.org \
+     ADMIN_PASSWORD='UnaContraseñaFuerte' \
+     LETSENCRYPT_EMAIL=tucorreo@example.org \
+     bash deploy/install.sh
+```
+
+> Consejo: clona el repositorio **una sola vez** (por ejemplo en `/opt` o en tu
+> carpeta personal) y ejecuta siempre los scripts desde esa carpeta. No vuelvas
+> a hacer `git clone` dentro del propio proyecto.
 
 ### Copias de seguridad
 
