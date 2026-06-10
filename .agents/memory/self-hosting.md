@@ -67,3 +67,19 @@ desktop web at `/`, Expo web export at `/app` on the same domain.
   PWA install/push need HTTPS. In update.sh the mobile build runs BEFORE the web
   root is wiped, so a failed build aborts (set -e) and leaves the live `/app`
   untouched.
+
+## "/app 404" recovery when the server doesn't know its own domain
+**Why:** A very common self-host shape is install with `DOMAIN=_` (or IP) and then
+put a real domain in front via Cloudflare/another proxy. Then `server_name` is `_`,
+`.env` MOBILE_WEB_URL/PUBLIC_APP_URL are blank, so the mobile app is never built and
+`/app` falls through to the desktop SPA (which renders its OWN 404 — nginx returns
+200). The domain the admin types into the in-app control panel is saved in the
+**DB** (`integration_settings.mobile_web_url`), NOT in `.env`, so deploy scripts that
+only read `.env`/nginx can't see it.
+**How to apply:** `update.sh` resolves the mobile host in priority order:
+env `MOBILE_WEB_URL` → DB `mobile_web_url` (best-effort `psql`, must be non-fatal so a
+DB hiccup never aborts before git pull/schema push) → `PUBLIC_APP_URL` → env `DOMAIN`
+override → nginx `server_name` (ignoring `_`/localhost/IPv4). The one-shot user fix is
+`sudo DOMAIN=their-domain bash deploy/update.sh`. When writing back to `.env`, upsert
+with grep-drop-then-append + `cat >` (NOT `mv`) so the file's owner/perms are
+preserved — `mv` from /tmp makes it root:root 600 and the service user can't read it.

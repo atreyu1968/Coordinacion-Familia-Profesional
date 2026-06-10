@@ -158,6 +158,19 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   de la app móvil, su instalación y las notificaciones push requieren un dominio
   HTTPS (no se construye con una IP o sin dominio). Cada `deploy/update.sh` la
   vuelve a compilar y publicar.
+  - **Si `/app` da 404** (instalaste con dominio genérico `_`/IP y luego pusiste
+    un dominio delante, p. ej. con Cloudflare): el servidor no conocía su dominio,
+    así que la app móvil nunca se compiló. Indícaselo y vuelve a actualizar:
+
+    ```bash
+    cd /ruta/al/repositorio && git pull
+    sudo DOMAIN=tu-dominio.com bash deploy/update.sh
+    ```
+
+    `update.sh` también intenta leer el dominio que hayas guardado en **Panel de
+    Control → App Móvil**, así que muchas veces basta con `sudo bash
+    deploy/update.sh`. El script compila y publica `/app`, añade su ruta a nginx,
+    corrige el `server_name` y guarda `MOBILE_WEB_URL`/`PUBLIC_APP_URL` en el `.env`.
 - **Espacio colaborativo (Nextcloud + Collabora):** cada módulo dispone de una
   carpeta compartida y un editor de documentos en tiempo real. Si instalas con un
   dominio HTTPS real, el instalador lo **monta e integra automáticamente** (instala
