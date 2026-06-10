@@ -99,6 +99,23 @@ service uninstall` (keeps the binary).
 **Why:** lets admins expose the server via Cloudflare without opening ports or local TLS; the
 main domain's Cloudflare cert already covers all subpaths.
 
+## Stale clone is the #1 cause of "old behavior" on self-host servers
+Self-hosters run `git clone` once; a later re-`clone` prints "destination path already
+exists and is not an empty directory" and is a NO-OP, so they keep running the OLD code.
+Symptoms of stale code: collab installs as `drive.`/`office.` SUBDOMAINS (pre-subpath
+migration), the domain prompt is missing/different, etc. **Always tell them to
+`cd <repo> && git pull` (or remove the dir and re-clone) before reinstalling.**
+**Why:** merges land in the Replit repo; the server only updates on an explicit pull.
+
+## Installer prompt eaten by pasted trailing newline → DOMAIN silently "_"
+When the install command is pasted as a block (or `curl | bash`), a leftover newline in
+the terminal buffer can be swallowed by the FIRST `read`, silently accepting its default
+(`DOMAIN=_`), which disables HTTPS AND skips the collaborative space (DEFAULT_COLLAB=no for
+`_`/IP). `install.sh` now calls `drain_tty` (non-blocking `read -t 0.1` flush) before the
+first prompt. Most robust workaround for users: pass values as env vars, e.g.
+`sudo DOMAIN=adg.example.org CLOUDFLARE_TUNNEL_TOKEN=... bash deploy/install.sh` (env-set
+vars skip prompts entirely via `prompt_default`/`prompt_secret` early-return).
+
 ## "/app 404" recovery when the server doesn't know its own domain
 **Why:** A very common self-host shape is install with `DOMAIN=_` (or IP) and then
 put a real domain in front via Cloudflare/another proxy. Then `server_name` is `_`,

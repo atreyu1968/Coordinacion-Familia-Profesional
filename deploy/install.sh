@@ -67,6 +67,18 @@ elif [[ -r /dev/tty ]] && (exec 3</dev/tty) 2>/dev/null; then
 fi
 is_tty() { [[ -n "${TTY_DEV}" ]]; }
 
+# Discard any input already buffered on the terminal before prompting. When the
+# install command is pasted as a block (or run via curl | bash), a leftover
+# newline can sit in the buffer and get swallowed by the very first prompt —
+# silently accepting its default (e.g. DOMAIN="_", which disables HTTPS and skips
+# the collaborative space). Flushing first makes the first question actually wait.
+drain_tty() {
+  is_tty || return 0
+  local junk
+  while IFS= read -r -t 0.1 junk <"${TTY_DEV}" 2>/dev/null; do :; done
+  return 0
+}
+
 # Prompt for a value with a default (only when interactive and unset).
 prompt_default() {
   local var="$1" message="$2" default="$3" current
@@ -92,7 +104,8 @@ prompt_secret() {
 
 # ---------------------------------------------------------------------------
 log "Gathering configuration"
-prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "_"
+drain_tty
+prompt_default DOMAIN "Domain for the WEB app, e.g. adg.example.org (use _ for any host/IP)" "_"
 # Normalize and validate the domain. Uppercase, spaces or accents (a common
 # copy/paste or typo mistake, e.g. "coordinación.example.org") would make nginx
 # and certbot fail later in confusing ways, so reject them up front. "_" (any

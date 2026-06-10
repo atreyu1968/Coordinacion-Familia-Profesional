@@ -1,0 +1,991 @@
+Extracting templates from packages: 100%
+Preconfiguring packages ...
+/var/cache/debconf/tmp.ci/postgresql.config.sgdnaw: 12: pg_lsclusters: not found
+(Reading database ... 20948 files and directories currently installed.)
+Preparing to unpack .../dpkg_1.22.18ubuntu2.2_amd64.deb ...
+Unpacking dpkg (1.22.18ubuntu2.2) over (1.22.18ubuntu2) ...
+Setting up dpkg (1.22.18ubuntu2.2) ...
+(Reading database ... 20948 files and directories currently installed.)
+Preparing to unpack .../libc6_2.41-6ubuntu1.2_amd64.deb ...
+Unpacking libc6:amd64 (2.41-6ubuntu1.2) over (2.41-6ubuntu1) ...
+Setting up libc6:amd64 (2.41-6ubuntu1.2) ...
+(Reading database ... 20948 files and directories currently installed.)
+Preparing to unpack .../libc-bin_2.41-6ubuntu1.2_amd64.deb ...
+Unpacking libc-bin (2.41-6ubuntu1.2) over (2.41-6ubuntu1) ...
+Setting up libc-bin (2.41-6ubuntu1.2) ...
+Selecting previously unselected package libjson-perl.
+(Reading database ... 20948 files and directories currently installed.)
+Preparing to unpack .../0-libjson-perl_4.10000-1_all.deb ...
+Unpacking libjson-perl (4.10000-1) ...
+Selecting previously unselected package postgresql-client-common.
+Preparing to unpack .../1-postgresql-client-common_274_all.deb ...
+Unpacking postgresql-client-common (274) ...
+Selecting previously unselected package libio-pty-perl.
+Preparing to unpack .../2-libio-pty-perl_1%3a1.20-1build3_amd64.deb ...
+Unpacking libio-pty-perl (1:1.20-1build3) ...
+Selecting previously unselected package libipc-run-perl.
+Preparing to unpack .../3-libipc-run-perl_20231003.0-2_all.deb ...
+Unpacking libipc-run-perl (20231003.0-2) ...
+Selecting previously unselected package postgresql-common-dev.
+Preparing to unpack .../4-postgresql-common-dev_274_all.deb ...
+Unpacking postgresql-common-dev (274) ...
+Preparing to unpack .../5-openssl-provider-legacy_3.4.1-1ubuntu4_amd64.deb ...
+Unpacking openssl-provider-legacy (3.4.1-1ubuntu4) over (3.4.1-1ubuntu3) ...
+Setting up openssl-provider-legacy (3.4.1-1ubuntu4) ...
+(Reading database ... 21146 files and directories currently installed.)
+Preparing to unpack .../libssl3t64_3.4.1-1ubuntu4_amd64.deb ...
+Unpacking libssl3t64:amd64 (3.4.1-1ubuntu4) over (3.4.1-1ubuntu3) ...
+Setting up libssl3t64:amd64 (3.4.1-1ubuntu4) ...
+(Reading database ... 21146 files and directories currently installed.)
+Preparing to unpack .../openssl_3.4.1-1ubuntu4_amd64.deb ...
+Unpacking openssl (3.4.1-1ubuntu4) over (3.4.1-1ubuntu3) ...
+Selecting previously unselected package ssl-cert.
+Preparing to unpack .../ssl-cert_1.1.3ubuntu1_all.deb ...
+Unpacking ssl-cert (1.1.3ubuntu1) ...
+Selecting previously unselected package postgresql-common.
+Preparing to unpack .../postgresql-common_274_all.deb ...
+Adding 'diversion of /usr/bin/pg_config to /usr/bin/pg_config.libpq-dev by postgresql-common'
+Unpacking postgresql-common (274) ...
+Preparing to unpack .../gpgv_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gpgv (2.4.4-2ubuntu23.2) over (2.4.4-2ubuntu23) ...
+Setting up gpgv (2.4.4-2ubuntu23.2) ...
+(Reading database ... 21217 files and directories currently installed.)
+Preparing to unpack .../00-locales_2.41-6ubuntu1.2_all.deb ...
+Unpacking locales (2.41-6ubuntu1.2) over (2.41-6ubuntu1) ...
+Selecting previously unselected package libsframe1:amd64.
+Preparing to unpack .../01-libsframe1_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking libsframe1:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package binutils-common:amd64.
+Preparing to unpack .../02-binutils-common_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking binutils-common:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package libbinutils:amd64.
+Preparing to unpack .../03-libbinutils_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking libbinutils:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package libgprofng0:amd64.
+Preparing to unpack .../04-libgprofng0_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking libgprofng0:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package libctf-nobfd0:amd64.
+Preparing to unpack .../05-libctf-nobfd0_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking libctf-nobfd0:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package libctf0:amd64.
+Preparing to unpack .../06-libctf0_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking libctf0:amd64 (2.44-3ubuntu1.3) ...
+Selecting previously unselected package binutils-x86-64-linux-gnu.
+Preparing to unpack .../07-binutils-x86-64-linux-gnu_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking binutils-x86-64-linux-gnu (2.44-3ubuntu1.3) ...
+Selecting previously unselected package binutils.
+Preparing to unpack .../08-binutils_2.44-3ubuntu1.3_amd64.deb ...
+Unpacking binutils (2.44-3ubuntu1.3) ...
+Selecting previously unselected package libc-dev-bin.
+Preparing to unpack .../09-libc-dev-bin_2.41-6ubuntu1.2_amd64.deb ...
+Unpacking libc-dev-bin (2.41-6ubuntu1.2) ...
+Selecting previously unselected package linux-libc-dev:amd64.
+Preparing to unpack .../10-linux-libc-dev_6.14.0-37.37_amd64.deb ...
+Unpacking linux-libc-dev:amd64 (6.14.0-37.37) ...
+Selecting previously unselected package libcrypt-dev:amd64.
+Preparing to unpack .../11-libcrypt-dev_1%3a4.4.38-1_amd64.deb ...
+Unpacking libcrypt-dev:amd64 (1:4.4.38-1) ...
+Selecting previously unselected package rpcsvc-proto.
+Preparing to unpack .../12-rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb ...
+Unpacking rpcsvc-proto (1.4.2-0ubuntu7) ...
+Selecting previously unselected package libc6-dev:amd64.
+Preparing to unpack .../13-libc6-dev_2.41-6ubuntu1.2_amd64.deb ...
+Unpacking libc6-dev:amd64 (2.41-6ubuntu1.2) ...
+Selecting previously unselected package libisl23:amd64.
+Preparing to unpack .../14-libisl23_0.27-1_amd64.deb ...
+Unpacking libisl23:amd64 (0.27-1) ...
+Selecting previously unselected package libmpfr6:amd64.
+Preparing to unpack .../15-libmpfr6_4.2.2-1_amd64.deb ...
+Unpacking libmpfr6:amd64 (4.2.2-1) ...
+Selecting previously unselected package libmpc3:amd64.
+Preparing to unpack .../16-libmpc3_1.3.1-1build2_amd64.deb ...
+Unpacking libmpc3:amd64 (1.3.1-1build2) ...
+Selecting previously unselected package cpp-14-x86-64-linux-gnu.
+Preparing to unpack .../17-cpp-14-x86-64-linux-gnu_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking cpp-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Selecting previously unselected package cpp-14.
+Preparing to unpack .../18-cpp-14_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking cpp-14 (14.2.0-19ubuntu2) ...
+Selecting previously unselected package cpp-x86-64-linux-gnu.
+Preparing to unpack .../19-cpp-x86-64-linux-gnu_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking cpp-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package cpp.
+Preparing to unpack .../20-cpp_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking cpp (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package libcc1-0:amd64.
+Preparing to unpack .../21-libcc1-0_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libcc1-0:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libgomp1:amd64.
+Preparing to unpack .../22-libgomp1_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libgomp1:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libitm1:amd64.
+Preparing to unpack .../23-libitm1_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libitm1:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libasan8:amd64.
+Preparing to unpack .../24-libasan8_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libasan8:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package liblsan0:amd64.
+Preparing to unpack .../25-liblsan0_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking liblsan0:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libtsan2:amd64.
+Preparing to unpack .../26-libtsan2_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libtsan2:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libubsan1:amd64.
+Preparing to unpack .../27-libubsan1_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libubsan1:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libhwasan0:amd64.
+Preparing to unpack .../28-libhwasan0_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libhwasan0:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libquadmath0:amd64.
+Preparing to unpack .../29-libquadmath0_15-20250404-0ubuntu1_amd64.deb ...
+Unpacking libquadmath0:amd64 (15-20250404-0ubuntu1) ...
+Selecting previously unselected package libgcc-14-dev:amd64.
+Preparing to unpack .../30-libgcc-14-dev_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking libgcc-14-dev:amd64 (14.2.0-19ubuntu2) ...
+Selecting previously unselected package gcc-14-x86-64-linux-gnu.
+Preparing to unpack .../31-gcc-14-x86-64-linux-gnu_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking gcc-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Selecting previously unselected package gcc-14.
+Preparing to unpack .../32-gcc-14_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking gcc-14 (14.2.0-19ubuntu2) ...
+Selecting previously unselected package gcc-x86-64-linux-gnu.
+Preparing to unpack .../33-gcc-x86-64-linux-gnu_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking gcc-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package gcc.
+Preparing to unpack .../34-gcc_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking gcc (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package libstdc++-14-dev:amd64.
+Preparing to unpack .../35-libstdc++-14-dev_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking libstdc++-14-dev:amd64 (14.2.0-19ubuntu2) ...
+Selecting previously unselected package g++-14-x86-64-linux-gnu.
+Preparing to unpack .../36-g++-14-x86-64-linux-gnu_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking g++-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Selecting previously unselected package g++-14.
+Preparing to unpack .../37-g++-14_14.2.0-19ubuntu2_amd64.deb ...
+Unpacking g++-14 (14.2.0-19ubuntu2) ...
+Selecting previously unselected package g++-x86-64-linux-gnu.
+Preparing to unpack .../38-g++-x86-64-linux-gnu_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking g++-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package g++.
+Preparing to unpack .../39-g++_4%3a14.2.0-1ubuntu1_amd64.deb ...
+Unpacking g++ (4:14.2.0-1ubuntu1) ...
+Selecting previously unselected package make.
+Preparing to unpack .../40-make_4.4.1-1_amd64.deb ...
+Unpacking make (4.4.1-1) ...
+Selecting previously unselected package libdpkg-perl.
+Preparing to unpack .../41-libdpkg-perl_1.22.18ubuntu2.2_all.deb ...
+Unpacking libdpkg-perl (1.22.18ubuntu2.2) ...
+Selecting previously unselected package bzip2.
+Preparing to unpack .../42-bzip2_1.0.8-6_amd64.deb ...
+Unpacking bzip2 (1.0.8-6) ...
+Selecting previously unselected package lto-disabled-list.
+Preparing to unpack .../43-lto-disabled-list_57_all.deb ...
+Unpacking lto-disabled-list (57) ...
+Selecting previously unselected package dpkg-dev.
+Preparing to unpack .../44-dpkg-dev_1.22.18ubuntu2.2_all.deb ...
+Unpacking dpkg-dev (1.22.18ubuntu2.2) ...
+Selecting previously unselected package build-essential.
+Preparing to unpack .../45-build-essential_12.12ubuntu1_amd64.deb ...
+Unpacking build-essential (12.12ubuntu1) ...
+Selecting previously unselected package libcurl4t64:amd64.
+Preparing to unpack .../46-libcurl4t64_8.12.1-3ubuntu1_amd64.deb ...
+Unpacking libcurl4t64:amd64 (8.12.1-3ubuntu1) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../47-curl_8.12.1-3ubuntu1_amd64.deb ...
+Unpacking curl (8.12.1-3ubuntu1) ...
+Selecting previously unselected package gpgconf.
+Preparing to unpack .../48-gpgconf_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gpgconf (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package libksba8:amd64.
+Preparing to unpack .../49-libksba8_1.6.7-2_amd64.deb ...
+Unpacking libksba8:amd64 (1.6.7-2) ...
+Selecting previously unselected package dirmngr.
+Preparing to unpack .../50-dirmngr_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking dirmngr (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package gnupg-utils.
+Preparing to unpack .../51-gnupg-utils_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gnupg-utils (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package gpg.
+Preparing to unpack .../52-gpg_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gpg (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package pinentry-curses.
+Preparing to unpack .../53-pinentry-curses_1.3.1-2ubuntu3_amd64.deb ...
+Unpacking pinentry-curses (1.3.1-2ubuntu3) ...
+Selecting previously unselected package gpg-agent.
+Preparing to unpack .../54-gpg-agent_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gpg-agent (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package gpgsm.
+Preparing to unpack .../55-gpgsm_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking gpgsm (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package keyboxd.
+Preparing to unpack .../56-keyboxd_2.4.4-2ubuntu23.2_amd64.deb ...
+Unpacking keyboxd (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package gnupg.
+Preparing to unpack .../57-gnupg_2.4.4-2ubuntu23.2_all.deb ...
+Unpacking gnupg (2.4.4-2ubuntu23.2) ...
+Selecting previously unselected package libllvm20:amd64.
+Preparing to unpack .../58-libllvm20_1%3a20.1.2-0ubuntu1_amd64.deb ...
+Unpacking libllvm20:amd64 (1:20.1.2-0ubuntu1) ...
+Selecting previously unselected package libpq5:amd64.
+Preparing to unpack .../59-libpq5_17.7-0ubuntu0.25.04.1_amd64.deb ...
+Unpacking libpq5:amd64 (17.7-0ubuntu0.25.04.1) ...
+Selecting previously unselected package libxslt1.1:amd64.
+Preparing to unpack .../60-libxslt1.1_1.1.39-0exp1ubuntu4.1_amd64.deb ...
+Unpacking libxslt1.1:amd64 (1.1.39-0exp1ubuntu4.1) ...
+Selecting previously unselected package nginx-common.
+Preparing to unpack .../61-nginx-common_1.26.3-2ubuntu1.2_all.deb ...
+Unpacking nginx-common (1.26.3-2ubuntu1.2) ...
+Selecting previously unselected package nginx.
+Preparing to unpack .../62-nginx_1.26.3-2ubuntu1.2_amd64.deb ...
+Unpacking nginx (1.26.3-2ubuntu1.2) ...
+Selecting previously unselected package postgresql-client-17.
+Preparing to unpack .../63-postgresql-client-17_17.7-0ubuntu0.25.04.1_amd64.deb ...
+Unpacking postgresql-client-17 (17.7-0ubuntu0.25.04.1) ...
+Selecting previously unselected package postgresql-17.
+Preparing to unpack .../64-postgresql-17_17.7-0ubuntu0.25.04.1_amd64.deb ...
+Unpacking postgresql-17 (17.7-0ubuntu0.25.04.1) ...
+Selecting previously unselected package postgresql.
+Preparing to unpack .../65-postgresql_17+274_all.deb ...
+Unpacking postgresql (17+274) ...
+Setting up libksba8:amd64 (1.6.7-2) ...
+Setting up pinentry-curses (1.3.1-2ubuntu3) ...
+Setting up postgresql-client-common (274) ...
+Setting up lto-disabled-list (57) ...
+Setting up libcurl4t64:amd64 (8.12.1-3ubuntu1) ...
+Setting up libio-pty-perl (1:1.20-1build3) ...
+Setting up binutils-common:amd64 (2.44-3ubuntu1.3) ...
+Setting up libpq5:amd64 (17.7-0ubuntu0.25.04.1) ...
+Setting up linux-libc-dev:amd64 (6.14.0-37.37) ...
+Setting up libctf-nobfd0:amd64 (2.44-3ubuntu1.3) ...
+Setting up nginx-common (1.26.3-2ubuntu1.2) ...
+Created symlink '/etc/systemd/system/multi-user.target.wants/nginx.service' -> '/usr/lib/systemd/system/nginx.service'.
+Setting up libgomp1:amd64 (15-20250404-0ubuntu1) ...
+Setting up bzip2 (1.0.8-6) ...
+Setting up locales (2.41-6ubuntu1.2) ...
+Generating locales (this might take a while)...
+Generation complete.
+Setting up libsframe1:amd64 (2.44-3ubuntu1.3) ...
+Setting up rpcsvc-proto (1.4.2-0ubuntu7) ...
+Setting up make (4.4.1-1) ...
+Setting up libmpfr6:amd64 (4.2.2-1) ...
+Setting up libquadmath0:amd64 (15-20250404-0ubuntu1) ...
+Setting up libmpc3:amd64 (1.3.1-1build2) ...
+Setting up libllvm20:amd64 (1:20.1.2-0ubuntu1) ...
+Setting up libipc-run-perl (20231003.0-2) ...
+Setting up libdpkg-perl (1.22.18ubuntu2.2) ...
+Setting up libubsan1:amd64 (15-20250404-0ubuntu1) ...
+Setting up libhwasan0:amd64 (15-20250404-0ubuntu1) ...
+Setting up libcrypt-dev:amd64 (1:4.4.38-1) ...
+Setting up libasan8:amd64 (15-20250404-0ubuntu1) ...
+Setting up libjson-perl (4.10000-1) ...
+Setting up libxslt1.1:amd64 (1.1.39-0exp1ubuntu4.1) ...
+Setting up gpgconf (2.4.4-2ubuntu23.2) ...
+Setting up curl (8.12.1-3ubuntu1) ...
+Setting up libtsan2:amd64 (15-20250404-0ubuntu1) ...
+Setting up libbinutils:amd64 (2.44-3ubuntu1.3) ...
+Setting up libisl23:amd64 (0.27-1) ...
+Setting up libc-dev-bin (2.41-6ubuntu1.2) ...
+Setting up openssl (3.4.1-1ubuntu4) ...
+Setting up libcc1-0:amd64 (15-20250404-0ubuntu1) ...
+Setting up gpg (2.4.4-2ubuntu23.2) ...
+Setting up liblsan0:amd64 (15-20250404-0ubuntu1) ...
+Setting up libitm1:amd64 (15-20250404-0ubuntu1) ...
+Setting up gnupg-utils (2.4.4-2ubuntu23.2) ...
+Setting up postgresql-common-dev (274) ...
+Setting up libctf0:amd64 (2.44-3ubuntu1.3) ...
+Setting up gpg-agent (2.4.4-2ubuntu23.2) ...
+Created symlink '/etc/systemd/user/sockets.target.wants/gpg-agent.socket' -> '/usr/lib/systemd/user/gpg-agent.socket'.
+Created symlink '/etc/systemd/user/sockets.target.wants/gpg-agent-ssh.socket' -> '/usr/lib/systemd/user/gpg-agent-ssh.socket'.
+Created symlink '/etc/systemd/user/sockets.target.wants/gpg-agent-extra.socket' -> '/usr/lib/systemd/user/gpg-agent-extra.socket'.
+Created symlink '/etc/systemd/user/sockets.target.wants/gpg-agent-browser.socket' -> '/usr/lib/systemd/user/gpg-agent-browser.socket'.
+Setting up postgresql-client-17 (17.7-0ubuntu0.25.04.1) ...
+update-alternatives: using /usr/share/postgresql/17/man/man1/psql.1.gz to provide /usr/share/man/man1/psql.1.gz (psql.1.gz) in auto mode
+Setting up nginx (1.26.3-2ubuntu1.2) ...
+ * Upgrading binary nginx                                                                                                                                                [ OK ] 
+Setting up gpgsm (2.4.4-2ubuntu23.2) ...
+Setting up dirmngr (2.4.4-2ubuntu23.2) ...
+Created symlink '/etc/systemd/user/sockets.target.wants/dirmngr.socket' -> '/usr/lib/systemd/user/dirmngr.socket'.
+Setting up libgprofng0:amd64 (2.44-3ubuntu1.3) ...
+Setting up ssl-cert (1.1.3ubuntu1) ...
+Created symlink '/etc/systemd/system/multi-user.target.wants/ssl-cert.service' -> '/usr/lib/systemd/system/ssl-cert.service'.
+Setting up postgresql-common (274) ...
+Creating config file /etc/postgresql-common/createcluster.conf with new version
+Building PostgreSQL dictionaries from installed myspell/hunspell packages...
+Removing obsolete dictionary files:
+Created symlink '/etc/systemd/system/multi-user.target.wants/postgresql.service' -> '/usr/lib/systemd/system/postgresql.service'.
+Setting up keyboxd (2.4.4-2ubuntu23.2) ...
+Created symlink '/etc/systemd/user/sockets.target.wants/keyboxd.socket' -> '/usr/lib/systemd/user/keyboxd.socket'.
+Setting up cpp-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Setting up cpp-14 (14.2.0-19ubuntu2) ...
+Setting up gnupg (2.4.4-2ubuntu23.2) ...
+Setting up libc6-dev:amd64 (2.41-6ubuntu1.2) ...
+Setting up libgcc-14-dev:amd64 (14.2.0-19ubuntu2) ...
+Setting up libstdc++-14-dev:amd64 (14.2.0-19ubuntu2) ...
+Setting up binutils-x86-64-linux-gnu (2.44-3ubuntu1.3) ...
+Setting up cpp-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Setting up postgresql-17 (17.7-0ubuntu0.25.04.1) ...
+Creating new PostgreSQL cluster 17/main ...
+/usr/lib/postgresql/17/bin/initdb -D /var/lib/postgresql/17/main --auth-local peer --auth-host scram-sha-256 --no-instructions
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "C".
+The default database encoding has accordingly been set to "SQL_ASCII".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /var/lib/postgresql/17/main ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+Setting up binutils (2.44-3ubuntu1.3) ...
+Setting up dpkg-dev (1.22.18ubuntu2.2) ...
+Setting up cpp (4:14.2.0-1ubuntu1) ...
+Setting up postgresql (17+274) ...
+Setting up gcc-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Setting up gcc-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Setting up gcc-14 (14.2.0-19ubuntu2) ...
+Setting up g++-14-x86-64-linux-gnu (14.2.0-19ubuntu2) ...
+Setting up g++-x86-64-linux-gnu (4:14.2.0-1ubuntu1) ...
+Setting up g++-14 (14.2.0-19ubuntu2) ...
+Setting up gcc (4:14.2.0-1ubuntu1) ...
+Setting up g++ (4:14.2.0-1ubuntu1) ...
+update-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode
+Setting up build-essential (12.12ubuntu1) ...
+Processing triggers for libc-bin (2.41-6ubuntu1.2) ...
+Processing triggers for ufw (0.36.2-9) ...
+Processing triggers for systemd (257.4-1ubuntu3) ...
+Processing triggers for man-db (2.13.0-1) ...
+Processing triggers for install-info (7.1.1-1) ...
+
+==> Installing Node.js 24 and pnpm
+2026-06-10 22:21:27 - Installing pre-requisites
+Hit:1 http://archive.ubuntu.com/ubuntu plucky InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+71 packages can be upgraded. Run 'apt list --upgradable' to see them.
+ca-certificates is already the newest version (20241223).
+curl is already the newest version (8.12.1-3ubuntu1).
+gnupg is already the newest version (2.4.4-2ubuntu23.2).
+Installing:
+  apt-transport-https
+
+Summary:
+  Upgrading: 0, Installing: 1, Removing: 0, Not Upgrading: 71
+  Download size: 3932 B
+  Space needed: 49.2 kB / 48.2 GB available
+
+Get:1 http://archive.ubuntu.com/ubuntu plucky/universe amd64 apt-transport-https all 3.0.0 [3932 B]
+Fetched 3932 B in 0s (36.4 kB/s)            
+Selecting previously unselected package apt-transport-https.
+(Reading database ... 26987 files and directories currently installed.)
+Preparing to unpack .../apt-transport-https_3.0.0_all.deb ...
+Unpacking apt-transport-https (3.0.0) ...
+Setting up apt-transport-https (3.0.0) ...
+Hit:1 http://archive.ubuntu.com/ubuntu plucky InRelease
+Get:2 https://deb.nodesource.com/node_24.x nodistro InRelease [12.1 kB]
+Hit:3 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Get:4 https://deb.nodesource.com/node_24.x nodistro/main amd64 Packages [6858 B]
+Hit:5 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+Fetched 19.0 kB in 0s (40.7 kB/s)
+71 packages can be upgraded. Run 'apt list --upgradable' to see them.
+2026-06-10 22:21:32 - Repository configured successfully.
+2026-06-10 22:21:32 - To install Node.js, run: apt install nodejs -y
+2026-06-10 22:21:32 - You can use N|solid Runtime as a node.js alternative
+2026-06-10 22:21:32 - To install N|solid Runtime, run: apt install nsolid -y 
+
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  nodejs
+0 upgraded, 1 newly installed, 0 to remove and 71 not upgraded.
+Need to get 38.6 MB of archives.
+After this operation, 237 MB of additional disk space will be used.
+Get:1 https://deb.nodesource.com/node_24.x nodistro/main amd64 nodejs amd64 24.16.0-1nodesource1 [38.6 MB]
+Fetched 38.6 MB in 1s (39.7 MB/s) 
+Selecting previously unselected package nodejs.
+(Reading database ... 26991 files and directories currently installed.)
+Preparing to unpack .../nodejs_24.16.0-1nodesource1_amd64.deb ...
+Unpacking nodejs (24.16.0-1nodesource1) ...
+Setting up nodejs (24.16.0-1nodesource1) ...
+Processing triggers for man-db (2.13.0-1) ...
+Preparing pnpm@10.26.1 for immediate activation...
+    node v24.16.0 / pnpm 10.26.1
+
+==> Configuring PostgreSQL
+Synchronizing state of postgresql.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable postgresql
+
+==> Writing environment file (/root/Coordinacion-Familia-Profesional/.env)
+
+==> Installing dependencies and building (this can take a few minutes)
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Packages: +1340
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   ╭──────────────────────────────────────────────╮
+   │                                              │
+   │     Update available! 10.26.1 → 11.5.3.      │
+   │     Changelog: https://pnpm.io/v/11.5.3      │
+   │   To update, run: corepack use pnpm@11.5.3   │
+   │                                              │
+   ╰──────────────────────────────────────────────╯
+
+Downloading react-native@0.81.5: 24.77 MB/24.77 MB, done
+Downloading react-icons@5.6.0: 22.42 MB/22.42 MB, done
+Progress: resolved 1340, reused 0, downloaded 1314, added 1340, done
+Downloading @expo/ngrok-bin-linux-x64@2.3.41: 13.72 MB/13.72 MB, done
+node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinstall script, done in 92ms
+
+devDependencies:
++ prettier 3.8.3
++ typescript 5.9.3
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+└─ Done in 28ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: core-js@3.49.0.                                                   │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 22.6s using pnpm v10.26.1
+
+> @workspace/web@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/progress.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2788 modules transformed.
+dist/public/index.html                              1.43 kB │ gzip:   0.56 kB
+dist/public/assets/logo-white-DEL1HFd6.png         73.55 kB
+dist/public/assets/asd-logo-fM_s8fLi.png          129.36 kB
+dist/public/assets/logo-DFQi30hF.png              384.13 kB
+dist/public/assets/login-hero-CSDUqFS7.png      1,499.10 kB
+dist/public/assets/index-C1izGyMC.css             120.37 kB │ gzip:  23.81 kB
+dist/public/assets/purify.es-orNEJq1p.js           26.74 kB │ gzip:  10.05 kB
+dist/public/assets/index.es-hbMq6TD2.js           158.79 kB │ gzip:  53.02 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js    201.04 kB │ gzip:  47.43 kB
+dist/public/assets/index-yTiZmaJY.js            1,976.03 kB │ gzip: 590.97 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.45s
+
+> @workspace/api-server@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       4.3mb ⚠️
+  dist/pino-worker.mjs               153.4kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   7.4mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           204.0kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 703ms
+
+==> Applying database schema
+
+> @workspace/db@0.0.0 push /root/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+
+==> Creating the first administrator (if needed)
+
+> @workspace/scripts@0.0.0 seed-admin /root/Coordinacion-Familia-Profesional/scripts
+> tsx ./src/seed-admin.ts
+
+Created superadmin "fgorol@canariaseducacion.es".
+
+==> Configuring the systemd service
+Created symlink '/etc/systemd/system/multi-user.target.wants/coordina-adg.service' -> '/etc/systemd/system/coordina-adg.service'.
+
+==> Configuring nginx
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+Synchronizing state of nginx.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable nginx
+
+==> Done!
+    Open:    http://<server-ip>/
+    Login:   fgorol@canariaseducacion.es
+    Service: systemctl status coordina-adg   |  journalctl -u coordina-adg -f
+    Update:  sudo bash deploy/update.sh
+root@Coordinacion:~/Coordinacion-Familia-Profesional# sudo bash deploy/update.sh
+==> Setting MOBILE_WEB_URL=https://coordinacionag.iesmmg.escoordinacionag.iesmmg.es/app in .env
+==> Setting PUBLIC_APP_URL=https://coordinacionag.iesmmg.es in .env
+==> Pulling latest code
+Already up to date.
+==> Installing dependencies
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+└─ Done in 20ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: core-js@3.49.0.                                                   │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 2.5s using pnpm v10.26.1
+==> Building web + API
+
+> @workspace/web@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/progress.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2788 modules transformed.
+dist/public/index.html                              1.43 kB │ gzip:   0.56 kB
+dist/public/assets/logo-white-DEL1HFd6.png         73.55 kB
+dist/public/assets/asd-logo-fM_s8fLi.png          129.36 kB
+dist/public/assets/logo-DFQi30hF.png              384.13 kB
+dist/public/assets/login-hero-CSDUqFS7.png      1,499.10 kB
+dist/public/assets/index-C1izGyMC.css             120.37 kB │ gzip:  23.81 kB
+dist/public/assets/purify.es-orNEJq1p.js           26.74 kB │ gzip:  10.05 kB
+dist/public/assets/index.es-hbMq6TD2.js           158.79 kB │ gzip:  53.02 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js    201.04 kB │ gzip:  47.43 kB
+dist/public/assets/index-yTiZmaJY.js            1,976.03 kB │ gzip: 590.97 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.25s
+
+> @workspace/api-server@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       4.3mb ⚠️
+  dist/pino-worker.mjs               153.4kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   7.4mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           204.0kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 662ms
+==> Building the mobile app (PWA) for coordinacionag.iesmmg.es/app
+
+> @workspace/movil@0.0.0 build:web /root/Coordinacion-Familia-Profesional/artifacts/movil
+> expo export --platform web --output-dir dist
+
+
+Using (experimental) base path: coordinacionag.iesmmg.es/app
+  Base path does not start with a slash. Requests will not be absolute.
+React Compiler enabled
+Starting Metro Bundler
+Web Bundled 57214ms node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/entry.js (1540 modules)
+
+› Assets (57):
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin_Italic/Inter_100Thin_Italic.1b97f7df9b976cfe530c18c09598e6f6.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin/Inter_100Thin.ddbb1cd55ad509e82377bd10beed6506.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight_Italic/Inter_200ExtraLight_Italic.3d0662838915a7a16d01c262735d3d29.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight/Inter_200ExtraLight.e1f33daee21eb5998b13d3e05264d9a3.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light_Italic/Inter_300Light_Italic.17f8f23a2852bfa14ce5bf590c2a0e2c.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light/Inter_300Light.d2994e3dea3856e1834395ad6cce32af.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular_Italic/Inter_400Regular_Italic.36cad9f97595b7759264b945d64502b4.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.51b6ad87261f18b6433ec52871ddfabc.ttf (342 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium_Italic/Inter_500Medium_Italic.155406bfbfb023eb104728edfe62c0e9.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.137ab18bace28dd0bd83eb3b8ed2bc54.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold_Italic/Inter_600SemiBold_Italic.a349d1ac188e1a67689432f44de99849.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.a5f35888d2da465de352e0dcfaf33324.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold_Italic/Inter_700Bold_Italic.3398006c80026f0508aaaf4808950d56.ttf (348 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.6e237de4f1f413afa2fcc45c77ac343a.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold_Italic/Inter_800ExtraBold_Italic.7ca909a56537d965feef41abe58b87e0.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.6016034293c084aa0c056e83938bf1cc.ttf (345 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black_Italic/Inter_900Black_Italic.d5f78c24de59ce5e4bad405e10e71941.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black/Inter_900Black.bcec6eda9700a81ba92c483a2f2c02c1.ttf (345 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.3f78af31cca60105799838a1a7a59fbd.ttf (130 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Entypo.31b5ffea3daddc69dd01a1f3d6cf63c5.ttf (66.2 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/EvilIcons.140c53a7643ea949007aa9a282153849.ttf (13.5 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ca4b48e04dc1ce10bfbddb262c8b835f.ttf (55.6 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.3b89dd103490708d19a95adcae52210e.ttf (134 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.1f77739ca9ff2188b539c36f30ffa2be.ttf (33.7 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.605ed7926cf39a2ad5ec2d1f9d391d3d.ttf (203 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Brands.56c8d80832e37783f12c05db7c8849e2.ttf (209 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Regular.370dd5af19f8364907b6e2c41f45dbbf.ttf (68 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Solid.adec7d6f310bc577f05e8fe06a5daccf.ttf (424 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Fontisto.b49ae8ab2dbccb02c4d11caaacf09eab.ttf (314 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Foundation.e20945d7c929279ef7a6f1db184a4470.ttf (57 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.b4eb097d35f44ed943676fd56f6bdc51.ttf (390 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.6e435534bd35da5fef04168860a9b8fa.ttf (1.31 MB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.4e85bc9ebe07e0340c9c4fc2f6c38908.ttf (357 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Octicons.871378c6eab492a3e689a9385dc45a12.ttf (69.4 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/SimpleLineIcons.d2285965fe34b05465047401b8595dd0.ttf (54.1 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Zocial.1681f34aaca71b8dfb70756bca331eb2.ttf (25.8 kB)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.46 kB)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.75 kB)
+assets/images/logo-white.617b098b3876ebf2d25b2e68d47f7ced.png (73.5 kB)
+assets/images/logo.cfdd8e90f787f75e04298b56c94df717.png (384 kB)
+
+› web bundles (1):
+_expo/static/js/web/entry-7a915816716ca2ee60eb7e8babd8fb3c.js (3.25 MB)
+
+› Files (3):
+favicon.ico (14.5 kB)
+index.html (1.28 kB)
+metadata.json (49 B)
+
+Exported: dist
+==> Publishing web files to /var/www/coordina-adg
+==> Publishing the mobile app to /var/www/coordina-adgcoordinacionag.iesmmg.es/app
+==> Ensuring nginx serves from /var/www/coordina-adg
+==> Setting nginx server_name to coordinacionag.iesmmg.es
+==> Adding the coordinacionag.iesmmg.es/app route to nginx for the mobile app
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Applying database schema
+
+> @workspace/db@0.0.0 push /root/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[i] No changes detected
+==> Restarting service
+Install the collaborative space (Nextcloud + Collabora)? [yes/no] [yes]: y
+Email for HTTPS certificates (blank = HTTP only): fjgr1968@gmail.com
+==> Installing the collaborative space (Nextcloud + Collabora)
+
+==> Ensuring Docker is installed
+# Executing docker install script, commit: 2687d91ddeb3bd6aeae37a90947761efdee87030
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install ca-certificates curl >/dev/null
++ sh -c install -m 0755 -d /etc/apt/keyrings
++ sh -c curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" -o /etc/apt/keyrings/docker.asc
++ sh -c chmod a+r /etc/apt/keyrings/docker.asc
++ sh -c echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu plucky stable" > /etc/apt/sources.list.d/docker.list
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras docker-buildx-plugin docker-model-plugin >/dev/null
+Using systemd to manage Docker service
++ sh -c systemctl enable --now docker.service 2>/dev/null
+INFO: Docker daemon enabled and started
+
++ sh -c docker version
+Client: Docker Engine - Community
+ Version:           29.2.1
+ API version:       1.53
+ Go version:        go1.25.6
+ Git commit:        a5c7197
+ Built:             Mon Feb  2 17:17:42 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.2.1
+  API version:      1.53 (minimum version 1.44)
+  Go version:       go1.25.6
+  Git commit:       6bc6209
+  Built:            Mon Feb  2 17:17:42 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.1
+  GitCommit:        dea7da592f5d1d2b7755e3a161be07f43fad8f75
+ runc:
+  Version:          1.3.4
+  GitCommit:        v1.3.4-0-gd6d73eb8
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+================================================================================
+
+To run Docker as a non-privileged user, consider setting up the
+Docker daemon in rootless mode for your user:
+
+    dockerd-rootless-setuptool.sh install
+
+Visit https://docs.docker.com/go/rootless/ to learn about rootless mode.
+
+
+To run the Docker daemon as a fully privileged service, but granting non-root
+users access, refer to https://docs.docker.com/go/daemon-access/
+
+WARNING: Access to the remote API on a privileged Docker daemon is equivalent
+         to root access on the host. Refer to the 'Docker daemon attack surface'
+         documentation for details: https://docs.docker.com/go/attack-surface/
+
+================================================================================
+
+Synchronizing state of docker.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable docker
+
+==> Gathering configuration
+    Main domain        : coordinacionag.iesmmg.es
+    Nextcloud (Drive)  : drive.coordinacionag.iesmmg.es
+    Collabora (Office) : office.coordinacionag.iesmmg.es
+
+==> Writing /root/Coordinacion-Familia-Profesional/deploy/nextcloud/.env
+
+==> Starting Nextcloud + Collabora (docker compose up -d)
+[+] pull 55/55
+ ✔ Image collabora/code:latest Pulled                                                                                                                                      31.5s
+ ✔ Image postgres:16-alpine    Pulled                                                                                                                                      16.8s
+ ✔ Image redis:7-alpine        Pulled                                                                                                                                      6.9ss
+ ✔ Image nextcloud:30-apache   Pulled                                                                                                                                      41.8s
+[+] up 7/7
+ ✔ Network nextcloud_default             Created                                                                                                                           0.1ss
+ ✔ Volume nextcloud_nextcloud-data       Created                                                                                                                           0.0ss
+ ✔ Volume nextcloud_nextcloud-db         Created                                                                                                                           0.0ss
+ ✔ Container nextcloud-collabora-1       Created                                                                                                                           0.1ss
+ ✔ Container nextcloud-nextcloud-redis-1 Created                                                                                                                           0.1ss
+ ✔ Container nextcloud-nextcloud-db-1    Healthy                                                                                                                           11.2s
+ ✔ Container nextcloud-nextcloud-1       Created                                                                                                                           0.1ss
+
+==> Waiting for Nextcloud to become ready
+
+==> Configuring Nextcloud apps and OIDC provider
+
+==> Configuring nginx for drive.coordinacionag.iesmmg.es and office.coordinacionag.iesmmg.es
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+==> Requesting HTTPS certificates
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Account registered.
+Requesting a certificate for drive.coordinacionag.iesmmg.es and office.coordinacionag.iesmmg.es
+
+Certbot failed to authenticate some domains (authenticator: nginx). The Certificate Authority reported these problems:
+  Domain: drive.coordinacionag.iesmmg.es
+  Type:   tls
+  Detail: 2606:4700:3033::6815:104e: Fetching https://drive.coordinacionag.iesmmg.es/.well-known/acme-challenge/QROphrrdPkCkf4_ax95WQxDSyvx70D4IjAZpQSkTBjM: remote error: tls: handshake failure
+
+  Domain: office.coordinacionag.iesmmg.es
+  Type:   tls
+  Detail: 2606:4700:3031::ac43:a6eb: Fetching https://office.coordinacionag.iesmmg.es/.well-known/acme-challenge/Q-wmfXgwe9-MF2xDgI9MlYQdPfe_u8Cj407NbIrrM9I: remote error: tls: handshake failure
+
+Hint: The Certificate Authority failed to verify the temporary nginx configuration changes made by Certbot. Ensure the listed domains point to this nginx server and that it is accessible from the internet.
+
+Some challenges have failed.
+Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /var/log/letsencrypt/letsencrypt.log or re-run Certbot with -v for more details.
+    certbot failed — sites still work over HTTP. Re-run once DNS resolves.
+
+==> Integrating with Coordina ADG (/root/Coordinacion-Familia-Profesional/.env)
+
+==> Done! The collaborative space is installed and integrated automatically.
+    No manual step needed. For reference (also in /root/Coordinacion-Familia-Profesional/deploy/nextcloud/.env, root-only):
+    URL de Nextcloud   : https://drive.coordinacionag.iesmmg.es
+    URL de Collabora   : https://office.coordinacionag.iesmmg.es
+    Usuario admin      : admin
+    Contraseña admin   : 8c2d96d553a3f498333f33e44607f70d
+    OIDC Client ID     : coordina-nextcloud
+    OIDC Client Secret : 69547f930b2229522a62c2706404f71c104f4fe808bf6d70
+==> Done. Logs: journalctl -u coordina-adg -f
+root@Coordinacion:~/Coordinacion-Familia-Profesional# sudo PURGE_DATA=yes bash deploy/uninstall.sh
+
+==> Stopping and removing the systemd service
+
+==> Removing the collaborative space (Nextcloud + Collabora) containers
+
+==> Removing nginx configuration
+
+==> Removing published web files (/var/www/coordina-adg)
+
+==> Dropping the PostgreSQL database and role (coordina_adg / coordina_adg)
+
+==> Removing uploaded files (/var/lib/coordina-adg)
+
+==> Removing environment files
+
+==> Done. Coordina ADG has been removed.
+    Data was deleted. For a clean install, run: sudo bash deploy/install.sh
+    System packages (Node.js, PostgreSQL, nginx, Docker) were left installed.
+root@Coordinacion:~/Coordinacion-Familia-Profesional# cd
+root@Coordinacion:~# # 1. Instalar git (lo único que hace falta para descargar el proyecto)
+sudo apt-get update && sudo apt-get install -y git
+
+# 2. Descargar el proyecto
+git clone https://github.com/atreyu1968/Coordinacion-Familia-Profesional.git
+cd Coordinacion-Familia-Profesional
+
+# 3. Ejecutar el instalador
+sudo bash deploy/install.sh
+Hit:1 https://deb.nodesource.com/node_24.x nodistro InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu plucky InRelease
+Hit:3 https://download.docker.com/linux/ubuntu plucky InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Hit:5 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+git is already the newest version (1:2.48.1-0ubuntu1.1).
+0 upgraded, 0 newly installed, 0 to remove and 71 not upgraded.
+fatal: destination path 'Coordinacion-Familia-Profesional' already exists and is not an empty directory.
+
+==> Gathering configuration
+Email for the first administrator [admin@localhost]: fgonrol@canariaseducacion.es
+Password for the first administrator: 
+Public HTTPS URL for the mobile app (editable later in the panel) []: coordinacionag.iesmmg.org/app
+    App directory : /root/Coordinacion-Familia-Profesional
+    Service user  : root
+    Domain        : _
+    API port      : 3001
+    Storage dir   : /var/lib/coordina-adg/storage
+
+==> Installing system packages
+Hit:1 https://deb.nodesource.com/node_24.x nodistro InRelease
+Hit:2 https://download.docker.com/linux/ubuntu plucky InRelease           
+Hit:3 http://archive.ubuntu.com/ubuntu plucky InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Hit:5 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Note, selecting 'postgresql' instead of 'postgresql-contrib'
+ca-certificates is already the newest version (20241223).
+curl is already the newest version (8.12.1-3ubuntu1).
+gnupg is already the newest version (2.4.4-2ubuntu23.2).
+git is already the newest version (1:2.48.1-0ubuntu1.1).
+build-essential is already the newest version (12.12ubuntu1).
+openssl is already the newest version (3.4.1-1ubuntu4).
+nginx is already the newest version (1.26.3-2ubuntu1.2).
+postgresql is already the newest version (17+274).
+0 upgraded, 0 newly installed, 0 to remove and 71 not upgraded.
+
+==> Installing Node.js 24 and pnpm
+Preparing pnpm@10.26.1 for immediate activation...
+    node v24.16.0 / pnpm 10.26.1
+
+==> Configuring PostgreSQL
+Synchronizing state of postgresql.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable postgresql
+
+==> Writing environment file (/root/Coordinacion-Familia-Profesional/.env)
+
+==> Installing dependencies and building (this can take a few minutes)
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+└─ Done in 21ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: core-js@3.49.0.                                                   │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 2.5s using pnpm v10.26.1
+
+> @workspace/web@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/progress.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2788 modules transformed.
+dist/public/index.html                              1.43 kB │ gzip:   0.56 kB
+dist/public/assets/logo-white-DEL1HFd6.png         73.55 kB
+dist/public/assets/asd-logo-fM_s8fLi.png          129.36 kB
+dist/public/assets/logo-DFQi30hF.png              384.13 kB
+dist/public/assets/login-hero-CSDUqFS7.png      1,499.10 kB
+dist/public/assets/index-C1izGyMC.css             120.37 kB │ gzip:  23.81 kB
+dist/public/assets/purify.es-orNEJq1p.js           26.74 kB │ gzip:  10.05 kB
+dist/public/assets/index.es-hbMq6TD2.js           158.79 kB │ gzip:  53.02 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js    201.04 kB │ gzip:  47.43 kB
+dist/public/assets/index-yTiZmaJY.js            1,976.03 kB │ gzip: 590.97 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.37s
+
+> @workspace/api-server@0.0.0 build /root/Coordinacion-Familia-Profesional/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       4.3mb ⚠️
+  dist/pino-worker.mjs               153.4kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   7.4mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           204.0kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 814ms
+
+==> Applying database schema
+
+> @workspace/db@0.0.0 push /root/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+
+==> Creating the first administrator (if needed)
+
+> @workspace/scripts@0.0.0 seed-admin /root/Coordinacion-Familia-Profesional/scripts
+> tsx ./src/seed-admin.ts
+
+Created superadmin "fgonrol@canariaseducacion.es".
+
+==> Configuring the systemd service
+Created symlink '/etc/systemd/system/multi-user.target.wants/coordina-adg.service' -> '/etc/systemd/system/coordina-adg.service'.
+
+==> Configuring nginx
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+Synchronizing state of nginx.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable nginx
+
+==> Done!
+    Open:    http://<server-ip>/
+    Login:   fgonrol@canariaseducacion.es
+    Service: systemctl status coordina-adg   |  journalctl -u coordina-adg -f
+    Update:  sudo bash deploy/update.sh
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
