@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { toMeeting } from "../lib/mappers";
-import { isDailyConfigured, getDailyAccess, publicJitsiUrl } from "../lib/daily";
+import { isJaasConfigured, buildJaasUrl, publicJitsiUrl } from "../lib/jaas";
 
 const router: IRouter = Router();
 
@@ -95,14 +95,18 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   const audioOnly = parsed.data.audioOnly ?? false;
   const caller = req.user!;
 
-  if (isDailyConfigured()) {
-    const url = await getDailyAccess({
+  if (isJaasConfigured()) {
+    // Coordinators/admins join as moderators (signed JWT → no login); everyone
+    // else joins the same room as a guest, which keeps usage in the free tier.
+    const moderator = CAN_CREATE.includes(caller.role);
+    const url = buildJaasUrl({
       room,
-      userName: caller.name,
+      user: { id: caller.id, name: caller.name, email: caller.email },
+      moderator,
       audioOnly,
     });
     if (url) {
-      res.json(GetMeetingTokenResponse.parse({ provider: "daily", url }));
+      res.json(GetMeetingTokenResponse.parse({ provider: "jaas", url }));
       return;
     }
   }

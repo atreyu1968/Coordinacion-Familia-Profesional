@@ -1209,7 +1209,7 @@ export const getGetMeetingTokenUrl = () => {
 }
 
 /**
- * @summary Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
+ * @summary Issue a ready-to-join meeting URL (8x8 JaaS, or public Jitsi fallback)
  */
 export const getMeetingToken = async (meetingTokenInput: MeetingTokenInput, options?: RequestInit): Promise<MeetingAccess> => {
 
@@ -1258,7 +1258,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type GetMeetingTokenMutationError = ErrorType<Error>
 
     /**
- * @summary Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
+ * @summary Issue a ready-to-join meeting URL (8x8 JaaS, or public Jitsi fallback)
  */
 export const useGetMeetingToken = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMeetingToken>>, TError,{data: BodyType<MeetingTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

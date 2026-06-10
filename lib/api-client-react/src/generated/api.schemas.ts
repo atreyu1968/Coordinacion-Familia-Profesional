@@ -735,7 +735,7 @@ export type MeetingAccessProvider = typeof MeetingAccessProvider[keyof typeof Me
 
 
 export const MeetingAccessProvider = {
-  daily: 'daily',
+  jaas: 'jaas',
   public: 'public',
 } as const;
 

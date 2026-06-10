@@ -291,7 +291,7 @@ export const DeleteMeetingParams = zod.object({
 
 
 /**
- * @summary Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
+ * @summary Issue a ready-to-join meeting URL (8x8 JaaS, or public Jitsi fallback)
  */
 export const GetMeetingTokenBody = zod.object({
   "room": zod.string(),
@@ -299,7 +299,7 @@ export const GetMeetingTokenBody = zod.object({
 })
 
 export const GetMeetingTokenResponse = zod.object({
-  "provider": zod.enum(['daily', 'public']),
+  "provider": zod.enum(['jaas', 'public']),
   "url": zod.string()
 })
 

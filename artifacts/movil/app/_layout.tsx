@@ -83,14 +83,9 @@ function RootLayoutNav() {
         <Stack.Screen name="survey/[id]" />
         <Stack.Screen name="form/[id]" />
         <Stack.Screen name="alerts" />
-        <Stack.Screen name="videoconferencias" />
         <Stack.Screen name="foros" />
         <Stack.Screen name="foros/modulo/[id]" />
         <Stack.Screen name="foros/tema/[id]" />
-        <Stack.Screen
-          name="llamada"
-          options={{ presentation: "fullScreenModal" }}
-        />
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
       </Stack>

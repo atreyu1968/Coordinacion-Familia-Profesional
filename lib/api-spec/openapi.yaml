@@ -407,7 +407,7 @@ paths:
     post:
       operationId: getMeetingToken
       tags: [meetings]
-      summary: Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
+      summary: Issue a ready-to-join meeting URL (8x8 JaaS, or public Jitsi fallback)
       security:
         - bearerAuth: []
       requestBody:
@@ -3436,7 +3436,7 @@ components:
       properties:
         provider:
           type: string
-          enum: [daily, public]
+          enum: [jaas, public]
         url:
           type: string
       required: [provider, url]

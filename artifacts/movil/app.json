@@ -17,8 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.coordinaadg.movil",
       "infoPlist": {
-        "NSCameraUsageDescription": "Coordina ADG usa la cámara para las videollamadas y el escaneo de acreditaciones.",
-        "NSMicrophoneUsageDescription": "Coordina ADG usa el micrófono para las llamadas de audio y vídeo."
+        "NSCameraUsageDescription": "Coordina ADG usa la cámara para escanear acreditaciones (QR)."
       }
     },
     "android": {

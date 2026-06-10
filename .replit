@@ -38,6 +38,7 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
+JAAS_APP_ID = "vpaas-magic-cookie-e59392d6d00048ea90ea3027a421f6ea"
 
 [nix]
 channel = "stable-25_05"
