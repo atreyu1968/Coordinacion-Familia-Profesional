@@ -154,3 +154,22 @@ export function buildInvitationEmail(params: {
     `,
   };
 }
+
+export function buildPasswordResetEmail(params: {
+  code: string;
+}): { subject: string; html: string } {
+  return {
+    subject: "Código de recuperación de contraseña · Coordina ADG",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color:#18181b;">
+        <h2>Coordina ADG · Recuperación de contraseña</h2>
+        <p>Has solicitado restablecer tu contraseña. Usa el siguiente código de verificación:</p>
+        <div style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;background:#f4f4f5;border-radius:12px;padding:16px;margin:16px 0;">
+          ${params.code}
+        </div>
+        <p style="color:#52525b;">Introduce este código en la aplicación para crear una nueva contraseña. El código caduca en <strong>15 minutos</strong>.</p>
+        <p style="color:#a1a1aa;font-size:13px;">Si no has solicitado este cambio, puedes ignorar este mensaje.</p>
+      </div>
+    `,
+  };
+}

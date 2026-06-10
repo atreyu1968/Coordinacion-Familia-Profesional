@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -38,6 +39,11 @@ export function verifyToken(token: string): TokenPayload | null {
   } catch {
     return null;
   }
+}
+
+export function generateResetCode(): string {
+  // 6-digit numeric code (000000–999999), cryptographically random.
+  return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
 export function generateInvitationCode(): string {

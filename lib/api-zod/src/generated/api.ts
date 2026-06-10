@@ -606,6 +606,40 @@ export const RegisterWithTokenResponse = zod.object({
 
 
 /**
+ * Sends a 6-digit recovery code to the account's email if it exists. Always returns 200 with ok=true to avoid revealing whether an account exists.
+ * @summary Request a password reset code by email
+ */
+export const ForgotPasswordBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Set a new password using the emailed recovery code
+ */
+export const resetPasswordBodyCodeMin = 6;
+export const resetPasswordBodyCodeMax = 6;
+
+export const resetPasswordBodyNewPasswordMin = 8;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "email": zod.string().email(),
+  "code": zod.string().min(resetPasswordBodyCodeMin).max(resetPasswordBodyCodeMax),
+  "newPassword": zod.string().min(resetPasswordBodyNewPasswordMin)
+})
+
+export const ResetPasswordResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
  * @summary List invitation codes the caller has generated or can manage
  */
 export const ListInvitationsQueryParams = zod.object({

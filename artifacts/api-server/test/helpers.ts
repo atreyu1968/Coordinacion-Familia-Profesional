@@ -16,6 +16,7 @@ import {
   forumThreadsTable,
   forumPostsTable,
   forumThreadReadsTable,
+  passwordResetTokensTable,
   type User,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
@@ -181,6 +182,9 @@ export async function cleanup(): Promise<void> {
       .where(inArray(chatGroupsTable.id, created.groupIds));
   }
   if (created.userIds.length > 0) {
+    await db
+      .delete(passwordResetTokensTable)
+      .where(inArray(passwordResetTokensTable.userId, created.userIds));
     await db
       .delete(notificationsTable)
       .where(inArray(notificationsTable.userId, created.userIds));

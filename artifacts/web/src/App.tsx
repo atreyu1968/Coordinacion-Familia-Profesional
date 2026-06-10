@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
+import RecuperarPage from "@/pages/recuperar";
 import DashboardPage from "@/pages/dashboard";
 import PanelControlPage from "@/pages/panel-control";
 import UsuariosPage from "@/pages/usuarios";
@@ -61,6 +62,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
+      <Route path="/recuperar" component={RecuperarPage} />
       <Route component={AuthedRoutes} />
     </Switch>
   );

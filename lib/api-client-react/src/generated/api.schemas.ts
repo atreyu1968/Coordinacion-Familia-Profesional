@@ -279,6 +279,21 @@ export interface RegisterInput {
   password: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  email: string;
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
+  code: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
 export interface Province {
   id: number;
   name: string;

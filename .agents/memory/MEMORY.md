@@ -1,1 +1,2 @@
 - [Keyless Jitsi videoconferencing](videoconferencias-jitsi.md) — meet.jit.si rooms, no keys; in-app WebView on native; hang-up handling.
+- [Password reset OTP flow](password-reset-otp.md) — emailed 6-digit code, bcrypt-hashed token; single-use consumption must be an atomic conditional update.

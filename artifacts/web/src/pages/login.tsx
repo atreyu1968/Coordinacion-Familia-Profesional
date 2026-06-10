@@ -113,6 +113,15 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setLocation("/recuperar")}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  ¿Has olvidado tu contraseña?
+                </button>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-destructive" role="alert">

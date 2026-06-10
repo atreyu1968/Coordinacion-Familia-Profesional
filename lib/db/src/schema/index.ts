@@ -3,6 +3,7 @@ export * from "./provinces";
 export * from "./islands";
 export * from "./municipalities";
 export * from "./users";
+export * from "./passwordResetTokens";
 export * from "./invitations";
 export * from "./centers";
 export * from "./trainingOffer";

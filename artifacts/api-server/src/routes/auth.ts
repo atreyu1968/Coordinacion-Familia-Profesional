@@ -1,6 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ne } from "drizzle-orm";
-import { db, usersTable, invitationsTable } from "@workspace/db";
+import { eq, and, isNull, ne, desc } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  invitationsTable,
+  passwordResetTokensTable,
+} from "@workspace/db";
 import {
   LoginBody,
   LoginResponse,
@@ -11,13 +16,20 @@ import {
   RegisterWithTokenResponse,
   UpdateProfileBody,
   UpdateProfileResponse,
+  ForgotPasswordBody,
+  ResetPasswordBody,
 } from "@workspace/api-zod";
 import {
   hashPassword,
   verifyPassword,
   signToken,
+  generateResetCode,
 } from "../lib/auth";
+import { sendEmail, buildPasswordResetEmail } from "../lib/email";
 import { requireAuth } from "../middlewares/auth";
+
+const RESET_CODE_TTL_MS = 15 * 60 * 1000;
+const RESET_MAX_ATTEMPTS = 5;
 
 class RegisterError extends Error {
   constructor(
@@ -253,6 +265,137 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const token = signToken({ sub: user.id, role: user.role });
   res.json(RegisterWithTokenResponse.parse({ token, user }));
+});
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.message });
+    return;
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+
+  // Always respond the same way so callers can't probe which emails exist.
+  const ok = { ok: true };
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(and(eq(usersTable.email, email), isNull(usersTable.deletedAt)));
+
+  if (!user || user.status !== "active") {
+    res.json(ok);
+    return;
+  }
+
+  // Invalidate any previous unused codes so only the newest one works.
+  await db
+    .update(passwordResetTokensTable)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(passwordResetTokensTable.userId, user.id),
+        isNull(passwordResetTokensTable.usedAt),
+      ),
+    );
+
+  const code = generateResetCode();
+  const codeHash = await hashPassword(code);
+  await db.insert(passwordResetTokensTable).values({
+    userId: user.id,
+    codeHash,
+    expiresAt: new Date(Date.now() + RESET_CODE_TTL_MS),
+  });
+
+  const { subject, html } = buildPasswordResetEmail({ code });
+  await sendEmail({ to: user.email, subject, html });
+
+  res.json(ok);
+});
+
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.message });
+    return;
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+  const invalid = "Código no válido o caducado. Solicita uno nuevo.";
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(and(eq(usersTable.email, email), isNull(usersTable.deletedAt)));
+
+  if (!user || user.status !== "active") {
+    res.status(400).json({ message: invalid });
+    return;
+  }
+
+  const [token] = await db
+    .select()
+    .from(passwordResetTokensTable)
+    .where(
+      and(
+        eq(passwordResetTokensTable.userId, user.id),
+        isNull(passwordResetTokensTable.usedAt),
+      ),
+    )
+    .orderBy(desc(passwordResetTokensTable.createdAt))
+    .limit(1);
+
+  if (
+    !token ||
+    token.expiresAt.getTime() < Date.now() ||
+    token.attempts >= RESET_MAX_ATTEMPTS
+  ) {
+    res.status(400).json({ message: invalid });
+    return;
+  }
+
+  const codeOk = await verifyPassword(parsed.data.code, token.codeHash);
+  if (!codeOk) {
+    await db
+      .update(passwordResetTokensTable)
+      .set({ attempts: token.attempts + 1 })
+      .where(eq(passwordResetTokensTable.id, token.id));
+    res.status(400).json({ message: invalid });
+    return;
+  }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword);
+  const consumed = await db.transaction(async (tx) => {
+    // Atomically claim the token: only the first concurrent request whose
+    // conditional update still sees `used_at IS NULL` may proceed, so a single
+    // OTP can never reset the password more than once.
+    const marked = await tx
+      .update(passwordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokensTable.id, token.id),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      )
+      .returning({ id: passwordResetTokensTable.id });
+    if (marked.length === 0) {
+      return false;
+    }
+    await tx
+      .update(usersTable)
+      .set({ passwordHash })
+      .where(eq(usersTable.id, user.id));
+    return true;
+  });
+
+  if (!consumed) {
+    res.status(400).json({ message: invalid });
+    return;
+  }
+
+  res.json({ ok: true });
 });
 
 export default router;

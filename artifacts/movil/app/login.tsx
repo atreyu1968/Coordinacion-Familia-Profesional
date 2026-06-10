@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { Button } from "@/components/ui";
@@ -20,6 +21,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const {
     signIn,
     loginWithBiometric,
@@ -168,6 +170,12 @@ export default function LoginScreen() {
             onPress={onSubmit}
             loading={loading}
             style={{ marginTop: 24 }}
+          />
+          <Button
+            label="¿Has olvidado tu contraseña?"
+            variant="ghost"
+            onPress={() => router.push("/recuperar")}
+            style={{ marginTop: 8 }}
           />
         </View>
       </KeyboardAwareScrollView>
