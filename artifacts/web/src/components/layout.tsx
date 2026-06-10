@@ -22,8 +22,8 @@ import {
   Smartphone,
   MessageSquarePlus,
   MessagesSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
@@ -33,21 +33,25 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const SIDEBAR_STORAGE_KEY = "coordina_adg_sidebar_collapsed";
+const SIDEBAR_PINNED_KEY = "coordina_adg_sidebar_pinned";
 
 export function AppLayout({ children }: LayoutProps) {
   const { user, isLoading, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
+  // The sidebar is collapsed (icons only) by default and expands on hover. The
+  // pin (chincheta) at its foot keeps it open; that choice is persisted.
+  const [pinned, setPinned] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+    return window.localStorage.getItem(SIDEBAR_PINNED_KEY) === "1";
   });
+  const [hovered, setHovered] = useState(false);
+  const expanded = pinned || hovered;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, collapsed ? "1" : "0");
+      window.localStorage.setItem(SIDEBAR_PINNED_KEY, pinned ? "1" : "0");
     }
-  }, [collapsed]);
+  }, [pinned]);
 
   useEffect(() => {
     if (!isLoading && !user && location !== "/login" && !location.startsWith("/register")) {
@@ -91,17 +95,6 @@ export function AppLayout({ children }: LayoutProps) {
       {/* Top bar: spans full width above the sidebar, fixed height */}
       <header className="h-14 flex items-center justify-between gap-4 px-3 md:px-4 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent hidden md:inline-flex"
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-            aria-expanded={!collapsed}
-            title={collapsed ? "Expandir menú" : "Contraer menú"}
-          >
-            {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-          </Button>
           <img
             src={logoWhite}
             alt="Coordina ADG"
@@ -140,39 +133,71 @@ export function AppLayout({ children }: LayoutProps) {
 
       {/* Body: sidebar + main content */}
       <div className="flex flex-1 min-h-0 w-full">
-        {/* Sidebar */}
-        <div
-          className={`${
-            collapsed ? "w-16" : "w-64"
-          } bg-sidebar border-r border-sidebar-border hidden md:flex flex-col text-sidebar-foreground transition-[width] duration-200 ease-in-out shrink-0`}
-        >
-          <nav className="flex-1 py-3 flex flex-col gap-0.5 overflow-y-auto px-2">
-            {navItems.filter((i) => i.visible).map((item) => {
-              const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  title={item.label}
-                  aria-label={item.label}
-                  className={`flex items-center gap-3 rounded-md transition-colors text-sm font-medium ${
-                    collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2"
-                  } ${
-                    isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }`}
-                >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  {collapsed ? (
-                    <span className="sr-only">{item.label}</span>
-                  ) : (
-                    <span className="truncate">{item.label}</span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Sidebar: a fixed-width rail reserves space; the panel inside expands
+            on hover (overlaying the content) unless pinned open. */}
+        <div className={`relative ${pinned ? "w-64" : "w-16"} hidden md:block shrink-0 transition-[width] duration-200 ease-in-out`}>
+          <aside
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            className={`absolute inset-y-0 left-0 ${
+              expanded ? "w-64" : "w-16"
+            } bg-sidebar border-r border-sidebar-border flex flex-col text-sidebar-foreground transition-[width] duration-200 ease-in-out z-30 ${
+              hovered && !pinned ? "shadow-xl" : ""
+            }`}
+          >
+            <nav className="flex-1 py-3 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2">
+              {navItems.filter((i) => i.visible).map((item) => {
+                const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={`flex items-center gap-3 rounded-md transition-colors text-sm font-medium ${
+                      expanded ? "px-3 py-2" : "justify-center px-0 py-2.5"
+                    } ${
+                      isActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    {expanded ? (
+                      <span className="truncate">{item.label}</span>
+                    ) : (
+                      <span className="sr-only">{item.label}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Pin (chincheta): keeps the sidebar open. */}
+            <div className="border-t border-sidebar-border p-2">
+              <button
+                type="button"
+                onClick={() => setPinned((p) => !p)}
+                aria-pressed={pinned}
+                title={pinned ? "Desfijar menú" : "Fijar menú abierto"}
+                aria-label={pinned ? "Desfijar menú" : "Fijar menú abierto"}
+                className={`flex items-center gap-3 w-full rounded-md transition-colors text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                  expanded ? "px-3 py-2" : "justify-center px-0 py-2.5"
+                }`}
+              >
+                {pinned ? (
+                  <PinOff className="w-4 h-4 shrink-0" />
+                ) : (
+                  <Pin className="w-4 h-4 shrink-0" />
+                )}
+                {expanded ? (
+                  <span className="truncate">{pinned ? "Desfijar menú" : "Fijar menú"}</span>
+                ) : (
+                  <span className="sr-only">{pinned ? "Desfijar menú" : "Fijar menú"}</span>
+                )}
+              </button>
+            </div>
+          </aside>
         </div>
 
         {/* Main content */}
