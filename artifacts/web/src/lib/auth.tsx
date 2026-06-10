@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
   setAuthTokenGetter,
@@ -6,20 +6,16 @@ import {
   getGetCurrentUserQueryKey,
   type User,
 } from "@workspace/api-client-react";
+import { AuthContext } from "./auth-context";
+
+// Re-exported for backward compatibility so existing `@/lib/auth` imports keep
+// working. The hook + context now live in auth-context.ts to stay HMR-stable.
+export { useAuth } from "./auth-context";
 
 const TOKEN_KEY = "coordina_adg_token";
 
 // Set up the getter immediately so the API client has it
 setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
-
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
@@ -57,12 +53,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }
