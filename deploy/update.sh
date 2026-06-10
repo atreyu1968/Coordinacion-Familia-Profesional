@@ -37,6 +37,19 @@ DOMAIN="${DOMAIN:-}"
 is_tty() { [[ -t 0 ]]; }
 url_host() { printf '%s' "$1" | sed -E 's#^https?://##; s#/.*$##'; }
 url_path() { printf '%s' "$1" | sed -E 's#^https?://[^/]+##; s#/$##'; }
+# Normalize a host (trim ends + lowercase) and echo it back only when it is a
+# valid public DNS domain (a-z, 0-9, dots, hyphens; at least two labels). Echoes
+# empty for "_"/localhost/bare IPs and anything invalid (uppercase, accents,
+# internal spaces, typos). grep runs under LC_ALL=C so a-z matches by byte and
+# accented UTF-8 letters are rejected even under a UTF-8 locale.
+clean_domain() {
+  local h
+  h="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+  case "${h}" in _|localhost) return 0 ;; esac
+  [[ "${h}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && return 0
+  LC_ALL=C grep -qE '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$' <<<"${h}" \
+    && printf '%s' "${h}"
+}
 
 # Upsert KEY=VALUE in .env without sed-escaping pitfalls and without leaving
 # duplicate lines behind: drop every existing line for the key, then append one.
@@ -80,25 +93,24 @@ fi
 if [[ -z "${MOBILE_HOST}" && -f "${NGINX_CONF}" ]]; then
   MOBILE_HOST="$(grep -E '^[[:space:]]*server_name' "${NGINX_CONF}" | head -n1 | sed -E 's/.*server_name[[:space:]]+//; s/;.*//; s/[[:space:]].*//')"
 fi
-# A real domain is required for the PWA to install and receive push, so ignore
-# the catch-all "_", localhost, and bare IP addresses.
-if [[ "${MOBILE_HOST}" == "_" || "${MOBILE_HOST}" == "localhost" || "${MOBILE_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  MOBILE_HOST=""
-fi
+# A real domain is required for the PWA to install and receive push; reduce the
+# fully-resolved host to a valid public domain (empty for "_", localhost, bare
+# IPs, or any invalid value such as uppercase/accents/typos).
+MOBILE_HOST="$(clean_domain "${MOBILE_HOST}")"
 # If no real domain was ever configured, ask for it now (interactive runs only)
 # so this update can build the mobile app (/app) and install the collaborative
 # space. Non-interactive runs (e.g. cron) keep the old behavior and skip these
 # domain-only steps. Pass DOMAIN=... to set it without a prompt.
 if [[ -z "${MOBILE_HOST}" ]]; then
+  RAW_DOMAIN=""
   if [[ -n "${DOMAIN}" ]]; then
-    MOBILE_HOST="$(url_host "${DOMAIN}")"
+    RAW_DOMAIN="${DOMAIN}"
   elif is_tty; then
-    read -r -p "Public domain for Coordina ADG (e.g. adg.example.org), blank to skip: " ANSWER || true
-    MOBILE_HOST="$(url_host "${ANSWER}")"
+    read -r -p "Public domain for Coordina ADG (e.g. adg.example.org), blank to skip: " RAW_DOMAIN || true
   fi
-  # Reject placeholders / bare IPs — HTTPS and SSO need a real registrable domain.
-  if [[ "${MOBILE_HOST}" == "_" || "${MOBILE_HOST}" == "localhost" || "${MOBILE_HOST}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    MOBILE_HOST=""
+  MOBILE_HOST="$(clean_domain "$(url_host "${RAW_DOMAIN}")")"
+  if [[ -n "${RAW_DOMAIN}" && -z "${MOBILE_HOST}" ]]; then
+    echo "Ignoring invalid domain '${RAW_DOMAIN}' (use e.g. adg.example.org)." >&2
   fi
 fi
 if [[ -n "${MOBILE_HOST}" && -z "${MOBILE_PATH}" ]]; then

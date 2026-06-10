@@ -82,6 +82,21 @@ prompt_secret() {
 # ---------------------------------------------------------------------------
 log "Gathering configuration"
 prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "${DOMAIN}"
+# Normalize and validate the domain. Uppercase, spaces or accents (a common
+# copy/paste or typo mistake, e.g. "coordinación.example.org") would make nginx
+# and certbot fail later in confusing ways, so reject them up front. "_" (any
+# host) and bare IPs are allowed.
+DOMAIN="$(printf '%s' "${DOMAIN}" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+# Use grep under LC_ALL=C so the a-z/0-9 ranges match by byte: a bash =~ test
+# would let accented UTF-8 letters slip through under a UTF-8 locale. Internal
+# spaces are rejected here (not silently removed) so typos surface clearly.
+if [[ "${DOMAIN}" != "_" ]] && \
+   ! LC_ALL=C grep -qE '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]*[a-z0-9])?$' <<<"${DOMAIN}"; then
+  echo "Invalid domain: '${DOMAIN}'." >&2
+  echo "Use only a-z, 0-9, dots and hyphens (no accents or spaces), e.g." >&2
+  echo "  adg.example.org    — or '_' for any host." >&2
+  exit 1
+fi
 prompt_default ADMIN_EMAIL "Email for the first administrator" "${ADMIN_EMAIL:-admin@${DOMAIN/_/localhost}}"
 prompt_secret  ADMIN_PASSWORD "Password for the first administrator"
 # Public URL of the installable mobile app (PWA). The mobile app is built from

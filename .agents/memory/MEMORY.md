@@ -30,3 +30,4 @@
 - [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.
 - [Tool-output display redaction](tooling-display-redaction.md) — some words show as "ln" in tool output but file bytes are unchanged.
+- [Bash domain validation locale](bash-domain-validation-locale.md) — validate domains with LC_ALL=C grep, not bash =~; UTF-8 locale lets accented letters pass [a-z]
