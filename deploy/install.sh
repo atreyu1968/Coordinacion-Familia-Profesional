@@ -153,6 +153,13 @@ if [[ -z "${JWT_SECRET:-}" ]]; then
 fi
 # Preserve optional integration settings across reruns unless overridden by env.
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(env_get PUBLIC_APP_URL)}"
+# Public URL of the installable mobile app (PWA). The "App Móvil" page shows the
+# install QR only when this is set. PWA install + web push require HTTPS, so we
+# only auto-fill it for a real domain (not an IP or the "_" catch-all).
+MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(env_get MOBILE_WEB_URL)}"
+if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  MOBILE_WEB_URL="https://${DOMAIN}"
+fi
 JAAS_APP_ID="${JAAS_APP_ID:-$(env_get JAAS_APP_ID)}"
 JAAS_KID="${JAAS_KID:-$(env_get JAAS_KID)}"
 JAAS_PRIVATE_KEY="${JAAS_PRIVATE_KEY:-$(env_get JAAS_PRIVATE_KEY)}"
@@ -167,7 +174,9 @@ JWT_SECRET=${JWT_SECRET}
 LOG_LEVEL=info
 STORAGE_DRIVER=local
 LOCAL_STORAGE_DIR=${LOCAL_STORAGE_DIR}
-PUBLIC_APP_URL=
+PUBLIC_APP_URL=${PUBLIC_APP_URL:-}
+# Public URL of the installable mobile app (PWA). Enables the "App Móvil" page.
+MOBILE_WEB_URL=${MOBILE_WEB_URL:-}
 # Optional JaaS video (single-line PEM with \\n). Leave blank to use meet.jit.si.
 JAAS_APP_ID=${JAAS_APP_ID:-}
 JAAS_KID=${JAAS_KID:-}
@@ -275,3 +284,7 @@ note "Open:    ${SCHEME}://${HOST_SHOWN}/"
 note "Login:   ${ADMIN_EMAIL}"
 note "Service: systemctl status coordina-adg   |  journalctl -u coordina-adg -f"
 note "Update:  sudo bash deploy/update.sh"
+if [[ -z "${MOBILE_WEB_URL}" ]]; then
+  note "App Móvil: deshabilitada. Configura un dominio HTTPS y vuelve a ejecutar,"
+  note "           o define MOBILE_WEB_URL=https://tu-dominio en .env y reinicia."
+fi

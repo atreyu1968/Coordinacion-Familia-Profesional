@@ -132,6 +132,7 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `STORAGE_DRIVER` | sí | `local` para guardar ficheros en disco |
 | `LOCAL_STORAGE_DIR` | sí (con `local`) | Carpeta de los ficheros subidos |
 | `PUBLIC_APP_URL` | no | Solo si el API se sirve en otro origen |
+| `MOBILE_WEB_URL` | no | URL pública (HTTPS) para activar la página *App Móvil* |
 | `JAAS_APP_ID` / `JAAS_KID` / `JAAS_PRIVATE_KEY` | no | Videollamadas con JaaS (8x8) |
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
 
@@ -144,6 +145,11 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 - **Correo (Resend):** necesario para que el flujo de *“he olvidado mi
   contraseña”* pueda enviar el código por correo. Sin él, el resto de la app
   funciona con normalidad.
+- **App Móvil (PWA):** la app móvil es la propia web instalable en el teléfono
+  (no necesita tienda de aplicaciones). La página *App Móvil* muestra el código
+  QR de instalación solo si `MOBILE_WEB_URL` apunta a tu URL pública HTTPS. El
+  instalador la rellena automáticamente cuando indicas un dominio real. La
+  instalación como app y las notificaciones push requieren HTTPS.
 
 ---
 

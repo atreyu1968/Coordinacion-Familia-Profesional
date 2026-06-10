@@ -47,6 +47,20 @@ rm -rf "${WEB_ROOT:?}/"*
 cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
 chown -R www-data:www-data "${WEB_ROOT}"
 
+# Migrate older installs whose nginx root still points inside the repo (e.g.
+# /root/... or /home/user/...) — those home dirs are not traversable by www-data
+# and cause a site-wide 500. Repoint nginx at the new web root and reload.
+NGINX_CONF="/etc/nginx/sites-available/coordina-adg"
+if [[ -f "${NGINX_CONF}" ]]; then
+  echo "==> Ensuring nginx serves from ${WEB_ROOT}"
+  sed -i -E "s#^([[:space:]]*)root[[:space:]]+[^;]*;#\\1root ${WEB_ROOT};#" "${NGINX_CONF}"
+  if nginx -t; then
+    systemctl reload nginx
+  else
+    echo "WARNING: nginx config test failed; not reloading. Check ${NGINX_CONF}" >&2
+  fi
+fi
+
 echo "==> Applying database schema"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
 
