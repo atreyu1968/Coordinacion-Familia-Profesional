@@ -1,6 +1,43 @@
-import { File } from "@google-cloud/storage";
+import type { File } from "@google-cloud/storage";
+import { promises as fs } from "fs";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
+
+// A handle to a stored object. The GCS backend wraps a @google-cloud/storage
+// File; the local backend wraps an absolute path on disk. Every consumer treats
+// this as an opaque reference and only passes it back to the storage service.
+export type StoredObject =
+  | { kind: "gcs"; file: File }
+  | { kind: "local"; absPath: string };
+
+// Sidecar metadata for the local backend, persisted next to the object as
+// "<absPath>.meta.json". Holds the original content type/size (so downloads can
+// set the right headers) and the ACL policy.
+export interface LocalObjectMeta {
+  contentType?: string;
+  size?: number;
+  acl?: ObjectAclPolicy;
+}
+
+function localMetaPath(absPath: string): string {
+  return `${absPath}.meta.json`;
+}
+
+export async function readLocalMeta(absPath: string): Promise<LocalObjectMeta> {
+  try {
+    const raw = await fs.readFile(localMetaPath(absPath), "utf8");
+    return JSON.parse(raw) as LocalObjectMeta;
+  } catch {
+    return {};
+  }
+}
+
+export async function writeLocalMeta(
+  absPath: string,
+  meta: LocalObjectMeta,
+): Promise<void> {
+  await fs.writeFile(localMetaPath(absPath), JSON.stringify(meta), "utf8");
+}
 
 // Can be flexibly defined according to the use case.
 //
@@ -29,7 +66,8 @@ export interface ObjectAclRule {
   permission: ObjectPermission;
 }
 
-// Stored as object custom metadata under "custom:aclPolicy" (JSON string).
+// Stored as object custom metadata under "custom:aclPolicy" (JSON string) for
+// the GCS backend, or inside the sidecar .meta.json for the local backend.
 export interface ObjectAclPolicy {
   owner: string;
   visibility: "public" | "private";
@@ -68,15 +106,21 @@ function createObjectAccessGroup(
 }
 
 export async function setObjectAclPolicy(
-  objectFile: File,
+  objectFile: StoredObject,
   aclPolicy: ObjectAclPolicy,
 ): Promise<void> {
-  const [exists] = await objectFile.exists();
-  if (!exists) {
-    throw new Error(`Object not found: ${objectFile.name}`);
+  if (objectFile.kind === "local") {
+    const meta = await readLocalMeta(objectFile.absPath);
+    await writeLocalMeta(objectFile.absPath, { ...meta, acl: aclPolicy });
+    return;
   }
 
-  await objectFile.setMetadata({
+  const [exists] = await objectFile.file.exists();
+  if (!exists) {
+    throw new Error(`Object not found: ${objectFile.file.name}`);
+  }
+
+  await objectFile.file.setMetadata({
     metadata: {
       [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
     },
@@ -84,9 +128,14 @@ export async function setObjectAclPolicy(
 }
 
 export async function getObjectAclPolicy(
-  objectFile: File,
+  objectFile: StoredObject,
 ): Promise<ObjectAclPolicy | null> {
-  const [metadata] = await objectFile.getMetadata();
+  if (objectFile.kind === "local") {
+    const meta = await readLocalMeta(objectFile.absPath);
+    return meta.acl ?? null;
+  }
+
+  const [metadata] = await objectFile.file.getMetadata();
   const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
   if (!aclPolicy) {
     return null;
@@ -100,7 +149,7 @@ export async function canAccessObject({
   requestedPermission,
 }: {
   userId?: string;
-  objectFile: File;
+  objectFile: StoredObject;
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);

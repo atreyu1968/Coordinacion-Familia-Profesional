@@ -1,10 +1,14 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { createWriteStream, promises as fs } from "fs";
+import path from "path";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { writeLocalMeta } from "../lib/objectAcl";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -43,6 +47,62 @@ router.post(
     } catch (error) {
       req.log.error({ err: error }, "Error generating upload URL");
       res.status(500).json({ message: "No se pudo generar la URL de subida" });
+    }
+  },
+);
+
+/**
+ * PUT /storage/local-upload/uploads/*
+ *
+ * Receives a direct file upload when the local (self-hosted) storage driver is
+ * active. The unguessable UUID embedded in the path is the access control for
+ * the write, mirroring the presigned-URL model of the cloud backend. Disabled
+ * when the cloud backend is in use.
+ */
+router.put(
+  "/storage/local-upload/*key",
+  async (req: Request, res: Response) => {
+    if (!objectStorageService.isLocal()) {
+      res.status(404).json({ message: "No disponible" });
+      return;
+    }
+
+    const raw = req.params.key;
+    const key = Array.isArray(raw) ? raw.join("/") : raw;
+
+    // Only writes under the "uploads/" prefix are accepted.
+    if (!key || !key.replace(/^\/+/, "").startsWith("uploads/")) {
+      res.status(400).json({ message: "Ruta de subida no válida" });
+      return;
+    }
+
+    // Enforce the short-lived signature minted by getObjectEntityUploadURL so a
+    // leaked URL cannot be reused indefinitely (matches cloud presigned URLs).
+    const exp = typeof req.query.exp === "string" ? req.query.exp : undefined;
+    const sig = typeof req.query.sig === "string" ? req.query.sig : undefined;
+    if (!objectStorageService.verifyLocalUploadSignature(key, exp, sig)) {
+      res
+        .status(403)
+        .json({ message: "Enlace de subida no válido o caducado" });
+      return;
+    }
+
+    try {
+      const target = objectStorageService.resolveLocalUploadPath(key);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await pipeline(req, createWriteStream(target));
+
+      const stat = await fs.stat(target);
+      await writeLocalMeta(target, {
+        contentType:
+          (req.headers["content-type"] as string) || "application/octet-stream",
+        size: stat.size,
+      });
+
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      req.log.error({ err: error }, "Error storing local upload");
+      res.status(500).json({ message: "No se pudo guardar el archivo" });
     }
   },
 );

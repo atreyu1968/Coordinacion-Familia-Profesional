@@ -1,3 +1,1 @@
-- [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderator JWT, guest URLs free; public Jitsi fallback; mobile calls removed; PEM-newline gotcha.
-- [Password reset OTP flow](password-reset-otp.md) — emailed 6-digit code, bcrypt-hashed token; single-use consumption must be an atomic conditional update.
-- [React context + Vite HMR](react-context-hmr.md) — keep createContext + hook in a component-free `*-context.ts` or HMR breaks the provider and useX throws.
+- [Self-hosting Coordina ADG](self-hosting.md) — how the app runs off-Replit (local storage driver, installer, build-time env requirements).
