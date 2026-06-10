@@ -9,9 +9,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import { useColors } from "@/hooks/useColors";
 
 import {
   setAuthTokenGetter,
@@ -94,6 +97,46 @@ function RootLayoutNav() {
   );
 }
 
+/**
+ * On web, the Expo app is rendered inside a desktop browser where a single
+ * column would otherwise stretch edge-to-edge and look like a desktop site.
+ * This wraps the whole app in a centered, phone-width frame on wide screens.
+ * On native (iOS/Android) it is a no-op.
+ */
+function WebMobileFrame({ children }: { children: React.ReactNode }) {
+  const colors = useColors();
+  if (Platform.OS !== "web") {
+    return <>{children}</>;
+  }
+  return (
+    <View style={[styles.webBackdrop, { backgroundColor: colors.muted }]}>
+      <View
+        style={[
+          styles.webFrame,
+          { backgroundColor: colors.background, borderColor: colors.border },
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  webBackdrop: {
+    flex: 1,
+    alignItems: "center",
+  },
+  webFrame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 440,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+});
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -114,14 +157,16 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
-            <KeyboardProvider>
-              <AuthProvider>
-                <BadgesProvider>
-                  <RootLayoutNav />
-                </BadgesProvider>
-              </AuthProvider>
-            </KeyboardProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <WebMobileFrame>
+              <KeyboardProvider>
+                <AuthProvider>
+                  <BadgesProvider>
+                    <RootLayoutNav />
+                  </BadgesProvider>
+                </AuthProvider>
+              </KeyboardProvider>
+            </WebMobileFrame>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
