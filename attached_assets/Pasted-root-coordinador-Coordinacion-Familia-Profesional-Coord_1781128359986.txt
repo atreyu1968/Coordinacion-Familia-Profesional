@@ -1,0 +1,464 @@
+root@coordinador:~/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional# cd /ruta/donde/clonaste/coordina-adg
+sudo bash deploy/update.sh
+-bash: cd: /ruta/donde/clonaste/coordina-adg: No such file or directory
+==> Pulling latest code
+remote: Enumerating objects: 43, done.
+remote: Counting objects: 100% (43/43), done.
+remote: Compressing objects: 100% (12/12), done.
+remote: Total 25 (delta 16), reused 22 (delta 13), pack-reused 0 (from 0)
+Unpacking objects: 100% (25/25), 100.88 KiB | 529.00 KiB/s, done.
+From https://github.com/atreyu1968/Coordinacion-Familia-Profesional
+   7e443ab..7bd53f9  main       -> origin/main
+Updating 7e443ab..7bd53f9
+Fast-forward
+ .agents/memory/MEMORY.md                    |  36 ++++++++++++++++++++++++++++++++----
+ .agents/memory/movil-pwa-assets.md          |  19 +++++++++++++++++++
+ artifacts/movil/app/(tabs)/index.tsx        |   2 +-
+ artifacts/movil/components/AppHeader.tsx    |  32 ++++++++++++++++++++++++++++++--
+ artifacts/movil/public/apple-touch-icon.png | Bin 25060 -> 13168 bytes
+ artifacts/movil/public/icon-192.png         | Bin 27634 -> 14866 bytes
+ artifacts/movil/public/icon-512.png         | Bin 138373 -> 72297 bytes
+ deploy/install.sh                           |   5 +++++
+ deploy/update.sh                            |  49 +++++++++++++++++++++++++++++++++++++++++++++----
+ 9 files changed, 132 insertions(+), 11 deletions(-)
+ create mode 100644 .agents/memory/movil-pwa-assets.md
+==> Installing dependencies
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+└─ Done in 21ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: core-js@3.49.0.                                                   │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 2.4s using pnpm v10.26.1
+==> Building web + API
+
+> @workspace/web@0.0.0 build /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/progress.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2788 modules transformed.
+dist/public/index.html                              1.43 kB │ gzip:   0.56 kB
+dist/public/assets/logo-white-CD1wT7M5.png          5.26 kB
+dist/public/assets/asd-logo-fM_s8fLi.png          129.36 kB
+dist/public/assets/logo-DrhcHe3j.png              145.08 kB
+dist/public/assets/login-hero-CSDUqFS7.png      1,499.10 kB
+dist/public/assets/index-C1izGyMC.css             120.37 kB │ gzip:  23.81 kB
+dist/public/assets/purify.es-orNEJq1p.js           26.74 kB │ gzip:  10.05 kB
+dist/public/assets/index.es-C3bkJeqZ.js           158.79 kB │ gzip:  53.02 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js    201.04 kB │ gzip:  47.43 kB
+dist/public/assets/index-6zVMZzZ1.js            1,976.03 kB │ gzip: 590.96 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.51s
+
+> @workspace/api-server@0.0.0 build /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       4.3mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   7.4mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           204.0kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 640ms
+==> Building the mobile app (PWA) for /app
+
+> @workspace/movil@0.0.0 build:web /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/artifacts/movil
+> expo export --platform web --output-dir dist
+
+
+Using (experimental) base path: /app
+React Compiler enabled
+Starting Metro Bundler
+Web Bundled 2347ms node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/entry.js (1540 modules)
+
+› Assets (57):
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin_Italic/Inter_100Thin_Italic.1b97f7df9b976cfe530c18c09598e6f6.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin/Inter_100Thin.ddbb1cd55ad509e82377bd10beed6506.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight_Italic/Inter_200ExtraLight_Italic.3d0662838915a7a16d01c262735d3d29.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight/Inter_200ExtraLight.e1f33daee21eb5998b13d3e05264d9a3.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light_Italic/Inter_300Light_Italic.17f8f23a2852bfa14ce5bf590c2a0e2c.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light/Inter_300Light.d2994e3dea3856e1834395ad6cce32af.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular_Italic/Inter_400Regular_Italic.36cad9f97595b7759264b945d64502b4.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.51b6ad87261f18b6433ec52871ddfabc.ttf (342 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium_Italic/Inter_500Medium_Italic.155406bfbfb023eb104728edfe62c0e9.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.137ab18bace28dd0bd83eb3b8ed2bc54.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold_Italic/Inter_600SemiBold_Italic.a349d1ac188e1a67689432f44de99849.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.a5f35888d2da465de352e0dcfaf33324.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold_Italic/Inter_700Bold_Italic.3398006c80026f0508aaaf4808950d56.ttf (348 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.6e237de4f1f413afa2fcc45c77ac343a.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold_Italic/Inter_800ExtraBold_Italic.7ca909a56537d965feef41abe58b87e0.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.6016034293c084aa0c056e83938bf1cc.ttf (345 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black_Italic/Inter_900Black_Italic.d5f78c24de59ce5e4bad405e10e71941.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black/Inter_900Black.bcec6eda9700a81ba92c483a2f2c02c1.ttf (345 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.3f78af31cca60105799838a1a7a59fbd.ttf (130 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Entypo.31b5ffea3daddc69dd01a1f3d6cf63c5.ttf (66.2 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/EvilIcons.140c53a7643ea949007aa9a282153849.ttf (13.5 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ca4b48e04dc1ce10bfbddb262c8b835f.ttf (55.6 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.3b89dd103490708d19a95adcae52210e.ttf (134 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.1f77739ca9ff2188b539c36f30ffa2be.ttf (33.7 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.605ed7926cf39a2ad5ec2d1f9d391d3d.ttf (203 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Brands.56c8d80832e37783f12c05db7c8849e2.ttf (209 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Regular.370dd5af19f8364907b6e2c41f45dbbf.ttf (68 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Solid.adec7d6f310bc577f05e8fe06a5daccf.ttf (424 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Fontisto.b49ae8ab2dbccb02c4d11caaacf09eab.ttf (314 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Foundation.e20945d7c929279ef7a6f1db184a4470.ttf (57 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.b4eb097d35f44ed943676fd56f6bdc51.ttf (390 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.6e435534bd35da5fef04168860a9b8fa.ttf (1.31 MB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.4e85bc9ebe07e0340c9c4fc2f6c38908.ttf (357 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Octicons.871378c6eab492a3e689a9385dc45a12.ttf (69.4 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/SimpleLineIcons.d2285965fe34b05465047401b8595dd0.ttf (54.1 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.35_react-native@0.81.5_@babel+cor_382033a6baa6b562f647194970177465/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Zocial.1681f34aaca71b8dfb70756bca331eb2.ttf (25.8 kB)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.46 kB)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__4094ee48018c5b5c8f1246009fce9036/node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.75 kB)
+assets/images/logo-white.8073890758e4ca55651e061cb0c09fb9.png (5.26 kB)
+assets/images/logo.88df953b07056522683785e913a67548.png (145 kB)
+
+› web bundles (1):
+_expo/static/js/web/entry-cbec6d824c02147a1569707926ff1b86.js (3.25 MB)
+
+› Files (3):
+favicon.ico (14.5 kB)
+index.html (1.23 kB)
+metadata.json (49 B)
+
+Exported: dist
+==> Publishing web files to /var/www/coordina-adg
+==> Publishing the mobile app to /var/www/coordina-adg/app
+==> Ensuring nginx serves from /var/www/coordina-adg
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Applying database schema
+
+> @workspace/db@0.0.0 push /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[i] No changes detected
+==> Restarting service
+==> Done. Logs: journalctl -u coordina-adg -f
+(arg: 6) sudo DOMAIN=coordinaci.Org bash deploy/update.sh0
+root@coordinador:~/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional# 
+root@coordinador:~/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional# # 1. Instalar git (lo único que hace falta para descargar el proyecto)
+sudo apt-get update && sudo apt-get install -y git
+
+# 2. Descargar el proyecto
+git clone https://github.com/atreyu1968/Coordinacion-Familia-Profesional.git
+cd Coordinacion-Familia-Profesional
+
+# 3. Ejecutar el instalador
+sudo bash deploy/install.sh
+Hit:1 https://deb.nodesource.com/node_24.x nodistro InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu plucky InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+git is already the newest version (1:2.48.1-0ubuntu1.1).
+0 upgraded, 0 newly installed, 0 to remove and 71 not upgraded.
+Cloning into 'Coordinacion-Familia-Profesional'...
+remote: Enumerating objects: 2021, done.
+remote: Counting objects: 100% (2021/2021), done.
+remote: Compressing objects: 100% (917/917), done.
+remote: Total 2021 (delta 1148), reused 1934 (delta 1061), pack-reused 0 (from 0)
+Receiving objects: 100% (2021/2021), 4.84 MiB | 9.74 MiB/s, done.
+Resolving deltas: 100% (1148/1148), done.
+
+==> Gathering configuration
+Email for the first administrator [admin@localhost]: fgonrol@gmail.com
+Password for the first administrator: 
+Public HTTPS URL for the mobile app (editable later in the panel) []: coordinciónag.iesmmg.org
+    App directory : /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional
+    Service user  : root
+    Domain        : _
+    API port      : 3001
+    Storage dir   : /var/lib/coordina-adg/storage
+
+==> Installing system packages
+Hit:1 https://deb.nodesource.com/node_24.x nodistro InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu plucky InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu plucky-updates InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu plucky-security InRelease
+Reading package lists... Done
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Note, selecting 'postgresql' instead of 'postgresql-contrib'
+ca-certificates is already the newest version (20241223).
+curl is already the newest version (8.12.1-3ubuntu1).
+gnupg is already the newest version (2.4.4-2ubuntu23.2).
+git is already the newest version (1:2.48.1-0ubuntu1.1).
+build-essential is already the newest version (12.12ubuntu1).
+openssl is already the newest version (3.4.1-1ubuntu4).
+nginx is already the newest version (1.26.3-2ubuntu1.2).
+postgresql is already the newest version (17+274).
+0 upgraded, 0 newly installed, 0 to remove and 71 not upgraded.
+
+==> Installing Node.js 24 and pnpm
+Preparing pnpm@10.26.1 for immediate activation...
+    node v24.16.0 / pnpm 10.26.1
+
+==> Configuring PostgreSQL
+Synchronizing state of postgresql.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable postgresql
+
+==> Writing environment file (/root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/.env)
+
+==> Installing dependencies and building (this can take a few minutes)
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Packages: +1340
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1340, reused 1314, downloaded 0, added 1340, done
+
+devDependencies:
++ prettier 3.8.3
++ typescript 5.9.3
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+└─ Done in 26ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: core-js@3.49.0.                                                   │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 9s using pnpm v10.26.1
+
+> @workspace/web@0.0.0 build /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/progress.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2788 modules transformed.
+dist/public/index.html                              1.43 kB │ gzip:   0.56 kB
+dist/public/assets/logo-white-CD1wT7M5.png          5.26 kB
+dist/public/assets/asd-logo-fM_s8fLi.png          129.36 kB
+dist/public/assets/logo-DrhcHe3j.png              145.08 kB
+dist/public/assets/login-hero-CSDUqFS7.png      1,499.10 kB
+dist/public/assets/index-C1izGyMC.css             120.37 kB │ gzip:  23.81 kB
+dist/public/assets/purify.es-orNEJq1p.js           26.74 kB │ gzip:  10.05 kB
+dist/public/assets/index.es-C3bkJeqZ.js           158.79 kB │ gzip:  53.02 kB
+dist/public/assets/html2canvas.esm-DXEQVQnt.js    201.04 kB │ gzip:  47.43 kB
+dist/public/assets/index-6zVMZzZ1.js            1,976.03 kB │ gzip: 590.96 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.38s
+
+> @workspace/api-server@0.0.0 build /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/artifacts/api-server
+> node ./build.mjs
+
+
+  dist/index.mjs                       4.3mb ⚠️
+  dist/pino-worker.mjs               153.5kb
+  dist/pino-file.mjs                 142.1kb
+  dist/pino-pretty.mjs               114.6kb
+  dist/thread-stream-worker.mjs        7.3kb
+  dist/index.mjs.map                   7.4mb
+  dist/pino-worker.mjs.map           256.9kb
+  dist/pino-file.mjs.map             229.1kb
+  dist/pino-pretty.mjs.map           204.0kb
+  dist/thread-stream-worker.mjs.map   12.0kb
+
+⚡ Done in 704ms
+
+==> Applying database schema
+
+> @workspace/db@0.0.0 push /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[i] No changes detected
+
+==> Creating the first administrator (if needed)
+
+> @workspace/scripts@0.0.0 seed-admin /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/scripts
+> tsx ./src/seed-admin.ts
+
+Created superadmin "fgonrol@gmail.com".
+
+==> Configuring the systemd service
+
+==> Configuring nginx
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+Synchronizing state of nginx.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable nginx
+
+==> Done!
+    Open:    http://<server-ip>/
+    Login:   fgonrol@gmail.com
+    Service: systemctl status coordina-adg   |  journalctl -u coordina-adg -f
+    Update:  sudo bash deploy/update.sh
+root@coordinador:~/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional# cd /ruta/al/repo
+sudo APP_DOMAIN=tu-dominio.org LETSENCRYPT_EMAIL=tu@correo.org \
+  bash deploy/nextcloud/install-collab.sh
+-bash: cd: /ruta/al/repo: No such file or directory
+
+==> Ensuring Docker is installed
+# Executing docker install script, commit: 2687d91ddeb3bd6aeae37a90947761efdee87030
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install ca-certificates curl >/dev/null
++ sh -c install -m 0755 -d /etc/apt/keyrings
++ sh -c curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" -o /etc/apt/keyrings/docker.asc
++ sh -c chmod a+r /etc/apt/keyrings/docker.asc
++ sh -c echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu plucky stable" > /etc/apt/sources.list.d/docker.list
++ sh -c apt-get -qq update >/dev/null
++ sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras docker-buildx-plugin docker-model-plugin >/dev/null
+Using systemd to manage Docker service
++ sh -c systemctl enable --now docker.service 2>/dev/null
+INFO: Docker daemon enabled and started
+
++ sh -c docker version
+Client: Docker Engine - Community
+ Version:           29.2.1
+ API version:       1.53
+ Go version:        go1.25.6
+ Git commit:        a5c7197
+ Built:             Mon Feb  2 17:17:42 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.2.1
+  API version:      1.53 (minimum version 1.44)
+  Go version:       go1.25.6
+  Git commit:       6bc6209
+  Built:            Mon Feb  2 17:17:42 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.1
+  GitCommit:        dea7da592f5d1d2b7755e3a161be07f43fad8f75
+ runc:
+  Version:          1.3.4
+  GitCommit:        v1.3.4-0-gd6d73eb8
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+================================================================================
+
+To run Docker as a non-privileged user, consider setting up the
+Docker daemon in rootless mode for your user:
+
+    dockerd-rootless-setuptool.sh install
+
+Visit https://docs.docker.com/go/rootless/ to learn about rootless mode.
+
+
+To run the Docker daemon as a fully privileged service, but granting non-root
+users access, refer to https://docs.docker.com/go/daemon-access/
+
+WARNING: Access to the remote API on a privileged Docker daemon is equivalent
+         to root access on the host. Refer to the 'Docker daemon attack surface'
+         documentation for details: https://docs.docker.com/go/attack-surface/
+
+================================================================================
+
+Synchronizing state of docker.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable docker
+
+==> Gathering configuration
+    Main domain        : tu-dominio.org
+    Nextcloud (Drive)  : drive.tu-dominio.org
+    Collabora (Office) : office.tu-dominio.org
+
+==> Writing /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/deploy/nextcloud/.env
+
+==> Starting Nextcloud + Collabora (docker compose up -d)
+[+] pull 55/55
+ ✔ Image nextcloud:30-apache   Pulled                                                                                                                                      44.1s
+ ✔ Image collabora/code:latest Pulled                                                                                                                                      32.7s
+ ✔ Image postgres:16-alpine    Pulled                                                                                                                                      20.5s
+ ✔ Image redis:7-alpine        Pulled                                                                                                                                      6.0ss
+[+] up 7/7
+ ✔ Network nextcloud_default             Created                                                                                                                           0.1ss
+ ✔ Volume nextcloud_nextcloud-data       Created                                                                                                                           0.0ss
+ ✔ Volume nextcloud_nextcloud-db         Created                                                                                                                           0.0ss
+ ✔ Container nextcloud-collabora-1       Created                                                                                                                           0.1ss
+ ✔ Container nextcloud-nextcloud-db-1    Healthy                                                                                                                           11.2s
+ ✔ Container nextcloud-nextcloud-redis-1 Created                                                                                                                           0.1ss
+ ✔ Container nextcloud-nextcloud-1       Created                                                                                                                           0.1ss
+
+==> Waiting for Nextcloud to become ready
+
+==> Configuring Nextcloud apps and OIDC provider
+
+==> Configuring nginx for drive.tu-dominio.org and office.tu-dominio.org
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+==> Requesting HTTPS certificates
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Account registered.
+Requesting a certificate for drive.tu-dominio.org and office.tu-dominio.org
+
+Certbot failed to authenticate some domains (authenticator: nginx). The Certificate Authority reported these problems:
+  Domain: drive.tu-dominio.org
+  Type:   dns
+  Detail: DNS problem: NXDOMAIN looking up A for drive.tu-dominio.org - check that a DNS record exists for this domain; DNS problem: NXDOMAIN looking up AAAA for drive.tu-dominio.org - check that a DNS record exists for this domain
+
+  Domain: office.tu-dominio.org
+  Type:   dns
+  Detail: DNS problem: NXDOMAIN looking up A for office.tu-dominio.org - check that a DNS record exists for this domain; DNS problem: NXDOMAIN looking up AAAA for office.tu-dominio.org - check that a DNS record exists for this domain
+
+Hint: The Certificate Authority failed to verify the temporary nginx configuration changes made by Certbot. Ensure the listed domains point to this nginx server and that it is accessible from the internet.
+
+Some challenges have failed.
+Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /var/log/letsencrypt/letsencrypt.log or re-run Certbot with -v for more details.
+    certbot failed — sites still work over HTTP. Re-run once DNS resolves.
+
+==> Integrating with Coordina ADG (/root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/.env)
+
+==> Done! The collaborative space is installed and integrated automatically.
+    No manual step needed. For reference (also in /root/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/deploy/nextcloud/.env, root-only):
+    URL de Nextcloud   : https://drive.tu-dominio.org
+    URL de Collabora   : https://office.tu-dominio.org
+    Usuario admin      : admin
+    Contraseña admin   : 3e966fe03fb0fee21b066f00eb98e6eb
+    OIDC Client ID     : coordina-nextcloud
+    OIDC Client Secret : 45908bc2186612622bdb273dda41c92f096de91d0f1383a1
+root@coordinador:~/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional/Coordinacion-Familia-Profesional# 
