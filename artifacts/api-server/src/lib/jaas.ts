@@ -6,16 +6,43 @@ import { logger } from "./logger";
 // the same 8x8.vc room as a guest (no token, no login, and NOT counted as a
 // billable active user, so usage stays within the free tier). When the signing
 // credentials are absent the caller falls back to the public meet.jit.si server.
-const APP_ID = process.env.JAAS_APP_ID;
-const KID = process.env.JAAS_KID;
-// The private key is often pasted into a single-line secret with literal "\n"
-// sequences; normalize them to real newlines so the PEM parses correctly.
-const PRIVATE_KEY = process.env.JAAS_PRIVATE_KEY?.replace(/\\n/g, "\n");
 const DOMAIN = "8x8.vc";
 const TOKEN_TTL_SECONDS = 60 * 60 * 3; // 3 hours
 
+// Read env at call time (not module load) so configuration changes and tests
+// take effect without a process restart.
+function appId(): string | undefined {
+  return process.env.JAAS_APP_ID;
+}
+function kid(): string | undefined {
+  return process.env.JAAS_KID;
+}
+function privateKey(): string | undefined {
+  const raw = process.env.JAAS_PRIVATE_KEY;
+  if (!raw) return undefined;
+  return normalizePem(raw);
+}
+
+/**
+ * Rebuild a valid PEM from a private key that may have been mangled when stored
+ * as a secret. Handles three shapes: already well-formed (real newlines),
+ * escaped "\n" sequences, and single-line keys whose newlines were collapsed
+ * into spaces (which breaks Node's PEM decoder). The base64 body is extracted
+ * and re-wrapped at 64 columns.
+ */
+function normalizePem(raw: string): string {
+  const unescaped = raw.replace(/\\n/g, "\n").trim();
+  if (unescaped.includes("\n")) return unescaped;
+  const match = unescaped.match(/-----BEGIN ([A-Z ]+?)-----(.*)-----END \1-----/);
+  if (!match) return unescaped;
+  const label = match[1].trim();
+  const body = match[2].replace(/\s+/g, "");
+  const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
+  return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----\n`;
+}
+
 export function isJaasConfigured(): boolean {
-  return Boolean(APP_ID && KID && PRIVATE_KEY);
+  return Boolean(appId() && kid() && privateKey());
 }
 
 interface JaasUser {
@@ -26,12 +53,15 @@ interface JaasUser {
 
 // Sign a short-lived moderator JWT for a room. Returns null on failure.
 function signToken(room: string, user: JaasUser): string | null {
-  if (!APP_ID || !KID || !PRIVATE_KEY) return null;
+  const id = appId();
+  const keyId = kid();
+  const key = privateKey();
+  if (!id || !keyId || !key) return null;
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     aud: "jitsi",
     iss: "chat",
-    sub: APP_ID,
+    sub: id,
     room,
     iat: now,
     nbf: now - 5,
@@ -54,9 +84,9 @@ function signToken(room: string, user: JaasUser): string | null {
     },
   };
   try {
-    return jwt.sign(payload, PRIVATE_KEY, {
+    return jwt.sign(payload, key, {
       algorithm: "RS256",
-      header: { alg: "RS256", kid: `${APP_ID}/${KID}`, typ: "JWT" },
+      header: { alg: "RS256", kid: `${id}/${keyId}`, typ: "JWT" },
     });
   } catch (err) {
     logger.error({ err }, "Failed to sign JaaS token");
@@ -84,8 +114,9 @@ export function buildJaasUrl(opts: {
   moderator: boolean;
   audioOnly: boolean;
 }): string | null {
-  if (!APP_ID) return null;
-  const base = `https://${DOMAIN}/${APP_ID}/${opts.room}`;
+  const id = appId();
+  if (!id) return null;
+  const base = `https://${DOMAIN}/${id}/${opts.room}`;
   const hash = `#${configHash(opts.audioOnly)}`;
   if (opts.moderator) {
     const token = signToken(opts.room, opts.user);

@@ -1,20 +1,21 @@
 ---
-name: Keyless Jitsi videoconferencing
-description: How meeting rooms and in-chat video calls work without any API keys.
+name: Videoconferencing (8x8 JaaS, web only)
+description: How meeting rooms work — 8x8 JaaS with coordinator-only moderators, public Jitsi fallback; mobile calls were removed.
 ---
 
-Videoconferencing uses the public `https://meet.jit.si/<roomName>` service — no API keys, no SDK, no accounts.
+Videoconferencing lives on the **web app only**. The mobile app has **no call feature** (in-app WebView calls, the `videoconferencias`/`llamada` screens, `lib/call.ts`, and the chat call buttons were all removed; `app.json` keeps only CAMERA for QR scanning).
 
-**Rooms must be unguessable.** Room names are random (server-generated UUID for the meetings module; `coordinaadg-chat-<groupId>-<rand>` for chat calls). Privacy depends entirely on the room slug being secret, since meet.jit.si rooms are otherwise open.
+**Provider model — 8x8 JaaS, login-wall-free.** `POST /meetings/token` returns `{ provider, url }` (`provider` enum `jaas | public`). Server builds the *full* join URL so the client just opens `access.url`:
+- **Coordinators/admins** (`superadmin`/`coordinator`, the `CAN_CREATE` set) join as **moderators**: the server signs a short-lived RS256 JWT and returns `https://8x8.vc/{appId}/{room}?jwt=...#config...`. No login screen.
+- **Everyone else** joins as a **guest**: `https://8x8.vc/{appId}/{room}#config...` with **no jwt**. Guests don't count as billable monthly active users, so usage stays in the free tier.
+- **Fallback**: if JaaS env is absent (or signing fails), returns `provider: "public"` with `https://meet.jit.si/{room}#config...`.
 
-**Meetings module** (standalone feature): create is gated to `superadmin`/`coordinator` server-side; any auth user lists/joins; delete is host-or-superadmin soft delete. Web joins via an embedded iframe overlay (`allow="camera; microphone; fullscreen; display-capture; autoplay"`) plus open-in-tab.
+**Why coordinator-only moderators:** explicit user decision — only coordinator/admin "log in" (are authenticated moderators) to keep the JaaS free tier's ~25 MAU cap from being exceeded. Requires "allow guests" enabled in the 8x8 JaaS console so non-token participants can join.
 
-**Mobile calls are embedded in-app, not in an external browser.** A shared helper (`movil/lib/call.ts`) builds the room URL and routes the call: on native it pushes a full-screen WebView screen (`react-native-webview`); on web (where the WebView can't be granted camera/mic) it falls back to `expo-web-browser` new tab. The WebView screen requests mic (and camera only for video) via expo-camera permission hooks *before* loading, and sets `mediaCapturePermissionGrantHandler` (iOS). `app.json` carries iOS NSCamera/NSMicrophone usage strings + Android CAMERA/RECORD_AUDIO/MODIFY_AUDIO_SETTINGS.
+**Config hash** always sets `disableDeepLinking=true` + `prejoinPageEnabled=false` (auto-join, stay in-app); audio-only is a per-join mode appending `startAudioOnly=true`.
 
-**Audio-only calls** are a per-join mode, not a separate room: append Jitsi URL hash config `#config.startAudioOnly=true` (also always set `disableDeepLinking=true&prejoinPageEnabled=false` so the room stays in-app and auto-joins). Both web and mobile expose video + audio buttons; chat encodes the mode in the posted message (🔊 = audio) so joiners match the initiator.
+**Secrets:** `JAAS_APP_ID` (public, stored as a plain env var — it appears in the room URL), `JAAS_KID` (the Key ID shown in the 8x8 console, NOT the App ID), `JAAS_PRIVATE_KEY` (RSA PEM, sensitive → secret). JWT header `kid` must be `${appId}/${kid}`.
 
-**Chat video/audio calls** (mobile chat only — web has no chat UI): no backend/contract change. The header buttons post a plain-text message containing the join URL, then open the room **only on send success** so every member can discover the same room. Messages whose content matches `https://meet\.jit\.si/...` render a join button.
+**Gotcha — Replit secrets can mangle a PEM.** A multi-line private key pasted into a secret can come back with **newlines collapsed into spaces** (single line, 0 `\n`), which makes Node's PEM decoder throw `DECODER routines::unsupported` / `secretOrPrivateKey must be an asymmetric key`. `lib/jaas.ts` `normalizePem()` handles all three shapes: real newlines (use as-is), escaped `\n`, and space-collapsed single-line (extract the base64 between BEGIN/END, strip whitespace, re-wrap at 64 cols). **How to apply:** never assume an env-stored PEM is well-formed; normalize before `jwt.sign`/`createPrivateKey`.
 
-**Why:** keeps the whole feature keyless and contract-light; the join link living in the message history is the shareability mechanism, so launching the room before the message persists would strand the caller in a room nobody can find. WebView (not the system browser) is what keeps the call inside the app.
-
-**Hang-up must be intercepted, or the app crashes.** When a user ends a call from Jitsi's own UI, meet.jit.si navigates the WebView away from the room to its welcome/promo page and may fire `intent://`/`market://` deep links to the native Jitsi app — this showed ads then crashed the WebView. Fix: the call screen only allows the room URL (and `about:blank`/empty initial states) to load; any other navigation triggers a once-guarded `router.back()`. Wire both `onShouldStartLoadWithRequest` (block the load) and `onNavigationStateChange` (catch in-SPA/history redirects). Also set `config.disableThirdPartyRequests=true` in the room URL to cut analytics/promo calls. **Why:** non-http schemes must be blocked too — allowing them lets the deep-link/close behavior through, which is the crash.
+Backend lib is `artifacts/api-server/src/lib/jaas.ts`; it reads env at call time (not module load) so tests can toggle config without a restart. The meetings module itself: create gated to `superadmin`/`coordinator`; any auth user lists/joins; delete is host-or-superadmin soft delete.

@@ -291,7 +291,7 @@ export default function VideoconferenciasPage() {
     audioOnly: boolean;
   } | null>(null);
 
-  // Ask the server for a ready-to-join URL (Daily room or public Jitsi
+  // Ask the server for a ready-to-join URL (8x8 JaaS room or public Jitsi
   // fallback). Surfaces a toast if access can't be issued.
   const resolveUrl = async (
     roomName: string,
