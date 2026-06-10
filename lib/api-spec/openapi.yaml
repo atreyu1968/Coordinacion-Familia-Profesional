@@ -407,7 +407,7 @@ paths:
     post:
       operationId: getMeetingToken
       tags: [meetings]
-      summary: Issue join access (JaaS JWT or public Jitsi fallback) for a room
+      summary: Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
       security:
         - bearerAuth: []
       requestBody:
@@ -3428,21 +3428,18 @@ components:
       properties:
         room:
           type: string
+        audioOnly:
+          type: boolean
       required: [room]
     MeetingAccess:
       type: object
       properties:
         provider:
           type: string
-          enum: [jaas, public]
-        domain:
+          enum: [daily, public]
+        url:
           type: string
-        room:
-          type: string
-        jwt:
-          type: string
-          nullable: true
-      required: [provider, domain, room, jwt]
+      required: [provider, url]
     ForumModule:
       type: object
       properties:

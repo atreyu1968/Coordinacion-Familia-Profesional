@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { toMeeting } from "../lib/mappers";
-import { isJaasConfigured, jaasAppId, signJaasToken } from "../lib/jaas";
+import { isDailyConfigured, getDailyAccess, publicJitsiUrl } from "../lib/daily";
 
 const router: IRouter = Router();
 
@@ -75,14 +75,11 @@ router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue join access for a room. With JaaS configured we mint a signed JWT so the
-// user joins 8x8.vc as a moderator with no login screen. Without it we fall back
-// to the public meet.jit.si server (which shows a login wall to start a room).
+// Issue a ready-to-join meeting URL for a room. With Daily configured we create
+// a private room and a short-lived per-user token, so the user joins with no
+// login screen and no per-user cap (Daily bills by minutes). Without it we fall
+// back to the public meet.jit.si server (which shows a login wall to start).
 // Keyed by room name (not meeting id) so ad-hoc chat calls are covered too.
-//
-// Moderator is granted to every authenticated user: this is an internal,
-// trusted-staff tool, and it avoids the "waiting for a moderator" lobby when the
-// room creator is not the first to join.
 // ---------------------------------------------------------------------------
 router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetMeetingTokenBody.safeParse(req.body);
@@ -95,24 +92,17 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ message: "Sala no válida" });
     return;
   }
+  const audioOnly = parsed.data.audioOnly ?? false;
   const caller = req.user!;
 
-  if (isJaasConfigured()) {
-    const appId = jaasAppId()!;
-    const token = signJaasToken({
+  if (isDailyConfigured()) {
+    const url = await getDailyAccess({
       room,
-      user: { id: caller.id, name: caller.name, email: caller.email },
-      moderator: true,
+      userName: caller.name,
+      audioOnly,
     });
-    if (token) {
-      res.json(
-        GetMeetingTokenResponse.parse({
-          provider: "jaas",
-          domain: "8x8.vc",
-          room: `${appId}/${room}`,
-          jwt: token,
-        }),
-      );
+    if (url) {
+      res.json(GetMeetingTokenResponse.parse({ provider: "daily", url }));
       return;
     }
   }
@@ -120,9 +110,7 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   res.json(
     GetMeetingTokenResponse.parse({
       provider: "public",
-      domain: "meet.jit.si",
-      room,
-      jwt: null,
+      url: publicJitsiUrl(room, audioOnly),
     }),
   );
 });

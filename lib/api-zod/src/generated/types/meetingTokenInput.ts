@@ -8,4 +8,5 @@
 
 export interface MeetingTokenInput {
   room: string;
+  audioOnly?: boolean;
 }

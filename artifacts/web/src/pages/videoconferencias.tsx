@@ -7,7 +7,6 @@ import {
   useGetMeetingToken,
   getListMeetingsQueryKey,
   type Meeting,
-  type MeetingAccess,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,19 +25,6 @@ import {
   CalendarClock,
   User as UserIcon,
 } from "lucide-react";
-
-// Build the room URL from the server-issued access info. With JaaS the host is
-// 8x8.vc and a signed `jwt` is appended so the user joins with no login screen;
-// without it we fall back to the public meet.jit.si server (no jwt).
-function buildMeetingUrl(access: MeetingAccess, audioOnly = false): string {
-  const cfg = [
-    "config.disableDeepLinking=true",
-    "config.prejoinPageEnabled=false",
-  ];
-  if (audioOnly) cfg.push("config.startAudioOnly=true");
-  const query = access.jwt ? `?jwt=${access.jwt}` : "";
-  return `https://${access.domain}/${access.room}${query}#${cfg.join("&")}`;
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return "";
@@ -305,15 +291,17 @@ export default function VideoconferenciasPage() {
     audioOnly: boolean;
   } | null>(null);
 
-  // Ask the server for join access (JaaS JWT or public fallback), then build the
-  // room URL. Surfaces a toast if access can't be issued.
+  // Ask the server for a ready-to-join URL (Daily room or public Jitsi
+  // fallback). Surfaces a toast if access can't be issued.
   const resolveUrl = async (
     roomName: string,
     audioOnly: boolean,
   ): Promise<string | null> => {
     try {
-      const access = await tokenMut.mutateAsync({ data: { room: roomName } });
-      return buildMeetingUrl(access, audioOnly);
+      const access = await tokenMut.mutateAsync({
+        data: { room: roomName, audioOnly },
+      });
+      return access.url;
     } catch {
       toast({
         title: "Error",

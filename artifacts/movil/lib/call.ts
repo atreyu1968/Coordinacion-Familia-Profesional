@@ -1,49 +1,37 @@
-import { Platform } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-
-const JITSI_BASE = "https://meet.jit.si";
+import { getMeetingToken } from "@workspace/api-client-react";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
 /**
- * Build a Jitsi room URL with in-app friendly config:
- * - disableDeepLinking: stop meet.jit.si from trying to bounce to the native
- *   Jitsi app, so the call stays inside our WebView.
- * - prejoinPageEnabled=false: join straight away (no extra "ready to join" step).
- * - startAudioOnly: opt into an audio-only call (camera stays off).
+ * Ask the server for a ready-to-join meeting URL for a room. The server returns
+ * a Daily room URL (no login, no per-user cap) when configured, or a public
+ * meet.jit.si fallback URL otherwise.
  */
-export function jitsiUrl(roomName: string, audioOnly = false): string {
-  const cfg = [
-    "config.disableDeepLinking=true",
-    "config.prejoinPageEnabled=false",
-    // Cut analytics/promo calls so hang-up doesn't bounce to meet.jit.si ads.
-    "config.disableThirdPartyRequests=true",
-  ];
-  if (audioOnly) cfg.push("config.startAudioOnly=true");
-  return `${JITSI_BASE}/${roomName}#${cfg.join("&")}`;
+export async function fetchMeetingUrl(
+  room: string,
+  audioOnly = false,
+): Promise<string> {
+  const access = await getMeetingToken({ room, audioOnly });
+  return access.url;
 }
 
-/** Extract the Jitsi room name from a full meet.jit.si URL, if present. */
+/** Extract the room name from a call link posted in chat, if present. */
 export function roomFromUrl(url: string): string | null {
-  const m = url.match(/meet\.jit\.si\/([^\s#?/]+)/);
+  const m = url.match(/(?:meet\.jit\.si|daily\.co)\/([^\s#?/]+)/);
   return m ? m[1] : null;
 }
 
 /**
- * Start or join a call. On native we embed Jitsi in an in-app WebView screen so
- * the user never leaves the app. On web (where the WebView can't be granted
- * camera/microphone access) we open the room in a new browser tab instead.
+ * Start or join a call. We push the in-app call screen, which resolves the join
+ * URL from the server and then embeds it in a WebView (native) or opens it in
+ * the browser (web, where the WebView can't be granted camera/microphone).
  */
 export function startCall(
   router: AppRouter,
   opts: { room: string; title?: string; audioOnly?: boolean },
 ): void {
   const audioOnly = opts.audioOnly ?? false;
-  if (Platform.OS === "web") {
-    void WebBrowser.openBrowserAsync(jitsiUrl(opts.room, audioOnly));
-    return;
-  }
   router.push({
     pathname: "/llamada",
     params: {

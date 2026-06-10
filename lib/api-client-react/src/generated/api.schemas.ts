@@ -728,21 +728,20 @@ export interface CreateMeetingInput {
 
 export interface MeetingTokenInput {
   room: string;
+  audioOnly?: boolean;
 }
 
 export type MeetingAccessProvider = typeof MeetingAccessProvider[keyof typeof MeetingAccessProvider];
 
 
 export const MeetingAccessProvider = {
-  jaas: 'jaas',
+  daily: 'daily',
   public: 'public',
 } as const;
 
 export interface MeetingAccess {
   provider: MeetingAccessProvider;
-  domain: string;
-  room: string;
-  jwt: string | null;
+  url: string;
 }
 
 export interface ForumModule {

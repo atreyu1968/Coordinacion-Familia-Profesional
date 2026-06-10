@@ -17,7 +17,7 @@ import {
 } from "expo-camera";
 import * as WebBrowser from "expo-web-browser";
 
-import { jitsiUrl } from "@/lib/call";
+import { fetchMeetingUrl, roomFromUrl } from "@/lib/call";
 
 export default function CallScreen() {
   const insets = useSafeAreaInsets();
@@ -33,12 +33,29 @@ export default function CallScreen() {
   const title =
     params.title ?? (audioOnly ? "Llamada de audio" : "Videollamada");
 
-  const uri = jitsiUrl(room, audioOnly);
-
+  const [uri, setUri] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [, requestCamera] = useCameraPermissions();
   const [, requestMicrophone] = useMicrophonePermissions();
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Resolve the join URL from the server (Daily room or public Jitsi fallback).
+  useEffect(() => {
+    if (!room) return;
+    let active = true;
+    (async () => {
+      try {
+        const url = await fetchMeetingUrl(room, audioOnly);
+        if (active) setUri(url);
+      } catch {
+        if (active) setFailed(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [room, audioOnly]);
 
   // Close the screen exactly once, whether the user taps "Salir" or hangs up
   // inside Jitsi (which redirects meet.jit.si away from the room).
@@ -54,15 +71,19 @@ export default function CallScreen() {
   // to the native Jitsi app), we bail out of the screen instead of letting that
   // page load and crash the WebView. Only the room URL and the blank/initial
   // states are allowed through — every other scheme is treated as "leaving".
+  const roomKey = uri ? roomFromUrl(uri) : null;
   const isRoomUrl = useCallback(
     (url: string) =>
-      !url || url === "about:blank" || url.includes(`/${room}`),
-    [room],
+      !url ||
+      url === "about:blank" ||
+      (!!roomKey && url.includes(`/${roomKey}`)),
+    [roomKey],
   );
 
-  // The WebView can't be granted camera/mic on web — fall back to a new tab.
+  // The WebView can't be granted camera/mic on web — fall back to a new tab
+  // (once the join URL has been resolved from the server).
   useEffect(() => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && uri) {
       void WebBrowser.openBrowserAsync(uri);
       router.back();
     }
@@ -113,7 +134,7 @@ export default function CallScreen() {
         </Pressable>
       </View>
 
-      {ready && room ? (
+      {ready && room && uri && !failed ? (
         <WebView
           source={{ uri }}
           style={styles.web}
@@ -135,7 +156,7 @@ export default function CallScreen() {
         />
       ) : null}
 
-      {(loading || !ready) && room ? (
+      {(loading || !ready || !uri) && room && !failed ? (
         <View style={styles.loading} pointerEvents="none">
           <ActivityIndicator color="#fff" size="large" />
         </View>
@@ -144,6 +165,14 @@ export default function CallScreen() {
       {!room ? (
         <View style={styles.loading}>
           <Text style={styles.errorText}>Sala no válida.</Text>
+        </View>
+      ) : null}
+
+      {failed ? (
+        <View style={styles.loading}>
+          <Text style={styles.errorText}>
+            No se pudo abrir la sala. Inténtalo de nuevo.
+          </Text>
         </View>
       ) : null}
     </View>

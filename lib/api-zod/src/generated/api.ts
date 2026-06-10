@@ -291,17 +291,16 @@ export const DeleteMeetingParams = zod.object({
 
 
 /**
- * @summary Issue join access (JaaS JWT or public Jitsi fallback) for a room
+ * @summary Issue a ready-to-join meeting URL (Daily room, or public Jitsi fallback)
  */
 export const GetMeetingTokenBody = zod.object({
-  "room": zod.string()
+  "room": zod.string(),
+  "audioOnly": zod.boolean().optional()
 })
 
 export const GetMeetingTokenResponse = zod.object({
-  "provider": zod.enum(['jaas', 'public']),
-  "domain": zod.string(),
-  "room": zod.string(),
-  "jwt": zod.string().nullable()
+  "provider": zod.enum(['daily', 'public']),
+  "url": zod.string()
 })
 
 

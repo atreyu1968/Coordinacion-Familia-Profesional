@@ -9,7 +9,5 @@ import type { MeetingAccessProvider } from './meetingAccessProvider';
 
 export interface MeetingAccess {
   provider: MeetingAccessProvider;
-  domain: string;
-  room: string;
-  jwt: string | null;
+  url: string;
 }
