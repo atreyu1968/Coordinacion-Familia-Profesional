@@ -202,6 +202,13 @@ run_as_user "cd '${APP_DIR}' && PORT=5173 BASE_PATH=/ NODE_ENV=production pnpm -
 # API build.
 run_as_user "cd '${APP_DIR}' && pnpm --filter @workspace/api-server run build"
 
+# Fail early if the web build didn't produce the entry point nginx will serve.
+if [[ ! -f "${APP_DIR}/artifacts/web/dist/public/index.html" ]]; then
+  echo "ERROR: web build did not produce artifacts/web/dist/public/index.html" >&2
+  echo "       Check the build output above and re-run the installer." >&2
+  exit 1
+fi
+
 # ---------------------------------------------------------------------------
 log "Applying database schema"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
@@ -239,8 +246,16 @@ sed -e "s|__SERVER_NAME__|${DOMAIN}|g" \
     "${SCRIPT_DIR}/nginx-site.conf.template" > /etc/nginx/sites-available/coordina-adg
 ln -sf /etc/nginx/sites-available/coordina-adg /etc/nginx/sites-enabled/coordina-adg
 rm -f /etc/nginx/sites-enabled/default
-# nginx (www-data) must be able to traverse into the web root.
-chmod o+x "${APP_DIR}" "${APP_DIR}/artifacts" "${APP_DIR}/artifacts/web" "${APP_DIR}/artifacts/web/dist" 2>/dev/null || true
+# nginx (www-data) must be able to traverse EVERY parent dir down to the web
+# root. Home directories are 700 on modern Ubuntu, which otherwise blocks www-data
+# and makes the whole site return 500. Grant execute-only (traverse, no listing)
+# up the chain, and make the built web files world-readable.
+traverse_dir="${WEB_ROOT}"
+while [[ -n "${traverse_dir}" && "${traverse_dir}" != "/" ]]; do
+  chmod o+x "${traverse_dir}" 2>/dev/null || true
+  traverse_dir="$(dirname "${traverse_dir}")"
+done
+chmod -R o+rX "${WEB_ROOT}" 2>/dev/null || true
 nginx -t
 systemctl enable nginx
 systemctl restart nginx

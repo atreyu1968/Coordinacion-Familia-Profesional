@@ -189,6 +189,19 @@ Cada aplicación se ejecuta con su propio comando `dev` (`pnpm --filter
 
 ## 7. Resolución de problemas
 
+- **Toda la web da 500 (también detrás de Cloudflare):** casi siempre nginx no
+  puede leer los archivos web. Revisa `sudo tail -50 /var/log/nginx/error.log`:
+  - `Permission denied` → nginx (`www-data`) no puede atravesar las carpetas
+    hasta la web. Suele pasar al clonar en `/home/usuario` (permisos `700`).
+    Solución:
+    ```bash
+    d="$(pwd)/artifacts/web/dist/public"
+    while [ "$d" != "/" ]; do sudo chmod o+x "$d"; d="$(dirname "$d")"; done
+    sudo chmod -R o+rX "$(pwd)/artifacts/web/dist/public"
+    sudo systemctl reload nginx
+    ```
+  - `rewrite or internal redirection cycle` → falta `index.html`. Recompila la
+    web: `sudo bash deploy/update.sh` (o reinstala con `deploy/install.sh`).
 - **La web carga pero falla todo lo del API:** revisa el servicio con
   `journalctl -u coordina-adg -f`. Causas típicas: `DATABASE_URL` incorrecta o
   PostgreSQL parado (`systemctl status postgresql`).
