@@ -42,3 +42,28 @@ filesystem instead.
 - JaaS video is optional (falls back to public meet.jit.si). The private key can
   be a single-line `\n`-escaped PEM — `normalizePem` in jaas.ts repairs it, which
   is what lets it live in a systemd EnvironmentFile.
+
+## Mobile app served as a PWA under /app (same domain, no subdomain)
+**Why:** The web (desktop) and movil (Expo) are two separate artifacts. The
+installer must publish BOTH or phones get the desktop web. Chosen topology:
+desktop web at `/`, Expo web export at `/app` on the same domain.
+- The Expo web export must be path-aware: `app.config.js` sets
+  `experiments.baseUrl` from `EXPO_PUBLIC_BASE_PATH` (unset in dev so `expo start`
+  stays root-based; `/app` only at export time). Build via
+  `EXPO_PUBLIC_DOMAIN=<apihost> EXPO_PUBLIC_BASE_PATH=/app pnpm --filter
+  @workspace/movil run build:web`.
+- **How to apply (PWA under a subpath):** manifest.json `start_url`/`scope`/icons
+  must be RELATIVE (".", "icon-192.png") and pwa.ts must prefix manifest/sw/icon
+  URLs with `EXPO_PUBLIC_BASE_PATH`; sw.js icons relative + notificationclick
+  resolved against `self.registration.scope`. SW registered at `/app/sw.js` →
+  scope `/app/`, which is required for installability/push under the subpath.
+- nginx: `location = /app {301 →/app/}` + `location /app/ { try_files $uri $uri/
+  /app/index.html; }` MUST come before the catch-all `location / {…/index.html}`
+  (longest-prefix wins). update.sh backfills this block path-aware (awk -v on the
+  derived MOBILE_PATH), not hardcoded `/app`.
+- The app bakes API base = `https://EXPO_PUBLIC_DOMAIN` then appends `/api/…`, so
+  EXPO_PUBLIC_DOMAIN must be the SAME host that proxies the API at `/api`.
+- Only build mobile when DOMAIN is a real HTTPS hostname (not `_` or a bare IP) —
+  PWA install/push need HTTPS. In update.sh the mobile build runs BEFORE the web
+  root is wiped, so a failed build aborts (set -e) and leaves the live `/app`
+  untouched.

@@ -25,6 +25,11 @@ fi
 
 # shellcheck disable=SC1090
 DATABASE_URL="$(grep '^DATABASE_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
+MOBILE_WEB_URL="$(grep '^MOBILE_WEB_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)"
+# Derive the API host and sub-path the mobile app is served under, e.g.
+# https://adg.example.org/app -> host "adg.example.org", path "/app".
+MOBILE_HOST="$(printf '%s' "${MOBILE_WEB_URL}" | sed -E 's#^https?://##; s#/.*$##')"
+MOBILE_PATH="$(printf '%s' "${MOBILE_WEB_URL}" | sed -E 's#^https?://[^/]+##; s#/$##')"
 
 run_as_user() {
   if [[ "${SERVICE_USER}" == "root" ]]; then bash -lc "$*"; else sudo -u "${SERVICE_USER}" -H bash -lc "$*"; fi
@@ -40,11 +45,31 @@ echo "==> Building web + API"
 run_as_user "cd '${APP_DIR}' && PORT=5173 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/web run build"
 run_as_user "cd '${APP_DIR}' && pnpm --filter @workspace/api-server run build"
 
+# Rebuild the mobile app (PWA) when it is configured to live under a sub-path on
+# this server (e.g. https://DOMAIN/app). Skipped for blank or root URLs.
+BUILD_MOBILE=0
+if [[ -n "${MOBILE_HOST}" && -n "${MOBILE_PATH}" ]]; then
+  echo "==> Building the mobile app (PWA) for ${MOBILE_PATH}"
+  # This runs BEFORE the web root is wiped below, so a build failure aborts the
+  # whole update (set -e) and the previously published mobile app stays live.
+  run_as_user "cd '${APP_DIR}' && EXPO_PUBLIC_DOMAIN='${MOBILE_HOST}' EXPO_PUBLIC_BASE_PATH='${MOBILE_PATH}' pnpm --filter @workspace/movil run build:web"
+  if [[ ! -f "${APP_DIR}/artifacts/movil/dist/index.html" ]]; then
+    echo "ERROR: mobile build produced no index.html; aborting before touching the live site." >&2
+    exit 1
+  fi
+  BUILD_MOBILE=1
+fi
+
 echo "==> Publishing web files to /var/www/coordina-adg"
 WEB_ROOT="/var/www/coordina-adg"
 mkdir -p "${WEB_ROOT}"
 rm -rf "${WEB_ROOT:?}/"*
 cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
+if [[ "${BUILD_MOBILE}" -eq 1 ]]; then
+  echo "==> Publishing the mobile app to ${WEB_ROOT}${MOBILE_PATH}"
+  mkdir -p "${WEB_ROOT}${MOBILE_PATH}"
+  cp -a "${APP_DIR}/artifacts/movil/dist/." "${WEB_ROOT}${MOBILE_PATH}/"
+fi
 chown -R www-data:www-data "${WEB_ROOT}"
 
 # Migrate older installs whose nginx root still points inside the repo (e.g.
@@ -54,6 +79,22 @@ NGINX_CONF="/etc/nginx/sites-available/coordina-adg"
 if [[ -f "${NGINX_CONF}" ]]; then
   echo "==> Ensuring nginx serves from ${WEB_ROOT}"
   sed -i -E "s#^([[:space:]]*)root[[:space:]]+[^;]*;#\\1root ${WEB_ROOT};#" "${NGINX_CONF}"
+  # Backfill the mobile-app route for installs created before the PWA existed.
+  # Path-aware so it matches whatever sub-path MOBILE_WEB_URL points to.
+  if [[ "${BUILD_MOBILE}" -eq 1 ]] && ! grep -q "location ${MOBILE_PATH}/" "${NGINX_CONF}"; then
+    echo "==> Adding the ${MOBILE_PATH} route to nginx for the mobile app"
+    awk -v p="${MOBILE_PATH}" '
+      /location \/ \{/ && !done {
+        print "    location = " p " { return 301 " p "/; }";
+        print "    location " p "/ {";
+        print "        try_files $uri $uri/ " p "/index.html;";
+        print "    }";
+        print "";
+        done=1
+      }
+      { print }
+    ' "${NGINX_CONF}" > "${NGINX_CONF}.tmp" && mv "${NGINX_CONF}.tmp" "${NGINX_CONF}"
+  fi
   if nginx -t; then
     systemctl reload nginx
   else

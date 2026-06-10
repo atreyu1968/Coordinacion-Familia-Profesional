@@ -132,7 +132,7 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `STORAGE_DRIVER` | sí | `local` para guardar ficheros en disco |
 | `LOCAL_STORAGE_DIR` | sí (con `local`) | Carpeta de los ficheros subidos |
 | `PUBLIC_APP_URL` | no | Solo si el API se sirve en otro origen |
-| `MOBILE_WEB_URL` | no | URL pública (HTTPS) para activar la página *App Móvil* |
+| `MOBILE_WEB_URL` | no | URL pública (HTTPS) de la app móvil; por defecto `https://TU_DOMINIO/app` |
 | `JAAS_APP_ID` / `JAAS_KID` / `JAAS_PRIVATE_KEY` | no | Videollamadas con JaaS (8x8) |
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
 | `NEXTCLOUD_URL` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` | no | Espacio colaborativo (provisión de carpetas) |
@@ -148,11 +148,16 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 - **Correo (Resend):** necesario para que el flujo de *“he olvidado mi
   contraseña”* pueda enviar el código por correo. Sin él, el resto de la app
   funciona con normalidad.
-- **App Móvil (PWA):** la app móvil es la propia web instalable en el teléfono
-  (no necesita tienda de aplicaciones). La página *App Móvil* muestra el código
-  QR de instalación solo si `MOBILE_WEB_URL` apunta a tu URL pública HTTPS. El
-  instalador la rellena automáticamente cuando indicas un dominio real. La
-  instalación como app y las notificaciones push requieren HTTPS.
+- **App Móvil (PWA):** la app móvil es una aplicación propia (proyecto Expo),
+  distinta de la web de escritorio. El instalador la compila y la publica en la
+  ruta `/app` de tu mismo dominio (`https://TU_DOMINIO/app`), así que al abrirla
+  en el teléfono se ve la app móvil de verdad y no la versión de escritorio. No
+  necesita tienda de aplicaciones: se instala desde el navegador. La página *App
+  Móvil* muestra el código QR de instalación apuntando a `MOBILE_WEB_URL`, que el
+  instalador rellena automáticamente cuando indicas un dominio real. La compilación
+  de la app móvil, su instalación y las notificaciones push requieren un dominio
+  HTTPS (no se construye con una IP o sin dominio). Cada `deploy/update.sh` la
+  vuelve a compilar y publicar.
 - **Espacio colaborativo (Nextcloud + Collabora):** cada módulo dispone de una
   carpeta compartida y un editor de documentos en tiempo real. Es un componente
   opcional autoalojado; ver la sección *Espacio colaborativo* más abajo. Sin

@@ -23,10 +23,12 @@ self.addEventListener("push", (event) => {
   }
 
   const title = payload.title || "Coordina ADG";
+  // Icons are resolved relative to this worker's URL, so they work whether the
+  // app is served from the root or from a sub-path (e.g. /app/sw.js).
   const options = {
     body: payload.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
     data: payload.data || {},
     tag: (payload.data && payload.data.tag) || undefined,
   };
@@ -37,7 +39,11 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data || {};
-  const targetPath = typeof data.path === "string" ? data.path : "/";
+  const rawPath = typeof data.path === "string" ? data.path : "/";
+  // Resolve the in-app route against this worker's scope so deep links land on
+  // the right URL whether the app lives at the root or under a sub-path (/app/).
+  const targetUrl = new URL(rawPath.replace(/^\//, ""), self.registration.scope)
+    .href;
 
   event.waitUntil(
     self.clients
@@ -46,14 +52,14 @@ self.addEventListener("notificationclick", (event) => {
         for (const client of clientList) {
           if ("focus" in client) {
             client.focus();
-            if ("navigate" in client && targetPath !== "/") {
-              client.navigate(targetPath).catch(() => {});
+            if ("navigate" in client && rawPath !== "/") {
+              client.navigate(targetUrl).catch(() => {});
             }
             return undefined;
           }
         }
         if (self.clients.openWindow) {
-          return self.clients.openWindow(targetPath);
+          return self.clients.openWindow(targetUrl);
         }
         return undefined;
       }),

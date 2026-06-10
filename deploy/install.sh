@@ -84,12 +84,14 @@ log "Gathering configuration"
 prompt_default DOMAIN "Domain or IP for the site (use _ for any)" "${DOMAIN}"
 prompt_default ADMIN_EMAIL "Email for the first administrator" "${ADMIN_EMAIL:-admin@${DOMAIN/_/localhost}}"
 prompt_secret  ADMIN_PASSWORD "Password for the first administrator"
-# Public URL of the installable mobile app (PWA). Defaults to https://DOMAIN for a
-# real domain; can be edited here or later from the control panel. Leave blank to
-# keep the "App Móvil" page disabled (PWA install + push need HTTPS).
+# Public URL of the installable mobile app (PWA). The mobile app is built from
+# the Expo project and published under /app on the same domain, so it defaults to
+# https://DOMAIN/app for a real domain. Editable here or later from the control
+# panel. Left blank (no real HTTPS domain) keeps the "App Móvil" page disabled,
+# since PWA install + push require HTTPS.
 MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(env_get MOBILE_WEB_URL)}"
 if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
-  MOBILE_WEB_URL="https://${DOMAIN}"
+  MOBILE_WEB_URL="https://${DOMAIN}/app"
 fi
 prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable later in the panel)" "${MOBILE_WEB_URL}"
 # Optional collaborative space (Nextcloud Drive + Collabora). Off by default: it
@@ -227,6 +229,23 @@ if [[ ! -f "${APP_DIR}/artifacts/web/dist/public/index.html" ]]; then
   exit 1
 fi
 
+# Mobile app (Expo web export), published under /app so phones get the real
+# mobile app instead of the desktop web. Only built with a real HTTPS domain:
+# the bundled API base URL and PWA install/push all require https://DOMAIN.
+BUILD_MOBILE=0
+if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  BUILD_MOBILE=1
+fi
+if [[ "${BUILD_MOBILE}" -eq 1 ]]; then
+  log "Building the mobile app (PWA) for /app"
+  run_as_user "cd '${APP_DIR}' && EXPO_PUBLIC_DOMAIN='${DOMAIN}' EXPO_PUBLIC_BASE_PATH=/app pnpm --filter @workspace/movil run build:web"
+  if [[ ! -f "${APP_DIR}/artifacts/movil/dist/index.html" ]]; then
+    echo "ERROR: mobile build did not produce artifacts/movil/dist/index.html" >&2
+    echo "       Check the build output above and re-run the installer." >&2
+    exit 1
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 log "Applying database schema"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
@@ -257,6 +276,11 @@ WEB_ROOT="/var/www/coordina-adg"
 mkdir -p "${WEB_ROOT}"
 rm -rf "${WEB_ROOT:?}/"*
 cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
+# Publish the mobile app (PWA) under /app on the same root.
+if [[ "${BUILD_MOBILE}" -eq 1 ]]; then
+  mkdir -p "${WEB_ROOT}/app"
+  cp -a "${APP_DIR}/artifacts/movil/dist/." "${WEB_ROOT}/app/"
+fi
 chown -R www-data:www-data "${WEB_ROOT}"
 # Map needed for WebSocket (Socket.io) upgrades — http-level, set once.
 cat > /etc/nginx/conf.d/coordina-adg-upgrade.conf <<'EOF'

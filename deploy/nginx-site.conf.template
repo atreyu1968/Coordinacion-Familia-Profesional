@@ -26,6 +26,14 @@ server {
         proxy_read_timeout 600s;
     }
 
+    # Installable mobile app (PWA), built from the Expo project into <root>/app.
+    # Served under /app so phones get the real mobile app instead of the desktop
+    # web. Its own SPA fallback keeps client-side routes working.
+    location = /app { return 301 /app/; }
+    location /app/ {
+        try_files $uri $uri/ /app/index.html;
+    }
+
     # Single-page app: serve static files, fall back to index.html.
     location / {
         try_files $uri $uri/ /index.html;

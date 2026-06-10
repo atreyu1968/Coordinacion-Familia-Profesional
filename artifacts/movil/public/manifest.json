@@ -2,8 +2,8 @@
   "name": "Coordina ADG",
   "short_name": "Coordina ADG",
   "description": "Plataforma de coordinación de la familia profesional ADG en Canarias.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#fbfaf9",
@@ -11,13 +11,13 @@
   "lang": "es",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

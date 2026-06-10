@@ -16,6 +16,11 @@ import { getAuthToken } from "@/contexts/AuthContext";
 
 const THEME_COLOR = "#0050b3";
 
+// Sub-path the web build is served under (e.g. "/app" in production). Empty in
+// dev / root deployments. Baked in at build time via EXPO_PUBLIC_BASE_PATH so
+// the manifest, service worker and icons resolve to the correct URLs.
+const BASE_PATH = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
+
 function isWeb(): boolean {
   return Platform.OS === "web" && typeof document !== "undefined";
 }
@@ -52,16 +57,16 @@ function ensureLink(rel: string, href: string): void {
 export function setupPwa(): void {
   if (!isWeb()) return;
   try {
-    ensureLink("manifest", "/manifest.json");
+    ensureLink("manifest", `${BASE_PATH}/manifest.json`);
     ensureMeta("theme-color", THEME_COLOR);
     ensureMeta("apple-mobile-web-app-capable", "yes");
     ensureMeta("mobile-web-app-capable", "yes");
     ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
     ensureMeta("apple-mobile-web-app-title", "Coordina ADG");
-    ensureLink("apple-touch-icon", "/apple-touch-icon.png");
+    ensureLink("apple-touch-icon", `${BASE_PATH}/apple-touch-icon.png`);
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch((err) => {
+      navigator.serviceWorker.register(`${BASE_PATH}/sw.js`).catch((err) => {
         console.warn("SW registration failed", err);
       });
     }
@@ -158,13 +163,13 @@ export async function showLocalNotification(
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, {
         body: body ?? "",
-        icon: "/icon-192.png",
-        badge: "/icon-192.png",
+        icon: `${BASE_PATH}/icon-192.png`,
+        badge: `${BASE_PATH}/icon-192.png`,
         data: data ?? {},
       });
       return;
     }
-    new Notification(title, { body: body ?? "", icon: "/icon-192.png" });
+    new Notification(title, { body: body ?? "", icon: `${BASE_PATH}/icon-192.png` });
   } catch {
     // best-effort
   }
