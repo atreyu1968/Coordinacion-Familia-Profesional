@@ -2,12 +2,14 @@
 # ===========================================================================
 # Coordina ADG — collaborative space installer (Nextcloud + Collabora).
 #
-# Optional add-on, run AFTER the main deploy/install.sh. It:
+# Run AFTER the main deploy/install.sh (install.sh runs it automatically when a
+# real HTTPS domain is present). It:
 #   - brings up the dockerized Nextcloud + Collabora stack (compose),
 #   - configures host nginx subdomains (and HTTPS via certbot),
 #   - installs/enables the Nextcloud apps used by the platform
 #     (group folders + OIDC login) and registers the OIDC provider,
-#   - prints the values to paste into the control panel.
+#   - writes the connection details into the main app .env and restarts it, so
+#     the integration works automatically (no manual control-panel step).
 #
 # Safe to re-run (idempotent). Usage from the repo root:
 #   sudo bash deploy/nextcloud/install-collab.sh
@@ -179,13 +181,49 @@ if [[ -n "${LETSENCRYPT_EMAIL}" ]]; then
     note "certbot failed — sites still work over HTTP. Re-run once DNS resolves."
 fi
 
+# --- Integrate with the main app automatically -----------------------------
+# Write the connection details into the api-server's .env so the collaborative
+# space works out of the box, with no manual copy-paste into the control panel.
+# The api-server resolves Nextcloud admin (url+user+password) and the OIDC client
+# (id+secret) from these env vars when no in-panel DB values are set.
+MAIN_ENV="${APP_DIR}/.env"
+if [[ -f "${MAIN_ENV}" ]]; then
+  log "Integrating with Coordina ADG (${MAIN_ENV})"
+  # Upsert KEY=VALUE without sed, so values with special chars (#, &, \) are
+  # written verbatim: drop any existing line, then append the new one.
+  set_main_env() {
+    local key="$1" value="$2" tmp
+    tmp="$(mktemp)"
+    grep -v "^${key}=" "${MAIN_ENV}" > "${tmp}" || true
+    printf '%s=%s\n' "${key}" "${value}" >> "${tmp}"
+    cat "${tmp}" > "${MAIN_ENV}"
+    rm -f "${tmp}"
+  }
+  set_main_env NEXTCLOUD_URL "https://${NEXTCLOUD_DOMAIN}"
+  set_main_env NEXTCLOUD_ADMIN_USER "${NEXTCLOUD_ADMIN_USER}"
+  set_main_env NEXTCLOUD_ADMIN_PASSWORD "${NEXTCLOUD_ADMIN_PASSWORD}"
+  set_main_env NEXTCLOUD_OIDC_CLIENT_ID "${OIDC_CLIENT_ID}"
+  set_main_env NEXTCLOUD_OIDC_CLIENT_SECRET "${OIDC_CLIENT_SECRET}"
+  if systemctl list-unit-files 2>/dev/null | grep -q '^coordina-adg\.service'; then
+    systemctl restart coordina-adg.service || \
+      note "Could not restart coordina-adg.service; restart it to apply: systemctl restart coordina-adg"
+  fi
+  INTEGRATED=1
+else
+  INTEGRATED=0
+  note "Main app .env not found at ${MAIN_ENV}; enter the values below in the panel."
+fi
+
 # ---------------------------------------------------------------------------
-log "Done! Paste these into the control panel → Espacio colaborativo:"
+if [[ "${INTEGRATED}" -eq 1 ]]; then
+  log "Done! The collaborative space is installed and integrated automatically."
+  note "No manual step needed. For reference (also in ${ENV_FILE}, root-only):"
+else
+  log "Done! Paste these into the control panel → Espacio colaborativo:"
+fi
 note "URL de Nextcloud   : https://${NEXTCLOUD_DOMAIN}"
 note "URL de Collabora   : https://${COLLABORA_DOMAIN}"
 note "Usuario admin      : ${NEXTCLOUD_ADMIN_USER}"
 note "Contraseña admin   : ${NEXTCLOUD_ADMIN_PASSWORD}"
 note "OIDC Client ID     : ${OIDC_CLIENT_ID}"
 note "OIDC Client Secret : ${OIDC_CLIENT_SECRET}"
-note ""
-note "Secrets are also stored in ${ENV_FILE} (root-only)."

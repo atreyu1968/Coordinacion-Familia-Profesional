@@ -94,10 +94,14 @@ if [[ -z "${MOBILE_WEB_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$
   MOBILE_WEB_URL="https://${DOMAIN}/app"
 fi
 prompt_default MOBILE_WEB_URL "Public HTTPS URL for the mobile app (editable later in the panel)" "${MOBILE_WEB_URL}"
-# Optional collaborative space (Nextcloud Drive + Collabora). Off by default: it
-# pulls a dockerized stack and is only needed for per-module workspaces. When
-# enabled, it runs deploy/nextcloud/install-collab.sh after the main install.
-INSTALL_COLLAB="${INSTALL_COLLAB:-no}"
+# Collaborative space (Nextcloud Drive + Collabora). It self-installs AND
+# integrates automatically (running deploy/nextcloud/install-collab.sh, which
+# also writes the connection details into this app's .env). Defaults to "yes"
+# when a real HTTPS domain is present — SSO needs subdomains of the same
+# registrable domain (drive./office.) and HTTPS — and to "no" for a bare IP / "_".
+DEFAULT_COLLAB="no"
+if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="yes"; fi
+INSTALL_COLLAB="${INSTALL_COLLAB:-${DEFAULT_COLLAB}}"
 prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${INSTALL_COLLAB}"
 if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
   echo "ADMIN_PASSWORD is required (set it via env for non-interactive installs)." >&2

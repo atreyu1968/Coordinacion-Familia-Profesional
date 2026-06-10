@@ -54,3 +54,15 @@ Nextcloud must be served from a **subdomain of the same registrable domain** as 
 (e.g. `drive.example.org` next to `adg.example.org`) or the cookie/redirect handoff breaks.
 **How to apply:** keep the installer defaulting the NC/Collabora hosts to subdomains of
 `APP_DOMAIN`; OIDC stores are in-memory (single systemd process) — don't assume multi-process.
+
+### Collab installs AND integrates automatically (no manual panel paste)
+The installer auto-installs the collaborative space by default **only when a real HTTPS
+domain is present** (not `_`/bare IP), and `install-collab.sh` then writes the connection
+details into the **main app's `.env`** (`NEXTCLOUD_URL`, `NEXTCLOUD_ADMIN_USER`,
+`NEXTCLOUD_ADMIN_PASSWORD`, `NEXTCLOUD_OIDC_CLIENT_ID`, `NEXTCLOUD_OIDC_CLIENT_SECRET`)
+and restarts `coordina-adg.service` — so it works with zero control-panel steps.
+**Why:** the user expects the collab stack to be turnkey; SSO needs HTTPS + same-domain
+subdomains, so a bare IP can't auto-enable. The collab script's own compose `.env` uses
+`OIDC_CLIENT_ID/SECRET`, but the api-server reads `NEXTCLOUD_OIDC_CLIENT_ID/SECRET` — map
+the names when writing to the main `.env`. **How to apply:** write env values with a
+drop-line-then-append upsert (not `sed s###`) so secrets with special chars survive.

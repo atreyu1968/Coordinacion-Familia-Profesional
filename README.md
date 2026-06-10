@@ -159,30 +159,44 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   HTTPS (no se construye con una IP o sin dominio). Cada `deploy/update.sh` la
   vuelve a compilar y publicar.
 - **Espacio colaborativo (Nextcloud + Collabora):** cada módulo dispone de una
-  carpeta compartida y un editor de documentos en tiempo real. Es un componente
-  opcional autoalojado; ver la sección *Espacio colaborativo* más abajo. Sin
-  configurar, la página *Espacio colaborativo* avisa de que no está disponible y
-  el resto de la app funciona con normalidad. Las credenciales se introducen en
-  el **Panel de Control** (nunca se muestran de nuevo) o por variables de entorno.
+  carpeta compartida y un editor de documentos en tiempo real. Si instalas con un
+  dominio HTTPS real, el instalador lo **monta e integra automáticamente** (instala
+  Docker, levanta Nextcloud + Collabora, configura nginx/HTTPS y el SSO, y escribe
+  las credenciales en el `.env` de la app), así que funciona sin pasos manuales.
+  Con una IP sin dominio se omite (el SSO necesita subdominios del mismo dominio).
+  También puedes introducir o cambiar las credenciales en el **Panel de Control**
+  (nunca se muestran de nuevo) o por variables de entorno. Sin configurar, la
+  página *Espacio colaborativo* avisa de que no está disponible y el resto de la
+  app funciona con normalidad.
 
 ---
 
 ## 4.b Espacio colaborativo (Nextcloud + Collabora)
 
-Componente **opcional** que añade a cada módulo una carpeta compartida (Nextcloud
-Drive) y edición de documentos en tiempo real (Collabora). El inicio de sesión es
-único: el propio API actúa como proveedor de identidad (OIDC) y Nextcloud
-(app `user_oidc`) es el cliente, así que el profesorado no ve una segunda pantalla
-de acceso. Los miembros de cada espacio se calculan a partir de las asignaciones
-docentes (`teaching_assignments`) y del rol/ámbito de cada usuario.
+Añade a cada módulo una carpeta compartida (Nextcloud Drive) y edición de
+documentos en tiempo real (Collabora). El inicio de sesión es único: el propio
+API actúa como proveedor de identidad (OIDC) y Nextcloud (app `user_oidc`) es el
+cliente, así que el profesorado no ve una segunda pantalla de acceso. Los miembros
+de cada espacio se calculan a partir de las asignaciones docentes
+(`teaching_assignments`) y del rol/ámbito de cada usuario.
 
-Requisitos: un servidor con **Docker** y dos subdominios del dominio principal
-(p. ej. `drive.tu-dominio.com` y `office.tu-dominio.com`); usar subdominios del
-mismo dominio registrable es importante para que el SSO funcione.
+**Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
+dominio HTTPS real, este componente se instala e integra **solo** (instala Docker,
+levanta el stack, configura nginx + HTTPS, registra el SSO y escribe las
+credenciales en el `.env` de la app, reiniciando el servicio). No tienes que pegar
+nada en el panel. Cada `deploy/update.sh` lo vuelve a actualizar.
+
+Requisitos: el servidor instala **Docker** automáticamente, pero necesitas dos
+subdominios del dominio principal apuntando por DNS al servidor (p. ej.
+`drive.tu-dominio.com` y `office.tu-dominio.com`); usar subdominios del mismo
+dominio registrable es imprescindible para que el SSO funcione.
+
+Si lo instalaste sin dominio (solo IP) o quieres montarlo aparte después, puedes
+lanzarlo a mano (es idempotente, se puede repetir):
 
 ```bash
-# 1) Levantar Nextcloud + Collabora, configurar nginx, HTTPS y la app user_oidc.
-#    Ejecútalo DESPUÉS de deploy/install.sh. Es idempotente (se puede repetir).
+# Levantar Nextcloud + Collabora, configurar nginx, HTTPS, la app user_oidc y
+# escribir las credenciales en el .env de la app. Ejecútalo DESPUÉS de install.sh.
 sudo APP_DOMAIN=adg.tu-dominio.com LETSENCRYPT_EMAIL=tu@correo.com \
      bash deploy/nextcloud/install-collab.sh
 
@@ -191,11 +205,12 @@ cd deploy/nextcloud && cp .env.example .env && $EDITOR .env
 docker compose up -d
 ```
 
-Al terminar, el script imprime la URL de Nextcloud y Collabora, el usuario y
-contraseña de administración y el *Client ID/Secret* OIDC. Pégalos en
-**Panel de Control → Espacio colaborativo** (o expórtalos como variables de
-entorno `NEXTCLOUD_*`). A partir de ahí, cada usuario abre el espacio de su
-módulo desde la página *Espacio colaborativo* de la web.
+Al terminar imprime la URL de Nextcloud y Collabora, el usuario y contraseña de
+administración y el *Client ID/Secret* OIDC, ya escritos en el `.env`. Si lo
+prefieres, también puedes introducir o cambiar estos valores en **Panel de Control
+→ Espacio colaborativo** (o como variables de entorno `NEXTCLOUD_*`). A partir de
+ahí, cada usuario abre el espacio de su módulo desde la página *Espacio
+colaborativo* de la web.
 
 ---
 
