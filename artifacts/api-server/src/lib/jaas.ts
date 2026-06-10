@@ -9,18 +9,50 @@ import { logger } from "./logger";
 const DOMAIN = "8x8.vc";
 const TOKEN_TTL_SECONDS = 60 * 60 * 3; // 3 hours
 
-// Read env at call time (not module load) so configuration changes and tests
-// take effect without a process restart.
-function appId(): string | undefined {
-  return process.env.JAAS_APP_ID;
+// Credentials may come from the database (set in the superadmin control panel)
+// or from environment variables. The control panel takes precedence; env vars
+// act as a fallback so existing self-hosted setups keep working.
+export interface JaasSettings {
+  jaasAppId?: string | null;
+  jaasKid?: string | null;
+  jaasPrivateKey?: string | null;
 }
-function kid(): string | undefined {
-  return process.env.JAAS_KID;
+
+export interface JaasCreds {
+  appId: string;
+  kid: string;
+  privateKey: string;
 }
-function privateKey(): string | undefined {
-  const raw = process.env.JAAS_PRIVATE_KEY;
-  if (!raw) return undefined;
-  return normalizePem(raw);
+
+// Build a credentials object only when the whole triplet is present. Returns
+// null otherwise. The private key is normalized into a valid PEM.
+function pickCreds(
+  appIdRaw?: string | null,
+  kidRaw?: string | null,
+  keyRaw?: string | null,
+): JaasCreds | null {
+  const appId = (appIdRaw || "").trim();
+  const kid = (kidRaw || "").trim();
+  const rawKey = keyRaw || "";
+  if (!appId || !kid || !rawKey.trim()) return null;
+  return { appId, kid, privateKey: normalizePem(rawKey) };
+}
+
+/**
+ * Resolve the active JaaS credentials. The stored settings (control panel) take
+ * precedence, but only as a complete triplet — the two sources are never mixed,
+ * since a JWT signed with a key id from one tenant and a private key from
+ * another would fail. Falls back to the environment triplet. Returns null when
+ * neither source is fully configured.
+ */
+export function resolveJaasCreds(s?: JaasSettings | null): JaasCreds | null {
+  const fromDb = pickCreds(s?.jaasAppId, s?.jaasKid, s?.jaasPrivateKey);
+  if (fromDb) return fromDb;
+  return pickCreds(
+    process.env.JAAS_APP_ID,
+    process.env.JAAS_KID,
+    process.env.JAAS_PRIVATE_KEY,
+  );
 }
 
 /**
@@ -41,8 +73,8 @@ function normalizePem(raw: string): string {
   return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----\n`;
 }
 
-export function isJaasConfigured(): boolean {
-  return Boolean(appId() && kid() && privateKey());
+export function isJaasConfigured(s?: JaasSettings | null): boolean {
+  return resolveJaasCreds(s) !== null;
 }
 
 interface JaasUser {
@@ -52,11 +84,10 @@ interface JaasUser {
 }
 
 // Sign a short-lived moderator JWT for a room. Returns null on failure.
-function signToken(room: string, user: JaasUser): string | null {
-  const id = appId();
-  const keyId = kid();
-  const key = privateKey();
-  if (!id || !keyId || !key) return null;
+function signToken(creds: JaasCreds, room: string, user: JaasUser): string | null {
+  const id = creds.appId;
+  const keyId = creds.kid;
+  const key = creds.privateKey;
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     aud: "jitsi",
@@ -114,17 +145,16 @@ function configHash(audioOnly: boolean): string {
  * moderator token can't be signed, so the caller can fall back to public Jitsi.
  */
 export function buildJaasUrl(opts: {
+  creds: JaasCreds;
   room: string;
   user: JaasUser;
   moderator: boolean;
   audioOnly: boolean;
 }): string | null {
-  const id = appId();
-  if (!id) return null;
-  const base = `https://${DOMAIN}/${id}/${opts.room}`;
+  const base = `https://${DOMAIN}/${opts.creds.appId}/${opts.room}`;
   const hash = `#${configHash(opts.audioOnly)}`;
   if (opts.moderator) {
-    const token = signToken(opts.room, opts.user);
+    const token = signToken(opts.creds, opts.room, opts.user);
     if (!token) return null;
     return `${base}?jwt=${token}${hash}`;
   }

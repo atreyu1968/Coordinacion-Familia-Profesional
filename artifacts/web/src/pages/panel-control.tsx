@@ -20,6 +20,7 @@ import {
   KeyRound,
   Mail,
   Sparkles,
+  Video,
   DatabaseBackup,
   Download,
   Upload,
@@ -41,6 +42,9 @@ export default function PanelControlPage() {
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [resendApiKey, setResendApiKey] = useState("");
   const [resendFromEmail, setResendFromEmail] = useState("");
+  const [jaasAppId, setJaasAppId] = useState("");
+  const [jaasKid, setJaasKid] = useState("");
+  const [jaasPrivateKey, setJaasPrivateKey] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -55,6 +59,12 @@ export default function PanelControlPage() {
       setResendFromEmail(settings.resendFromEmail);
     }
   }, [settings?.resendFromEmail]);
+
+  useEffect(() => {
+    if (settings?.jaasAppId) {
+      setJaasAppId(settings.jaasAppId);
+    }
+  }, [settings?.jaasAppId]);
 
   if (user && user.role !== "superadmin") {
     return (
@@ -156,15 +166,23 @@ export default function PanelControlPage() {
       deepseekApiKey?: string;
       resendApiKey?: string;
       resendFromEmail?: string;
+      jaasAppId?: string;
+      jaasKid?: string;
+      jaasPrivateKey?: string;
     } = {};
     if (deepseekApiKey.trim()) payload.deepseekApiKey = deepseekApiKey.trim();
     if (resendApiKey.trim()) payload.resendApiKey = resendApiKey.trim();
     if (resendFromEmail.trim()) payload.resendFromEmail = resendFromEmail.trim();
+    if (jaasAppId.trim()) payload.jaasAppId = jaasAppId.trim();
+    if (jaasKid.trim()) payload.jaasKid = jaasKid.trim();
+    if (jaasPrivateKey.trim()) payload.jaasPrivateKey = jaasPrivateKey.trim();
 
     try {
       await updateMutation.mutateAsync({ data: payload });
       setDeepseekApiKey("");
       setResendApiKey("");
+      setJaasKid("");
+      setJaasPrivateKey("");
       setSavedMessage("Configuración guardada correctamente.");
       await refetch();
     } catch {
@@ -227,6 +245,23 @@ export default function PanelControlPage() {
             </CardDescription>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+              <Video className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">JaaS (Videollamadas)</CardTitle>
+            </div>
+            <StatusBadge active={!!settings?.jaasConfigured} />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              Videollamadas sin límite de tiempo con Jitsi as a Service (8x8).
+              Sin configurar, las llamadas usan el servidor público meet.jit.si,
+              que corta las sesiones a los 5 minutos.
+            </CardDescription>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -277,6 +312,47 @@ export default function PanelControlPage() {
                 value={resendFromEmail}
                 onChange={(e) => setResendFromEmail(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="jaasAppId">AppID de JaaS</Label>
+              <Input
+                id="jaasAppId"
+                type="text"
+                placeholder="vpaas-magic-cookie-..."
+                value={jaasAppId}
+                onChange={(e) => setJaasAppId(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="jaasKid">API Key ID de JaaS (kid)</Label>
+              <Input
+                id="jaasKid"
+                type="text"
+                placeholder="vpaas-magic-cookie-.../abc123"
+                value={jaasKid}
+                onChange={(e) => setJaasKid(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="jaasPrivateKey">Clave privada de JaaS</Label>
+              <textarea
+                id="jaasPrivateKey"
+                className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                value={jaasPrivateKey}
+                onChange={(e) => setJaasPrivateKey(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="text-xs text-muted-foreground">
+                Pega la clave completa, con sus saltos de línea. Déjala vacía
+                para mantener la actual sin cambios.
+              </p>
             </div>
 
             {savedMessage && (

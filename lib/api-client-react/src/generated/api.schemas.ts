@@ -1083,12 +1083,17 @@ export interface IntegrationSettings {
   deepseekConfigured: boolean;
   resendConfigured: boolean;
   resendFromEmail?: string | null;
+  jaasConfigured: boolean;
+  jaasAppId?: string | null;
 }
 
 export interface UpdateIntegrationSettingsInput {
   deepseekApiKey?: string | null;
   resendApiKey?: string | null;
   resendFromEmail?: string | null;
+  jaasAppId?: string | null;
+  jaasKid?: string | null;
+  jaasPrivateKey?: string | null;
 }
 
 /**

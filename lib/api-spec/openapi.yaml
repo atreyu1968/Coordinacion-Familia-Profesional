@@ -4044,7 +4044,12 @@ components:
         resendFromEmail:
           type: string
           nullable: true
-      required: [deepseekConfigured, resendConfigured]
+        jaasConfigured:
+          type: boolean
+        jaasAppId:
+          type: string
+          nullable: true
+      required: [deepseekConfigured, resendConfigured, jaasConfigured]
     UpdateIntegrationSettingsInput:
       type: object
       properties:
@@ -4055,5 +4060,14 @@ components:
           type: string
           nullable: true
         resendFromEmail:
+          type: string
+          nullable: true
+        jaasAppId:
+          type: string
+          nullable: true
+        jaasKid:
+          type: string
+          nullable: true
+        jaasPrivateKey:
           type: string
           nullable: true

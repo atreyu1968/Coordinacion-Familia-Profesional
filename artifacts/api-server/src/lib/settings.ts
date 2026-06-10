@@ -18,3 +18,5 @@ export function isDeepseekConfigured(s: IntegrationSettings): boolean {
 export function isResendConfigured(s: IntegrationSettings): boolean {
   return typeof s.resendApiKey === "string" && s.resendApiKey.length > 0;
 }
+
+export { isJaasConfigured } from "./jaas";

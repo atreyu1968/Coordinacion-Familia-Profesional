@@ -1735,7 +1735,9 @@ export const GenerateReportBody = zod.object({
 export const GetIntegrationSettingsResponse = zod.object({
   "deepseekConfigured": zod.boolean(),
   "resendConfigured": zod.boolean(),
-  "resendFromEmail": zod.string().nullish()
+  "resendFromEmail": zod.string().nullish(),
+  "jaasConfigured": zod.boolean(),
+  "jaasAppId": zod.string().nullish()
 })
 
 
@@ -1745,13 +1747,18 @@ export const GetIntegrationSettingsResponse = zod.object({
 export const UpdateIntegrationSettingsBody = zod.object({
   "deepseekApiKey": zod.string().nullish(),
   "resendApiKey": zod.string().nullish(),
-  "resendFromEmail": zod.string().nullish()
+  "resendFromEmail": zod.string().nullish(),
+  "jaasAppId": zod.string().nullish(),
+  "jaasKid": zod.string().nullish(),
+  "jaasPrivateKey": zod.string().nullish()
 })
 
 export const UpdateIntegrationSettingsResponse = zod.object({
   "deepseekConfigured": zod.boolean(),
   "resendConfigured": zod.boolean(),
-  "resendFromEmail": zod.string().nullish()
+  "resendFromEmail": zod.string().nullish(),
+  "jaasConfigured": zod.boolean(),
+  "jaasAppId": zod.string().nullish()
 })
 
 

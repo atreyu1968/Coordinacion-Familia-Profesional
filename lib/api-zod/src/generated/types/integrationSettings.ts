@@ -10,4 +10,6 @@ export interface IntegrationSettings {
   deepseekConfigured: boolean;
   resendConfigured: boolean;
   resendFromEmail?: string | null;
+  jaasConfigured: boolean;
+  jaasAppId?: string | null;
 }

@@ -11,7 +11,8 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { toMeeting } from "../lib/mappers";
-import { isJaasConfigured, buildJaasUrl, publicJitsiUrl } from "../lib/jaas";
+import { resolveJaasCreds, buildJaasUrl, publicJitsiUrl } from "../lib/jaas";
+import { getSettings } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -75,11 +76,12 @@ router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ---------------------------------------------------------------------------
-// Issue a ready-to-join meeting URL for a room. With Daily configured we create
-// a private room and a short-lived per-user token, so the user joins with no
-// login screen and no per-user cap (Daily bills by minutes). Without it we fall
-// back to the public meet.jit.si server (which shows a login wall to start).
-// Keyed by room name (not meeting id) so ad-hoc chat calls are covered too.
+// Issue a ready-to-join meeting URL for a room. With JaaS (8x8) configured —
+// either in the superadmin control panel or via env vars — coordinators/admins
+// join as moderators with a signed JWT (no login screen) and everyone else
+// joins the same room as a guest, which keeps usage within the free tier.
+// Without it we fall back to the public meet.jit.si server (which limits
+// embedded calls). Keyed by room name so ad-hoc chat calls are covered too.
 // ---------------------------------------------------------------------------
 router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetMeetingTokenBody.safeParse(req.body);
@@ -95,11 +97,13 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   const audioOnly = parsed.data.audioOnly ?? false;
   const caller = req.user!;
 
-  if (isJaasConfigured()) {
+  const creds = resolveJaasCreds(await getSettings());
+  if (creds) {
     // Coordinators/admins join as moderators (signed JWT → no login); everyone
     // else joins the same room as a guest, which keeps usage in the free tier.
     const moderator = CAN_CREATE.includes(caller.role);
     const url = buildJaasUrl({
+      creds,
       room,
       user: { id: caller.id, name: caller.name, email: caller.email },
       moderator,

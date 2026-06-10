@@ -11,6 +11,7 @@ import {
   getSettings,
   isDeepseekConfigured,
   isResendConfigured,
+  isJaasConfigured,
 } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -22,6 +23,8 @@ router.get("/settings/integrations", requireAuth, async (_req, res): Promise<voi
       deepseekConfigured: isDeepseekConfigured(settings),
       resendConfigured: isResendConfigured(settings),
       resendFromEmail: settings.resendFromEmail,
+      jaasConfigured: isJaasConfigured(settings),
+      jaasAppId: settings.jaasAppId,
     }),
   );
 });
@@ -48,6 +51,15 @@ router.put(
     if (parsed.data.resendFromEmail !== undefined) {
       updates["resendFromEmail"] = parsed.data.resendFromEmail || null;
     }
+    if (parsed.data.jaasAppId !== undefined) {
+      updates["jaasAppId"] = parsed.data.jaasAppId || null;
+    }
+    if (parsed.data.jaasKid !== undefined) {
+      updates["jaasKid"] = parsed.data.jaasKid || null;
+    }
+    if (parsed.data.jaasPrivateKey !== undefined) {
+      updates["jaasPrivateKey"] = parsed.data.jaasPrivateKey || null;
+    }
 
     const [updated] = await db
       .update(integrationSettingsTable)
@@ -60,6 +72,8 @@ router.put(
         deepseekConfigured: isDeepseekConfigured(updated),
         resendConfigured: isResendConfigured(updated),
         resendFromEmail: updated.resendFromEmail,
+        jaasConfigured: isJaasConfigured(updated),
+        jaasAppId: updated.jaasAppId,
       }),
     );
   },
