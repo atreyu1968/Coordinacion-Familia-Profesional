@@ -291,6 +291,21 @@ export const DeleteMeetingParams = zod.object({
 
 
 /**
+ * @summary Issue join access (JaaS JWT or public Jitsi fallback) for a room
+ */
+export const GetMeetingTokenBody = zod.object({
+  "room": zod.string()
+})
+
+export const GetMeetingTokenResponse = zod.object({
+  "provider": zod.enum(['jaas', 'public']),
+  "domain": zod.string(),
+  "room": zod.string(),
+  "jwt": zod.string().nullable()
+})
+
+
+/**
  * @summary List modules with forum thread counts (grouped by cycle in UI)
  */
 export const ListForumModulesResponseItem = zod.object({

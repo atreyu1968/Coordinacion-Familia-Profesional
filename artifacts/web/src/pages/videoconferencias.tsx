@@ -4,8 +4,10 @@ import {
   useListMeetings,
   useCreateMeeting,
   useDeleteMeeting,
+  useGetMeetingToken,
   getListMeetingsQueryKey,
   type Meeting,
+  type MeetingAccess,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,15 +27,17 @@ import {
   User as UserIcon,
 } from "lucide-react";
 
-const JITSI_BASE = "https://meet.jit.si";
-
-function meetingUrl(roomName: string, audioOnly = false): string {
+// Build the room URL from the server-issued access info. With JaaS the host is
+// 8x8.vc and a signed `jwt` is appended so the user joins with no login screen;
+// without it we fall back to the public meet.jit.si server (no jwt).
+function buildMeetingUrl(access: MeetingAccess, audioOnly = false): string {
   const cfg = [
     "config.disableDeepLinking=true",
     "config.prejoinPageEnabled=false",
   ];
   if (audioOnly) cfg.push("config.startAudioOnly=true");
-  return `${JITSI_BASE}/${roomName}#${cfg.join("&")}`;
+  const query = access.jwt ? `?jwt=${access.jwt}` : "";
+  return `https://${access.domain}/${access.room}${query}#${cfg.join("&")}`;
 }
 
 function formatDate(value?: string | null): string {
@@ -140,11 +144,15 @@ function CreateForm() {
 function MeetingRow({
   item,
   canDelete,
+  busy,
   onJoin,
+  onOpenTab,
 }: {
   item: Meeting;
   canDelete: boolean;
+  busy: boolean;
   onJoin: (m: Meeting, audioOnly: boolean) => void;
+  onOpenTab: (m: Meeting) => void;
 }) {
   const qc = useQueryClient();
   const deleteMut = useDeleteMeeting();
@@ -200,24 +208,25 @@ function MeetingRow({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button size="sm" onClick={() => onJoin(item, false)}>
+        <Button size="sm" onClick={() => onJoin(item, false)} disabled={busy}>
           <Video className="w-4 h-4 mr-1.5" /> Unirse
         </Button>
         <Button
           size="sm"
           variant="secondary"
           onClick={() => onJoin(item, true)}
+          disabled={busy}
         >
           <Phone className="w-4 h-4 mr-1.5" /> Solo audio
         </Button>
-        <a
-          href={meetingUrl(item.roomName)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+        <button
+          type="button"
+          onClick={() => onOpenTab(item)}
+          disabled={busy}
+          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 disabled:opacity-50"
         >
           <ExternalLink className="w-3.5 h-3.5" /> Abrir en pestaña
-        </a>
+        </button>
       </div>
     </div>
   );
@@ -227,11 +236,13 @@ function MeetingRow({
 // Fullscreen Jitsi call overlay
 // ---------------------------------------------------------------------------
 function CallOverlay({
-  meeting,
+  title,
+  url,
   audioOnly,
   onClose,
 }: {
-  meeting: Meeting;
+  title: string;
+  url: string;
   audioOnly: boolean;
   onClose: () => void;
 }) {
@@ -244,7 +255,7 @@ function CallOverlay({
           ) : (
             <Video className="w-4 h-4" />
           )}
-          {meeting.title}
+          {title}
           {audioOnly && (
             <span className="text-xs text-zinc-400 font-normal">
               (solo audio)
@@ -253,7 +264,7 @@ function CallOverlay({
         </span>
         <div className="flex items-center gap-3">
           <a
-            href={meetingUrl(meeting.roomName, audioOnly)}
+            href={url}
             target="_blank"
             rel="noreferrer"
             className="text-sm text-zinc-300 hover:text-white inline-flex items-center gap-1"
@@ -270,8 +281,8 @@ function CallOverlay({
         </div>
       </div>
       <iframe
-        title={meeting.title}
-        src={meetingUrl(meeting.roomName, audioOnly)}
+        title={title}
+        src={url}
         className="flex-1 w-full border-0"
         allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
       />
@@ -287,10 +298,41 @@ export default function VideoconferenciasPage() {
   const canCreate =
     user?.role === "superadmin" || user?.role === "coordinator";
   const { data: items = [], isLoading } = useListMeetings();
+  const tokenMut = useGetMeetingToken();
   const [active, setActive] = useState<{
-    meeting: Meeting;
+    title: string;
+    url: string;
     audioOnly: boolean;
   } | null>(null);
+
+  // Ask the server for join access (JaaS JWT or public fallback), then build the
+  // room URL. Surfaces a toast if access can't be issued.
+  const resolveUrl = async (
+    roomName: string,
+    audioOnly: boolean,
+  ): Promise<string | null> => {
+    try {
+      const access = await tokenMut.mutateAsync({ data: { room: roomName } });
+      return buildMeetingUrl(access, audioOnly);
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo abrir la sala. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const onJoin = async (meeting: Meeting, audioOnly: boolean) => {
+    const url = await resolveUrl(meeting.roomName, audioOnly);
+    if (url) setActive({ title: meeting.title, url, audioOnly });
+  };
+
+  const onOpenTab = async (meeting: Meeting) => {
+    const url = await resolveUrl(meeting.roomName, false);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="space-y-6">
@@ -329,12 +371,12 @@ export default function VideoconferenciasPage() {
                   <MeetingRow
                     key={item.id}
                     item={item}
+                    busy={tokenMut.isPending}
                     canDelete={
                       user?.role === "superadmin" || item.hostId === user?.id
                     }
-                    onJoin={(meeting, audioOnly) =>
-                      setActive({ meeting, audioOnly })
-                    }
+                    onJoin={onJoin}
+                    onOpenTab={onOpenTab}
                   />
                 ))}
               </div>
@@ -345,7 +387,8 @@ export default function VideoconferenciasPage() {
 
       {active && (
         <CallOverlay
-          meeting={active.meeting}
+          title={active.title}
+          url={active.url}
           audioOnly={active.audioOnly}
           onClose={() => setActive(null)}
         />

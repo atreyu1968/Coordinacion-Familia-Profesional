@@ -105,6 +105,8 @@ import type {
   ListUsersParams,
   LoginInput,
   Meeting,
+  MeetingAccess,
+  MeetingTokenInput,
   Message,
   MobileAppAccess,
   Module,
@@ -1196,6 +1198,77 @@ export const useDeleteMeeting = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getDeleteMeetingMutationOptions(options));
+    }
+
+export const getGetMeetingTokenUrl = () => {
+
+
+
+
+  return `/api/meetings/token`
+}
+
+/**
+ * @summary Issue join access (JaaS JWT or public Jitsi fallback) for a room
+ */
+export const getMeetingToken = async (meetingTokenInput: MeetingTokenInput, options?: RequestInit): Promise<MeetingAccess> => {
+
+  return customFetch<MeetingAccess>(getGetMeetingTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      meetingTokenInput,)
+  }
+);}
+
+
+
+
+export const getGetMeetingTokenMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMeetingToken>>, TError,{data: BodyType<MeetingTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getMeetingToken>>, TError,{data: BodyType<MeetingTokenInput>}, TContext> => {
+
+const mutationKey = ['getMeetingToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getMeetingToken>>, {data: BodyType<MeetingTokenInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  getMeetingToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetMeetingTokenMutationResult = NonNullable<Awaited<ReturnType<typeof getMeetingToken>>>
+    export type GetMeetingTokenMutationBody = BodyType<MeetingTokenInput>
+    export type GetMeetingTokenMutationError = ErrorType<Error>
+
+    /**
+ * @summary Issue join access (JaaS JWT or public Jitsi fallback) for a room
+ */
+export const useGetMeetingToken = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMeetingToken>>, TError,{data: BodyType<MeetingTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getMeetingToken>>,
+        TError,
+        {data: BodyType<MeetingTokenInput>},
+        TContext
+      > => {
+      return useMutation(getGetMeetingTokenMutationOptions(options));
     }
 
 export const getListForumModulesUrl = () => {

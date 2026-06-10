@@ -726,6 +726,25 @@ export interface CreateMeetingInput {
   scheduledAt?: string | null;
 }
 
+export interface MeetingTokenInput {
+  room: string;
+}
+
+export type MeetingAccessProvider = typeof MeetingAccessProvider[keyof typeof MeetingAccessProvider];
+
+
+export const MeetingAccessProvider = {
+  jaas: 'jaas',
+  public: 'public',
+} as const;
+
+export interface MeetingAccess {
+  provider: MeetingAccessProvider;
+  domain: string;
+  room: string;
+  jwt: string | null;
+}
+
 export interface ForumModule {
   id: number;
   code?: string | null;
