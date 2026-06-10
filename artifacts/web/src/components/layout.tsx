@@ -28,6 +28,9 @@ import {
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
 import logoWhite from "@/assets/logo-white.png";
+import asdLogo from "@/assets/asd-logo.png";
+
+const APP_VERSION = "3.0";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -209,6 +212,15 @@ export function AppLayout({ children }: LayoutProps) {
           </div>
         </main>
       </div>
+
+      {/* Compact footer */}
+      <footer className="shrink-0 h-8 border-t border-border bg-background px-4 flex items-center justify-center gap-1.5 text-[11px] leading-none text-muted-foreground">
+        <span>Desarrollado por</span>
+        <img src={asdLogo} alt="Atreyu Servicios Digitales" className="h-4 w-auto" />
+        <span className="font-medium text-foreground/80">Atreyu Servicios Digitales</span>
+        <span className="text-muted-foreground/50">·</span>
+        <span>v{APP_VERSION}</span>
+      </footer>
     </div>
   );
 }
