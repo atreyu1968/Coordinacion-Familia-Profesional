@@ -38,7 +38,11 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
     <View
       style={[
         styles.container,
-        { paddingTop: topInset + 10 },
+        {
+          paddingTop: topInset + 10,
+          paddingLeft: 16 + insets.left,
+          paddingRight: 16 + insets.right,
+        },
       ]}
     >
       {logo ? (

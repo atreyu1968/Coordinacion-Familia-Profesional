@@ -58,6 +58,14 @@ export function setupPwa(): void {
   if (!isWeb()) return;
   try {
     ensureLink("manifest", `${BASE_PATH}/manifest.json`);
+    // viewport-fit=cover lets the app paint edge-to-edge into the device safe
+    // areas (notch / rounded corners / home indicator). Without it an installed
+    // PWA letterboxes the content and fills those margins with the white page
+    // background, leaving white strips around the blue header and tab bar.
+    ensureMeta(
+      "viewport",
+      "width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover",
+    );
     ensureMeta("theme-color", THEME_COLOR);
     ensureMeta("apple-mobile-web-app-capable", "yes");
     ensureMeta("mobile-web-app-capable", "yes");
