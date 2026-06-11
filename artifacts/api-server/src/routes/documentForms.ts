@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
-import { eq, and, or, isNull, inArray, desc, asc, count } from "drizzle-orm";
+import { eq, and, isNull, inArray, desc, asc, count } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import {
   db,
@@ -20,12 +20,14 @@ import {
   SubmitDocumentFormParams,
   SubmitDocumentFormBody,
 } from "@workspace/api-zod";
+import { requireAuth, requireRole } from "../middlewares/auth";
 import {
-  requireAuth,
-  requireRole,
-  resolveReadScope,
-  type ReadScope,
-} from "../middlewares/auth";
+  canCreateFormsSurveys,
+  validateAudience,
+  getViewerContext,
+  isInAudience,
+  canManageAudience,
+} from "../lib/audience";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
 
@@ -34,41 +36,8 @@ const objectStorageService = new ObjectStorageService();
 
 const FIELD_TYPES = new Set(["text", "textarea", "select", "file"]);
 
-// Resolve the caller's effective province id (province roles carry it directly;
-// center roles derive it from their center).
-async function resolveEffectiveProvinceId(
-  scope: ReadScope,
-): Promise<number | null> {
-  if (scope.kind === "province") return scope.provinceId;
-  if (scope.kind === "center") {
-    const [center] = await db
-      .select({ provinceId: centersTable.provinceId })
-      .from(centersTable)
-      .where(eq(centersTable.id, scope.centerId));
-    return center?.provinceId ?? null;
-  }
-  return null;
-}
-
-function canManageForms(role: string | undefined): boolean {
-  return role === "superadmin" || role === "coordinator";
-}
-
-// Whether the caller may see/interact with a form given its province scope.
-// Global forms (provinceId null) are visible to everyone; province-scoped forms
-// only to superadmins and users in that province.
-async function callerCanAccessForm(
-  scope: ReadScope,
-  formProvinceId: number | null,
-): Promise<boolean> {
-  if (scope.kind === "global") return true;
-  if (formProvinceId == null) return true;
-  const provinceId = await resolveEffectiveProvinceId(scope);
-  return provinceId != null && provinceId === formProvinceId;
-}
-
 // ---------------------------------------------------------------------------
-// List forms (province + global scoped)
+// List forms (visibility by audience membership)
 // ---------------------------------------------------------------------------
 router.get("/document-forms", requireAuth, async (req, res): Promise<void> => {
   const query = ListDocumentFormsQueryParams.safeParse(req.query);
@@ -77,40 +46,30 @@ router.get("/document-forms", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const caller = req.user!;
-  const scope = resolveReadScope(caller);
 
   const filters: SQL[] = [isNull(documentFormsTable.deletedAt)];
-
-  if (scope.kind !== "global") {
-    const provinceId = await resolveEffectiveProvinceId(scope);
-    const scopeMatch =
-      provinceId != null
-        ? or(
-            isNull(documentFormsTable.provinceId),
-            eq(documentFormsTable.provinceId, provinceId),
-          )
-        : isNull(documentFormsTable.provinceId);
-    if (scopeMatch) filters.push(scopeMatch);
-  }
-
-  // Drafts only visible to managers; participants see open/closed.
-  if (!canManageForms(caller.role)) {
-    const notDraft = or(
-      eq(documentFormsTable.status, "open"),
-      eq(documentFormsTable.status, "closed"),
-    );
-    if (notDraft) filters.push(notDraft);
-  }
 
   if (query.data.status) {
     filters.push(eq(documentFormsTable.status, query.data.status));
   }
 
-  const rows = await db
+  const allRows = await db
     .select()
     .from(documentFormsTable)
     .where(and(...filters))
     .orderBy(desc(documentFormsTable.createdAt));
+
+  // Visibility by audience membership. Superadmins see everything; creators see
+  // their own; everyone else only forms whose audience includes them. Drafts are
+  // only visible to superadmins and the creator.
+  const isSuperadmin = caller.role === "superadmin";
+  const viewerCtx = isSuperadmin ? null : await getViewerContext(caller);
+  const rows = allRows.filter((r) => {
+    const isCreator = r.createdById === caller.id;
+    if (r.status === "draft" && !isSuperadmin && !isCreator) return false;
+    if (isSuperadmin || isCreator) return true;
+    return isInAudience(r.audienceType, r.audienceIds, viewerCtx!);
+  });
 
   const formIds = rows.map((r) => r.id);
 
@@ -148,6 +107,14 @@ router.get("/document-forms", requireAuth, async (req, res): Promise<void> => {
       description: r.description,
       status: r.status as "draft" | "open" | "closed",
       provinceId: r.provinceId,
+      audienceType: r.audienceType as
+        | "all"
+        | "province"
+        | "island"
+        | "center"
+        | "module"
+        | "users",
+      audienceIds: r.audienceIds ?? [],
       closesAt: r.closesAt,
       createdAt: r.createdAt,
       hasSubmitted: submittedForms.has(r.id),
@@ -162,15 +129,28 @@ router.get("/document-forms", requireAuth, async (req, res): Promise<void> => {
 router.post(
   "/document-forms",
   requireAuth,
-  requireRole("superadmin", "coordinator"),
   async (req, res): Promise<void> => {
+    const caller = req.user!;
+    if (!(await canCreateFormsSurveys(caller))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
     const parsed = CreateDocumentFormBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: parsed.error.message });
       return;
     }
-    const caller = req.user!;
     const data = parsed.data;
+
+    const audience = await validateAudience(
+      caller,
+      data.audienceType,
+      data.audienceIds,
+    );
+    if (!audience.ok) {
+      res.status(403).json({ message: audience.message });
+      return;
+    }
 
     if (data.fields.length === 0) {
       res
@@ -194,16 +174,12 @@ router.post(
       }
     }
 
-    let provinceId: number | null;
-    if (caller.role === "superadmin") {
-      provinceId = data.provinceId ?? null;
-    } else {
-      if (caller.provinceId == null) {
-        res.status(403).json({ message: "No tienes una provincia asignada" });
-        return;
-      }
-      provinceId = caller.provinceId;
-    }
+    // Legacy provinceId mirrors a single-province audience for display; null
+    // otherwise. Audience is the source of truth for visibility.
+    const provinceId =
+      audience.audienceType === "province" && audience.audienceIds.length === 1
+        ? audience.audienceIds[0]!
+        : null;
 
     const created = await db.transaction(async (tx) => {
       const [form] = await tx
@@ -213,6 +189,8 @@ router.post(
           description: data.description ?? null,
           status: "open",
           provinceId,
+          audienceType: audience.audienceType,
+          audienceIds: audience.audienceIds,
           closesAt: data.closesAt ? new Date(data.closesAt) : null,
           createdById: caller.id,
         })
@@ -241,6 +219,14 @@ router.post(
       description: created.form.description,
       status: created.form.status as "draft" | "open" | "closed",
       provinceId: created.form.provinceId,
+      audienceType: created.form.audienceType as
+        | "all"
+        | "province"
+        | "island"
+        | "center"
+        | "module"
+        | "users",
+      audienceIds: created.form.audienceIds ?? [],
       closesAt: created.form.closesAt,
       createdAt: created.form.createdAt,
       fields: created.fields
@@ -285,9 +271,18 @@ router.get(
       res.status(404).json({ message: "Formulario no encontrado" });
       return;
     }
-    if (!(await callerCanAccessForm(resolveReadScope(caller), form.provinceId))) {
+    const isSuperadmin = caller.role === "superadmin";
+    const isCreator = form.createdById === caller.id;
+    if (form.status === "draft" && !isSuperadmin && !isCreator) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
+    }
+    if (!isSuperadmin && !isCreator) {
+      const ctx = await getViewerContext(caller);
+      if (!isInAudience(form.audienceType, form.audienceIds, ctx)) {
+        res.status(403).json({ message: "Permiso denegado" });
+        return;
+      }
     }
 
     const fields = await db
@@ -334,6 +329,14 @@ router.get(
       description: form.description,
       status: form.status as "draft" | "open" | "closed",
       provinceId: form.provinceId,
+      audienceType: form.audienceType as
+        | "all"
+        | "province"
+        | "island"
+        | "center"
+        | "module"
+        | "users",
+      audienceIds: form.audienceIds ?? [],
       closesAt: form.closesAt,
       createdAt: form.createdAt,
       fields: fields.map((f) => ({
@@ -377,10 +380,7 @@ router.delete(
       res.status(404).json({ message: "Formulario no encontrado" });
       return;
     }
-    if (
-      caller.role === "coordinator" &&
-      form.provinceId !== caller.provinceId
-    ) {
+    if (!(await canManageAudience(caller, form.audienceType, form.audienceIds))) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }
@@ -422,10 +422,7 @@ router.get(
       res.status(404).json({ message: "Formulario no encontrado" });
       return;
     }
-    if (
-      caller.role === "coordinator" &&
-      form.provinceId !== caller.provinceId
-    ) {
+    if (!(await canManageAudience(caller, form.audienceType, form.audienceIds))) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }
@@ -530,9 +527,12 @@ router.post(
       res.status(404).json({ message: "Formulario no encontrado" });
       return;
     }
-    if (!(await callerCanAccessForm(resolveReadScope(caller), form.provinceId))) {
-      res.status(403).json({ message: "Permiso denegado" });
-      return;
+    if (caller.role !== "superadmin" && form.createdById !== caller.id) {
+      const ctx = await getViewerContext(caller);
+      if (!isInAudience(form.audienceType, form.audienceIds, ctx)) {
+        res.status(403).json({ message: "Permiso denegado" });
+        return;
+      }
     }
     if (form.status !== "open") {
       res
@@ -706,7 +706,8 @@ router.get(
         objectPath: documentSubmissionValuesTable.objectPath,
         fileName: documentSubmissionValuesTable.fileName,
         ownerId: documentSubmissionsTable.userId,
-        formProvinceId: documentFormsTable.provinceId,
+        formAudienceType: documentFormsTable.audienceType,
+        formAudienceIds: documentFormsTable.audienceIds,
       })
       .from(documentSubmissionValuesTable)
       .innerJoin(
@@ -728,17 +729,13 @@ router.get(
     }
 
     const isOwner = row.ownerId === caller.id;
-    let isManager = false;
-    if (caller.role === "superadmin") {
-      isManager = true;
-    } else if (caller.role === "coordinator") {
-      // Coordinators manage only forms pinned to their own province — global
-      // forms (provinceId null) are superadmin-managed, consistent with the
-      // list-submissions and delete routes. Owners can still download via isOwner.
-      isManager =
-        row.formProvinceId != null &&
-        row.formProvinceId === caller.provinceId;
-    }
+    // Managers (superadmin, or a provincial coordinator whose scope covers the
+    // form's audience) can download any submission file; owners always can.
+    const isManager = await canManageAudience(
+      caller,
+      row.formAudienceType,
+      row.formAudienceIds,
+    );
     if (!isOwner && !isManager) {
       res.status(403).json({ message: "Permiso denegado" });
       return;

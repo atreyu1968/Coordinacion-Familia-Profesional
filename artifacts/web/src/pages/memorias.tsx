@@ -54,8 +54,11 @@ export default function MemoriasPage() {
   const qc = useQueryClient();
   const isSuperadmin = user?.role === "superadmin";
   const canGenerate = isSuperadmin || user?.role === "coordinator";
+  const canAccess = canGenerate;
 
-  const { data: reports = [], isLoading } = useListReports();
+  const { data: reports = [], isLoading } = useListReports({
+    query: { enabled: canAccess, queryKey: getListReportsQueryKey() },
+  });
   const { data: provinces = [] } = useListProvinces();
   const generateMut = useGenerateReport();
 
@@ -108,6 +111,23 @@ export default function MemoriasPage() {
       `memoria-adg-${report.schoolYear}.pdf`,
     );
   };
+
+  if (!canAccess) {
+    return (
+      <div className="max-w-xl rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+        <div className="flex items-start gap-2 text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Acceso restringido</p>
+            <p className="text-sm text-muted-foreground">
+              Las memorias solo están disponibles para los coordinadores
+              provinciales y el superadministrador.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

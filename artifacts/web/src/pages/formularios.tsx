@@ -22,6 +22,12 @@ import {
   type DocumentSubmissionValue,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import {
+  AudiencePicker,
+  useFormSurveyCreator,
+  defaultAudienceValue,
+  type AudienceValue,
+} from "@/components/audience-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,8 +85,11 @@ import {
   PencilLine,
 } from "lucide-react";
 
-const GLOBAL = "global";
 const TOKEN_KEY = "coordina_adg_token";
+
+function canManageForms(role: string | undefined): boolean {
+  return role === "superadmin" || role === "coordinator";
+}
 
 const FIELD_TYPE_LABELS: Record<CreateDocumentFormFieldInputType, string> = {
   text: "Texto",
@@ -94,10 +103,6 @@ const STATUS_LABELS: Record<string, string> = {
   open: "Abierto",
   closed: "Cerrado",
 };
-
-function canManageForms(role: string | undefined): boolean {
-  return role === "superadmin" || role === "coordinator";
-}
 
 function formatDate(value: Date | string | null | undefined): string {
   if (!value) return "—";
@@ -163,17 +168,22 @@ function emptyField(): DraftField {
 
 function CreateFormDialog() {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const { data: provinces = [] } = useListProvinces();
+  const { isSuperadmin, isProvincialCoordinator, user } =
+    useFormSurveyCreator();
   const createMut = useCreateDocumentForm();
 
-  const isSuperadmin = user?.role === "superadmin";
+  const makeDefaultAudience = (): AudienceValue =>
+    defaultAudienceValue({
+      isSuperadmin,
+      isProvincialCoordinator,
+      provinceId: user?.provinceId ?? null,
+    });
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [closesAt, setClosesAt] = useState("");
-  const [provinceId, setProvinceId] = useState<string>(GLOBAL);
+  const [audience, setAudience] = useState<AudienceValue>(makeDefaultAudience);
   const [fields, setFields] = useState<DraftField[]>([emptyField()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -182,10 +192,11 @@ function CreateFormDialog() {
       setTitle("");
       setDescription("");
       setClosesAt("");
-      setProvinceId(GLOBAL);
+      setAudience(makeDefaultAudience());
       setFields([emptyField()]);
       setError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const updateField = (i: number, patch: Partial<DraftField>) => {
@@ -232,6 +243,10 @@ function CreateFormDialog() {
       setError("Añade al menos un campo.");
       return;
     }
+    if (audience.audienceType !== "all" && audience.audienceIds.length === 0) {
+      setError("Selecciona al menos un destinatario.");
+      return;
+    }
     const builtFields: CreateDocumentFormFieldInput[] = [];
     for (const [i, f] of fields.entries()) {
       if (!f.label.trim()) {
@@ -265,11 +280,8 @@ function CreateFormDialog() {
       title: title.trim(),
       description: description.trim() || undefined,
       closesAt: closesAt ? new Date(closesAt).toISOString() : null,
-      provinceId: isSuperadmin
-        ? provinceId === GLOBAL
-          ? null
-          : Number(provinceId)
-        : null,
+      audienceType: audience.audienceType,
+      audienceIds: audience.audienceIds,
       fields: builtFields,
     };
 
@@ -315,35 +327,17 @@ function CreateFormDialog() {
               rows={2}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="f-closes">Fecha de cierre</Label>
-              <Input
-                id="f-closes"
-                type="datetime-local"
-                value={closesAt}
-                onChange={(e) => setClosesAt(e.target.value)}
-              />
-            </div>
-            {isSuperadmin && (
-              <div className="space-y-2">
-                <Label>Provincia</Label>
-                <Select value={provinceId} onValueChange={setProvinceId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={GLOBAL}>Todas (global)</SelectItem>
-                    {provinces.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="f-closes">Fecha de cierre</Label>
+            <Input
+              id="f-closes"
+              type="datetime-local"
+              value={closesAt}
+              onChange={(e) => setClosesAt(e.target.value)}
+            />
           </div>
+
+          <AudiencePicker value={audience} onChange={setAudience} />
 
           <div className="space-y-3 pt-2 border-t">
             <div className="flex items-center justify-between">
@@ -908,6 +902,7 @@ export default function FormulariosPage() {
   const [fillId, setFillId] = useState<number | null>(null);
   const [fillOpen, setFillOpen] = useState(false);
 
+  const { canCreate } = useFormSurveyCreator();
   const manager = canManageForms(user?.role);
 
   const openFill = (form: DocumentFormSummary) => {
@@ -956,7 +951,7 @@ export default function FormulariosPage() {
             consulta las entregas recibidas.
           </p>
         </div>
-        {manager && <CreateFormDialog />}
+        {canCreate && <CreateFormDialog />}
       </div>
 
       {isLoading ? (

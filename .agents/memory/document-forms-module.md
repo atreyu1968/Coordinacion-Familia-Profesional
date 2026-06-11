@@ -21,8 +21,18 @@ predates the frontend. Field types: `text | textarea | select | file`.
 ## Scoping / permissions
 - Manager = `superadmin || coordinator`. Managers click a form card to open the
   results/submissions dialog; non-managers don't.
-- Province scoping mirrors surveys: `provinceId=null` global, else province-scoped
-  (+ superadmin sees all). Coordinators can only delete forms in their own province.
+- **Audience is the source of truth** (`audienceType` + `audienceIds`), not the
+  legacy `provinceId`. Creators: superadmin, provincial coordinator, and module
+  coordinators (teachers with a coordinated module). Visibility filtered by viewer
+  membership in the audience.
+- Management authz (delete, list-submissions, file-download manager path) goes
+  through `canManageAudience(caller, audienceType, audienceIds)` in `lib/audience.ts`,
+  NOT `form.provinceId === caller.provinceId`. superadmin→all; provincial
+  coordinator→non-`all` audiences within own province (via `idsBelongToProvince`);
+  others→denied. **Why:** create only mirrors the legacy `provinceId` for
+  single-`province` audiences (null for center/module/users), so a provinceId check
+  silently strips coordinators of management over their own non-province items.
+  Surveys delete uses the same helper. Same rule lives in `surveys-anonymity.md`.
 
 ## Mobile specifics
 - Document picker: `expo-document-picker` (~14.0.x for SDK 54), added because

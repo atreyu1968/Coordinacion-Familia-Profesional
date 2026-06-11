@@ -43,6 +43,18 @@ export interface DocumentFormField {
   order: number;
 }
 
+export type AudienceType = typeof AudienceType[keyof typeof AudienceType];
+
+
+export const AudienceType = {
+  all: 'all',
+  province: 'province',
+  island: 'island',
+  center: 'center',
+  module: 'module',
+  users: 'users',
+} as const;
+
 export type DocumentFormSummaryStatus = typeof DocumentFormSummaryStatus[keyof typeof DocumentFormSummaryStatus];
 
 
@@ -58,6 +70,8 @@ export interface DocumentFormSummary {
   description?: string | null;
   status: DocumentFormSummaryStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: string | null;
   createdAt: string;
   hasSubmitted: boolean;
@@ -96,6 +110,8 @@ export interface DocumentFormDetail {
   description?: string | null;
   status: DocumentFormDetailStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: string | null;
   createdAt: string;
   fields: DocumentFormField[];
@@ -126,6 +142,8 @@ export interface CreateDocumentFormInput {
   title: string;
   description?: string;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: string | null;
   /** @minItems 1 */
   fields: CreateDocumentFormFieldInput[];
@@ -633,6 +651,8 @@ export interface Survey {
   anonymous: boolean;
   status: SurveyStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   opensAt?: string | null;
   closesAt?: string | null;
   createdAt?: string;
@@ -692,6 +712,8 @@ export interface CreateSurveyInput {
   type: CreateSurveyInputType;
   anonymous?: boolean;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   opensAt?: string | null;
   closesAt?: string | null;
   questions: CreateSurveyQuestionInput[];

@@ -2,7 +2,6 @@ import { Router, type IRouter } from "express";
 import {
   eq,
   and,
-  or,
   isNull,
   inArray,
   desc,
@@ -16,7 +15,6 @@ import {
   surveyQuestionsTable,
   surveyResponsesTable,
   surveyAnswersTable,
-  centersTable,
 } from "@workspace/db";
 import {
   ListSurveysQueryParams,
@@ -28,52 +26,41 @@ import {
   SubmitSurveyResponseBody,
   GetSurveyResultsParams,
 } from "@workspace/api-zod";
+import type { User } from "@workspace/db";
+import { requireAuth, requireRole } from "../middlewares/auth";
 import {
-  requireAuth,
-  requireRole,
-  resolveReadScope,
-  type ReadScope,
-} from "../middlewares/auth";
+  canCreateFormsSurveys,
+  validateAudience,
+  getViewerContext,
+  isInAudience,
+  canManageAudience,
+} from "../lib/audience";
 import { toSurvey } from "../lib/mappers";
 
 const router: IRouter = Router();
 
-// Resolve the caller's effective province id (province roles carry it directly;
-// center roles derive it from their center). Returns null for superadmin or a
-// user without province/center.
-async function resolveEffectiveProvinceId(
-  scope: ReadScope,
-): Promise<number | null> {
-  if (scope.kind === "province") return scope.provinceId;
-  if (scope.kind === "center") {
-    const [center] = await db
-      .select({ provinceId: centersTable.provinceId })
-      .from(centersTable)
-      .where(eq(centersTable.id, scope.centerId));
-    return center?.provinceId ?? null;
-  }
-  return null;
-}
-
-function canManageSurveys(role: string | undefined): boolean {
-  return role === "superadmin" || role === "coordinator";
-}
-
-// Whether the caller is allowed to see/interact with a survey given its
-// province scope. Global surveys (provinceId null) are visible to everyone;
-// province-scoped surveys only to superadmins and users in that province.
+// Whether the caller may see/interact with a survey. Superadmins and the
+// creator always may; everyone else only when the survey's audience includes
+// them. Drafts are restricted to superadmins and the creator.
 async function callerCanAccessSurvey(
-  scope: ReadScope,
-  surveyProvinceId: number | null,
+  caller: User,
+  survey: {
+    status: string;
+    createdById: number | null;
+    audienceType: string;
+    audienceIds: number[] | null;
+  },
 ): Promise<boolean> {
-  if (scope.kind === "global") return true;
-  if (surveyProvinceId == null) return true;
-  const provinceId = await resolveEffectiveProvinceId(scope);
-  return provinceId != null && provinceId === surveyProvinceId;
+  const isSuperadmin = caller.role === "superadmin";
+  const isCreator = survey.createdById === caller.id;
+  if (isSuperadmin || isCreator) return true;
+  if (survey.status === "draft") return false;
+  const ctx = await getViewerContext(caller);
+  return isInAudience(survey.audienceType, survey.audienceIds, ctx);
 }
 
 // ---------------------------------------------------------------------------
-// List surveys (province + global scoped)
+// List surveys (visibility by audience membership)
 // ---------------------------------------------------------------------------
 router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
   const query = ListSurveysQueryParams.safeParse(req.query);
@@ -82,33 +69,8 @@ router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const caller = req.user!;
-  const scope = resolveReadScope(caller);
 
   const filters: SQL[] = [isNull(surveysTable.deletedAt)];
-
-  // Visibility: superadmin sees all; everyone else sees surveys in their own
-  // province plus global surveys (provinceId IS NULL).
-  if (scope.kind !== "global") {
-    const provinceId = await resolveEffectiveProvinceId(scope);
-    const scopeMatch =
-      provinceId != null
-        ? or(
-            isNull(surveysTable.provinceId),
-            eq(surveysTable.provinceId, provinceId),
-          )
-        : isNull(surveysTable.provinceId);
-    if (scopeMatch) filters.push(scopeMatch);
-  }
-
-  // Drafts are only visible to users who can manage surveys; participants only
-  // see surveys that are open or already closed.
-  if (!canManageSurveys(caller.role)) {
-    const notDraft = or(
-      eq(surveysTable.status, "open"),
-      eq(surveysTable.status, "closed"),
-    );
-    if (notDraft) filters.push(notDraft);
-  }
 
   if (query.data.status) {
     filters.push(eq(surveysTable.status, query.data.status));
@@ -117,11 +79,23 @@ router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
     filters.push(eq(surveysTable.provinceId, query.data.provinceId));
   }
 
-  const rows = await db
+  const allRows = await db
     .select()
     .from(surveysTable)
     .where(and(...filters))
     .orderBy(desc(surveysTable.createdAt));
+
+  // Visibility by audience membership. Superadmins see everything; creators see
+  // their own; everyone else only surveys whose audience includes them. Drafts
+  // are only visible to superadmins and the creator.
+  const isSuperadmin = caller.role === "superadmin";
+  const viewerCtx = isSuperadmin ? null : await getViewerContext(caller);
+  const rows = allRows.filter((r) => {
+    const isCreator = r.createdById === caller.id;
+    if (r.status === "draft" && !isSuperadmin && !isCreator) return false;
+    if (isSuperadmin || isCreator) return true;
+    return isInAudience(r.audienceType, r.audienceIds, viewerCtx!);
+  });
 
   res.json(ListSurveysResponse.parse(rows.map(toSurvey)));
 });
@@ -132,14 +106,17 @@ router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
 router.post(
   "/surveys",
   requireAuth,
-  requireRole("superadmin", "coordinator"),
   async (req, res): Promise<void> => {
+    const caller = req.user!;
+    if (!(await canCreateFormsSurveys(caller))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
     const parsed = CreateSurveyBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: parsed.error.message });
       return;
     }
-    const caller = req.user!;
     const data = parsed.data;
 
     if (data.questions.length === 0) {
@@ -149,17 +126,22 @@ router.post(
       return;
     }
 
-    // Coordinators are province-bound: the survey is pinned to their province.
-    let provinceId: number | null;
-    if (caller.role === "superadmin") {
-      provinceId = data.provinceId ?? null;
-    } else {
-      if (caller.provinceId == null) {
-        res.status(403).json({ message: "No tienes una provincia asignada" });
-        return;
-      }
-      provinceId = caller.provinceId;
+    const audience = await validateAudience(
+      caller,
+      data.audienceType,
+      data.audienceIds,
+    );
+    if (!audience.ok) {
+      res.status(403).json({ message: audience.message });
+      return;
     }
+
+    // Legacy provinceId mirrors a single-province audience for display; null
+    // otherwise. Audience is the source of truth for visibility.
+    const provinceId =
+      audience.audienceType === "province" && audience.audienceIds.length === 1
+        ? audience.audienceIds[0]!
+        : null;
 
     const created = await db.transaction(async (tx) => {
       const [survey] = await tx
@@ -171,6 +153,8 @@ router.post(
           anonymous: data.anonymous,
           status: "open",
           provinceId,
+          audienceType: audience.audienceType,
+          audienceIds: audience.audienceIds,
           opensAt: data.opensAt ?? null,
           closesAt: data.closesAt ?? null,
           createdById: caller.id,
@@ -216,7 +200,7 @@ router.get("/surveys/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  if (!(await callerCanAccessSurvey(resolveReadScope(caller), survey.provinceId))) {
+  if (!(await callerCanAccessSurvey(caller, survey))) {
     res.status(403).json({ message: "Permiso denegado" });
     return;
   }
@@ -276,10 +260,9 @@ router.delete(
       return;
     }
 
-    // Coordinators may only delete surveys within their own province.
+    // Managers may only delete surveys whose audience is within their scope.
     if (
-      caller.role === "coordinator" &&
-      survey.provinceId !== caller.provinceId
+      !(await canManageAudience(caller, survey.audienceType, survey.audienceIds))
     ) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -323,9 +306,7 @@ router.post(
       res.status(404).json({ message: "Encuesta no encontrada" });
       return;
     }
-    if (
-      !(await callerCanAccessSurvey(resolveReadScope(caller), survey.provinceId))
-    ) {
+    if (!(await callerCanAccessSurvey(caller, survey))) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }
@@ -470,9 +451,7 @@ router.get(
       res.status(404).json({ message: "Encuesta no encontrada" });
       return;
     }
-    if (
-      !(await callerCanAccessSurvey(resolveReadScope(caller), survey.provinceId))
-    ) {
+    if (!(await callerCanAccessSurvey(caller, survey))) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }

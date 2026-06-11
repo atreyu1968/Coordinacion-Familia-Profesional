@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 import type { CreateDocumentFormFieldInput } from './createDocumentFormFieldInput';
 
 export interface CreateDocumentFormInput {
@@ -12,6 +13,8 @@ export interface CreateDocumentFormInput {
   title: string;
   description?: string;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: Date | null;
   /** @minItems 1 */
   fields: CreateDocumentFormFieldInput[];

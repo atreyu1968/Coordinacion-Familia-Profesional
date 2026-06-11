@@ -2756,6 +2756,9 @@ components:
           type: boolean
         order:
           type: integer
+    AudienceType:
+      type: string
+      enum: [all, province, island, center, module, users]
     DocumentFormSummary:
       type: object
       required: [id, title, status, createdAt, hasSubmitted, fieldCount]
@@ -2773,6 +2776,12 @@ components:
         provinceId:
           type: integer
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         closesAt:
           type: string
           format: date-time
@@ -2840,6 +2849,12 @@ components:
         provinceId:
           type: integer
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         closesAt:
           type: string
           format: date-time
@@ -2885,6 +2900,12 @@ components:
         provinceId:
           type: integer
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         closesAt:
           type: string
           format: date-time
@@ -3759,6 +3780,12 @@ components:
         provinceId:
           type: integer
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         opensAt:
           type: string
           format: date-time
@@ -3816,6 +3843,12 @@ components:
         provinceId:
           type: integer
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         opensAt:
           type: string
           format: date-time

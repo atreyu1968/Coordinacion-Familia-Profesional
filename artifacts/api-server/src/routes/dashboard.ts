@@ -323,7 +323,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
   );
 });
 
-router.get("/reports", requireAuth, async (req, res): Promise<void> => {
+router.get("/reports", requireAuth, requireRole("superadmin", "coordinator"), async (req, res): Promise<void> => {
   const scope = resolveScope(req.user!);
   // Default-deny: roles with no read scope see no reports at all.
   if (scope.empty) {

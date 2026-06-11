@@ -39,6 +39,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { es } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -83,6 +85,8 @@ import {
   Award,
   CheckCircle2,
   ExternalLink,
+  LayoutGrid,
+  CalendarRange,
 } from "lucide-react";
 
 const GLOBAL = "global";
@@ -1475,12 +1479,123 @@ function CalendarSection({ canManage }: { canManage: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
+// Events calendar (date grid) view
+// ---------------------------------------------------------------------------
+function startOfDay(value: Date): Date {
+  const d = new Date(value);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function dayKey(value: Date): string {
+  const d = startOfDay(value);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function EventsCalendarView({
+  events,
+  onSelect,
+}: {
+  events: Event[];
+  onSelect: (id: number) => void;
+}) {
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    for (const e of events) {
+      if (!e.startAt) continue;
+      const key = dayKey(new Date(e.startAt));
+      const arr = map.get(key) ?? [];
+      arr.push(e);
+      map.set(key, arr);
+    }
+    return map;
+  }, [events]);
+
+  const eventDays = useMemo(
+    () =>
+      Array.from(eventsByDay.values())
+        .map((arr) => arr[0].startAt)
+        .filter((v): v is string => Boolean(v))
+        .map((v) => startOfDay(new Date(v))),
+    [eventsByDay],
+  );
+
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>(
+    () => eventDays[0] ?? new Date(),
+  );
+
+  const dayEvents = selectedDay
+    ? (eventsByDay.get(dayKey(selectedDay)) ?? [])
+    : [];
+
+  return (
+    <div className="grid gap-6 md:grid-cols-[auto_1fr]">
+      <Card>
+        <CardContent className="p-3 flex justify-center">
+          <Calendar
+            mode="single"
+            locale={es}
+            selected={selectedDay}
+            onSelect={setSelectedDay}
+            defaultMonth={selectedDay}
+            modifiers={{ hasEvents: eventDays }}
+            modifiersClassNames={{
+              hasEvents:
+                "font-semibold text-primary after:absolute after:bottom-1 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-primary",
+            }}
+          />
+        </CardContent>
+      </Card>
+      <div className="space-y-2">
+        <h3 className="font-semibold">
+          {selectedDay ? formatDay(selectedDay.toISOString()) : "Selecciona un día"}
+        </h3>
+        {dayEvents.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6">
+            No hay eventos este día.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {dayEvents.map((e: Event) => (
+              <Card
+                key={e.id}
+                className="cursor-pointer transition-colors hover:border-primary"
+                onClick={() => onSelect(e.id)}
+              >
+                <CardContent className="p-3 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-medium leading-tight">{e.name}</h4>
+                    <Badge variant="outline" className="shrink-0">
+                      {EVENT_TYPE_LABELS[e.type]}
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {formatDate(e.startAt)}
+                  </div>
+                  {e.location && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" /> {e.location}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function EventosPage() {
   const { user } = useAuth();
   const { data: events = [], isLoading } = useListEvents();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [view, setView] = useState<"cards" | "calendar">("cards");
   const canManage = canManageEvents(user?.role);
 
   if (selectedId != null) {
@@ -1505,6 +1620,27 @@ export default function EventosPage() {
         {canManage && <CreateEventDialog />}
       </div>
 
+      <div className="inline-flex rounded-md border p-0.5 w-fit">
+        <Button
+          type="button"
+          size="sm"
+          variant={view === "cards" ? "default" : "ghost"}
+          className="gap-2"
+          onClick={() => setView("cards")}
+        >
+          <LayoutGrid className="w-4 h-4" /> Tarjetas
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={view === "calendar" ? "default" : "ghost"}
+          className="gap-2"
+          onClick={() => setView("calendar")}
+        >
+          <CalendarRange className="w-4 h-4" /> Calendario
+        </Button>
+      </div>
+
       {isLoading ? (
         <p className="text-muted-foreground py-12 text-center">
           Cargando eventos...
@@ -1516,6 +1652,8 @@ export default function EventosPage() {
             {canManage && " Crea el primero con el botón «Nuevo evento»."}
           </CardContent>
         </Card>
+      ) : view === "calendar" ? (
+        <EventsCalendarView events={events} onSelect={setSelectedId} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {events.map((e: Event) => (

@@ -15,3 +15,6 @@ Non-anonymous surveys keep both `responseId` and `createdAt` for auditing.
 **Why:** Code review flagged that even with responseId NULL, correlatable timestamps defeat anonymity. Two same-transaction inserts produce near-identical timestamps.
 
 **How to apply:** Any new field added to `survey_answers` must be evaluated for correlation risk before being populated on anonymous surveys.
+
+## Audience & management authz
+Surveys (like forms) target an audience: `audienceType` (all|province|island|center|module|users) + `audienceIds`. Creators: superadmin, provincial coordinator, module coordinators. Delete/manage authz uses `canManageAudience(caller, audienceType, audienceIds)` in `lib/audience.ts`, NOT the legacy `survey.provinceId`. See `document-forms-module.md` for the full rule and the why (create only mirrors provinceId for single-`province` audiences).

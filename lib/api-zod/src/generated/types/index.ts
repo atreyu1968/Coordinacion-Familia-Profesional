@@ -18,6 +18,7 @@ export * from './aiMessageRole';
 export * from './announcement';
 export * from './annualReport';
 export * from './assignEventStaffInput';
+export * from './audienceType';
 export * from './authResult';
 export * from './calendarEntry';
 export * from './categoryCount';

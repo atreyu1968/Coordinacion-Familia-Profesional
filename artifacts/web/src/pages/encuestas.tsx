@@ -18,6 +18,12 @@ import {
   type SurveyQuestion,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import {
+  AudiencePicker,
+  useFormSurveyCreator,
+  defaultAudienceValue,
+  type AudienceValue,
+} from "@/components/audience-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +74,6 @@ import {
   Download,
 } from "lucide-react";
 
-const GLOBAL = "global";
 
 const QUESTION_TYPE_LABELS: Record<CreateSurveyQuestionInputType, string> = {
   single: "Opción única",
@@ -102,18 +107,23 @@ function emptyQuestion(): DraftQuestion {
 
 function CreateSurveyDialog() {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const { data: provinces = [] } = useListProvinces();
+  const { isSuperadmin, isProvincialCoordinator, user } =
+    useFormSurveyCreator();
   const createMut = useCreateSurvey();
 
-  const isSuperadmin = user?.role === "superadmin";
+  const makeDefaultAudience = (): AudienceValue =>
+    defaultAudienceValue({
+      isSuperadmin,
+      isProvincialCoordinator,
+      provinceId: user?.provinceId ?? null,
+    });
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"survey" | "vote">("survey");
   const [anonymous, setAnonymous] = useState(false);
-  const [provinceId, setProvinceId] = useState<string>(GLOBAL);
+  const [audience, setAudience] = useState<AudienceValue>(makeDefaultAudience);
   const [questions, setQuestions] = useState<DraftQuestion[]>([emptyQuestion()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,10 +133,11 @@ function CreateSurveyDialog() {
       setDescription("");
       setType("survey");
       setAnonymous(false);
-      setProvinceId(GLOBAL);
+      setAudience(makeDefaultAudience());
       setQuestions([emptyQuestion()]);
       setError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const updateQuestion = (i: number, patch: Partial<DraftQuestion>) => {
@@ -206,16 +217,18 @@ function CreateSurveyDialog() {
       }
     }
 
+    if (audience.audienceType !== "all" && audience.audienceIds.length === 0) {
+      setError("Selecciona al menos un destinatario.");
+      return;
+    }
+
     const payload: CreateSurveyInput = {
       title: title.trim(),
       description: description.trim() || null,
       type,
       anonymous,
-      provinceId: isSuperadmin
-        ? provinceId === GLOBAL
-          ? null
-          : Number(provinceId)
-        : null,
+      audienceType: audience.audienceType,
+      audienceIds: audience.audienceIds,
       questions: builtQuestions,
     };
 
@@ -262,41 +275,24 @@ function CreateSurveyDialog() {
               rows={2}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => setType(v as "survey" | "vote")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="survey">Encuesta</SelectItem>
-                  <SelectItem value="vote">Votación</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {isSuperadmin && (
-              <div className="space-y-2">
-                <Label>Provincia</Label>
-                <Select value={provinceId} onValueChange={setProvinceId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={GLOBAL}>Todas (global)</SelectItem>
-                    {provinces.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select
+              value={type}
+              onValueChange={(v) => setType(v as "survey" | "vote")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="survey">Encuesta</SelectItem>
+                <SelectItem value="vote">Votación</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <AudiencePicker value={audience} onChange={setAudience} />
+
           <div className="flex items-center gap-2">
             <Checkbox
               id="s-anon"
@@ -852,6 +848,7 @@ export default function EncuestasPage() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const manager = canManageSurveys(user?.role);
+  const { canCreate } = useFormSurveyCreator();
 
   const provinceName = (id: number | null | undefined) =>
     id == null ? "Global" : provinces.find((p) => p.id === id)?.name ?? "—";
@@ -893,7 +890,7 @@ export default function EncuestasPage() {
             opción de mantener el anonimato.
           </p>
         </div>
-        {manager && <CreateSurveyDialog />}
+        {canCreate && <CreateSurveyDialog />}
       </div>
 
       {isLoading ? (

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, type FormEvent } from "react";
 import {
   useGetAiStatus,
   useAiChat,
+  getGetAiStatusQueryKey,
   type AiMessage,
   type AiChatInputContext,
 } from "@workspace/api-client-react";
@@ -9,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/lib/auth";
 import {
   Sparkles,
   Send,
@@ -22,7 +24,11 @@ import {
 type Ctx = AiChatInputContext;
 
 export default function AsistenteIaPage() {
-  const { data: status, isLoading: statusLoading } = useGetAiStatus();
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === "superadmin";
+  const { data: status, isLoading: statusLoading } = useGetAiStatus({
+    query: { enabled: isSuperadmin, queryKey: getGetAiStatusQueryKey() },
+  });
   const chatMut = useAiChat();
 
   const [context, setContext] = useState<Ctx>("curriculum");
@@ -64,6 +70,20 @@ export default function AsistenteIaPage() {
       setInput(text);
     }
   };
+
+  if (!isSuperadmin) {
+    return (
+      <div className="max-w-xl">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Acceso restringido</AlertTitle>
+          <AlertDescription>
+            El Asistente IA solo está disponible para el superadministrador.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -18,6 +18,12 @@ export const surveysTable = pgTable("surveys", {
   anonymous: boolean("anonymous").notNull().default(false),
   status: text("status").notNull().default("draft"), // draft | open | closed
   provinceId: integer("province_id"),
+  // Recipient/audience targeting. audienceType: all | province | island |
+  // center | module | users. audienceIds holds the target ids for the chosen
+  // type (province/island/center/module ids, or user ids for "users"); empty
+  // for "all".
+  audienceType: text("audience_type").notNull().default("all"),
+  audienceIds: integer("audience_ids").array(),
   opensAt: timestamp("opens_at", { withTimezone: true }),
   closesAt: timestamp("closes_at", { withTimezone: true }),
   createdById: integer("created_by_id"),

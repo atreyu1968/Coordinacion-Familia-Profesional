@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 import type { SurveyStatus } from './surveyStatus';
 import type { SurveyType } from './surveyType';
 
@@ -16,6 +17,8 @@ export interface Survey {
   anonymous: boolean;
   status: SurveyStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   opensAt?: Date | null;
   closesAt?: Date | null;
   createdAt?: Date;

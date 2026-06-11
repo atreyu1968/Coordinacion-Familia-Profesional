@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 import type { CreateSurveyInputType } from './createSurveyInputType';
 import type { CreateSurveyQuestionInput } from './createSurveyQuestionInput';
 
@@ -14,6 +15,8 @@ export interface CreateSurveyInput {
   type: CreateSurveyInputType;
   anonymous?: boolean;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   opensAt?: Date | null;
   closesAt?: Date | null;
   questions: CreateSurveyQuestionInput[];

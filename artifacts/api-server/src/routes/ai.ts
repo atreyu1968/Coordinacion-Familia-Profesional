@@ -6,7 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { and, isNull, desc, inArray } from "drizzle-orm";
 import { db, gdcanResourcesTable } from "@workspace/db";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireRole } from "../middlewares/auth";
 import { getSettings, isDeepseekConfigured } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -43,14 +43,14 @@ async function buildGdcanGrounding(): Promise<string> {
   return snippets.join("\n\n---\n\n");
 }
 
-router.get("/ai/status", requireAuth, async (_req, res): Promise<void> => {
+router.get("/ai/status", requireAuth, requireRole("superadmin"), async (_req, res): Promise<void> => {
   const settings = await getSettings();
   res.json(
     GetAiStatusResponse.parse({ configured: isDeepseekConfigured(settings) }),
   );
 });
 
-router.post("/ai/chat", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/chat", requireAuth, requireRole("superadmin"), async (req, res): Promise<void> => {
   const parsed = AiChatBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ message: parsed.error.message });

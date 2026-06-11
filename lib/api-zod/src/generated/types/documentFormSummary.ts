@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 import type { DocumentFormSummaryStatus } from './documentFormSummaryStatus';
 
 export interface DocumentFormSummary {
@@ -13,6 +14,8 @@ export interface DocumentFormSummary {
   description?: string | null;
   status: DocumentFormSummaryStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: Date | null;
   createdAt: Date;
   hasSubmitted: boolean;

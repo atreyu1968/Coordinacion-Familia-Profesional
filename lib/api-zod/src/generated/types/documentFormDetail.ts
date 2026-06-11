@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 import type { DocumentFormDetailStatus } from './documentFormDetailStatus';
 import type { DocumentFormField } from './documentFormField';
 import type { OwnSubmission } from './ownSubmission';
@@ -15,6 +16,8 @@ export interface DocumentFormDetail {
   description?: string | null;
   status: DocumentFormDetailStatus;
   provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   closesAt?: Date | null;
   createdAt: Date;
   fields: DocumentFormField[];

@@ -62,6 +62,8 @@ export const ListDocumentFormsResponseItem = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "hasSubmitted": zod.boolean(),
@@ -82,6 +84,8 @@ export const CreateDocumentFormBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "fields": zod.array(zod.object({
   "label": zod.string().min(1),
@@ -106,6 +110,8 @@ export const GetDocumentFormResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "fields": zod.array(zod.object({
@@ -1413,6 +1419,8 @@ export const ListSurveysResponseItem = zod.object({
   "anonymous": zod.boolean(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()
@@ -1428,6 +1436,8 @@ export const CreateSurveyBody = zod.object({
   "type": zod.enum(['survey', 'vote']),
   "anonymous": zod.boolean().default(createSurveyBodyAnonymousDefault),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),
   "questions": zod.array(zod.object({
@@ -1451,6 +1461,8 @@ export const GetSurveyResponse = zod.object({
   "anonymous": zod.boolean(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()

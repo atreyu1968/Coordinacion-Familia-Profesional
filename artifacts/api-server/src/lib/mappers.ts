@@ -220,6 +220,14 @@ export function toSurvey(row: Survey) {
     anonymous: row.anonymous,
     status: row.status as "draft" | "open" | "closed",
     provinceId: row.provinceId,
+    audienceType: row.audienceType as
+      | "all"
+      | "province"
+      | "island"
+      | "center"
+      | "module"
+      | "users",
+    audienceIds: row.audienceIds ?? [],
     opensAt: row.opensAt,
     closesAt: row.closesAt,
     createdAt: row.createdAt,
