@@ -32,6 +32,8 @@ import {
   CreateEventBody,
   GetEventParams,
   DeleteEventParams,
+  UpdateEventParams,
+  UpdateEventBody,
   ListAccreditationsParams,
   ListAccreditationsResponse,
   CreateAccreditationParams,
@@ -272,6 +274,91 @@ router.get("/events/:id", requireAuth, async (req, res): Promise<void> => {
     spaces: spaces.map(toEventSpace),
   });
 });
+
+// ---------------------------------------------------------------------------
+// Update event (managers within scope)
+// ---------------------------------------------------------------------------
+router.patch(
+  "/events/:id",
+  requireAuth,
+  requireRole("superadmin", "coordinator"),
+  async (req, res): Promise<void> => {
+    const params = UpdateEventParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = UpdateEventBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadAccessibleEvent(params.data.id, caller);
+    if (!loaded.ok) {
+      res.status(loaded.status).json({ message: loaded.message });
+      return;
+    }
+    if (
+      caller.role === "coordinator" &&
+      loaded.event.provinceId !== caller.provinceId
+    ) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    const data = parsed.data;
+    const updates: Partial<typeof eventsTable.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.type !== undefined) updates.type = data.type;
+    if (data.description !== undefined)
+      updates.description = data.description ?? null;
+    if (data.location !== undefined) updates.location = data.location ?? null;
+    if (data.startAt !== undefined)
+      updates.startAt = data.startAt ? new Date(data.startAt) : null;
+    if (data.endAt !== undefined)
+      updates.endAt = data.endAt ? new Date(data.endAt) : null;
+    // Only superadmins may move an event to another province.
+    if (data.provinceId !== undefined) {
+      const province = resolveCreateProvinceId(caller, data.provinceId);
+      if (!province.ok) {
+        res.status(403).json({ message: province.message });
+        return;
+      }
+      updates.provinceId = province.provinceId;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ message: "No hay cambios que guardar" });
+      return;
+    }
+
+    const [event] = await db
+      .update(eventsTable)
+      .set(updates)
+      .where(eq(eventsTable.id, loaded.event.id))
+      .returning();
+
+    // Keep the mirrored calendar entry in sync with the edited event.
+    await db
+      .delete(calendarEntriesTable)
+      .where(eq(calendarEntriesTable.eventId, event!.id));
+    if (event!.startAt) {
+      await db.insert(calendarEntriesTable).values({
+        title: event!.name,
+        type: "event",
+        date: toDateString(event!.startAt),
+        endDate: event!.endAt ? toDateString(event!.endAt) : null,
+        provinceId: event!.provinceId,
+        description: event!.description,
+        eventId: event!.id,
+        createdById: caller.id,
+      });
+    }
+
+    res.json(toEvent(event!));
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Delete event (soft delete; managers within scope)

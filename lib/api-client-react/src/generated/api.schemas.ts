@@ -1013,6 +1013,25 @@ export interface CreateEventInput {
   endAt?: string | null;
 }
 
+export type UpdateEventInputType = typeof UpdateEventInputType[keyof typeof UpdateEventInputType];
+
+
+export const UpdateEventInputType = {
+  canarias_skills: 'canarias_skills',
+  jornada: 'jornada',
+  other: 'other',
+} as const;
+
+export interface UpdateEventInput {
+  name?: string;
+  type?: UpdateEventInputType;
+  description?: string | null;
+  location?: string | null;
+  provinceId?: number | null;
+  startAt?: string | null;
+  endAt?: string | null;
+}
+
 export type AccreditationRole = typeof AccreditationRole[keyof typeof AccreditationRole];
 
 

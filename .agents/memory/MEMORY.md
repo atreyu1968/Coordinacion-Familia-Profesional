@@ -36,5 +36,7 @@
 - [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
 - [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.
+- [Tailwind v4 CSS var utilities](tailwind-v4-css-vars.md) — read a CSS var with `h-(--x)` not `h-[--x]`; v3 bracket form breaks shadcn calendar layout.
+- [Canary Islands geo seeding](canary-geo-data.md) — 7 islands + 88 municipalities are seeded as data (SQL), not in code; full per-island counts.
 - [Tool-output display redaction](tooling-display-redaction.md) — some words show as "ln" in tool output but file bytes are unchanged.
 - [Bash domain validation locale](bash-domain-validation-locale.md) — validate domains with LC_ALL=C grep, not bash =~; UTF-8 locale lets accented letters pass [a-z]

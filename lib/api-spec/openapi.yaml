@@ -2289,6 +2289,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventDetail"
+    patch:
+      operationId: updateEvent
+      tags: [events]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
     delete:
       operationId: deleteEvent
       tags: [events]
@@ -4568,6 +4588,31 @@ components:
           format: date-time
           nullable: true
       required: [name, type]
+    UpdateEventInput:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [canarias_skills, jornada, other]
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        provinceId:
+          type: integer
+          nullable: true
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
     Accreditation:
       type: object
       properties:

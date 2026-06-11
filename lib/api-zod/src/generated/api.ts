@@ -1722,6 +1722,34 @@ export const GetEventResponse = zod.object({
 }))
 
 
+export const UpdateEventParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateEventBody = zod.object({
+  "name": zod.string().optional(),
+  "type": zod.enum(['canarias_skills', 'jornada', 'other']).optional(),
+  "description": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "provinceId": zod.number().nullish(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish()
+})
+
+export const UpdateEventResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "description": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "provinceId": zod.number().nullish(),
+  "startAt": zod.coerce.date().nullish(),
+  "endAt": zod.coerce.date().nullish(),
+  "status": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
 export const DeleteEventParams = zod.object({
   "id": zod.coerce.number()
 })

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useListEvents,
   useCreateEvent,
+  useUpdateEvent,
   useGetEvent,
   useDeleteEvent,
   useListAccreditations,
@@ -73,6 +74,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   CalendarDays,
   Plus,
+  Pencil,
   Trash2,
   ArrowLeft,
   MapPin,
@@ -127,6 +129,17 @@ function formatDate(value?: string | null): string {
 function formatDay(value?: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("es-ES", { dateStyle: "long" });
+}
+
+// Convert an ISO timestamp into the `YYYY-MM-DDTHH:mm` value a
+// <input type="datetime-local"> expects, in the user's local timezone.
+function toDateTimeLocal(value?: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+    d.getDate(),
+  )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,12 +243,20 @@ function outlookCalendarUrl(item: {
 // ---------------------------------------------------------------------------
 // Create event dialog
 // ---------------------------------------------------------------------------
-function CreateEventDialog() {
+function EventFormDialog({
+  event,
+  trigger,
+}: {
+  event?: Event;
+  trigger: React.ReactNode;
+}) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const { data: provinces = [] } = useListProvinces();
   const createMut = useCreateEvent();
+  const updateMut = useUpdateEvent();
   const isSuperadmin = user?.role === "superadmin";
+  const isEdit = Boolean(event);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -249,16 +270,16 @@ function CreateEventDialog() {
 
   useEffect(() => {
     if (open) {
-      setName("");
-      setType("canarias_skills");
-      setDescription("");
-      setLocation("");
-      setProvinceId(GLOBAL);
-      setStartAt("");
-      setEndAt("");
+      setName(event?.name ?? "");
+      setType((event?.type as CreateEventInputType) ?? "canarias_skills");
+      setDescription(event?.description ?? "");
+      setLocation(event?.location ?? "");
+      setProvinceId(event?.provinceId != null ? String(event.provinceId) : GLOBAL);
+      setStartAt(toDateTimeLocal(event?.startAt));
+      setEndAt(toDateTimeLocal(event?.endAt));
       setError(null);
     }
-  }, [open]);
+  }, [open, event]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -267,41 +288,50 @@ function CreateEventDialog() {
       setError("El nombre es obligatorio.");
       return;
     }
+    const payload = {
+      name: name.trim(),
+      type,
+      description: description.trim() || null,
+      location: location.trim() || null,
+      provinceId: isSuperadmin
+        ? provinceId === GLOBAL
+          ? null
+          : Number(provinceId)
+        : null,
+      startAt: startAt ? new Date(startAt).toISOString() : null,
+      endAt: endAt ? new Date(endAt).toISOString() : null,
+    };
     try {
-      await createMut.mutateAsync({
-        data: {
-          name: name.trim(),
-          type,
-          description: description.trim() || null,
-          location: location.trim() || null,
-          provinceId: isSuperadmin
-            ? provinceId === GLOBAL
-              ? null
-              : Number(provinceId)
-            : null,
-          startAt: startAt ? new Date(startAt).toISOString() : null,
-          endAt: endAt ? new Date(endAt).toISOString() : null,
-        },
-      });
+      if (isEdit && event) {
+        await updateMut.mutateAsync({ id: event.id, data: payload });
+        await qc.invalidateQueries({ queryKey: getGetEventQueryKey(event.id) });
+      } else {
+        await createMut.mutateAsync({ data: payload });
+      }
       await qc.invalidateQueries({ queryKey: getListEventsQueryKey() });
       await qc.invalidateQueries({ queryKey: getListCalendarEventsQueryKey() });
-      toast({ title: "Evento creado", description: name.trim() });
+      toast({
+        title: isEdit ? "Evento actualizado" : "Evento creado",
+        description: name.trim(),
+      });
       setOpen(false);
     } catch {
-      setError("No se pudo crear el evento. Inténtalo de nuevo.");
+      setError(
+        isEdit
+          ? "No se pudo actualizar el evento. Inténtalo de nuevo."
+          : "No se pudo crear el evento. Inténtalo de nuevo.",
+      );
     }
   };
 
+  const pending = createMut.isPending || updateMut.isPending;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" /> Nuevo evento
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nuevo evento</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar evento" : "Nuevo evento"}</DialogTitle>
           <DialogDescription>
             Organiza una jornada, un evento Canarias Skills u otro acto del
             profesorado de la familia ADG.
@@ -398,13 +428,29 @@ function CreateEventDialog() {
             <p className="text-sm font-medium text-destructive">{error}</p>
           )}
           <DialogFooter>
-            <Button type="submit" disabled={createMut.isPending}>
-              {createMut.isPending ? "Creando..." : "Crear evento"}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Guardando..."
+                : isEdit
+                  ? "Guardar cambios"
+                  : "Crear evento"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CreateEventDialog() {
+  return (
+    <EventFormDialog
+      trigger={
+        <Button className="gap-2">
+          <Plus className="w-4 h-4" /> Nuevo evento
+        </Button>
+      }
+    />
   );
 }
 
@@ -1130,6 +1176,16 @@ function EventDetailView({
               <ExternalLink className="w-4 h-4" /> Outlook
             </a>
           </Button>
+          {canManage && (
+            <EventFormDialog
+              event={event}
+              trigger={
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Pencil className="w-4 h-4" /> Editar
+                </Button>
+              }
+            />
+          )}
           {canManage && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

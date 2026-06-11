@@ -180,6 +180,8 @@ export * from './trainingOffer';
 export * from './transferInput';
 export * from './updateCycleInput';
 export * from './updateEvaluationCriterionInput';
+export * from './updateEventInput';
+export * from './updateEventInputType';
 export * from './updateFeedbackInput';
 export * from './updateFeedbackInputStatus';
 export * from './updateForumPostInput';
