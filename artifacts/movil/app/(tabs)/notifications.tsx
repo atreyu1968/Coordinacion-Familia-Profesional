@@ -54,7 +54,7 @@ export default function NotificationsScreen() {
               hitSlop={12}
               style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
             >
-              <Feather name="check-circle" size={22} color={colors.primary} />
+              <Feather name="check-circle" size={22} color="#ffffff" />
             </Pressable>
           ) : null
         }

@@ -35,7 +35,7 @@ export default function ChatListScreen() {
             hitSlop={12}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
           >
-            <Feather name="edit" size={22} color={colors.primary} />
+            <Feather name="edit" size={22} color="#ffffff" />
           </Pressable>
         }
       />
