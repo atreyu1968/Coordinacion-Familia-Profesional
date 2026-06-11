@@ -20,7 +20,7 @@ export default function BoardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader logo title="Tablón" subtitle="Anuncios y comunicados" />
+      <AppHeader title="Tablón" subtitle="Anuncios y comunicados" />
       {isLoading ? (
         <Loading />
       ) : isError ? (

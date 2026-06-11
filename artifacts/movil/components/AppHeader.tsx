@@ -11,7 +11,8 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
-// Corporate header: brand blue bar with the white logo, mirroring the web app.
+// Corporate header: brand blue bar with the white "AG" mark beside the title,
+// mirroring the web app while keeping the work area as tall as possible.
 const BRAND = "#0050b3";
 const HEADER_FG = "#ffffff";
 const HEADER_FG_MUTED = "rgba(255,255,255,0.82)";
@@ -21,11 +22,9 @@ interface AppHeaderProps {
   subtitle?: string;
   showBack?: boolean;
   right?: React.ReactNode;
-  /** Show the brand logo above the title (used on the main/home screen). */
-  logo?: boolean;
 }
 
-export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderProps) {
+export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   // On web the safe-area inset is 0 inside a normal browser tab but reports the
   // real notch on an installed PWA; clamp to a small minimum so the header never
@@ -45,13 +44,6 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
         },
       ]}
     >
-      {logo ? (
-        <Image
-          source={require("@/assets/images/logo-white.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      ) : null}
       <View style={styles.row}>
         {showBack ? (
           <Pressable
@@ -62,6 +54,11 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
             <Feather name="chevron-left" size={26} color={HEADER_FG} />
           </Pressable>
         ) : null}
+        <Image
+          source={require("@/assets/images/icon-mark.png")}
+          style={styles.mark}
+          resizeMode="contain"
+        />
         <View style={styles.titleWrap}>
           <Text style={[styles.title, { color: HEADER_FG }]} numberOfLines={1}>
             {title}
@@ -84,7 +81,6 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 14,
-    paddingHorizontal: 16,
     backgroundColor: BRAND,
     ...Platform.select({
       web: { boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)" } as object,
@@ -97,12 +93,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  logo: {
-    height: 30,
-    width: 160,
-    marginBottom: 12,
-    alignSelf: "center",
-  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -110,6 +100,12 @@ const styles = StyleSheet.create({
   backBtn: {
     marginRight: 4,
     marginLeft: -8,
+  },
+  mark: {
+    width: 34,
+    height: 34,
+    marginRight: 11,
+    tintColor: "#ffffff",
   },
   titleWrap: {
     flex: 1,
