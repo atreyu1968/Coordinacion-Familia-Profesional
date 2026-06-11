@@ -1,0 +1,48 @@
+root@Coordinacion:~/Coordinacion-Familia-Profesional# cd ~/Coordinacion-Familia-Profesional
+NC="docker exec -u www-data nextcloud-nextcloud-1 php occ"
+
+echo "== 1) capabilities de Collabora (debe ser JSON) =="
+curl -sS "https://coordinacionag.iesmmg.org/collabora/hosting/capabilities"; echo
+
+echo "== 2) comandos richdocuments disponibles =="
+$NC list | grep -i richdocuments
+
+echo "== 3) re-aplicar wopi_url y activar la config =="
+$NC config:app:set richdocuments wopi_url --value="https://coordinacionag.iesmmg.org/collabora"
+$NC config:app:delete richdocuments discovery 2>&1 || true
+$NC richdocuments:activate-config 2>&1 || echo "(activate-config no existe en esta version)"
+
+echo "== 4) estado final =="
+echo -n "wopi_url = "; $NC config:app:get richdocuments wopi_url
+== 1) capabilities de Collabora (debe ser JSON) ==
+{"convert-to":{"available":false},"hasDocumentSigningSupport":true,"hasMobileSupport":true,"hasProxyPrefix":false,"hasSettingIframeSupport":true,"hasTemplateSaveAs":false,"hasTemplateSource":true,"hasWASMSupport":false,"hasWopiAccessCheck":true,"hasZoteroSupport":true,"productKitVersion":"26.04.1.4","productKitVersionHash":"7d478de5","productName":"Collabora Online Development Edition","productVersion":"26.04.1.4","productVersionHash":"7d478de54b","serverId":"DF68EF46"}
+== 2) comandos richdocuments disponibles ==
+ richdocuments
+  richdocuments:activate-config          [richdocuments:setup] Activate config changes
+  richdocuments:convert-bigint           Convert the ID columns of the richdocuments tables to BigInt
+  richdocuments:install-fonts            Install default fonts
+  richdocuments:update-empty-templates   Update empty template files
+== 3) re-aplicar wopi_url y activar la config ==
+Config value were not updated
+Config value discovery of app richdocuments deleted
+✓ Reset callback url autodetect
+Checking configuration
+🛈 Configured WOPI URL: https://coordinacionag.iesmmg.org/collabora
+🛈 Configured public WOPI URL: https://coordinacionag.iesmmg.org/collabora
+🛈 Configured callback URL: 
+
+✓ Fetched /hosting/discovery endpoint
+✓ Valid mimetype response
+✓ Valid capabilities entry
+✓ Fetched /hosting/capabilities endpoint
+✓ Detected WOPI server: Collabora Online Development Edition 26.04.1.4
+
+Collabora URL (used for Nextcloud to contact the Collabora server):
+  https://coordinacionag.iesmmg.org/collabora
+Collabora public URL (used in the browser to open Collabora):
+  https://coordinacionag.iesmmg.org
+Callback URL (used by Collabora to connect back to Nextcloud):
+  autodetected (will use the same URL as your user for browsing Nextcloud)
+== 4) estado final ==
+wopi_url = https://coordinacionag.iesmmg.org/collabora
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
