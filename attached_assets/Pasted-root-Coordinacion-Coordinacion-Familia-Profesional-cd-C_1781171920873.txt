@@ -1,0 +1,33 @@
+root@Coordinacion:~/Coordinacion-Familia-Profesional# cd ~/Coordinacion-Familia-Profesional
+echo "== contenedores =="
+docker ps --format '{{.Names}}  {{.Status}}  {{.Ports}}' | grep -iE "collabora|nextcloud"
+echo "== richdocuments config =="
+for k in wopi_url public_wopi_url disable_certificate_verification wopi_allowlist; do
+  echo -n "$k = "; docker exec -u www-data nextcloud-nextcloud-1 php occ config:app:get richdocuments "$k" 2>/dev/null; echo
+done
+echo -n "richdocuments habilitada? "; docker exec -u www-data nextcloud-nextcloud-1 php occ app:list | grep -i richdocuments || echo "NO instalada"
+echo "== Collabora discovery (loopback contenedor) =="
+curl -sS -o /dev/null -w "127.0.0.1:9980/hosting/discovery -> %{http_code}\n" "http://127.0.0.1:9980/hosting/discovery"
+echo "== Collabora discovery (publico) =="
+curl -sS -o /dev/null -w "publico /collabora/hosting/discovery -> %{http_code}\n" "https://coordinacionag.iesmmg.org/collabora/hosting/discovery"
+echo "== Nextcloud -> Collabora (desde dentro del contenedor de Nextcloud) =="
+docker exec nextcloud-nextcloud-1 sh -c 'curl -sS -o /dev/null -w "%{http_code}\n" https://coordinacionag.iesmmg.org/collabora/hosting/discovery' 2>&1 || echo "fallo o sin curl"
+== contenedores ==
+nextcloud-nextcloud-1  Up 11 hours  127.0.0.1:8081->80/tcp
+nextcloud-nextcloud-db-1  Up 11 hours (healthy)  5432/tcp
+nextcloud-nextcloud-redis-1  Up 11 hours  6379/tcp
+nextcloud-collabora-1  Up 11 hours  127.0.0.1:9980->9980/tcp
+== richdocuments config ==
+wopi_url = https://coordinacionag.iesmmg.org/collabora
+
+public_wopi_url = 
+disable_certificate_verification = 
+wopi_allowlist = 
+richdocuments habilitada?   - richdocuments: 8.5.15
+== Collabora discovery (loopback contenedor) ==
+127.0.0.1:9980/hosting/discovery -> 400
+== Collabora discovery (publico) ==
+publico /collabora/hosting/discovery -> 200
+== Nextcloud -> Collabora (desde dentro del contenedor de Nextcloud) ==
+200
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
