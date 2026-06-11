@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBadges } from "@/contexts/BadgesContext";
 import { useColors } from "@/hooks/useColors";
@@ -10,6 +11,7 @@ import { useColors } from "@/hooks/useColors";
 export default function TabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -33,7 +35,15 @@ export default function TabLayout() {
           elevation: 0,
           // On web the tab bar had a fixed 84px height which left an uneven
           // empty gap below the icons; use a compact, vertically balanced bar.
-          ...(isWeb ? { height: 64, paddingTop: 8, paddingBottom: 10 } : {}),
+          // Add the bottom safe-area inset so an installed PWA's home-indicator
+          // strip doesn't overlap the buttons (the "white bar" at the bottom).
+          ...(isWeb
+            ? {
+                height: 64 + insets.bottom,
+                paddingTop: 8,
+                paddingBottom: 10 + insets.bottom,
+              }
+            : {}),
         },
         tabBarIconStyle: isWeb ? { marginTop: 2 } : undefined,
         tabBarBackground: () =>
