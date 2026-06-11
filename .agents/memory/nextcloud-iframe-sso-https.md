@@ -64,6 +64,8 @@ systemctl reload nginx`, no need to re-run the installer). After fixing, the use
 must still clear the already-cached 301 (incognito / clear site data). Verify:
 `curl -D - https://<domain>/nextcloud` → `location:` must be relative, not http.
 
-Side note: the overlay's "Nueva pestaña" link reuses the same one-time SSO
-ticket the iframe already consumed, so it shows "Enlace caducado" — expected,
-not a regression.
+Side note: the overlay's "Nueva pestaña" button must mint a FRESH one-time SSO
+ticket on click — the iframe already consumed the ticket from the original URL,
+so reusing it gives "Enlace caducado". The handler opens the tab synchronously
+(within the click gesture, to dodge popup blockers) then points it at the newly
+minted URL.

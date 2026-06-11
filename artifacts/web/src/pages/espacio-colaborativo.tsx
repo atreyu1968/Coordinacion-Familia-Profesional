@@ -27,10 +27,12 @@ import { Link } from "wouter";
 function SpaceOverlay({
   title,
   url,
+  onNewTab,
   onClose,
 }: {
   title: string;
   url: string;
+  onNewTab: () => void;
   onClose: () => void;
 }) {
   return (
@@ -41,14 +43,12 @@ function SpaceOverlay({
           {title}
         </span>
         <div className="flex items-center gap-3">
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            onClick={onNewTab}
             className="text-sm text-zinc-300 hover:text-white inline-flex items-center gap-1"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Nueva pestaña
-          </a>
+          </button>
           <button
             onClick={onClose}
             className="inline-flex items-center gap-1 text-sm text-zinc-300 hover:text-white"
@@ -75,9 +75,11 @@ export default function EspacioColaborativoPage() {
   const openMut = useOpenModuleSpace();
 
   const [search, setSearch] = useState("");
-  const [active, setActive] = useState<{ title: string; url: string } | null>(
-    null,
-  );
+  const [active, setActive] = useState<{
+    title: string;
+    url: string;
+    moduleId: Module["id"];
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -93,7 +95,7 @@ export default function EspacioColaborativoPage() {
     try {
       const access = await openMut.mutateAsync({ moduleId: module.id });
       const label = module.code ? `${module.code} · ${module.name}` : module.name;
-      setActive({ title: label, url: access.url });
+      setActive({ title: label, url: access.url, moduleId: module.id });
     } catch (err) {
       // Surface the server's specific message (e.g. "Espacio colaborativo no
       // configurado", "No se pudo preparar el espacio colaborativo") instead of a
@@ -108,6 +110,28 @@ export default function EspacioColaborativoPage() {
           typeof serverMessage === "string" && serverMessage.trim()
             ? serverMessage
             : "Comprueba que tienes acceso al módulo y que el espacio colaborativo está configurado.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // The iframe consumes its one-time SSO ticket on load, so the original URL is
+  // already spent. Opening it in a new tab must mint a *fresh* ticket. Open the
+  // tab synchronously (within the click gesture) to avoid popup blockers, then
+  // point it at the new URL once the request resolves.
+  const onNewTab = async () => {
+    if (!active) return;
+    const win = window.open("", "_blank");
+    try {
+      const access = await openMut.mutateAsync({ moduleId: active.moduleId });
+      if (win) win.location.href = access.url;
+      else window.open(access.url, "_blank", "noreferrer");
+    } catch {
+      win?.close();
+      toast({
+        title: "No se pudo abrir en una pestaña nueva",
+        description:
+          "Vuelve a intentarlo. Si persiste, abre el espacio desde la plataforma.",
         variant: "destructive",
       });
     }
@@ -207,6 +231,7 @@ export default function EspacioColaborativoPage() {
         <SpaceOverlay
           title={active.title}
           url={active.url}
+          onNewTab={onNewTab}
           onClose={() => setActive(null)}
         />
       )}
