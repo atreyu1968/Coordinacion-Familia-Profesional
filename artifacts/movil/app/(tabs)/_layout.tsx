@@ -31,8 +31,11 @@ export default function TabLayout() {
           borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          // On web the tab bar had a fixed 84px height which left an uneven
+          // empty gap below the icons; use a compact, vertically balanced bar.
+          ...(isWeb ? { height: 64, paddingTop: 8, paddingBottom: 10 } : {}),
         },
+        tabBarIconStyle: isWeb ? { marginTop: 2 } : undefined,
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
