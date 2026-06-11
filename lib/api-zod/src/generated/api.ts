@@ -947,7 +947,7 @@ export const UpdateCenterParams = zod.object({
 })
 
 export const UpdateCenterBody = zod.object({
-  "name": zod.string(),
+  "name": zod.string().optional(),
   "code": zod.string().optional(),
   "provinceId": zod.number().nullish(),
   "islandId": zod.number().nullish(),
@@ -961,7 +961,7 @@ export const UpdateCenterBody = zod.object({
   "nature": zod.string().nullish(),
   "centerType": zod.string().nullish(),
   "families": zod.array(zod.string()).optional()
-})
+}).describe('Partial center update; every field is optional.')
 
 export const UpdateCenterResponse = zod.object({
   "id": zod.number(),

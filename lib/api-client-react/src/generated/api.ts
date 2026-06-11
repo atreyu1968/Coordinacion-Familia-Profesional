@@ -140,6 +140,7 @@ import type {
   TeachingAssignment,
   TrainingOffer,
   TransferInput,
+  UpdateCenterInput,
   UpdateCycleInput,
   UpdateEvaluationCriterionInput,
   UpdateEventInput,
@@ -3882,7 +3883,7 @@ export const getUpdateCenterUrl = (id: number,) => {
 }
 
 export const updateCenter = async (id: number,
-    createCenterInput: CreateCenterInput, options?: RequestInit): Promise<Center> => {
+    updateCenterInput: UpdateCenterInput, options?: RequestInit): Promise<Center> => {
 
   return customFetch<Center>(getUpdateCenterUrl(id),
   {
@@ -3890,7 +3891,7 @@ export const updateCenter = async (id: number,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      createCenterInput,)
+      updateCenterInput,)
   }
 );}
 
@@ -3898,8 +3899,8 @@ export const updateCenter = async (id: number,
 
 
 export const getUpdateCenterMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<CreateCenterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<CreateCenterInput>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<UpdateCenterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<UpdateCenterInput>}, TContext> => {
 
 const mutationKey = ['updateCenter'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3911,7 +3912,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCenter>>, {id: number;data: BodyType<CreateCenterInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCenter>>, {id: number;data: BodyType<UpdateCenterInput>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateCenter(id,data,requestOptions)
@@ -3925,15 +3926,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateCenterMutationResult = NonNullable<Awaited<ReturnType<typeof updateCenter>>>
-    export type UpdateCenterMutationBody = BodyType<CreateCenterInput>
+    export type UpdateCenterMutationBody = BodyType<UpdateCenterInput>
     export type UpdateCenterMutationError = ErrorType<unknown>
 
     export const useUpdateCenter = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<CreateCenterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCenter>>, TError,{id: number;data: BodyType<UpdateCenterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateCenter>>,
         TError,
-        {id: number;data: BodyType<CreateCenterInput>},
+        {id: number;data: BodyType<UpdateCenterInput>},
         TContext
       > => {
       return useMutation(getUpdateCenterMutationOptions(options));

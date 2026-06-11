@@ -384,6 +384,26 @@ export interface CreateCenterInput {
   families?: string[];
 }
 
+/**
+ * Partial center update; every field is optional.
+ */
+export interface UpdateCenterInput {
+  name?: string;
+  code?: string;
+  provinceId?: number | null;
+  islandId?: number | null;
+  municipalityId?: number | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  nature?: string | null;
+  centerType?: string | null;
+  families?: string[];
+}
+
 export interface CenterFacets {
   families: string[];
   centerTypes: string[];

@@ -1138,7 +1138,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateCenterInput"
+              $ref: "#/components/schemas/UpdateCenterInput"
       responses:
         "200":
           description: Updated
@@ -3662,6 +3662,51 @@ components:
           items:
             type: string
       required: [name]
+    UpdateCenterInput:
+      type: object
+      description: Partial center update; every field is optional.
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        provinceId:
+          type: integer
+          nullable: true
+        islandId:
+          type: integer
+          nullable: true
+        municipalityId:
+          type: integer
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        nature:
+          type: string
+          nullable: true
+        centerType:
+          type: string
+          nullable: true
+        families:
+          type: array
+          items:
+            type: string
     CenterFacets:
       type: object
       properties:

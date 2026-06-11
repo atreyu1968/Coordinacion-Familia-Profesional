@@ -180,6 +180,7 @@ export * from './teachingAssignment';
 export * from './timeSeriesPoint';
 export * from './trainingOffer';
 export * from './transferInput';
+export * from './updateCenterInput';
 export * from './updateCycleInput';
 export * from './updateEvaluationCriterionInput';
 export * from './updateEventInput';
