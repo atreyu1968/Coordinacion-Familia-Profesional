@@ -1,0 +1,41 @@
+coordinacionag.iesmmg.org
+127.0.0.1:8081
+root@Coordinacion:~/Coordinacion-Familia-Profesional# # A) ¿qué puerto del host mapea realmente el contenedor de Nextcloud?
+docker port nextcloud-nextcloud-1
+
+# B) ¿responde Nextcloud en 8081? (debe salir JSON con "installed":true, NO "404 page not found")
+curl -sS -i http://127.0.0.1:8081/status.php | head -20
+
+# C) ¿el proceso EN EJECUCIÓN tiene la variable nueva?
+tr '\0' '\n' < /proc/$(systemctl show -p MainPID --value coordina-adg)/environ | grep -i nextcloud
+
+# D) puerto configurado para el contenedor
+grep NEXTCLOUD_PORT deploy/nextcloud/.env
+80/tcp -> 127.0.0.1:8081
+HTTP/1.1 200 OK
+Date: Thu, 11 Jun 2026 09:09:25 GMT
+Server: Apache/2.4.65 (Debian)
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-Robots-Tag: noindex, nofollow
+X-XSS-Protection: 1; mode=block
+X-Powered-By: PHP/8.3.28
+Set-Cookie: oc4z3nxgqa1c=96fa61c164adb687e74996cd31ff0eee; path=/nextcloud; secure; HttpOnly; SameSite=Lax
+Set-Cookie: oc_sessionPassphrase=kThkw3xDKmNo4TPnvrhI7IzQDbgTcFAa9u3cQ8%2FAZYH69MnkQqgihfKg9gg4BIrJe7glsmZEoSk%2BdLi%2Fo%2BS2W3XoSn%2F1xDxKlGYBuwVNQLMCIZPgoOIeQk%2BHYoAbwlHa; path=/nextcloud; secure; HttpOnly; SameSite=Lax
+Set-Cookie: oc4z3nxgqa1c=96fa61c164adb687e74996cd31ff0eee; path=/nextcloud; secure; HttpOnly; SameSite=Lax
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-DWF56wwf7TJQ3RiJ5CzIPEYyH8HmEP4maA9DiqVDre4='; style-src 'self' 'unsafe-inline'; frame-src *; img-src * data: blob:; font-src 'self' data:; media-src *; connect-src *; object-src 'none'; base-uri 'self';
+Set-Cookie: nc_sameSiteCookielax=true; path=/nextcloud; httponly;secure; expires=Fri, 31-Dec-2100 23:59:59 GMT; SameSite=lax
+Set-Cookie: nc_sameSiteCookiestrict=true; path=/nextcloud; httponly;secure; expires=Fri, 31-Dec-2100 23:59:59 GMT; SameSite=strict
+Set-Cookie: oc4z3nxgqa1c=96fa61c164adb687e74996cd31ff0eee; path=/nextcloud; secure; HttpOnly; SameSite=Lax
+Access-Control-Allow-Origin: *
+Content-Length: 172
+Content-Type: application/json
+NEXTCLOUD_URL=https://coordinacionag.iesmmg.org/nextcloud
+NEXTCLOUD_ADMIN_USER=admin
+NEXTCLOUD_ADMIN_PASSWORD=d03e4068ce4188b3fe9edc4a59a816ca
+NEXTCLOUD_OIDC_CLIENT_ID=coordina-nextcloud
+NEXTCLOUD_OIDC_CLIENT_SECRET=9baf8c6b769f5bc783cc3d1c437eddbb1816448f2312d1dd
+NEXTCLOUD_PORT=8081
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
