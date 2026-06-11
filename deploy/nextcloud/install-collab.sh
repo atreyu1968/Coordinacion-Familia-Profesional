@@ -151,7 +151,10 @@ log "Configuring Nextcloud apps and OIDC provider"
 # install — are corrected: the image only applies the OVERWRITE* env on first
 # install.
 occ config:system:set trusted_domains 0 --value="${APP_DOMAIN}" >/dev/null || true
-occ config:system:delete trusted_domains 1 >/dev/null 2>&1 || true
+# Trust the loopback host:port too, so the api-server can call the OCS admin API
+# directly at http://127.0.0.1:${NEXTCLOUD_PORT} (bypassing the public proxy /
+# tunnel) without Nextcloud rejecting it as an untrusted domain.
+occ config:system:set trusted_domains 1 --value="127.0.0.1:${NEXTCLOUD_PORT}" >/dev/null || true
 occ config:system:set overwritehost --value="${APP_DOMAIN}" >/dev/null || true
 occ config:system:set overwriteprotocol --value="https" >/dev/null || true
 occ config:system:set overwritewebroot --value="/nextcloud" >/dev/null || true
@@ -247,6 +250,10 @@ if [[ -f "${MAIN_ENV}" ]]; then
     rm -f "${tmp}"
   }
   set_main_env NEXTCLOUD_URL "${NEXTCLOUD_URL_PUBLIC}"
+  # Admin OCS calls go straight to the local Nextcloud over loopback, avoiding a
+  # public round-trip (and proxies/tunnels that don't route /ocs). NEXTCLOUD_URL
+  # stays the public URL used for browser-facing links/SSO.
+  set_main_env NEXTCLOUD_ADMIN_URL "http://127.0.0.1:${NEXTCLOUD_PORT}"
   set_main_env COLLABORA_URL "${COLLABORA_URL_PUBLIC}"
   set_main_env NEXTCLOUD_ADMIN_USER "${NEXTCLOUD_ADMIN_USER}"
   set_main_env NEXTCLOUD_ADMIN_PASSWORD "${NEXTCLOUD_ADMIN_PASSWORD}"

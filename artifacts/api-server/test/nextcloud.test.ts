@@ -15,6 +15,7 @@ import {
 
 const ENV_KEYS = [
   "NEXTCLOUD_URL",
+  "NEXTCLOUD_ADMIN_URL",
   "NEXTCLOUD_ADMIN_USER",
   "NEXTCLOUD_ADMIN_PASSWORD",
   "NEXTCLOUD_OIDC_CLIENT_ID",
@@ -76,6 +77,37 @@ describe("resolveNextcloudConfig", () => {
       url: "https://nc.env.org",
       adminUser: "root",
       adminPassword: "envpass",
+    });
+  });
+
+  it("prefers NEXTCLOUD_ADMIN_URL over NEXTCLOUD_URL for the admin connection", () => {
+    clearEnv();
+    process.env.NEXTCLOUD_ADMIN_URL = "http://127.0.0.1:8081";
+    process.env.NEXTCLOUD_URL = "https://nc.env.org/nextcloud";
+    process.env.NEXTCLOUD_ADMIN_USER = "root";
+    process.env.NEXTCLOUD_ADMIN_PASSWORD = "envpass";
+    expect(resolveNextcloudConfig({})).toEqual({
+      url: "http://127.0.0.1:8081",
+      adminUser: "root",
+      adminPassword: "envpass",
+    });
+    // The public URL is unaffected by the admin URL override.
+    expect(resolveNextcloudUrl({})).toBe("https://nc.env.org/nextcloud");
+  });
+
+  it("NEXTCLOUD_ADMIN_URL overrides the transport URL even when creds come from the DB", () => {
+    clearEnv();
+    // Simulates env→DB seeding: the DB holds the PUBLIC url + admin creds.
+    process.env.NEXTCLOUD_ADMIN_URL = "http://127.0.0.1:8081";
+    const cfg = resolveNextcloudConfig({
+      nextcloudUrl: "https://nc.public.org/nextcloud",
+      nextcloudAdminUser: "admin",
+      nextcloudAdminPassword: "secret",
+    });
+    expect(cfg).toEqual({
+      url: "http://127.0.0.1:8081",
+      adminUser: "admin",
+      adminPassword: "secret",
     });
   });
 

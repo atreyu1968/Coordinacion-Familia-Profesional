@@ -52,17 +52,29 @@ function stripTrailingSlash(v: string): string {
 export function resolveNextcloudConfig(
   s?: NextcloudSettings | null,
 ): NextcloudConfig | null {
-  const fromDb = pickConfig(
-    s?.nextcloudUrl,
-    s?.nextcloudAdminUser,
-    s?.nextcloudAdminPassword,
-  );
-  if (fromDb) return fromDb;
-  return pickConfig(
-    process.env["NEXTCLOUD_URL"],
-    process.env["NEXTCLOUD_ADMIN_USER"],
-    process.env["NEXTCLOUD_ADMIN_PASSWORD"],
-  );
+  // Credentials: DB (control panel) wins as a complete triplet; env is the
+  // self-hosted fallback. Sources are never mixed for the credentials.
+  const base =
+    pickConfig(
+      s?.nextcloudUrl,
+      s?.nextcloudAdminUser,
+      s?.nextcloudAdminPassword,
+    ) ??
+    pickConfig(
+      process.env["NEXTCLOUD_ADMIN_URL"] || process.env["NEXTCLOUD_URL"],
+      process.env["NEXTCLOUD_ADMIN_USER"],
+      process.env["NEXTCLOUD_ADMIN_PASSWORD"],
+    );
+  if (!base) return null;
+  // Transport override: when NEXTCLOUD_ADMIN_URL is set, always use it as the
+  // base for admin OCS calls — even if the credentials came from the DB. This
+  // matters because env→DB seeding backfills the DB with the PUBLIC NEXTCLOUD_URL,
+  // which (behind a reverse proxy / tunnel) may not route /ocs from inside the
+  // host. A private, server-reachable URL (e.g. http://127.0.0.1:8081) keeps
+  // admin traffic local. The public URL still drives browser/SSO links via
+  // resolveNextcloudUrl().
+  const adminUrl = stripTrailingSlash(clean(process.env["NEXTCLOUD_ADMIN_URL"]));
+  return adminUrl ? { ...base, url: adminUrl } : base;
 }
 
 function pickConfig(

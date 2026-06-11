@@ -101,6 +101,23 @@ non-empty field), so panel edits are preserved. Consequence: clearing a field in
 while env still has it gets RE-seeded on next restart — to truly disable, clear the env var
 too. The installer must write `COLLABORA_URL` (it was previously missing).
 
+## Admin OCS must reach Nextcloud over loopback, NOT the public URL
+**Why:** admin provisioning (create group/group-folder/users) calls Nextcloud's OCS API
+server-side. If it uses the PUBLIC `NEXTCLOUD_URL` (`https://<domain>/nextcloud`), the
+request leaves the host and (behind Cloudflare Tunnel / some reverse proxies) the loopback
+`/nextcloud/ocs/...` doesn't route back to Nextcloud → OCS fails with a Go-style
+`404 page not found` (that exact body = NOT Nextcloud; it's the proxy/tunnel). Symptom:
+"No se pudo abrir el espacio" toast, `groupfolders:list` shows "No folders configured", no
+`coordina-mod-*` groups.
+**How to apply:** `NEXTCLOUD_ADMIN_URL` (e.g. `http://127.0.0.1:8081`, the loopback-published
+container port) is a TRANSPORT OVERRIDE in `resolveNextcloudConfig()` — it replaces the base
+url for OCS even when creds come from the DB (because env→DB seeding backfills the PUBLIC url).
+The public URL still drives browser/SSO links via `resolveNextcloudUrl()`. The installer must
+also add `127.0.0.1:<port>` to Nextcloud `trusted_domains` (else loopback Host → 400 untrusted).
+Direct loopback hits Nextcloud at container ROOT (no `/nextcloud` prefix; that prefix is only
+nginx + `overwritewebroot`). Collabora↔Nextcloud (WOPI) may need the same loopback treatment
+if document editing later fails the same way.
+
 ## tsc in this monorepo: use `tsc --build`, NOT `tsc --noEmit` standalone
 **Why:** artifacts use TypeScript project references (`references` to `lib/db`, `lib/api-zod`).
 Running `tsc --noEmit` directly in an artifact resolves referenced packages to their (often
