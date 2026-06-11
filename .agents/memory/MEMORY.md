@@ -4,6 +4,7 @@
 - [Integration settings (control panel)](integration-settings.md) — how external credentials (DeepSeek, Resend, JaaS, Nextcloud) are configured in-app + rules for adding more.
 - [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500 DB unique violation, not OCS 102; guard before re-provision or member sync aborts.
+- [Black Nextcloud iframe on self-host](nextcloud-iframe-sso-https.md) — usually Mixed Content (http): fix overwriteprotocol+PUBLIC_APP_URL; DB nextcloud_url overrides env & only seeds when empty (stale domain persists).
 - [Backup & restore (server migration)](backup-restore-migration.md) — design rules and gotchas for full-database ZIP backup/restore.
 - [Contract-driven workflow](contract-driven-workflow.md) — the OpenAPI-first edit/codegen/db-push loop for the monorepo.
 - [API contract changes need codegen](api-contract-codegen.md) — change a response/request shape via openapi → orval → zod + react client.
