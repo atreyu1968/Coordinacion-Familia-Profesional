@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +11,19 @@ import {
 import { Feather } from "@expo/vector-icons";
 
 import { useColors } from "@/hooks/useColors";
+
+// Soft elevation for cards. Uses the modern `boxShadow` on web (avoids the
+// deprecated shadow* warning) and native shadow props elsewhere.
+const cardShadow = Platform.select({
+  web: { boxShadow: "0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.05)" },
+  default: {
+    shadowColor: "#0b1220",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+}) as ViewStyle;
 
 export function Button({
   label,
@@ -81,6 +95,7 @@ export function Card({
     <View
       style={[
         styles.card,
+        cardShadow,
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -106,7 +121,9 @@ export function EmptyState({
   const colors = useColors();
   return (
     <View style={styles.empty}>
-      <Feather name={icon} size={42} color={colors.mutedForeground} />
+      <View style={[styles.emptyIcon, { backgroundColor: colors.accent }]}>
+        <Feather name={icon} size={30} color={colors.primary} />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{title}</Text>
       {message ? (
         <Text style={[styles.emptyMsg, { color: colors.mutedForeground }]}>
@@ -130,7 +147,11 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
   const colors = useColors();
   return (
     <View style={styles.empty}>
-      <Feather name="alert-triangle" size={42} color={colors.destructive} />
+      <View
+        style={[styles.emptyIcon, { backgroundColor: colors.destructive + "1a" }]}
+      >
+        <Feather name="alert-triangle" size={30} color={colors.destructive} />
+      </View>
       <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
         No se pudo cargar
       </Text>
@@ -191,6 +212,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 40,
     gap: 10,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
   },
   emptyTitle: {
     fontSize: 18,

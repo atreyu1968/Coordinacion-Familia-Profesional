@@ -27,14 +27,19 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
+  // On web the safe-area inset is 0 inside a normal browser tab but reports the
+  // real notch on an installed PWA; clamp to a small minimum so the header never
+  // sits flush against the top, but never leave the large dead gap the old fixed
+  // 67px value produced (which made the header look like it floated too low).
+  const topInset =
+    Platform.OS === "web" ? Math.max(insets.top, 12) : insets.top;
 
   return (
     <View
       style={[
         styles.container,
         {
-          paddingTop: topInset + 8,
+          paddingTop: topInset + 10,
           backgroundColor: colors.background,
           borderBottomColor: colors.border,
         },
@@ -82,14 +87,14 @@ export function AppHeader({ title, subtitle, showBack, right, logo }: AppHeaderP
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 12,
+    paddingBottom: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   logo: {
-    height: 32,
-    width: 160,
-    marginBottom: 10,
+    height: 30,
+    width: 150,
+    marginBottom: 12,
     marginLeft: -2,
   },
   row: {
@@ -104,13 +109,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: 27,
+    lineHeight: 32,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 13.5,
+    lineHeight: 18,
     fontFamily: "Inter_400Regular",
-    marginTop: 2,
+    marginTop: 3,
   },
   right: {
     marginLeft: 12,
