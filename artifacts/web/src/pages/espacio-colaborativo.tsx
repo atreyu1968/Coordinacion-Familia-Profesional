@@ -94,11 +94,20 @@ export default function EspacioColaborativoPage() {
       const access = await openMut.mutateAsync({ moduleId: module.id });
       const label = module.code ? `${module.code} · ${module.name}` : module.name;
       setActive({ title: label, url: access.url });
-    } catch {
+    } catch (err) {
+      // Surface the server's specific message (e.g. "Espacio colaborativo no
+      // configurado", "No se pudo preparar el espacio colaborativo") instead of a
+      // generic one, so the cause (config vs. provisioning vs. access) is visible.
+      const serverMessage =
+        err && typeof err === "object" && "data" in err
+          ? (err as { data?: { message?: unknown } }).data?.message
+          : undefined;
       toast({
         title: "No se pudo abrir el espacio",
         description:
-          "Comprueba que tienes acceso al módulo y que el espacio colaborativo está configurado.",
+          typeof serverMessage === "string" && serverMessage.trim()
+            ? serverMessage
+            : "Comprueba que tienes acceso al módulo y que el espacio colaborativo está configurado.",
         variant: "destructive",
       });
     }
