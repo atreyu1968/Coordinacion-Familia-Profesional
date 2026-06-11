@@ -396,7 +396,11 @@ export function toFeedback(row: AppFeedback & { userName?: string | null }) {
 }
 
 export function toMeeting(
-  row: Meeting & { hostName?: string | null; moduleName?: string | null },
+  row: Meeting & {
+    hostName?: string | null;
+    moduleName?: string | null;
+    audienceLabel?: string | null;
+  },
 ) {
   return {
     id: row.id,
@@ -407,6 +411,9 @@ export function toMeeting(
     hostName: row.hostName ?? null,
     moduleId: row.moduleId ?? null,
     moduleName: row.moduleName ?? null,
+    audienceType: row.audienceType,
+    audienceIds: row.audienceIds ?? [],
+    audienceLabel: row.audienceLabel ?? null,
     scheduledAt: row.scheduledAt,
     createdAt: row.createdAt,
   };

@@ -23,6 +23,8 @@
 - [Invitation token lifecycle](invitation-token-lifecycle.md) — single-use tokens; creation by role, renew guards, atomic consumption.
 - [Password reset OTP flow](password-reset-otp.md) — email-based recovery and the single-use atomicity constraint.
 - [Jefe de Departamento model](jefe-departamento-model.md) — modeled as a role, not an entity.
+- [Learning outcomes (RA) & criteria (CE)](learning-outcomes-module.md) — per-module RA/CE tables w/ FK cascade; write=superadmin||module coordinator, read=anyone who sees module.
+- [Audience model with roles](audience-model-roles.md) — shared audience (Forms/Surveys/Meetings) supports role targets department_head/coordinator; resolveAudienceUserIds must filter active users.
 - [Global cycles→modules catalog](cycles-catalog.md) — superadmin-only global catalog; centers pick offered cycles; Configuración tabs surface at /panel-control.
 - [Dashboard, statistics & annual reports](dashboard-reports-module.md) — scoping rules + gotchas for /dashboard/* and /reports.
 - [Document-submission forms module](document-forms-module.md) — frontend wiring, upload/download contract, field-type model.

@@ -47,6 +47,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { ModuleOutcomes } from "@/components/module-outcomes";
 import {
   BookOpen,
   ChevronDown,
@@ -327,57 +328,92 @@ function CycleModules({ cycleId }: { cycleId: number }) {
       ) : (
         <ul className="divide-y">
           {modules.map((m) => (
-            <li
+            <ModuleRow
               key={m.id}
-              className="flex items-center justify-between py-2 gap-2"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="truncate">{m.name}</span>
-                {m.code && (
-                  <Badge variant="secondary" className="shrink-0">
-                    {m.code}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <ModuleCatalogDialog
-                  cycleId={cycleId}
-                  module={m}
-                  trigger={
-                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  }
-                />
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Eliminar módulo?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Se eliminará «{m.name}» del catálogo. Esta acción no se
-                        puede deshacer.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onDelete(m)}>
-                        Eliminar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </li>
+              module={m}
+              cycleId={cycleId}
+              onDelete={onDelete}
+            />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+function ModuleRow({
+  module: m,
+  cycleId,
+  onDelete,
+}: {
+  module: Module;
+  cycleId: number;
+  onDelete: (m: Module) => void;
+}) {
+  const [showOutcomes, setShowOutcomes] = useState(false);
+
+  return (
+    <li className="py-2">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setShowOutcomes((v) => !v)}
+          className="flex items-center gap-2 min-w-0 text-left hover:text-foreground/80"
+        >
+          {showOutcomes ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          )}
+          <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="truncate">{m.name}</span>
+          {m.code && (
+            <Badge variant="secondary" className="shrink-0">
+              {m.code}
+            </Badge>
+          )}
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <ModuleCatalogDialog
+            cycleId={cycleId}
+            module={m}
+            trigger={
+              <Button size="icon" variant="ghost" className="h-8 w-8">
+                <Pencil className="w-4 h-4" />
+              </Button>
+            }
+          />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar módulo?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se eliminará «{m.name}» del catálogo. Esta acción no se puede
+                  deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(m)}>
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      {showOutcomes && (
+        <div className="pl-6 pr-1">
+          <ModuleOutcomes moduleId={m.id} />
+        </div>
+      )}
+    </li>
   );
 }
 

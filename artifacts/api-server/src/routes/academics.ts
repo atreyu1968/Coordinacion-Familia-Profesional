@@ -11,6 +11,8 @@ import {
   usersTable,
   centersTable,
   moduleMembershipsTable,
+  moduleLearningOutcomesTable,
+  moduleEvaluationCriteriaTable,
 } from "@workspace/db";
 import type { User } from "@workspace/db";
 import {
@@ -49,6 +51,17 @@ import {
   ListResourcesResponse,
   CreateResourceBody,
   DeleteResourceParams,
+  ListLearningOutcomesParams,
+  CreateLearningOutcomeParams,
+  CreateLearningOutcomeBody,
+  UpdateLearningOutcomeParams,
+  UpdateLearningOutcomeBody,
+  DeleteLearningOutcomeParams,
+  CreateEvaluationCriterionParams,
+  CreateEvaluationCriterionBody,
+  UpdateEvaluationCriterionParams,
+  UpdateEvaluationCriterionBody,
+  DeleteEvaluationCriterionParams,
 } from "@workspace/api-zod";
 import {
   requireAuth,
@@ -878,6 +891,392 @@ router.delete(
       .update(moduleMembershipsTable)
       .set({ deletedAt: new Date() })
       .where(eq(moduleMembershipsTable.id, existing.id));
+    res.sendStatus(204);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Learning outcomes (RA) and evaluation criteria (CE) of a module. Reading is
+// available to anyone who can see the module; creating/updating/deleting is
+// restricted to superadmin and the module's own coordinator.
+// ---------------------------------------------------------------------------
+
+// Whether the caller may edit a module's learning outcomes / criteria.
+async function canEditOutcomes(
+  caller: User,
+  module: { id: number },
+): Promise<boolean> {
+  if (caller.role === "superadmin") return true;
+  return isModuleCoordinator(caller.id, module.id);
+}
+
+// Load a learning outcome together with its (non-deleted) module.
+async function loadOutcome(outcomeId: number) {
+  const [outcome] = await db
+    .select()
+    .from(moduleLearningOutcomesTable)
+    .where(
+      and(
+        eq(moduleLearningOutcomesTable.id, outcomeId),
+        isNull(moduleLearningOutcomesTable.deletedAt),
+      ),
+    );
+  if (!outcome) return undefined;
+  const module = await loadModule(outcome.moduleId);
+  if (!module) return undefined;
+  return { outcome, module };
+}
+
+// Load a criterion together with its outcome and module.
+async function loadCriterion(criterionId: number) {
+  const [criterion] = await db
+    .select()
+    .from(moduleEvaluationCriteriaTable)
+    .where(
+      and(
+        eq(moduleEvaluationCriteriaTable.id, criterionId),
+        isNull(moduleEvaluationCriteriaTable.deletedAt),
+      ),
+    );
+  if (!criterion) return undefined;
+  const loaded = await loadOutcome(criterion.outcomeId);
+  if (!loaded) return undefined;
+  return { criterion, outcome: loaded.outcome, module: loaded.module };
+}
+
+router.get(
+  "/modules/:moduleId/learning-outcomes",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListLearningOutcomesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    const allowed =
+      (await moduleVisibleToCaller(caller, module)) ||
+      (await isModuleMember(caller.id, module.id));
+    if (!allowed) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    const outcomes = await db
+      .select()
+      .from(moduleLearningOutcomesTable)
+      .where(
+        and(
+          eq(moduleLearningOutcomesTable.moduleId, module.id),
+          isNull(moduleLearningOutcomesTable.deletedAt),
+        ),
+      )
+      .orderBy(moduleLearningOutcomesTable.order, moduleLearningOutcomesTable.id);
+
+    const outcomeIds = outcomes.map((o) => o.id);
+    const criteria =
+      outcomeIds.length > 0
+        ? await db
+            .select()
+            .from(moduleEvaluationCriteriaTable)
+            .where(
+              and(
+                inArray(moduleEvaluationCriteriaTable.outcomeId, outcomeIds),
+                isNull(moduleEvaluationCriteriaTable.deletedAt),
+              ),
+            )
+            .orderBy(
+              moduleEvaluationCriteriaTable.order,
+              moduleEvaluationCriteriaTable.id,
+            )
+        : [];
+
+    res.json(
+      outcomes.map((o) => ({
+        id: o.id,
+        moduleId: o.moduleId,
+        code: o.code,
+        description: o.description,
+        order: o.order,
+        criteria: criteria
+          .filter((c) => c.outcomeId === o.id)
+          .map((c) => ({
+            id: c.id,
+            outcomeId: c.outcomeId,
+            code: c.code,
+            description: c.description,
+            order: c.order,
+          })),
+      })),
+    );
+  },
+);
+
+router.post(
+  "/modules/:moduleId/learning-outcomes",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = CreateLearningOutcomeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = CreateLearningOutcomeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const [created] = await db
+      .insert(moduleLearningOutcomesTable)
+      .values({
+        moduleId: module.id,
+        code: parsed.data.code,
+        description: parsed.data.description,
+        order: parsed.data.order ?? 0,
+      })
+      .returning();
+    res.status(201).json({
+      id: created!.id,
+      moduleId: created!.moduleId,
+      code: created!.code,
+      description: created!.description,
+      order: created!.order,
+      criteria: [],
+    });
+  },
+);
+
+router.patch(
+  "/learning-outcomes/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = UpdateLearningOutcomeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = UpdateLearningOutcomeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadOutcome(params.data.id);
+    if (!loaded) {
+      res.status(404).json({ message: "Resultado de aprendizaje no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, loaded.module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const updates: Partial<typeof moduleLearningOutcomesTable.$inferInsert> = {};
+    if (parsed.data.code !== undefined) updates.code = parsed.data.code;
+    if (parsed.data.description !== undefined)
+      updates.description = parsed.data.description;
+    if (parsed.data.order !== undefined) updates.order = parsed.data.order;
+
+    const [updated] = await db
+      .update(moduleLearningOutcomesTable)
+      .set(updates)
+      .where(eq(moduleLearningOutcomesTable.id, loaded.outcome.id))
+      .returning();
+
+    const criteria = await db
+      .select()
+      .from(moduleEvaluationCriteriaTable)
+      .where(
+        and(
+          eq(moduleEvaluationCriteriaTable.outcomeId, updated!.id),
+          isNull(moduleEvaluationCriteriaTable.deletedAt),
+        ),
+      )
+      .orderBy(
+        moduleEvaluationCriteriaTable.order,
+        moduleEvaluationCriteriaTable.id,
+      );
+
+    res.json({
+      id: updated!.id,
+      moduleId: updated!.moduleId,
+      code: updated!.code,
+      description: updated!.description,
+      order: updated!.order,
+      criteria: criteria.map((c) => ({
+        id: c.id,
+        outcomeId: c.outcomeId,
+        code: c.code,
+        description: c.description,
+        order: c.order,
+      })),
+    });
+  },
+);
+
+router.delete(
+  "/learning-outcomes/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteLearningOutcomeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadOutcome(params.data.id);
+    if (!loaded) {
+      res.status(404).json({ message: "Resultado de aprendizaje no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, loaded.module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const now = new Date();
+    await db
+      .update(moduleLearningOutcomesTable)
+      .set({ deletedAt: now })
+      .where(eq(moduleLearningOutcomesTable.id, loaded.outcome.id));
+    await db
+      .update(moduleEvaluationCriteriaTable)
+      .set({ deletedAt: now })
+      .where(
+        and(
+          eq(moduleEvaluationCriteriaTable.outcomeId, loaded.outcome.id),
+          isNull(moduleEvaluationCriteriaTable.deletedAt),
+        ),
+      );
+    res.sendStatus(204);
+  },
+);
+
+router.post(
+  "/learning-outcomes/:id/criteria",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = CreateEvaluationCriterionParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = CreateEvaluationCriterionBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadOutcome(params.data.id);
+    if (!loaded) {
+      res.status(404).json({ message: "Resultado de aprendizaje no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, loaded.module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const [created] = await db
+      .insert(moduleEvaluationCriteriaTable)
+      .values({
+        outcomeId: loaded.outcome.id,
+        code: parsed.data.code,
+        description: parsed.data.description,
+        order: parsed.data.order ?? 0,
+      })
+      .returning();
+    res.status(201).json({
+      id: created!.id,
+      outcomeId: created!.outcomeId,
+      code: created!.code,
+      description: created!.description,
+      order: created!.order,
+    });
+  },
+);
+
+router.patch(
+  "/evaluation-criteria/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = UpdateEvaluationCriterionParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = UpdateEvaluationCriterionBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadCriterion(params.data.id);
+    if (!loaded) {
+      res.status(404).json({ message: "Criterio de evaluación no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, loaded.module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const updates: Partial<typeof moduleEvaluationCriteriaTable.$inferInsert> =
+      {};
+    if (parsed.data.code !== undefined) updates.code = parsed.data.code;
+    if (parsed.data.description !== undefined)
+      updates.description = parsed.data.description;
+    if (parsed.data.order !== undefined) updates.order = parsed.data.order;
+
+    const [updated] = await db
+      .update(moduleEvaluationCriteriaTable)
+      .set(updates)
+      .where(eq(moduleEvaluationCriteriaTable.id, loaded.criterion.id))
+      .returning();
+    res.json({
+      id: updated!.id,
+      outcomeId: updated!.outcomeId,
+      code: updated!.code,
+      description: updated!.description,
+      order: updated!.order,
+    });
+  },
+);
+
+router.delete(
+  "/evaluation-criteria/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteEvaluationCriterionParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const loaded = await loadCriterion(params.data.id);
+    if (!loaded) {
+      res.status(404).json({ message: "Criterio de evaluación no encontrado" });
+      return;
+    }
+    if (!(await canEditOutcomes(caller, loaded.module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    await db
+      .update(moduleEvaluationCriteriaTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(moduleEvaluationCriteriaTable.id, loaded.criterion.id));
     res.sendStatus(204);
   },
 );

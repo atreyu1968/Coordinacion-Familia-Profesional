@@ -62,7 +62,7 @@ export const ListDocumentFormsResponseItem = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -84,7 +84,7 @@ export const CreateDocumentFormBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "fields": zod.array(zod.object({
@@ -110,7 +110,7 @@ export const GetDocumentFormResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "closesAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -274,6 +274,9 @@ export const ListMeetingsResponseItem = zod.object({
   "hostName": zod.string().nullish(),
   "moduleId": zod.number().nullish(),
   "moduleName": zod.string().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
+  "audienceLabel": zod.string().nullish(),
   "scheduledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -286,7 +289,8 @@ export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
 export const CreateMeetingBody = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
-  "moduleId": zod.number().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
   "scheduledAt": zod.coerce.date().nullish()
 })
 
@@ -1213,6 +1217,141 @@ export const LeaveModuleParams = zod.object({
 })
 
 
+/**
+ * @summary List a module's learning outcomes (RA) with their criteria (CE)
+ */
+export const ListLearningOutcomesParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const ListLearningOutcomesResponseItem = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "code": zod.string(),
+  "description": zod.string(),
+  "order": zod.number(),
+  "criteria": zod.array(zod.object({
+  "id": zod.number(),
+  "outcomeId": zod.number(),
+  "code": zod.string(),
+  "description": zod.string(),
+  "order": zod.number()
+}))
+})
+export const ListLearningOutcomesResponse = zod.array(ListLearningOutcomesResponseItem)
+
+
+/**
+ * @summary Add a learning outcome to a module (superadmin or module coordinator)
+ */
+export const CreateLearningOutcomeParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+
+
+
+
+export const CreateLearningOutcomeBody = zod.object({
+  "code": zod.string().min(1),
+  "description": zod.string().min(1),
+  "order": zod.number().optional()
+})
+
+
+/**
+ * @summary Update a learning outcome (superadmin or module coordinator)
+ */
+export const UpdateLearningOutcomeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateLearningOutcomeBody = zod.object({
+  "code": zod.string().min(1).optional(),
+  "description": zod.string().min(1).optional(),
+  "order": zod.number().optional()
+})
+
+export const UpdateLearningOutcomeResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "code": zod.string(),
+  "description": zod.string(),
+  "order": zod.number(),
+  "criteria": zod.array(zod.object({
+  "id": zod.number(),
+  "outcomeId": zod.number(),
+  "code": zod.string(),
+  "description": zod.string(),
+  "order": zod.number()
+}))
+})
+
+
+/**
+ * @summary Delete a learning outcome and its criteria (superadmin or module coordinator)
+ */
+export const DeleteLearningOutcomeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Add an evaluation criterion to a learning outcome (superadmin or module coordinator)
+ */
+export const CreateEvaluationCriterionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const CreateEvaluationCriterionBody = zod.object({
+  "code": zod.string().min(1),
+  "description": zod.string().min(1),
+  "order": zod.number().optional()
+})
+
+
+/**
+ * @summary Update an evaluation criterion (superadmin or module coordinator)
+ */
+export const UpdateEvaluationCriterionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateEvaluationCriterionBody = zod.object({
+  "code": zod.string().min(1).optional(),
+  "description": zod.string().min(1).optional(),
+  "order": zod.number().optional()
+})
+
+export const UpdateEvaluationCriterionResponse = zod.object({
+  "id": zod.number(),
+  "outcomeId": zod.number(),
+  "code": zod.string(),
+  "description": zod.string(),
+  "order": zod.number()
+})
+
+
+/**
+ * @summary Delete an evaluation criterion (superadmin or module coordinator)
+ */
+export const DeleteEvaluationCriterionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
 export const ListGroupsQueryParams = zod.object({
   "centerId": zod.coerce.number().optional()
 })
@@ -1419,7 +1558,7 @@ export const ListSurveysResponseItem = zod.object({
   "anonymous": zod.boolean(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),
@@ -1436,7 +1575,7 @@ export const CreateSurveyBody = zod.object({
   "type": zod.enum(['survey', 'vote']),
   "anonymous": zod.boolean().default(createSurveyBodyAnonymousDefault),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),
@@ -1461,7 +1600,7 @@ export const GetSurveyResponse = zod.object({
   "anonymous": zod.boolean(),
   "status": zod.enum(['draft', 'open', 'closed']),
   "provinceId": zod.number().nullish(),
-  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users']).optional(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
   "audienceIds": zod.array(zod.number()).optional(),
   "opensAt": zod.coerce.date().nullish(),
   "closesAt": zod.coerce.date().nullish(),

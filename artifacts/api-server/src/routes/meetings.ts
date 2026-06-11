@@ -1,13 +1,11 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { eq, and, or, isNull, desc, inArray, type SQL } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import {
   db,
   meetingsTable,
   usersTable,
   modulesTable,
-  moduleMembershipsTable,
-  centersTable,
   type User,
 } from "@workspace/db";
 import {
@@ -17,12 +15,15 @@ import {
   GetMeetingTokenBody,
   GetMeetingTokenResponse,
 } from "@workspace/api-zod";
+import { requireAuth, isModuleCoordinator } from "../middlewares/auth";
 import {
-  requireAuth,
-  isModuleCoordinator,
-  isModuleMember,
-  hasScopeOver,
-} from "../middlewares/auth";
+  getViewerContext,
+  isInAudience,
+  validateAudience,
+  canManageAudience,
+  canCreateFormsSurveys,
+  resolveAudienceUserIds,
+} from "../lib/audience";
 import { toMeeting } from "../lib/mappers";
 import { resolveJaasCreds, buildJaasUrl, publicJitsiUrl } from "../lib/jaas";
 import { getSettings } from "../lib/settings";
@@ -30,115 +31,47 @@ import { notifyUsers } from "../lib/notify";
 
 const router: IRouter = Router();
 
-// Roles that may always create/manage meetings regardless of module. Module
-// coordinators may additionally create meetings for their own module.
+// Roles that always join meetings as moderators (signed JWT → no login). Module
+// coordinators also moderate meetings targeted at their own module.
 const CAN_CREATE = ["superadmin", "coordinator"];
 
-// Active member user ids of a module (any role).
-async function moduleMemberIds(moduleId: number): Promise<number[]> {
-  const rows = await db
-    .select({ userId: moduleMembershipsTable.userId })
-    .from(moduleMembershipsTable)
-    .where(
-      and(
-        eq(moduleMembershipsTable.moduleId, moduleId),
-        isNull(moduleMembershipsTable.deletedAt),
-      ),
-    );
-  return rows.map((r) => r.userId);
-}
-
-// Whether a global/provincial manager has authority over a module (or a legacy
-// null-module meeting). Superadmin: always. Coordinator: their province (plus
-// global modules with no center, and legacy null-module meetings, which the
-// spec keeps visible to any superadmin/coordinator). Anyone else: false.
-async function managerScopeOverModule(
-  caller: User,
-  moduleId: number | null,
-): Promise<boolean> {
-  if (caller.role === "superadmin") return true;
-  if (caller.role !== "coordinator") return false;
-  if (moduleId == null) return true;
-  const [module] = await db
-    .select({ centerId: modulesTable.centerId })
-    .from(modulesTable)
-    .where(eq(modulesTable.id, moduleId));
-  if (!module) return false;
-  if (module.centerId == null) return true;
-  const [center] = await db
-    .select({ provinceId: centersTable.provinceId })
-    .from(centersTable)
-    .where(eq(centersTable.id, module.centerId));
-  return hasScopeOver(caller, {
-    provinceId: center?.provinceId ?? null,
-    centerId: module.centerId,
-  });
-}
-
-// Whether the caller may see/join a given meeting: a manager in scope of the
-// meeting's module, or (for module meetings) an enrolled member of the module.
-// Legacy null-module meetings are visible only to superadmin/coordinator.
-async function canAccessMeeting(
-  caller: User,
-  meeting: { moduleId: number | null; hostId: number },
-): Promise<boolean> {
-  if (meeting.hostId === caller.id) return true;
-  if (await managerScopeOverModule(caller, meeting.moduleId)) return true;
-  if (meeting.moduleId == null) return false;
-  return isModuleMember(caller.id, meeting.moduleId);
+// A short human-readable label for a meeting's audience, shown on cards. We keep
+// it lightweight (no extra name lookups) beyond the already-joined module name.
+function audienceLabel(
+  type: string,
+  ids: number[] | null | undefined,
+  moduleName?: string | null,
+): string {
+  const n = (ids ?? []).length;
+  switch (type) {
+    case "all":
+      return "Todos los usuarios";
+    case "module":
+      return moduleName ?? (n > 1 ? `${n} módulos` : "Módulo");
+    case "province":
+      return n > 1 ? `${n} provincias` : "Provincia";
+    case "island":
+      return n > 1 ? `${n} islas` : "Isla";
+    case "center":
+      return n > 1 ? `${n} centros` : "Centro";
+    case "users":
+      return n > 1 ? `${n} usuarios` : "1 usuario";
+    case "department_head":
+      return "Jefes de departamento";
+    case "coordinator":
+      return "Coordinadores provinciales";
+    default:
+      return "Destinatarios";
+  }
 }
 
 // ---------------------------------------------------------------------------
-// List meeting rooms: any authenticated user may see and join them.
+// List meeting rooms: a user sees a meeting if they host it, fall within its
+// audience, or have management authority over that audience (superadmin always;
+// provincial coordinators for audiences within their province).
 // ---------------------------------------------------------------------------
 router.get("/meetings", requireAuth, async (req, res): Promise<void> => {
   const caller = req.user!;
-
-  const conditions: SQL[] = [isNull(meetingsTable.deletedAt)];
-  if (caller.role !== "superadmin") {
-    // Non-superadmins only see meetings they host plus meetings of the modules
-    // they can reach: enrolled modules for everyone, and (for provincial
-    // coordinators) every module in their province or with no center, plus the
-    // legacy null-module meetings the spec keeps visible to coordinators.
-    const memberRows = await db
-      .select({ moduleId: moduleMembershipsTable.moduleId })
-      .from(moduleMembershipsTable)
-      .where(
-        and(
-          eq(moduleMembershipsTable.userId, caller.id),
-          isNull(moduleMembershipsTable.deletedAt),
-        ),
-      );
-    const moduleIds = new Set(memberRows.map((r) => r.moduleId));
-    let includeLegacy = false;
-
-    if (caller.role === "coordinator" && caller.provinceId != null) {
-      const scoped = await db
-        .select({ id: modulesTable.id })
-        .from(modulesTable)
-        .leftJoin(centersTable, eq(centersTable.id, modulesTable.centerId))
-        .where(
-          and(
-            isNull(modulesTable.deletedAt),
-            or(
-              isNull(modulesTable.centerId),
-              eq(centersTable.provinceId, caller.provinceId),
-            ),
-          ),
-        );
-      scoped.forEach((m) => moduleIds.add(m.id));
-      includeLegacy = true;
-    }
-
-    const visibility: SQL[] = [eq(meetingsTable.hostId, caller.id)];
-    if (moduleIds.size > 0) {
-      visibility.push(inArray(meetingsTable.moduleId, [...moduleIds]));
-    }
-    if (includeLegacy) {
-      visibility.push(isNull(meetingsTable.moduleId));
-    }
-    conditions.push(or(...visibility)!);
-  }
 
   const rows = await db
     .select({
@@ -150,6 +83,8 @@ router.get("/meetings", requireAuth, async (req, res): Promise<void> => {
       hostName: usersTable.name,
       moduleId: meetingsTable.moduleId,
       moduleName: modulesTable.name,
+      audienceType: meetingsTable.audienceType,
+      audienceIds: meetingsTable.audienceIds,
       scheduledAt: meetingsTable.scheduledAt,
       createdAt: meetingsTable.createdAt,
       deletedAt: meetingsTable.deletedAt,
@@ -157,15 +92,36 @@ router.get("/meetings", requireAuth, async (req, res): Promise<void> => {
     .from(meetingsTable)
     .leftJoin(usersTable, eq(usersTable.id, meetingsTable.hostId))
     .leftJoin(modulesTable, eq(modulesTable.id, meetingsTable.moduleId))
-    .where(and(...conditions))
+    .where(isNull(meetingsTable.deletedAt))
     .orderBy(desc(meetingsTable.createdAt));
 
-  res.json(ListMeetingsResponse.parse(rows.map(toMeeting)));
+  const ctx = await getViewerContext(caller);
+  const visible = [];
+  for (const row of rows) {
+    const ok =
+      row.hostId === caller.id ||
+      isInAudience(row.audienceType, row.audienceIds, ctx) ||
+      (await canManageAudience(caller, row.audienceType, row.audienceIds));
+    if (ok) visible.push(row);
+  }
+
+  res.json(
+    ListMeetingsResponse.parse(
+      visible.map((r) =>
+        toMeeting({
+          ...r,
+          audienceLabel: audienceLabel(r.audienceType, r.audienceIds, r.moduleName),
+        }),
+      ),
+    ),
+  );
 });
 
 // ---------------------------------------------------------------------------
-// Create a meeting room: coordinator or superadmin only. The room name is a
-// random, unguessable slug used to build the public meet.jit.si URL.
+// Create a meeting room. Anyone who may create forms/surveys may create a
+// meeting (superadmin, provincial coordinators, module coordinators). The
+// audience is validated/normalized against the caller's authority. The room
+// name is a random, unguessable slug used to build the join URL.
 // ---------------------------------------------------------------------------
 router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateMeetingBody.safeParse(req.body);
@@ -175,36 +131,37 @@ router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
   }
   const caller = req.user!;
   const data = parsed.data;
-  const moduleId = data.moduleId ?? null;
 
-  // Validate the module (if any) and authorize: managers may create meetings
-  // within their scope; module coordinators may create meetings for their own
-  // module. Legacy null-module meetings are reserved for superadmin/coordinator.
+  if (!(await canCreateFormsSurveys(caller))) {
+    res.status(403).json({ message: "Permiso denegado" });
+    return;
+  }
+
+  const audience = await validateAudience(
+    caller,
+    data.audienceType,
+    data.audienceIds,
+  );
+  if (!audience.ok) {
+    res.status(400).json({ message: audience.message });
+    return;
+  }
+
+  // When the audience is a single module, mirror it on `moduleId` so module
+  // coordinators get moderator rights and the card can show the module name.
+  let moduleId: number | null = null;
   let moduleName: string | null = null;
-  if (moduleId == null) {
-    if (!(await managerScopeOverModule(caller, null))) {
-      res.status(403).json({ message: "Permiso denegado" });
-      return;
-    }
-  } else {
+  if (audience.audienceType === "module" && audience.audienceIds.length === 1) {
+    moduleId = audience.audienceIds[0]!;
     const [module] = await db
-      .select()
+      .select({ name: modulesTable.name })
       .from(modulesTable)
-      .where(
-        and(eq(modulesTable.id, moduleId), isNull(modulesTable.deletedAt)),
-      );
+      .where(and(eq(modulesTable.id, moduleId), isNull(modulesTable.deletedAt)));
     if (!module) {
       res.status(404).json({ message: "Módulo no encontrado" });
       return;
     }
     moduleName = module.name;
-    const allowed =
-      (await managerScopeOverModule(caller, moduleId)) ||
-      (await isModuleCoordinator(caller.id, moduleId));
-    if (!allowed) {
-      res.status(403).json({ message: "Permiso denegado" });
-      return;
-    }
   }
 
   const roomName = `coordinaadg-${randomUUID()}`;
@@ -217,27 +174,38 @@ router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
       roomName,
       hostId: caller.id,
       moduleId,
+      audienceType: audience.audienceType,
+      audienceIds: audience.audienceIds,
       scheduledAt: data.scheduledAt ?? null,
     })
     .returning();
 
-  // Invite (notify) the module's members of the new videoconference.
-  if (moduleId != null) {
-    const memberIds = (await moduleMemberIds(moduleId)).filter(
-      (id) => id !== caller.id,
-    );
-    await notifyUsers(memberIds, {
+  // Invite (notify) every user in the audience of the new videoconference.
+  const recipientIds = (
+    await resolveAudienceUserIds(audience.audienceType, audience.audienceIds)
+  ).filter((id) => id !== caller.id);
+  if (recipientIds.length > 0) {
+    await notifyUsers(recipientIds, {
       title: `Nueva videoconferencia: ${row!.title}`,
       body: moduleName
         ? `Se ha programado una videoconferencia en el módulo ${moduleName}.`
-        : null,
+        : "Se ha programado una nueva videoconferencia.",
       type: "meeting",
     });
   }
 
-  res
-    .status(201)
-    .json(toMeeting({ ...row!, hostName: caller.name, moduleName }));
+  res.status(201).json(
+    toMeeting({
+      ...row!,
+      hostName: caller.name,
+      moduleName,
+      audienceLabel: audienceLabel(
+        audience.audienceType,
+        audience.audienceIds,
+        moduleName,
+      ),
+    }),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -263,26 +231,39 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
   const caller = req.user!;
 
   // If the room belongs to a registered meeting, enforce the same access policy
-  // as the listing so a leaked/guessed room name can't bypass module scoping.
+  // as the listing so a leaked/guessed room name can't bypass audience scoping.
   // Ad-hoc rooms (e.g. 1:1 chat calls) have no meeting row and stay open to any
   // authenticated caller who already holds the room name.
   const [meeting] = await db
     .select({
       moduleId: meetingsTable.moduleId,
       hostId: meetingsTable.hostId,
+      audienceType: meetingsTable.audienceType,
+      audienceIds: meetingsTable.audienceIds,
     })
     .from(meetingsTable)
     .where(
       and(eq(meetingsTable.roomName, room), isNull(meetingsTable.deletedAt)),
     );
-  if (meeting && !(await canAccessMeeting(caller, meeting))) {
-    res.status(403).json({ message: "Permiso denegado" });
-    return;
+  if (meeting) {
+    const ctx = await getViewerContext(caller);
+    const canSee =
+      meeting.hostId === caller.id ||
+      isInAudience(meeting.audienceType, meeting.audienceIds, ctx) ||
+      (await canManageAudience(
+        caller,
+        meeting.audienceType,
+        meeting.audienceIds,
+      ));
+    if (!canSee) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
   }
 
-  // Managers in scope, the host, and the module coordinator join as moderators
-  // (signed JWT → no login); everyone else joins the same room as a guest,
-  // which keeps usage in the free tier.
+  // Superadmin/coordinators, the host, and (for module meetings) the module
+  // coordinator join as moderators (signed JWT → no login); everyone else joins
+  // the same room as a guest, which keeps usage in the free tier.
   let moderator = CAN_CREATE.includes(caller.role);
   if (meeting && !moderator) {
     moderator =
@@ -315,7 +296,9 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ---------------------------------------------------------------------------
-// Delete a meeting room (soft delete): only its host or the superadmin.
+// Delete a meeting room (soft delete): the host always may; otherwise a manager
+// with authority over the meeting's audience (superadmin globally, provincial
+// coordinator within their province).
 // ---------------------------------------------------------------------------
 router.delete("/meetings/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteMeetingParams.safeParse(req.params);
@@ -335,11 +318,13 @@ router.delete("/meetings/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ message: "Reunión no encontrada" });
     return;
   }
-  // The host may always delete their own room; managers may delete any meeting
-  // within their scope (superadmin globally, coordinator in their province).
   const allowed =
     existing.hostId === caller.id ||
-    (await managerScopeOverModule(caller, existing.moduleId));
+    (await canManageAudience(
+      caller,
+      existing.audienceType,
+      existing.audienceIds,
+    ));
   if (!allowed) {
     res.status(403).json({ message: "Permiso denegado" });
     return;

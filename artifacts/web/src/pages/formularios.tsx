@@ -26,6 +26,7 @@ import {
   AudiencePicker,
   useFormSurveyCreator,
   defaultAudienceValue,
+  audienceNeedsIds,
   type AudienceValue,
 } from "@/components/audience-picker";
 import { Card, CardContent } from "@/components/ui/card";
@@ -243,7 +244,10 @@ function CreateFormDialog() {
       setError("Añade al menos un campo.");
       return;
     }
-    if (audience.audienceType !== "all" && audience.audienceIds.length === 0) {
+    if (
+      audienceNeedsIds(audience.audienceType) &&
+      audience.audienceIds.length === 0
+    ) {
       setError("Selecciona al menos un destinatario.");
       return;
     }

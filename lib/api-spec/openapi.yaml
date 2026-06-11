@@ -1606,6 +1606,249 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /modules/{moduleId}/learning-outcomes:
+    get:
+      operationId: listLearningOutcomes
+      tags: [academics]
+      summary: List a module's learning outcomes (RA) with their criteria (CE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Learning outcomes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LearningOutcome"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createLearningOutcome
+      tags: [academics]
+      summary: Add a learning outcome to a module (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLearningOutcomeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningOutcome"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /learning-outcomes/{id}:
+    patch:
+      operationId: updateLearningOutcome
+      tags: [academics]
+      summary: Update a learning outcome (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLearningOutcomeInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningOutcome"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteLearningOutcome
+      tags: [academics]
+      summary: Delete a learning outcome and its criteria (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /learning-outcomes/{id}/criteria:
+    post:
+      operationId: createEvaluationCriterion
+      tags: [academics]
+      summary: Add an evaluation criterion to a learning outcome (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEvaluationCriterionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationCriterion"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /evaluation-criteria/{id}:
+    patch:
+      operationId: updateEvaluationCriterion
+      tags: [academics]
+      summary: Update an evaluation criterion (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEvaluationCriterionInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationCriterion"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteEvaluationCriterion
+      tags: [academics]
+      summary: Delete an evaluation criterion (superadmin or module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /groups:
     get:
       operationId: listGroups
@@ -2758,7 +3001,7 @@ components:
           type: integer
     AudienceType:
       type: string
-      enum: [all, province, island, center, module, users]
+      enum: [all, province, island, center, module, users, department_head, coordinator]
     DocumentFormSummary:
       type: object
       required: [id, title, status, createdAt, hasSubmitted, fieldCount]
@@ -3996,6 +4239,15 @@ components:
         moduleName:
           type: string
           nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
+        audienceLabel:
+          type: string
+          nullable: true
         scheduledAt:
           type: string
           format: date-time
@@ -4012,14 +4264,95 @@ components:
         description:
           type: string
           nullable: true
-        moduleId:
-          type: integer
-          nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
         scheduledAt:
           type: string
           format: date-time
           nullable: true
       required: [title]
+    EvaluationCriterion:
+      type: object
+      required: [id, outcomeId, code, description, order]
+      properties:
+        id:
+          type: integer
+        outcomeId:
+          type: integer
+        code:
+          type: string
+        description:
+          type: string
+        order:
+          type: integer
+    LearningOutcome:
+      type: object
+      required: [id, moduleId, code, description, order, criteria]
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: integer
+        code:
+          type: string
+        description:
+          type: string
+        order:
+          type: integer
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationCriterion"
+    CreateLearningOutcomeInput:
+      type: object
+      required: [code, description]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        order:
+          type: integer
+    UpdateLearningOutcomeInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        order:
+          type: integer
+    CreateEvaluationCriterionInput:
+      type: object
+      required: [code, description]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        order:
+          type: integer
+    UpdateEvaluationCriterionInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        order:
+          type: integer
     MeetingTokenInput:
       type: object
       properties:

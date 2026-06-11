@@ -16,4 +16,6 @@ export const AudienceType = {
   center: 'center',
   module: 'module',
   users: 'users',
+  department_head: 'department_head',
+  coordinator: 'coordinator',
 } as const;

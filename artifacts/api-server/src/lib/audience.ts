@@ -1,4 +1,4 @@
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, inArray, or, type SQL } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -9,7 +9,10 @@ import {
 } from "@workspace/db";
 import type { User } from "@workspace/db";
 
-// Recipient/audience targeting shared by document forms and surveys.
+// Recipient/audience targeting shared by document forms, surveys and meetings.
+// Role-based types ("department_head", "coordinator") target every user with
+// that role; their audienceIds (when present) restrict the role to a set of
+// provinces (empty = all provinces).
 export const AUDIENCE_TYPES = [
   "all",
   "province",
@@ -17,8 +20,19 @@ export const AUDIENCE_TYPES = [
   "center",
   "module",
   "users",
+  "department_head",
+  "coordinator",
 ] as const;
 export type AudienceType = (typeof AUDIENCE_TYPES)[number];
+
+// Audience types that target a role instead of a scope/list. Their audienceIds
+// (if any) are province ids restricting the role; empty means all provinces.
+export const ROLE_AUDIENCE_TYPES = ["department_head", "coordinator"] as const;
+export function isRoleAudienceType(
+  t: string,
+): t is (typeof ROLE_AUDIENCE_TYPES)[number] {
+  return (ROLE_AUDIENCE_TYPES as readonly string[]).includes(t);
+}
 
 export function isAudienceType(value: unknown): value is AudienceType {
   return (
@@ -56,6 +70,7 @@ export async function canCreateFormsSurveys(caller: User): Promise<boolean> {
 
 export type ViewerContext = {
   userId: number;
+  role: string;
   provinceId: number | null;
   centerId: number | null;
   islandId: number | null;
@@ -96,6 +111,7 @@ export async function getViewerContext(user: User): Promise<ViewerContext> {
 
   return {
     userId: user.id,
+    role: user.role,
     provinceId,
     centerId,
     islandId,
@@ -123,6 +139,12 @@ export function isInAudience(
       return ctx.moduleIds.some((m) => ids.includes(m));
     case "users":
       return ids.includes(ctx.userId);
+    case "department_head":
+    case "coordinator":
+      // Role audience: the viewer must hold the role and, when restricted to a
+      // set of provinces, belong to one of them (empty ids = all provinces).
+      if (ctx.role !== audienceType) return false;
+      return ids.length === 0 || (ctx.provinceId != null && ids.includes(ctx.provinceId));
     default:
       return false;
   }
@@ -153,6 +175,26 @@ export async function validateAudience(
     return {
       ok: false,
       message: "No tienes permiso para enviar a todos los destinatarios",
+    };
+  }
+
+  // Role audiences (jefes de departamento / coordinadores). audienceIds are the
+  // provinces the role is restricted to (empty = all provinces). Superadmin may
+  // target the whole org or pick provinces; a provincial coordinator is pinned
+  // to their own province; module coordinators cannot use role audiences.
+  if (isRoleAudienceType(audienceType)) {
+    if (caller.role === "superadmin") {
+      return { ok: true, audienceType, audienceIds: ids };
+    }
+    if (caller.role === "coordinator") {
+      if (caller.provinceId == null) {
+        return { ok: false, message: "No tienes una provincia asignada" };
+      }
+      return { ok: true, audienceType, audienceIds: [caller.provinceId] };
+    }
+    return {
+      ok: false,
+      message: "No tienes permiso para enviar a ese tipo de destinatario",
     };
   }
 
@@ -243,6 +285,88 @@ export async function canManageAudience(
   return false;
 }
 
+// Resolve an audience to the set of active user ids it targets. Aggregate
+// counterpart of isInAudience, used to notify recipients (e.g. new meeting).
+export async function resolveAudienceUserIds(
+  audienceType: string,
+  audienceIds: number[] | null | undefined,
+): Promise<number[]> {
+  const ids = audienceIds ?? [];
+  const active = and(
+    eq(usersTable.status, "active"),
+    isNull(usersTable.deletedAt),
+  );
+
+  const selectUsers = async (where: SQL | undefined): Promise<number[]> => {
+    const rows = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .leftJoin(centersTable, eq(usersTable.centerId, centersTable.id))
+      .where(where);
+    return Array.from(new Set(rows.map((r) => r.id)));
+  };
+
+  switch (audienceType) {
+    case "all":
+      return selectUsers(active);
+    case "province":
+      if (ids.length === 0) return [];
+      return selectUsers(
+        and(
+          active,
+          or(
+            inArray(usersTable.provinceId, ids),
+            inArray(centersTable.provinceId, ids),
+          ),
+        ),
+      );
+    case "island":
+      if (ids.length === 0) return [];
+      return selectUsers(and(active, inArray(centersTable.islandId, ids)));
+    case "center":
+      if (ids.length === 0) return [];
+      return selectUsers(and(active, inArray(usersTable.centerId, ids)));
+    case "users":
+      if (ids.length === 0) return [];
+      return selectUsers(and(active, inArray(usersTable.id, ids)));
+    case "department_head":
+    case "coordinator": {
+      const roleCond = eq(usersTable.role, audienceType);
+      if (ids.length === 0) return selectUsers(and(active, roleCond));
+      return selectUsers(
+        and(
+          active,
+          roleCond,
+          or(
+            inArray(usersTable.provinceId, ids),
+            inArray(centersTable.provinceId, ids),
+          ),
+        ),
+      );
+    }
+    case "module": {
+      if (ids.length === 0) return [];
+      const rows = await db
+        .select({ userId: usersTable.id })
+        .from(moduleMembershipsTable)
+        .innerJoin(
+          usersTable,
+          eq(usersTable.id, moduleMembershipsTable.userId),
+        )
+        .where(
+          and(
+            inArray(moduleMembershipsTable.moduleId, ids),
+            isNull(moduleMembershipsTable.deletedAt),
+            active,
+          ),
+        );
+      return Array.from(new Set(rows.map((r) => r.userId)));
+    }
+    default:
+      return [];
+  }
+}
+
 async function idsBelongToProvince(
   audienceType: AudienceType,
   ids: number[],
@@ -305,6 +429,11 @@ async function idsBelongToProvince(
         (r) => r.provinceId === provinceId || r.centerProvinceId === provinceId,
       );
     }
+    case "department_head":
+    case "coordinator":
+      // Role audience restricted to exactly this province (org-wide role
+      // audiences, with empty ids, are superadmin-managed only).
+      return ids.length > 0 && ids.every((i) => i === provinceId);
     default:
       return false;
   }

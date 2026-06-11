@@ -45,6 +45,7 @@ import type {
   CreateCompanyAlertInput,
   CreateCycleInput,
   CreateDocumentFormInput,
+  CreateEvaluationCriterionInput,
   CreateEventInput,
   CreateEventSpaceInput,
   CreateFeedbackInput,
@@ -53,6 +54,7 @@ import type {
   CreateGdcanResourceInput,
   CreateGroupInput,
   CreateInvitationInput,
+  CreateLearningOutcomeInput,
   CreateMeetingInput,
   CreateModuleInput,
   CreateProvinceInput,
@@ -68,6 +70,7 @@ import type {
   DocumentFormSummary,
   Error,
   ErrorResponse,
+  EvaluationCriterion,
   Event,
   EventDetail,
   EventSpace,
@@ -89,6 +92,7 @@ import type {
   InvitationCreated,
   InvitationPublic,
   Island,
+  LearningOutcome,
   ListAnnouncementsParams,
   ListCalendarEventsParams,
   ListCentersParams,
@@ -137,10 +141,12 @@ import type {
   TrainingOffer,
   TransferInput,
   UpdateCycleInput,
+  UpdateEvaluationCriterionInput,
   UpdateFeedbackInput,
   UpdateForumPostInput,
   UpdateForumThreadInput,
   UpdateIntegrationSettingsInput,
+  UpdateLearningOutcomeInput,
   UpdateModuleInput,
   UpdateModuleMemberInput,
   UpdateProfileInput,
@@ -5154,6 +5160,511 @@ export const useLeaveModule = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getLeaveModuleMutationOptions(options));
+    }
+
+export const getListLearningOutcomesUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/learning-outcomes`
+}
+
+/**
+ * @summary List a module's learning outcomes (RA) with their criteria (CE)
+ */
+export const listLearningOutcomes = async (moduleId: number, options?: RequestInit): Promise<LearningOutcome[]> => {
+
+  return customFetch<LearningOutcome[]>(getListLearningOutcomesUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLearningOutcomesQueryKey = (moduleId: number,) => {
+    return [
+    `/api/modules/${moduleId}/learning-outcomes`
+    ] as const;
+    }
+
+
+export const getListLearningOutcomesQueryOptions = <TData = Awaited<ReturnType<typeof listLearningOutcomes>>, TError = ErrorType<Error>>(moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLearningOutcomes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLearningOutcomesQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLearningOutcomes>>> = ({ signal }) => listLearningOutcomes(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(moduleId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLearningOutcomes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLearningOutcomesQueryResult = NonNullable<Awaited<ReturnType<typeof listLearningOutcomes>>>
+export type ListLearningOutcomesQueryError = ErrorType<Error>
+
+
+/**
+ * @summary List a module's learning outcomes (RA) with their criteria (CE)
+ */
+
+export function useListLearningOutcomes<TData = Awaited<ReturnType<typeof listLearningOutcomes>>, TError = ErrorType<Error>>(
+ moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLearningOutcomes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLearningOutcomesQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLearningOutcomeUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/learning-outcomes`
+}
+
+/**
+ * @summary Add a learning outcome to a module (superadmin or module coordinator)
+ */
+export const createLearningOutcome = async (moduleId: number,
+    createLearningOutcomeInput: CreateLearningOutcomeInput, options?: RequestInit): Promise<LearningOutcome> => {
+
+  return customFetch<LearningOutcome>(getCreateLearningOutcomeUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createLearningOutcomeInput,)
+  }
+);}
+
+
+
+
+export const getCreateLearningOutcomeMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningOutcome>>, TError,{moduleId: number;data: BodyType<CreateLearningOutcomeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLearningOutcome>>, TError,{moduleId: number;data: BodyType<CreateLearningOutcomeInput>}, TContext> => {
+
+const mutationKey = ['createLearningOutcome'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLearningOutcome>>, {moduleId: number;data: BodyType<CreateLearningOutcomeInput>}> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  createLearningOutcome(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLearningOutcomeMutationResult = NonNullable<Awaited<ReturnType<typeof createLearningOutcome>>>
+    export type CreateLearningOutcomeMutationBody = BodyType<CreateLearningOutcomeInput>
+    export type CreateLearningOutcomeMutationError = ErrorType<Error>
+
+    /**
+ * @summary Add a learning outcome to a module (superadmin or module coordinator)
+ */
+export const useCreateLearningOutcome = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningOutcome>>, TError,{moduleId: number;data: BodyType<CreateLearningOutcomeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLearningOutcome>>,
+        TError,
+        {moduleId: number;data: BodyType<CreateLearningOutcomeInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLearningOutcomeMutationOptions(options));
+    }
+
+export const getUpdateLearningOutcomeUrl = (id: number,) => {
+
+
+
+
+  return `/api/learning-outcomes/${id}`
+}
+
+/**
+ * @summary Update a learning outcome (superadmin or module coordinator)
+ */
+export const updateLearningOutcome = async (id: number,
+    updateLearningOutcomeInput: UpdateLearningOutcomeInput, options?: RequestInit): Promise<LearningOutcome> => {
+
+  return customFetch<LearningOutcome>(getUpdateLearningOutcomeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateLearningOutcomeInput,)
+  }
+);}
+
+
+
+
+export const getUpdateLearningOutcomeMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningOutcome>>, TError,{id: number;data: BodyType<UpdateLearningOutcomeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLearningOutcome>>, TError,{id: number;data: BodyType<UpdateLearningOutcomeInput>}, TContext> => {
+
+const mutationKey = ['updateLearningOutcome'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLearningOutcome>>, {id: number;data: BodyType<UpdateLearningOutcomeInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateLearningOutcome(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLearningOutcomeMutationResult = NonNullable<Awaited<ReturnType<typeof updateLearningOutcome>>>
+    export type UpdateLearningOutcomeMutationBody = BodyType<UpdateLearningOutcomeInput>
+    export type UpdateLearningOutcomeMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update a learning outcome (superadmin or module coordinator)
+ */
+export const useUpdateLearningOutcome = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningOutcome>>, TError,{id: number;data: BodyType<UpdateLearningOutcomeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLearningOutcome>>,
+        TError,
+        {id: number;data: BodyType<UpdateLearningOutcomeInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateLearningOutcomeMutationOptions(options));
+    }
+
+export const getDeleteLearningOutcomeUrl = (id: number,) => {
+
+
+
+
+  return `/api/learning-outcomes/${id}`
+}
+
+/**
+ * @summary Delete a learning outcome and its criteria (superadmin or module coordinator)
+ */
+export const deleteLearningOutcome = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLearningOutcomeUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLearningOutcomeMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningOutcome>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLearningOutcome>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteLearningOutcome'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLearningOutcome>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteLearningOutcome(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLearningOutcomeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLearningOutcome>>>
+
+    export type DeleteLearningOutcomeMutationError = ErrorType<Error>
+
+    /**
+ * @summary Delete a learning outcome and its criteria (superadmin or module coordinator)
+ */
+export const useDeleteLearningOutcome = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningOutcome>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLearningOutcome>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteLearningOutcomeMutationOptions(options));
+    }
+
+export const getCreateEvaluationCriterionUrl = (id: number,) => {
+
+
+
+
+  return `/api/learning-outcomes/${id}/criteria`
+}
+
+/**
+ * @summary Add an evaluation criterion to a learning outcome (superadmin or module coordinator)
+ */
+export const createEvaluationCriterion = async (id: number,
+    createEvaluationCriterionInput: CreateEvaluationCriterionInput, options?: RequestInit): Promise<EvaluationCriterion> => {
+
+  return customFetch<EvaluationCriterion>(getCreateEvaluationCriterionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createEvaluationCriterionInput,)
+  }
+);}
+
+
+
+
+export const getCreateEvaluationCriterionMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvaluationCriterion>>, TError,{id: number;data: BodyType<CreateEvaluationCriterionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEvaluationCriterion>>, TError,{id: number;data: BodyType<CreateEvaluationCriterionInput>}, TContext> => {
+
+const mutationKey = ['createEvaluationCriterion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEvaluationCriterion>>, {id: number;data: BodyType<CreateEvaluationCriterionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createEvaluationCriterion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEvaluationCriterionMutationResult = NonNullable<Awaited<ReturnType<typeof createEvaluationCriterion>>>
+    export type CreateEvaluationCriterionMutationBody = BodyType<CreateEvaluationCriterionInput>
+    export type CreateEvaluationCriterionMutationError = ErrorType<Error>
+
+    /**
+ * @summary Add an evaluation criterion to a learning outcome (superadmin or module coordinator)
+ */
+export const useCreateEvaluationCriterion = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvaluationCriterion>>, TError,{id: number;data: BodyType<CreateEvaluationCriterionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEvaluationCriterion>>,
+        TError,
+        {id: number;data: BodyType<CreateEvaluationCriterionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateEvaluationCriterionMutationOptions(options));
+    }
+
+export const getUpdateEvaluationCriterionUrl = (id: number,) => {
+
+
+
+
+  return `/api/evaluation-criteria/${id}`
+}
+
+/**
+ * @summary Update an evaluation criterion (superadmin or module coordinator)
+ */
+export const updateEvaluationCriterion = async (id: number,
+    updateEvaluationCriterionInput: UpdateEvaluationCriterionInput, options?: RequestInit): Promise<EvaluationCriterion> => {
+
+  return customFetch<EvaluationCriterion>(getUpdateEvaluationCriterionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateEvaluationCriterionInput,)
+  }
+);}
+
+
+
+
+export const getUpdateEvaluationCriterionMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEvaluationCriterion>>, TError,{id: number;data: BodyType<UpdateEvaluationCriterionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEvaluationCriterion>>, TError,{id: number;data: BodyType<UpdateEvaluationCriterionInput>}, TContext> => {
+
+const mutationKey = ['updateEvaluationCriterion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEvaluationCriterion>>, {id: number;data: BodyType<UpdateEvaluationCriterionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEvaluationCriterion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEvaluationCriterionMutationResult = NonNullable<Awaited<ReturnType<typeof updateEvaluationCriterion>>>
+    export type UpdateEvaluationCriterionMutationBody = BodyType<UpdateEvaluationCriterionInput>
+    export type UpdateEvaluationCriterionMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update an evaluation criterion (superadmin or module coordinator)
+ */
+export const useUpdateEvaluationCriterion = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEvaluationCriterion>>, TError,{id: number;data: BodyType<UpdateEvaluationCriterionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEvaluationCriterion>>,
+        TError,
+        {id: number;data: BodyType<UpdateEvaluationCriterionInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateEvaluationCriterionMutationOptions(options));
+    }
+
+export const getDeleteEvaluationCriterionUrl = (id: number,) => {
+
+
+
+
+  return `/api/evaluation-criteria/${id}`
+}
+
+/**
+ * @summary Delete an evaluation criterion (superadmin or module coordinator)
+ */
+export const deleteEvaluationCriterion = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteEvaluationCriterionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteEvaluationCriterionMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEvaluationCriterion>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEvaluationCriterion>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteEvaluationCriterion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEvaluationCriterion>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteEvaluationCriterion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEvaluationCriterionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEvaluationCriterion>>>
+
+    export type DeleteEvaluationCriterionMutationError = ErrorType<Error>
+
+    /**
+ * @summary Delete an evaluation criterion (superadmin or module coordinator)
+ */
+export const useDeleteEvaluationCriterion = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEvaluationCriterion>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEvaluationCriterion>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteEvaluationCriterionMutationOptions(options));
     }
 
 export const getListGroupsUrl = (params?: ListGroupsParams,) => {

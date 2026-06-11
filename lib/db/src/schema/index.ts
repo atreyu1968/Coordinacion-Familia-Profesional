@@ -9,6 +9,7 @@ export * from "./centers";
 export * from "./trainingOffer";
 export * from "./cycles";
 export * from "./modules";
+export * from "./learningOutcomes";
 export * from "./moduleMemberships";
 export * from "./groups";
 export * from "./teachingAssignments";

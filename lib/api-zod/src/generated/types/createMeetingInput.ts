@@ -5,10 +5,12 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AudienceType } from './audienceType';
 
 export interface CreateMeetingInput {
   title: string;
   description?: string | null;
-  moduleId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   scheduledAt?: Date | null;
 }

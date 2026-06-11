@@ -53,6 +53,8 @@ export const AudienceType = {
   center: 'center',
   module: 'module',
   users: 'users',
+  department_head: 'department_head',
+  coordinator: 'coordinator',
 } as const;
 
 export type DocumentFormSummaryStatus = typeof DocumentFormSummaryStatus[keyof typeof DocumentFormSummaryStatus];
@@ -810,6 +812,9 @@ export interface Meeting {
   hostName?: string | null;
   moduleId?: number | null;
   moduleName?: string | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
+  audienceLabel?: string | null;
   scheduledAt?: string | null;
   createdAt: string;
 }
@@ -817,8 +822,58 @@ export interface Meeting {
 export interface CreateMeetingInput {
   title: string;
   description?: string | null;
-  moduleId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
   scheduledAt?: string | null;
+}
+
+export interface EvaluationCriterion {
+  id: number;
+  outcomeId: number;
+  code: string;
+  description: string;
+  order: number;
+}
+
+export interface LearningOutcome {
+  id: number;
+  moduleId: number;
+  code: string;
+  description: string;
+  order: number;
+  criteria: EvaluationCriterion[];
+}
+
+export interface CreateLearningOutcomeInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  description: string;
+  order?: number;
+}
+
+export interface UpdateLearningOutcomeInput {
+  /** @minLength 1 */
+  code?: string;
+  /** @minLength 1 */
+  description?: string;
+  order?: number;
+}
+
+export interface CreateEvaluationCriterionInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  description: string;
+  order?: number;
+}
+
+export interface UpdateEvaluationCriterionInput {
+  /** @minLength 1 */
+  code?: string;
+  /** @minLength 1 */
+  description?: string;
+  order?: number;
 }
 
 export interface MeetingTokenInput {

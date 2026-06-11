@@ -30,7 +30,21 @@ const TYPE_LABELS: Record<AudienceType, string> = {
   center: "Centro",
   module: "Módulo",
   users: "Profesores concretos",
+  department_head: "Jefes de departamento",
+  coordinator: "Coordinadores provinciales",
 };
+
+const ROLE_TYPES: AudienceType[] = ["department_head", "coordinator"];
+
+export function isRoleAudienceType(t: AudienceType): boolean {
+  return ROLE_TYPES.includes(t);
+}
+
+// Whether an audience type requires picking at least one target id. Role
+// audiences (and "all") may be left empty: empty means every province.
+export function audienceNeedsIds(t: AudienceType): boolean {
+  return t !== "all" && !isRoleAudienceType(t);
+}
 
 // Determine whether the current user may create forms/surveys, and which
 // modules they coordinate. Mirrors the backend rule: superadmin, provincial
@@ -94,9 +108,26 @@ export function AudiencePicker({
   );
 
   const allowedTypes: AudienceType[] = isSuperadmin
-    ? ["all", "province", "island", "center", "module", "users"]
+    ? [
+        "all",
+        "province",
+        "island",
+        "center",
+        "module",
+        "users",
+        "department_head",
+        "coordinator",
+      ]
     : isProvincialCoordinator
-      ? ["province", "island", "center", "module", "users"]
+      ? [
+          "province",
+          "island",
+          "center",
+          "module",
+          "users",
+          "department_head",
+          "coordinator",
+        ]
       : ["module"];
 
   const provinceOptions = isSuperadmin
@@ -128,8 +159,15 @@ export function AudiencePicker({
       : [];
 
   const setType = (t: AudienceType) => {
-    if (t === "province" && isProvincialCoordinator && provinceId != null) {
-      onChange({ audienceType: "province", audienceIds: [provinceId] });
+    // A provincial coordinator is always pinned to their own province, both for
+    // the "province" audience and for role audiences (which are scoped by
+    // province on the backend).
+    if (
+      (t === "province" || isRoleAudienceType(t)) &&
+      isProvincialCoordinator &&
+      provinceId != null
+    ) {
+      onChange({ audienceType: t, audienceIds: [provinceId] });
     } else {
       onChange({ audienceType: t, audienceIds: [] });
     }
@@ -210,6 +248,22 @@ export function AudiencePicker({
             label: `${u.name} (${u.email})`,
           })),
         )}
+      {isRoleAudienceType(value.audienceType) &&
+        (isProvincialCoordinator ? (
+          <p className="text-xs text-muted-foreground">
+            Se enviará a quienes tengan ese rol en tu provincia.
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Opcional: limita por provincia. Si no seleccionas ninguna, se
+              enviará a todas.
+            </p>
+            {renderOptions(
+              provinceOptions.map((p) => ({ id: p.id, label: p.name })),
+            )}
+          </>
+        ))}
     </div>
   );
 }

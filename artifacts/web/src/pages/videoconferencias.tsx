@@ -5,24 +5,22 @@ import {
   useCreateMeeting,
   useDeleteMeeting,
   useGetMeetingToken,
-  useListModules,
   getListMeetingsQueryKey,
   type Meeting,
-  type Module,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import {
+  AudiencePicker,
+  useFormSurveyCreator,
+  defaultAudienceValue,
+  audienceNeedsIds,
+  type AudienceValue,
+} from "@/components/audience-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import {
   Video,
@@ -32,11 +30,9 @@ import {
   ExternalLink,
   X,
   CalendarClock,
-  BookOpen,
+  Users,
   User as UserIcon,
 } from "lucide-react";
-
-const NO_MODULE = "none";
 
 function formatDate(value?: string | null): string {
   if (!value) return "";
@@ -47,26 +43,25 @@ function formatDate(value?: string | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// Create form (coordinator / superadmin only)
+// Create form (anyone who may create forms/surveys: superadmin, provincial
+// coordinator, or a module coordinator)
 // ---------------------------------------------------------------------------
-function CreateForm({
-  isManager,
-  moduleOptions,
-}: {
-  isManager: boolean;
-  moduleOptions: Module[];
-}) {
+function CreateForm() {
   const qc = useQueryClient();
   const createMut = useCreateMeeting();
+  const { isSuperadmin, isProvincialCoordinator, user } =
+    useFormSurveyCreator();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
-  // Managers may create a general (module-less) room; module coordinators must
-  // pick one of the modules they coordinate.
-  const [moduleId, setModuleId] = useState<string>(
-    isManager ? NO_MODULE : (moduleOptions[0]?.id?.toString() ?? ""),
-  );
+  const makeDefaultAudience = (): AudienceValue =>
+    defaultAudienceValue({
+      isSuperadmin,
+      isProvincialCoordinator,
+      provinceId: user?.provinceId ?? null,
+    });
+  const [audience, setAudience] = useState<AudienceValue>(makeDefaultAudience);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (e: FormEvent) => {
@@ -76,8 +71,11 @@ function CreateForm({
       setError("El título es obligatorio.");
       return;
     }
-    if (!isManager && (moduleId === NO_MODULE || !moduleId)) {
-      setError("Debes seleccionar un módulo.");
+    if (
+      audienceNeedsIds(audience.audienceType) &&
+      audience.audienceIds.length === 0
+    ) {
+      setError("Selecciona al menos un destinatario.");
       return;
     }
     try {
@@ -85,8 +83,8 @@ function CreateForm({
         data: {
           title: title.trim(),
           description: description.trim() || null,
-          moduleId:
-            moduleId && moduleId !== NO_MODULE ? Number(moduleId) : null,
+          audienceType: audience.audienceType,
+          audienceIds: audience.audienceIds,
           scheduledAt: scheduledAt
             ? new Date(scheduledAt).toISOString()
             : null,
@@ -100,7 +98,7 @@ function CreateForm({
       setTitle("");
       setDescription("");
       setScheduledAt("");
-      setModuleId(isManager ? NO_MODULE : (moduleOptions[0]?.id?.toString() ?? ""));
+      setAudience(makeDefaultAudience());
     } catch {
       setError("No se pudo crear la sala. Inténtalo de nuevo.");
     }
@@ -123,28 +121,11 @@ function CreateForm({
               maxLength={140}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Módulo {isManager ? "(opcional)" : "*"}</Label>
-            <Select value={moduleId} onValueChange={setModuleId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un módulo" />
-              </SelectTrigger>
-              <SelectContent>
-                {isManager && (
-                  <SelectItem value={NO_MODULE}>
-                    Sin módulo (general)
-                  </SelectItem>
-                )}
-                {moduleOptions.map((m) => (
-                  <SelectItem key={m.id} value={String(m.id)}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-1">
+            <AudiencePicker value={audience} onChange={setAudience} />
             <p className="text-xs text-muted-foreground">
-              Se notificará e invitará a los miembros del módulo, y la sala
-              aparecerá en su calendario.
+              Se notificará e invitará a los destinatarios, y la sala aparecerá
+              en su calendario.
             </p>
           </div>
           <div className="space-y-2">
@@ -236,9 +217,9 @@ function MeetingRow({
         )}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {item.moduleName && (
+        {item.audienceLabel && (
           <span className="flex items-center gap-1">
-            <BookOpen className="w-3 h-3" /> {item.moduleName}
+            <Users className="w-3 h-3" /> {item.audienceLabel}
           </span>
         )}
         {item.hostName && (
@@ -343,15 +324,8 @@ export default function VideoconferenciasPage() {
   const isManager =
     user?.role === "superadmin" || user?.role === "coordinator";
   const { data: items = [], isLoading } = useListMeetings();
-  const { data: modules = [] } = useListModules({});
-
-  // Modules the user may open a room for: managers may pick any module (or
-  // none); module coordinators only the modules they coordinate.
-  const coordinatedModules = modules.filter(
-    (m) => m.myRole === "coordinator",
-  );
-  const moduleOptions = isManager ? modules : coordinatedModules;
-  const canCreate = isManager || coordinatedModules.length > 0;
+  // Anyone who may create forms/surveys may also open a meeting room.
+  const { canCreate } = useFormSurveyCreator();
   const tokenMut = useGetMeetingToken();
   const [active, setActive] = useState<{
     title: string;
@@ -402,9 +376,7 @@ export default function VideoconferenciasPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {canCreate && (
-          <CreateForm isManager={isManager} moduleOptions={moduleOptions} />
-        )}
+        {canCreate && <CreateForm />}
 
         <Card className={canCreate ? "" : "lg:col-span-2"}>
           <CardContent className="p-5 space-y-3">
