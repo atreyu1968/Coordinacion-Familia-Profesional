@@ -1,5 +1,6 @@
 - [Self-hosting Coordina ADG](self-hosting.md) — non-obvious constraints for running outside Replit (no GCS); local storage driver + installer wiring.
 - [Móvil PWA install assets](movil-pwa-assets.md) — install icon comes from public/manifest.json + public/icon-*.png, NOT app.json; regenerate from brand logo.
+- [Móvil web side strips](movil-webframe-side-strips.md) — light strips beside the blue header on phone are WebMobileFrame's desktop frame, NOT safe-area; gate it on width<600.
 - [PWA + Web Push (Expo web build)](pwa-web-push.md) — how the mobile app is made installable and how browser/web-push notifications work, incl. SDK54 quirks.
 - [Integration settings (control panel)](integration-settings.md) — how external credentials (DeepSeek, Resend, JaaS, Nextcloud) are configured in-app + rules for adding more.
 - [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.

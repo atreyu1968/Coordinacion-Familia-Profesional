@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -105,7 +105,15 @@ function RootLayoutNav() {
  */
 function WebMobileFrame({ children }: { children: React.ReactNode }) {
   const colors = useColors();
+  const { width } = useWindowDimensions();
   if (Platform.OS !== "web") {
+    return <>{children}</>;
+  }
+  // On real phones / installed PWA (narrow viewport) render edge-to-edge so the
+  // blue header and tab bar reach the screen sides. Otherwise the muted backdrop
+  // around the centered phone-width frame shows as light strips beside the
+  // header. Keep the centered frame only on wide desktop browsers.
+  if (width < 600) {
     return <>{children}</>;
   }
   return (
