@@ -44,6 +44,26 @@ PUBLIC_APP_URL. (2) console says 404 on login/<id>? → check provider id with
 `occ user_oidc:provider` AND the DB `nextcloud_url` domain/prefix. (3) only after
 the curl chain is clean https, suspect browser cache → test in incognito.
 
+## "Works the first time, black on reopen" = a cached http 301 from nginx
+
+If the iframe loads fine once and then goes black only when you close and
+reopen it (and incognito works once too), the culprit is an nginx `return 301`
+with a **relative** target (e.g. `location = /nextcloud { return 301
+/nextcloud/; }`). With nginx's default `absolute_redirect on`, nginx rebuilds the
+Location as absolute using `$scheme`. Behind Cloudflare Tunnel the request
+reaches nginx over **http**, so `$scheme=http` and the Location becomes
+`http://<domain>/nextcloud/` — Mixed Content. Because it's a **301 (permanent)**
+the browser caches it, so the first load (clean cache) works and every reopen
+reuses the cached http redirect → blocked iframe → black.
+
+**Fix:** add `absolute_redirect off;` (server or location scope) so the Location
+stays relative (`/nextcloud/`) and the browser keeps the page's https scheme.
+Lives in `deploy/nginx-collab.conf.template`; the deployed copy is
+`/etc/nginx/snippets/coordina-adg-collab-locations.conf` (patch + `nginx -t &&
+systemctl reload nginx`, no need to re-run the installer). After fixing, the user
+must still clear the already-cached 301 (incognito / clear site data). Verify:
+`curl -D - https://<domain>/nextcloud` → `location:` must be relative, not http.
+
 Side note: the overlay's "Nueva pestaña" link reuses the same one-time SSO
 ticket the iframe already consumed, so it shows "Enlace caducado" — expected,
 not a regression.

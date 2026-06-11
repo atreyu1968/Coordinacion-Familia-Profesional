@@ -8,6 +8,14 @@
 # needed for the collaborative space.
 
 # --- Nextcloud (Drive) -----------------------------------------------------
+# `absolute_redirect off` keeps the Location header *relative* on the 301s below.
+# Behind Cloudflare Tunnel the request reaches nginx over http, so the default
+# (absolute) redirect would bake `$scheme=http` into the Location and produce
+# `http://<domain>/nextcloud/` — a Mixed Content URL that browsers cache (301 is
+# permanent), turning the embedded iframe black on the next open. A relative
+# Location lets the browser keep the page's https scheme.
+absolute_redirect off;
+
 # Bare /nextcloud → add the trailing slash so the prefix-stripping proxy applies.
 location = /nextcloud { return 301 /nextcloud/; }
 
