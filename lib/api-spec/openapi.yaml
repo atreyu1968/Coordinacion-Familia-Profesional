@@ -1056,12 +1056,24 @@ paths:
     get:
       operationId: listCenters
       tags: [centers]
-      summary: List centers, filterable by province/island/municipality
+      summary: List centers, filterable by province/island/municipality/family/nature/type
       parameters:
         - $ref: "#/components/parameters/ProvinceQuery"
         - $ref: "#/components/parameters/IslandQuery"
         - $ref: "#/components/parameters/MunicipalityQuery"
         - $ref: "#/components/parameters/SearchQuery"
+        - in: query
+          name: family
+          schema:
+            type: string
+        - in: query
+          name: nature
+          schema:
+            type: string
+        - in: query
+          name: centerType
+          schema:
+            type: string
       responses:
         "200":
           description: Centers
@@ -1089,6 +1101,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Center"
+  /centers/facets:
+    get:
+      operationId: listCenterFacets
+      tags: [centers]
+      summary: Distinct families, center types and natures for filtering
+      responses:
+        "200":
+          description: Facets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CenterFacets"
   /centers/{id}:
     get:
       operationId: getCenter
@@ -3573,6 +3597,16 @@ components:
         website:
           type: string
           nullable: true
+        nature:
+          type: string
+          nullable: true
+        centerType:
+          type: string
+          nullable: true
+        families:
+          type: array
+          items:
+            type: string
       required: [id, name]
     CenterDetail:
       allOf:
@@ -3617,7 +3651,33 @@ components:
         website:
           type: string
           nullable: true
+        nature:
+          type: string
+          nullable: true
+        centerType:
+          type: string
+          nullable: true
+        families:
+          type: array
+          items:
+            type: string
       required: [name]
+    CenterFacets:
+      type: object
+      properties:
+        families:
+          type: array
+          items:
+            type: string
+        centerTypes:
+          type: array
+          items:
+            type: string
+        natures:
+          type: array
+          items:
+            type: string
+      required: [families, centerTypes, natures]
     Cycle:
       type: object
       properties:

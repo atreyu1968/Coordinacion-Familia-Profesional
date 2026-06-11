@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useListCenters,
+  useListCenterFacets,
   useListProvinces,
   useListIslands,
   useListMunicipalities,
@@ -42,10 +43,17 @@ export default function CentrosPage() {
   const [provinceId, setProvinceId] = useState<number | null>(null);
   const [islandId, setIslandId] = useState<number | null>(null);
   const [municipalityId, setMunicipalityId] = useState<number | null>(null);
+  const [family, setFamily] = useState<string | null>(null);
+  const [nature, setNature] = useState<string | null>(null);
+  const [centerType, setCenterType] = useState<string | null>(null);
 
   const { data: provinces = [] } = useListProvinces();
   const { data: islands = [] } = useListIslands();
   const { data: municipalities = [] } = useListMunicipalities();
+  const { data: facets } = useListCenterFacets();
+  const familyOptions = facets?.families ?? [];
+  const natureOptions = facets?.natures ?? [];
+  const centerTypeOptions = facets?.centerTypes ?? [];
 
   const islandOptions = islands.filter(
     (i) => provinceId == null || i.provinceId === provinceId,
@@ -68,6 +76,9 @@ export default function CentrosPage() {
   if (islandId != null) params.islandId = islandId;
   if (municipalityId != null) params.municipalityId = municipalityId;
   if (search.trim()) params.search = search.trim();
+  if (family) params.family = family;
+  if (nature) params.nature = nature;
+  if (centerType) params.centerType = centerType;
 
   const { data: centers = [], isLoading } = useListCenters(params);
 
@@ -101,8 +112,7 @@ export default function CentrosPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Centros</h1>
           <p className="text-muted-foreground">
-            Directorio de centros de Formación Profesional de Administración y
-            Gestión en Canarias.
+            Directorio de centros de Formación Profesional en Canarias.
           </p>
         </div>
         {canManage && (
@@ -183,6 +193,57 @@ export default function CentrosPage() {
             {municipalityOptions.map((m) => (
               <SelectItem key={m.id} value={String(m.id)}>
                 {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={family ?? ALL}
+          onValueChange={(v) => setFamily(v === ALL ? null : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Familia profesional" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas las familias</SelectItem>
+            {familyOptions.map((f) => (
+              <SelectItem key={f} value={f}>
+                {f}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={nature ?? ALL}
+          onValueChange={(v) => setNature(v === ALL ? null : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Naturaleza" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas las naturalezas</SelectItem>
+            {natureOptions.map((n) => (
+              <SelectItem key={n} value={n}>
+                {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={centerType ?? ALL}
+          onValueChange={(v) => setCenterType(v === ALL ? null : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Tipo de centro" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todos los tipos</SelectItem>
+            {centerTypeOptions.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
               </SelectItem>
             ))}
           </SelectContent>

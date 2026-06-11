@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, type SQL } from "drizzle-orm";
+import { eq, and, isNull, ilike, sql, type SQL } from "drizzle-orm";
 import {
   db,
   centersTable,
@@ -9,6 +9,7 @@ import {
 import {
   ListCentersQueryParams,
   ListCentersResponse,
+  ListCenterFacetsResponse,
   CreateCenterBody,
   GetCenterParams,
   GetCenterResponse,
@@ -41,6 +42,14 @@ router.get("/centers", async (req, res): Promise<void> => {
     filters.push(eq(centersTable.municipalityId, query.data.municipalityId));
   if (query.data.search)
     filters.push(ilike(centersTable.name, `%${query.data.search}%`));
+  if (query.data.nature)
+    filters.push(eq(centersTable.nature, query.data.nature));
+  if (query.data.centerType)
+    filters.push(eq(centersTable.centerType, query.data.centerType));
+  if (query.data.family)
+    filters.push(
+      sql`${centersTable.families} @> ${JSON.stringify([query.data.family])}::jsonb`,
+    );
 
   const rows = await db
     .select()
@@ -48,6 +57,30 @@ router.get("/centers", async (req, res): Promise<void> => {
     .where(and(...filters))
     .orderBy(centersTable.name);
   res.json(ListCentersResponse.parse(rows.map(toCenter)));
+});
+
+// Distinct values for the Centros page filter selects. Defined before
+// "/centers/:id" so Express does not treat "facets" as an :id.
+router.get("/centers/facets", async (_req, res): Promise<void> => {
+  const familiesRes = await db.execute<{ value: string }>(
+    sql`SELECT DISTINCT jsonb_array_elements_text(families) AS value
+        FROM centers WHERE deleted_at IS NULL ORDER BY value`,
+  );
+  const typesRes = await db.execute<{ value: string }>(
+    sql`SELECT DISTINCT center_type AS value FROM centers
+        WHERE deleted_at IS NULL AND center_type IS NOT NULL ORDER BY value`,
+  );
+  const naturesRes = await db.execute<{ value: string }>(
+    sql`SELECT DISTINCT nature AS value FROM centers
+        WHERE deleted_at IS NULL AND nature IS NOT NULL ORDER BY value`,
+  );
+  res.json(
+    ListCenterFacetsResponse.parse({
+      families: familiesRes.rows.map((r) => r.value),
+      centerTypes: typesRes.rows.map((r) => r.value),
+      natures: naturesRes.rows.map((r) => r.value),
+    }),
+  );
 });
 
 // Creating a center is a province-level administrative action: only superadmin

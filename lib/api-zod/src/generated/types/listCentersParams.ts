@@ -15,4 +15,7 @@ provinceId?: ProvinceQueryParameter;
 islandId?: IslandQueryParameter;
 municipalityId?: MunicipalityQueryParameter;
 search?: SearchQueryParameter;
+family?: string;
+nature?: string;
+centerType?: string;
 };

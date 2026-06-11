@@ -26,6 +26,7 @@ export * from './calendarEntry';
 export * from './categoryCount';
 export * from './center';
 export * from './centerDetail';
+export * from './centerFacets';
 export * from './centerQueryParameter';
 export * from './chatGroup';
 export * from './checkInInput';

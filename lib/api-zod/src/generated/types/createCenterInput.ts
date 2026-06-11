@@ -18,4 +18,7 @@ export interface CreateCenterInput {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  nature?: string | null;
+  centerType?: string | null;
+  families?: string[];
 }

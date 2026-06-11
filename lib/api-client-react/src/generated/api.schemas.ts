@@ -349,6 +349,9 @@ export interface Center {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  nature?: string | null;
+  centerType?: string | null;
+  families?: string[];
 }
 
 export interface TrainingOffer {
@@ -376,6 +379,15 @@ export interface CreateCenterInput {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  nature?: string | null;
+  centerType?: string | null;
+  families?: string[];
+}
+
+export interface CenterFacets {
+  families: string[];
+  centerTypes: string[];
+  natures: string[];
 }
 
 export interface Cycle {
@@ -1402,6 +1414,9 @@ provinceId?: ProvinceQueryParameter;
 islandId?: IslandQueryParameter;
 municipalityId?: MunicipalityQueryParameter;
 search?: SearchQueryParameter;
+family?: string;
+nature?: string;
+centerType?: string;
 };
 
 export type ListModulesParams = {

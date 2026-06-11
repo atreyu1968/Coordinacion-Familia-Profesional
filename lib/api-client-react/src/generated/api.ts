@@ -31,6 +31,7 @@ import type {
   CalendarEntry,
   Center,
   CenterDetail,
+  CenterFacets,
   ChatGroup,
   CheckInInput,
   CheckInResult,
@@ -3591,7 +3592,7 @@ export const getListCentersUrl = (params?: ListCentersParams,) => {
 }
 
 /**
- * @summary List centers, filterable by province/island/municipality
+ * @summary List centers, filterable by province/island/municipality/family/nature/type
  */
 export const listCenters = async (params?: ListCentersParams, options?: RequestInit): Promise<Center[]> => {
 
@@ -3638,7 +3639,7 @@ export type ListCentersQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List centers, filterable by province/island/municipality
+ * @summary List centers, filterable by province/island/municipality/family/nature/type
  */
 
 export function useListCenters<TData = Awaited<ReturnType<typeof listCenters>>, TError = ErrorType<unknown>>(
@@ -3723,6 +3724,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateCenterMutationOptions(options));
     }
+
+export const getListCenterFacetsUrl = () => {
+
+
+
+
+  return `/api/centers/facets`
+}
+
+/**
+ * @summary Distinct families, center types and natures for filtering
+ */
+export const listCenterFacets = async ( options?: RequestInit): Promise<CenterFacets> => {
+
+  return customFetch<CenterFacets>(getListCenterFacetsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCenterFacetsQueryKey = () => {
+    return [
+    `/api/centers/facets`
+    ] as const;
+    }
+
+
+export const getListCenterFacetsQueryOptions = <TData = Awaited<ReturnType<typeof listCenterFacets>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCenterFacets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCenterFacetsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCenterFacets>>> = ({ signal }) => listCenterFacets({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCenterFacets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCenterFacetsQueryResult = NonNullable<Awaited<ReturnType<typeof listCenterFacets>>>
+export type ListCenterFacetsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Distinct families, center types and natures for filtering
+ */
+
+export function useListCenterFacets<TData = Awaited<ReturnType<typeof listCenterFacets>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCenterFacets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCenterFacetsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetCenterUrl = (id: number,) => {
 

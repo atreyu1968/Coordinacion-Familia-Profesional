@@ -5,6 +5,7 @@ import {
   integer,
   doublePrecision,
   timestamp,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const centersTable = pgTable("centers", {
@@ -20,6 +21,11 @@ export const centersTable = pgTable("centers", {
   phone: text("phone"),
   email: text("email"),
   website: text("website"),
+  // Center nature ("Público"/"Privado"), short type label ("IES", "CIFP", ...)
+  // and the FP families it offers (e.g. ["Administración y Gestión", ...]).
+  nature: text("nature"),
+  centerType: text("center_type"),
+  families: jsonb("families").$type<string[]>().default([]).notNull(),
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

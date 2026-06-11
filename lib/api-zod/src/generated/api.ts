@@ -850,13 +850,16 @@ export const ListMunicipalitiesResponse = zod.array(ListMunicipalitiesResponseIt
 
 
 /**
- * @summary List centers, filterable by province/island/municipality
+ * @summary List centers, filterable by province/island/municipality/family/nature/type
  */
 export const ListCentersQueryParams = zod.object({
   "provinceId": zod.coerce.number().optional(),
   "islandId": zod.coerce.number().optional(),
   "municipalityId": zod.coerce.number().optional(),
-  "search": zod.coerce.string().optional()
+  "search": zod.coerce.string().optional(),
+  "family": zod.coerce.string().optional(),
+  "nature": zod.coerce.string().optional(),
+  "centerType": zod.coerce.string().optional()
 })
 
 export const ListCentersResponseItem = zod.object({
@@ -871,7 +874,10 @@ export const ListCentersResponseItem = zod.object({
   "longitude": zod.number().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
-  "website": zod.string().nullish()
+  "website": zod.string().nullish(),
+  "nature": zod.string().nullish(),
+  "centerType": zod.string().nullish(),
+  "families": zod.array(zod.string()).optional()
 })
 export const ListCentersResponse = zod.array(ListCentersResponseItem)
 
@@ -887,7 +893,20 @@ export const CreateCenterBody = zod.object({
   "longitude": zod.number().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
-  "website": zod.string().nullish()
+  "website": zod.string().nullish(),
+  "nature": zod.string().nullish(),
+  "centerType": zod.string().nullish(),
+  "families": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary Distinct families, center types and natures for filtering
+ */
+export const ListCenterFacetsResponse = zod.object({
+  "families": zod.array(zod.string()),
+  "centerTypes": zod.array(zod.string()),
+  "natures": zod.array(zod.string())
 })
 
 
@@ -907,7 +926,10 @@ export const GetCenterResponse = zod.object({
   "longitude": zod.number().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
-  "website": zod.string().nullish()
+  "website": zod.string().nullish(),
+  "nature": zod.string().nullish(),
+  "centerType": zod.string().nullish(),
+  "families": zod.array(zod.string()).optional()
 }).and(zod.object({
   "trainingOffer": zod.array(zod.object({
   "id": zod.number(),
@@ -935,7 +957,10 @@ export const UpdateCenterBody = zod.object({
   "longitude": zod.number().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
-  "website": zod.string().nullish()
+  "website": zod.string().nullish(),
+  "nature": zod.string().nullish(),
+  "centerType": zod.string().nullish(),
+  "families": zod.array(zod.string()).optional()
 })
 
 export const UpdateCenterResponse = zod.object({
@@ -950,7 +975,10 @@ export const UpdateCenterResponse = zod.object({
   "longitude": zod.number().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
-  "website": zod.string().nullish()
+  "website": zod.string().nullish(),
+  "nature": zod.string().nullish(),
+  "centerType": zod.string().nullish(),
+  "families": zod.array(zod.string()).optional()
 })
 
 

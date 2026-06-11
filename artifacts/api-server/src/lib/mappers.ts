@@ -37,6 +37,9 @@ export function toCenter(row: Center) {
     phone: row.phone,
     email: row.email,
     website: row.website,
+    nature: row.nature ?? undefined,
+    centerType: row.centerType ?? undefined,
+    families: row.families ?? [],
   };
 }
 
