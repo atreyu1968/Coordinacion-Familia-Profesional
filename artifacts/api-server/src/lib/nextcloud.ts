@@ -225,6 +225,20 @@ function isAlreadyExists(err: unknown): boolean {
   );
 }
 
+/**
+ * The Group Folders "add group to folder" endpoint is NOT idempotent: re-adding
+ * a group that is already assigned returns HTTP 500 from a database unique
+ * violation on `groups_folder_group` instead of an OCS "already exists" code.
+ * Detect that specific failure so re-provisioning a space stays idempotent.
+ */
+function isDuplicateGroupAssignment(err: unknown): boolean {
+  return (
+    err instanceof OcsError &&
+    err.status === 500 &&
+    /groups_folder_group|duplicate key|unique violation/i.test(err.message)
+  );
+}
+
 async function ocs(
   config: NextcloudConfig,
   method: string,
@@ -375,13 +389,24 @@ async function ensureGroupFolder(
     config,
     "GET",
     "/apps/groupfolders/folders?format=json",
-  )) as { ocs?: { data?: Record<string, { id: number; mount_point: string }> } };
+  )) as {
+    ocs?: {
+      data?: Record<
+        string,
+        { id: number; mount_point: string; groups?: Record<string, unknown> }
+      >;
+    };
+  };
   const existing = Object.values(list?.ocs?.data ?? {}).find(
     (f) => f.mount_point === opts.mount,
   );
   let folderId: number;
+  let groupAlreadyAssigned = false;
   if (existing) {
     folderId = existing.id;
+    groupAlreadyAssigned = Boolean(
+      existing.groups && opts.groupId in existing.groups,
+    );
   } else {
     const created = (await ocs(config, "POST", "/apps/groupfolders/folders?format=json", {
       mountpoint: opts.mount,
@@ -392,11 +417,22 @@ async function ensureGroupFolder(
     }
     folderId = id;
   }
-  // Grant the module group access (idempotent). Permission 31 = all (read,
-  // write, share, delete, create).
-  await ocs(config, "POST", `/apps/groupfolders/folders/${folderId}/groups?format=json`, {
-    group: opts.groupId,
-  });
+  // Grant the module group access. The Group Folders "add group" endpoint is
+  // NOT idempotent: re-adding an already-assigned group returns HTTP 500 (a DB
+  // unique violation on groups_folder_group), not an OCS "already exists". Skip
+  // it when already assigned, and defensively swallow a duplicate so
+  // re-provisioning never aborts before the member sync runs.
+  if (!groupAlreadyAssigned) {
+    try {
+      await ocs(config, "POST", `/apps/groupfolders/folders/${folderId}/groups?format=json`, {
+        group: opts.groupId,
+      });
+    } catch (err) {
+      if (!isDuplicateGroupAssignment(err)) throw err;
+    }
+  }
+  // Permission 31 = all (read, write, share, delete, create). Updating the
+  // permissions of an already-existing assignment is idempotent.
   await ocs(
     config,
     "POST",

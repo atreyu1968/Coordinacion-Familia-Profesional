@@ -350,6 +350,107 @@ describe("OCS provisioning (statuscode handling)", () => {
     expect(fetchMock).toHaveBeenCalled();
   });
 
+  it("re-provisioning is idempotent when the group is already assigned to the folder", async () => {
+    // The Group Folders "add group" endpoint is not idempotent: re-adding an
+    // already-assigned group returns HTTP 500 from a DB unique violation. This
+    // must NOT abort provisioning, so member sync still runs afterwards.
+    const addedToGroup: Array<{ uid: string; groupId: string }> = [];
+    let addGroupToFolderCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        // Existing folder at "M1" that ALREADY has the module group assigned.
+        if (method === "GET" && url.includes("/apps/groupfolders/folders")) {
+          return Promise.resolve(
+            ocsResponse(100, {
+              "1": {
+                id: 5,
+                mount_point: "M1",
+                groups: { "coordina-mod-1": 31 },
+              },
+            }),
+          );
+        }
+        // Adding the group to the folder fails with the duplicate 500 if called.
+        if (method === "POST" && /\/folders\/5\/groups\?/.test(url)) {
+          addGroupToFolderCalled = true;
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            text: async () =>
+              JSON.stringify({
+                message:
+                  'duplicate key value violates unique constraint "groups_folder_group"',
+              }),
+          } as unknown as Response);
+        }
+        // Capture members added to the group.
+        if (method === "POST" && /\/cloud\/users\/[^/]+\/groups$/.test(url)) {
+          const m = url.match(/\/cloud\/users\/([^/]+)\/groups$/);
+          const params = new URLSearchParams(String(init?.body || ""));
+          addedToGroup.push({
+            uid: decodeURIComponent(m?.[1] || ""),
+            groupId: params.get("groupid") || "",
+          });
+          return Promise.resolve(ocsResponse(100));
+        }
+        return Promise.resolve(ocsResponse(100));
+      },
+    );
+
+    await expect(
+      provisionModuleSpace(config, {
+        moduleId: 1,
+        mount: "M1",
+        members: [{ userId: 7, name: "Ada", email: "ada@example.org" }],
+      }),
+    ).resolves.toBeUndefined();
+
+    // The already-assigned group is detected, so we never re-POST it...
+    expect(addGroupToFolderCalled).toBe(false);
+    // ...and the member sync still runs.
+    expect(addedToGroup).toEqual([
+      { uid: "coordina-7", groupId: "coordina-mod-1" },
+    ]);
+  });
+
+  it("swallows the duplicate-assignment 500 when the folder list omits groups", async () => {
+    // Defensive path: if the folder list doesn't expose the assigned groups, the
+    // add is attempted and the duplicate 500 must be swallowed (not thrown).
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        if (method === "GET" && url.includes("/apps/groupfolders/folders")) {
+          return Promise.resolve(
+            ocsResponse(100, { "1": { id: 5, mount_point: "M1" } }),
+          );
+        }
+        if (method === "POST" && /\/folders\/5\/groups\?/.test(url)) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            text: async () =>
+              JSON.stringify({
+                message:
+                  'SQLSTATE[23505]: Unique violation: duplicate key value violates unique constraint "groups_folder_group"',
+              }),
+          } as unknown as Response);
+        }
+        return Promise.resolve(ocsResponse(100));
+      },
+    );
+
+    await expect(
+      provisionModuleSpace(config, {
+        moduleId: 1,
+        mount: "M1",
+        members: [{ userId: 7, name: "Ada" }],
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("revokes access for members no longer in the desired set (reconciliation)", async () => {
     const removed: Array<{ uid: string; groupId: string }> = [];
     vi.spyOn(globalThis, "fetch").mockImplementation(
