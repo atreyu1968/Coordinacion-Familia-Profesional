@@ -1,0 +1,27 @@
+root@Coordinacion:~/Coordinacion-Familia-Profesional# cd ~/Coordinacion-Familia-Profesional
+echo "== 1) overwrite en Nextcloud =="
+for k in overwriteprotocol overwritehost overwritewebroot overwrite.cli.url; do
+  echo -n "$k = "; docker exec -u www-data nextcloud-nextcloud-1 php occ config:system:get "$k" 2>/dev/null || echo "(vacio)"
+done
+echo "== 2) PUBLIC_APP_URL en .env =="
+grep '^PUBLIC_APP_URL=' .env || echo "(no definido)"
+echo "== 3) discovery del api-server (que esquema anuncia) =="
+curl -sS "https://coordinacionag.iesmmg.org/api/oidc/.well-known/openid-configuration" | tr ',' '\n' | grep -iE "issuer|authorization_endpoint|token_endpoint"
+echo "== 4) cadena de redirecciones del login (busca http://) =="
+curl -sS -D - -o /dev/null "https://coordinacionag.iesmmg.org/nextcloud/index.php/apps/user_oidc/login/1?redirect_url=%2Fapps%2Ffiles" | grep -iE "^HTTP/|^location:"
+== 1) overwrite en Nextcloud ==
+overwriteprotocol = https
+overwritehost = coordinacionag.iesmmg.org
+overwritewebroot = /nextcloud
+overwrite.cli.url = https://coordinacionag.iesmmg.org/nextcloud
+== 2) PUBLIC_APP_URL en .env ==
+PUBLIC_APP_URL=https://coordinacionag.iesmmg.org
+== 3) discovery del api-server (que esquema anuncia) ==
+{"issuer":"https://coordinacionag.iesmmg.org/api/oidc"
+"authorization_endpoint":"https://coordinacionag.iesmmg.org/api/oidc/authorize"
+"token_endpoint":"https://coordinacionag.iesmmg.org/api/oidc/token"
+"token_endpoint_auth_methods_supported":["client_secret_basic"
+== 4) cadena de redirecciones del login (busca http://) ==
+HTTP/2 303 
+location: https://coordinacionag.iesmmg.org/api/oidc/authorize?client_id=coordina-nextcloud&response_type=code&scope=openid+profile+email&redirect_uri=https%3A%2F%2Fcoordinacionag.iesmmg.org%2Fnextcloud%2Fapps%2Fuser_oidc%2Fcode&claims=%7B%22id_token%22%3A%7B%22email%22%3Anull%2C%22name%22%3Anull%2C%22quota%22%3Anull%2C%22groups%22%3Anull%7D%2C%22userinfo%22%3A%7B%22email%22%3Anull%2C%22name%22%3Anull%2C%22quota%22%3Anull%2C%22groups%22%3Anull%7D%7D&state=AJD3RCSQ6IEMQHXR1FBKM99FNT4HJFYC&nonce=3J5F9GUK51J656F7AWNKWDJMJE1L24C3&code_challenge=_KnIndyo5w45Qwob5qUW-QyOrmwyagu6Riji28_KWYk&code_challenge_method=S256
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
