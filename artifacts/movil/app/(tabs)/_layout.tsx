@@ -33,15 +33,15 @@ export default function TabLayout() {
           borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
           elevation: 0,
-          // On web the tab bar had a fixed 84px height which left an uneven
-          // empty gap below the icons; use a compact, vertically balanced bar.
-          // Add the bottom safe-area inset so an installed PWA's home-indicator
-          // strip doesn't overlap the buttons (the "white bar" at the bottom).
+          // On web give the icon + label enough vertical room so the labels
+          // (Tablón, Mensajes…) are never clipped, and add the bottom safe-area
+          // inset so an installed PWA's home-indicator / system nav bar doesn't
+          // overlap the buttons (the "white bar" at the bottom).
           ...(isWeb
             ? {
-                height: 64 + insets.bottom,
+                height: 76 + insets.bottom,
                 paddingTop: 8,
-                paddingBottom: 10 + insets.bottom,
+                paddingBottom: 14 + insets.bottom,
               }
             : {}),
         },
