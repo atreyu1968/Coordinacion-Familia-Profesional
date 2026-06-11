@@ -334,6 +334,7 @@ export interface Center {
 export interface TrainingOffer {
   id: number;
   centerId: number;
+  cycleId?: number | null;
   cycleName: string;
   level?: string;
   shift?: string | null;
@@ -357,8 +358,29 @@ export interface CreateCenterInput {
   website?: string | null;
 }
 
+export interface Cycle {
+  id: number;
+  name: string;
+  code?: string | null;
+  level?: string | null;
+  moduleCount?: number;
+}
+
+export interface CreateCycleInput {
+  name: string;
+  code?: string | null;
+  level?: string | null;
+}
+
+export interface UpdateCycleInput {
+  name?: string;
+  code?: string | null;
+  level?: string | null;
+}
+
 export interface CreateTrainingOfferInput {
-  cycleName: string;
+  cycleId?: number | null;
+  cycleName?: string;
   level?: string;
   shift?: string | null;
 }
@@ -368,6 +390,7 @@ export interface Module {
   code?: string;
   name: string;
   cycleName?: string | null;
+  cycleId?: number | null;
   centerId?: number | null;
   memberCount?: number;
   coordinatorId?: number | null;
@@ -415,6 +438,14 @@ export interface CreateModuleInput {
   code?: string;
   name: string;
   cycleName?: string | null;
+  cycleId?: number | null;
+  centerId?: number | null;
+}
+
+export interface UpdateModuleInput {
+  code?: string | null;
+  name?: string;
+  cycleId?: number | null;
   centerId?: number | null;
 }
 
@@ -1256,6 +1287,11 @@ search?: SearchQueryParameter;
 
 export type ListModulesParams = {
 centerId?: CenterQueryParameter;
+search?: SearchQueryParameter;
+cycleId?: number;
+};
+
+export type ListCyclesParams = {
 search?: SearchQueryParameter;
 };
 

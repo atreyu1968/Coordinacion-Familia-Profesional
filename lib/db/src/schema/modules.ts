@@ -11,6 +11,7 @@ export const modulesTable = pgTable("modules", {
   code: text("code"),
   name: text("name").notNull(),
   cycleName: text("cycle_name"),
+  cycleId: integer("cycle_id"),
   centerId: integer("center_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

@@ -7,6 +7,7 @@ export * from "./passwordResetTokens";
 export * from "./invitations";
 export * from "./centers";
 export * from "./trainingOffer";
+export * from "./cycles";
 export * from "./modules";
 export * from "./moduleMemberships";
 export * from "./groups";

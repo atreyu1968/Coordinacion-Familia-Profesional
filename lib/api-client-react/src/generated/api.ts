@@ -43,6 +43,7 @@ import type {
   CreateCenterInput,
   CreateChatGroupInput,
   CreateCompanyAlertInput,
+  CreateCycleInput,
   CreateDocumentFormInput,
   CreateEventInput,
   CreateEventSpaceInput,
@@ -59,6 +60,7 @@ import type {
   CreateSurveyInput,
   CreateTeachingAssignmentInput,
   CreateTrainingOfferInput,
+  Cycle,
   DashboardStatistics,
   DashboardSummary,
   DocumentFormDetail,
@@ -91,6 +93,7 @@ import type {
   ListCalendarEventsParams,
   ListCentersParams,
   ListCompanyAlertsParams,
+  ListCyclesParams,
   ListDocumentFormsParams,
   ListEventsParams,
   ListFeedbackParams,
@@ -133,10 +136,12 @@ import type {
   TeachingAssignment,
   TrainingOffer,
   TransferInput,
+  UpdateCycleInput,
   UpdateFeedbackInput,
   UpdateForumPostInput,
   UpdateForumThreadInput,
   UpdateIntegrationSettingsInput,
+  UpdateModuleInput,
   UpdateModuleMemberInput,
   UpdateProfileInput,
   UpdateUserInput,
@@ -4199,6 +4204,522 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateModuleMutationOptions(options));
     }
+
+export const getUpdateModuleUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}`
+}
+
+/**
+ * @summary Update a catalog module (superadmin only)
+ */
+export const updateModule = async (moduleId: number,
+    updateModuleInput: UpdateModuleInput, options?: RequestInit): Promise<Module> => {
+
+  return customFetch<Module>(getUpdateModuleUrl(moduleId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateModuleInput,)
+  }
+);}
+
+
+
+
+export const getUpdateModuleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{moduleId: number;data: BodyType<UpdateModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{moduleId: number;data: BodyType<UpdateModuleInput>}, TContext> => {
+
+const mutationKey = ['updateModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModule>>, {moduleId: number;data: BodyType<UpdateModuleInput>}> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  updateModule(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateModule>>>
+    export type UpdateModuleMutationBody = BodyType<UpdateModuleInput>
+    export type UpdateModuleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update a catalog module (superadmin only)
+ */
+export const useUpdateModule = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{moduleId: number;data: BodyType<UpdateModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModule>>,
+        TError,
+        {moduleId: number;data: BodyType<UpdateModuleInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleMutationOptions(options));
+    }
+
+export const getDeleteModuleUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}`
+}
+
+/**
+ * @summary Soft-delete a catalog module (superadmin only)
+ */
+export const deleteModule = async (moduleId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteModuleUrl(moduleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteModuleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteModule>>, TError,{moduleId: number}, TContext> => {
+
+const mutationKey = ['deleteModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteModule>>, {moduleId: number}> = (props) => {
+          const {moduleId} = props ?? {};
+
+          return  deleteModule(moduleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteModuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteModule>>>
+
+    export type DeleteModuleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Soft-delete a catalog module (superadmin only)
+ */
+export const useDeleteModule = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteModule>>,
+        TError,
+        {moduleId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteModuleMutationOptions(options));
+    }
+
+export const getListCyclesUrl = (params?: ListCyclesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cycles?${stringifiedParams}` : `/api/cycles`
+}
+
+/**
+ * @summary List the global catalog of training cycles
+ */
+export const listCycles = async (params?: ListCyclesParams, options?: RequestInit): Promise<Cycle[]> => {
+
+  return customFetch<Cycle[]>(getListCyclesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCyclesQueryKey = (params?: ListCyclesParams,) => {
+    return [
+    `/api/cycles`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCyclesQueryOptions = <TData = Awaited<ReturnType<typeof listCycles>>, TError = ErrorType<unknown>>(params?: ListCyclesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCycles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCyclesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCycles>>> = ({ signal }) => listCycles(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCycles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCyclesQueryResult = NonNullable<Awaited<ReturnType<typeof listCycles>>>
+export type ListCyclesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the global catalog of training cycles
+ */
+
+export function useListCycles<TData = Awaited<ReturnType<typeof listCycles>>, TError = ErrorType<unknown>>(
+ params?: ListCyclesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCycles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCyclesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCycleUrl = () => {
+
+
+
+
+  return `/api/cycles`
+}
+
+/**
+ * @summary Create a catalog cycle (superadmin only)
+ */
+export const createCycle = async (createCycleInput: CreateCycleInput, options?: RequestInit): Promise<Cycle> => {
+
+  return customFetch<Cycle>(getCreateCycleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createCycleInput,)
+  }
+);}
+
+
+
+
+export const getCreateCycleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCycle>>, TError,{data: BodyType<CreateCycleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCycle>>, TError,{data: BodyType<CreateCycleInput>}, TContext> => {
+
+const mutationKey = ['createCycle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCycle>>, {data: BodyType<CreateCycleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCycle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCycleMutationResult = NonNullable<Awaited<ReturnType<typeof createCycle>>>
+    export type CreateCycleMutationBody = BodyType<CreateCycleInput>
+    export type CreateCycleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Create a catalog cycle (superadmin only)
+ */
+export const useCreateCycle = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCycle>>, TError,{data: BodyType<CreateCycleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCycle>>,
+        TError,
+        {data: BodyType<CreateCycleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCycleMutationOptions(options));
+    }
+
+export const getUpdateCycleUrl = (id: number,) => {
+
+
+
+
+  return `/api/cycles/${id}`
+}
+
+/**
+ * @summary Update a catalog cycle (superadmin only)
+ */
+export const updateCycle = async (id: number,
+    updateCycleInput: UpdateCycleInput, options?: RequestInit): Promise<Cycle> => {
+
+  return customFetch<Cycle>(getUpdateCycleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCycleInput,)
+  }
+);}
+
+
+
+
+export const getUpdateCycleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCycle>>, TError,{id: number;data: BodyType<UpdateCycleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCycle>>, TError,{id: number;data: BodyType<UpdateCycleInput>}, TContext> => {
+
+const mutationKey = ['updateCycle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCycle>>, {id: number;data: BodyType<UpdateCycleInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCycle(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCycleMutationResult = NonNullable<Awaited<ReturnType<typeof updateCycle>>>
+    export type UpdateCycleMutationBody = BodyType<UpdateCycleInput>
+    export type UpdateCycleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update a catalog cycle (superadmin only)
+ */
+export const useUpdateCycle = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCycle>>, TError,{id: number;data: BodyType<UpdateCycleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCycle>>,
+        TError,
+        {id: number;data: BodyType<UpdateCycleInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateCycleMutationOptions(options));
+    }
+
+export const getDeleteCycleUrl = (id: number,) => {
+
+
+
+
+  return `/api/cycles/${id}`
+}
+
+/**
+ * @summary Soft-delete a catalog cycle (superadmin only)
+ */
+export const deleteCycle = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCycleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCycleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCycle>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCycle>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCycle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCycle>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCycle(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCycleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCycle>>>
+
+    export type DeleteCycleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Soft-delete a catalog cycle (superadmin only)
+ */
+export const useDeleteCycle = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCycle>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCycle>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCycleMutationOptions(options));
+    }
+
+export const getListCycleModulesUrl = (id: number,) => {
+
+
+
+
+  return `/api/cycles/${id}/modules`
+}
+
+/**
+ * @summary List the modules belonging to a catalog cycle
+ */
+export const listCycleModules = async (id: number, options?: RequestInit): Promise<Module[]> => {
+
+  return customFetch<Module[]>(getListCycleModulesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCycleModulesQueryKey = (id: number,) => {
+    return [
+    `/api/cycles/${id}/modules`
+    ] as const;
+    }
+
+
+export const getListCycleModulesQueryOptions = <TData = Awaited<ReturnType<typeof listCycleModules>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCycleModules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCycleModulesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCycleModules>>> = ({ signal }) => listCycleModules(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCycleModules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCycleModulesQueryResult = NonNullable<Awaited<ReturnType<typeof listCycleModules>>>
+export type ListCycleModulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the modules belonging to a catalog cycle
+ */
+
+export function useListCycleModules<TData = Awaited<ReturnType<typeof listCycleModules>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCycleModules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCycleModulesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListModuleMembersUrl = (moduleId: number,) => {
 

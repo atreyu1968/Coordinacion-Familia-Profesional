@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetCenter,
   useAddTrainingOffer,
+  useListCycles,
   useDeleteCenter,
   useListProvinces,
   useListIslands,
@@ -340,15 +341,16 @@ function InfoRow({
 
 function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
   const qc = useQueryClient();
+  const { data: cycles = [] } = useListCycles();
   const [open, setOpen] = useState(false);
-  const [cycleName, setCycleName] = useState("");
+  const [cycleId, setCycleId] = useState<number | null>(null);
   const [level, setLevel] = useState<string>("");
   const [shift, setShift] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const addMut = useAddTrainingOffer();
 
   const reset = () => {
-    setCycleName("");
+    setCycleId(null);
     setLevel("");
     setShift("");
     setError(null);
@@ -357,19 +359,20 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!cycleName.trim()) {
-      setError("El nombre del ciclo es obligatorio.");
+    if (cycleId == null) {
+      setError("Selecciona un ciclo del catálogo.");
       return;
     }
+    const selected = cycles.find((c) => c.id === cycleId);
     const data: CreateTrainingOfferInput = {
-      cycleName: cycleName.trim(),
+      cycleId,
       level: level || undefined,
       shift: shift || null,
     };
     try {
       await addMut.mutateAsync({ id: centerId, data });
       await qc.invalidateQueries({ queryKey: getGetCenterQueryKey(centerId) });
-      toast({ title: "Ciclo añadido", description: cycleName.trim() });
+      toast({ title: "Ciclo añadido", description: selected?.name ?? "" });
       reset();
       setOpen(false);
     } catch {
@@ -400,13 +403,28 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cycleName">Nombre del ciclo *</Label>
-            <Input
-              id="cycleName"
-              value={cycleName}
-              onChange={(e) => setCycleName(e.target.value)}
-              placeholder="Gestión Administrativa"
-            />
+            <Label>Ciclo del catálogo *</Label>
+            <Select
+              value={cycleId != null ? String(cycleId) : ""}
+              onValueChange={(v) => setCycleId(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un ciclo" />
+              </SelectTrigger>
+              <SelectContent>
+                {cycles.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {cycles.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No hay ciclos en el catálogo. Pídele al administrador que los
+                cree en Configuración → Ciclos y módulos.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

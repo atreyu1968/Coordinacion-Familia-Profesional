@@ -9,6 +9,7 @@ import {
 export const trainingOfferTable = pgTable("training_offer", {
   id: serial("id").primaryKey(),
   centerId: integer("center_id").notNull(),
+  cycleId: integer("cycle_id"),
   cycleName: text("cycle_name").notNull(),
   level: text("level"),
   shift: text("shift"),

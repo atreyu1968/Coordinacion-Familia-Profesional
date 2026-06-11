@@ -1181,6 +1181,10 @@ paths:
       parameters:
         - $ref: "#/components/parameters/CenterQuery"
         - $ref: "#/components/parameters/SearchQuery"
+        - name: cycleId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Modules
@@ -1208,6 +1212,189 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Module"
+  /modules/{moduleId}:
+    patch:
+      operationId: updateModule
+      tags: [academics]
+      summary: Update a catalog module (superadmin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteModule
+      tags: [academics]
+      summary: Soft-delete a catalog module (superadmin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cycles:
+    get:
+      operationId: listCycles
+      tags: [academics]
+      summary: List the global catalog of training cycles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Cycles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cycle"
+    post:
+      operationId: createCycle
+      tags: [academics]
+      summary: Create a catalog cycle (superadmin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCycleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cycle"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cycles/{id}:
+    patch:
+      operationId: updateCycle
+      tags: [academics]
+      summary: Update a catalog cycle (superadmin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCycleInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cycle"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteCycle
+      tags: [academics]
+      summary: Soft-delete a catalog cycle (superadmin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cycles/{id}/modules:
+    get:
+      operationId: listCycleModules
+      tags: [academics]
+      summary: List the modules belonging to a catalog cycle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Module"
   /modules/{moduleId}/members:
     get:
       operationId: listModuleMembers
@@ -3113,6 +3300,45 @@ components:
           type: string
           nullable: true
       required: [name]
+    Cycle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        level:
+          type: string
+          nullable: true
+        moduleCount:
+          type: integer
+      required: [id, name]
+    CreateCycleInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        level:
+          type: string
+          nullable: true
+      required: [name]
+    UpdateCycleInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        level:
+          type: string
+          nullable: true
     TrainingOffer:
       type: object
       properties:
@@ -3120,6 +3346,9 @@ components:
           type: integer
         centerId:
           type: integer
+        cycleId:
+          type: integer
+          nullable: true
         cycleName:
           type: string
         level:
@@ -3131,6 +3360,9 @@ components:
     CreateTrainingOfferInput:
       type: object
       properties:
+        cycleId:
+          type: integer
+          nullable: true
         cycleName:
           type: string
         level:
@@ -3138,7 +3370,6 @@ components:
         shift:
           type: string
           nullable: true
-      required: [cycleName]
     Module:
       type: object
       properties:
@@ -3150,6 +3381,9 @@ components:
           type: string
         cycleName:
           type: string
+          nullable: true
+        cycleId:
+          type: integer
           nullable: true
         centerId:
           type: integer
@@ -3215,10 +3449,27 @@ components:
         cycleName:
           type: string
           nullable: true
+        cycleId:
+          type: integer
+          nullable: true
         centerId:
           type: integer
           nullable: true
       required: [name]
+    UpdateModuleInput:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        cycleId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
     Group:
       type: object
       properties:

@@ -902,6 +902,7 @@ export const GetCenterResponse = zod.object({
   "trainingOffer": zod.array(zod.object({
   "id": zod.number(),
   "centerId": zod.number(),
+  "cycleId": zod.number().nullish(),
   "cycleName": zod.string(),
   "level": zod.string().optional(),
   "shift": zod.string().nullish()
@@ -958,6 +959,7 @@ export const ListTrainingOfferParams = zod.object({
 export const ListTrainingOfferResponseItem = zod.object({
   "id": zod.number(),
   "centerId": zod.number(),
+  "cycleId": zod.number().nullish(),
   "cycleName": zod.string(),
   "level": zod.string().optional(),
   "shift": zod.string().nullish()
@@ -970,7 +972,8 @@ export const AddTrainingOfferParams = zod.object({
 })
 
 export const AddTrainingOfferBody = zod.object({
-  "cycleName": zod.string(),
+  "cycleId": zod.number().nullish(),
+  "cycleName": zod.string().optional(),
   "level": zod.string().optional(),
   "shift": zod.string().nullish()
 })
@@ -978,7 +981,8 @@ export const AddTrainingOfferBody = zod.object({
 
 export const ListModulesQueryParams = zod.object({
   "centerId": zod.coerce.number().optional(),
-  "search": zod.coerce.string().optional()
+  "search": zod.coerce.string().optional(),
+  "cycleId": zod.coerce.number().optional()
 })
 
 export const ListModulesResponseItem = zod.object({
@@ -986,6 +990,7 @@ export const ListModulesResponseItem = zod.object({
   "code": zod.string().optional(),
   "name": zod.string(),
   "cycleName": zod.string().nullish(),
+  "cycleId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "memberCount": zod.number().optional(),
   "coordinatorId": zod.number().nullish(),
@@ -1000,8 +1005,126 @@ export const CreateModuleBody = zod.object({
   "code": zod.string().optional(),
   "name": zod.string(),
   "cycleName": zod.string().nullish(),
+  "cycleId": zod.number().nullish(),
   "centerId": zod.number().nullish()
 })
+
+
+/**
+ * @summary Update a catalog module (superadmin only)
+ */
+export const UpdateModuleParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const UpdateModuleBody = zod.object({
+  "code": zod.string().nullish(),
+  "name": zod.string().optional(),
+  "cycleId": zod.number().nullish(),
+  "centerId": zod.number().nullish()
+})
+
+export const UpdateModuleResponse = zod.object({
+  "id": zod.number(),
+  "code": zod.string().optional(),
+  "name": zod.string(),
+  "cycleName": zod.string().nullish(),
+  "cycleId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "memberCount": zod.number().optional(),
+  "coordinatorId": zod.number().nullish(),
+  "coordinatorName": zod.string().nullish(),
+  "enrolled": zod.boolean().optional(),
+  "myRole": zod.string().nullish()
+})
+
+
+/**
+ * @summary Soft-delete a catalog module (superadmin only)
+ */
+export const DeleteModuleParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+
+/**
+ * @summary List the global catalog of training cycles
+ */
+export const ListCyclesQueryParams = zod.object({
+  "search": zod.coerce.string().optional()
+})
+
+export const ListCyclesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string().nullish(),
+  "level": zod.string().nullish(),
+  "moduleCount": zod.number().optional()
+})
+export const ListCyclesResponse = zod.array(ListCyclesResponseItem)
+
+
+/**
+ * @summary Create a catalog cycle (superadmin only)
+ */
+export const CreateCycleBody = zod.object({
+  "name": zod.string(),
+  "code": zod.string().nullish(),
+  "level": zod.string().nullish()
+})
+
+
+/**
+ * @summary Update a catalog cycle (superadmin only)
+ */
+export const UpdateCycleParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCycleBody = zod.object({
+  "name": zod.string().optional(),
+  "code": zod.string().nullish(),
+  "level": zod.string().nullish()
+})
+
+export const UpdateCycleResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string().nullish(),
+  "level": zod.string().nullish(),
+  "moduleCount": zod.number().optional()
+})
+
+
+/**
+ * @summary Soft-delete a catalog cycle (superadmin only)
+ */
+export const DeleteCycleParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List the modules belonging to a catalog cycle
+ */
+export const ListCycleModulesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCycleModulesResponseItem = zod.object({
+  "id": zod.number(),
+  "code": zod.string().optional(),
+  "name": zod.string(),
+  "cycleName": zod.string().nullish(),
+  "cycleId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "memberCount": zod.number().optional(),
+  "coordinatorId": zod.number().nullish(),
+  "coordinatorName": zod.string().nullish(),
+  "enrolled": zod.boolean().optional(),
+  "myRole": zod.string().nullish()
+})
+export const ListCycleModulesResponse = zod.array(ListCycleModulesResponseItem)
 
 
 /**

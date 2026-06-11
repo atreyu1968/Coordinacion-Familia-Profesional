@@ -177,7 +177,7 @@ export default function AcademicaPage() {
                 className="pl-9"
               />
             </div>
-            {canManage && (
+            {user?.role === "superadmin" && (
               <ModuleDialog
                 trigger={
                   <Button className="gap-2">

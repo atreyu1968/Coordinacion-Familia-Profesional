@@ -7,6 +7,7 @@ import {
   useTransferTeachingAssignments,
   useListCenters,
   useListModules,
+  useListCycles,
   useListUsers,
   useListTeachingAssignments,
   getListModulesQueryKey,
@@ -56,12 +57,13 @@ function useScopeCenters() {
 export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
   const qc = useQueryClient();
   const { centers, isSuperadmin, fixedCenterId } = useScopeCenters();
+  const { data: cycles = [] } = useListCycles();
   const createMut = useCreateModule();
 
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [cycleName, setCycleName] = useState("");
+  const [cycleId, setCycleId] = useState<number | null>(null);
   const [centerId, setCenterId] = useState<number | null>(fixedCenterId);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +71,7 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
     if (open) {
       setCode("");
       setName("");
-      setCycleName("");
+      setCycleId(null);
       setCenterId(fixedCenterId);
       setError(null);
     }
@@ -85,7 +87,7 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
     const payload: CreateModuleInput = {
       code: code.trim() || undefined,
       name: name.trim(),
-      cycleName: cycleName.trim() || null,
+      cycleId,
       centerId,
     };
     try {
@@ -129,13 +131,23 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="m-cycle">Ciclo formativo</Label>
-            <Input
-              id="m-cycle"
-              value={cycleName}
-              onChange={(e) => setCycleName(e.target.value)}
-              placeholder="Administración y Finanzas"
-            />
+            <Label>Ciclo formativo</Label>
+            <Select
+              value={cycleId != null ? String(cycleId) : "none"}
+              onValueChange={(v) => setCycleId(v === "none" ? null : Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un ciclo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin ciclo</SelectItem>
+                {cycles.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Centro</Label>
@@ -187,6 +199,7 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
 export function GroupDialog({ trigger }: { trigger: ReactNode }) {
   const qc = useQueryClient();
   const { centers, fixedCenterId } = useScopeCenters();
+  const { data: cycles = [] } = useListCycles();
   const createMut = useCreateGroup();
 
   const [open, setOpen] = useState(false);
@@ -280,12 +293,23 @@ export function GroupDialog({ trigger }: { trigger: ReactNode }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="g-cycle">Ciclo</Label>
-              <Input
-                id="g-cycle"
-                value={cycleName}
-                onChange={(e) => setCycleName(e.target.value)}
-              />
+              <Label>Ciclo</Label>
+              <Select
+                value={cycleName || "none"}
+                onValueChange={(v) => setCycleName(v === "none" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin ciclo</SelectItem>
+                  {cycles.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="g-year">Curso</Label>

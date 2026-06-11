@@ -11,4 +11,5 @@ import type { SearchQueryParameter } from './searchQueryParameter';
 export type ListModulesParams = {
 centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
+cycleId?: number;
 };

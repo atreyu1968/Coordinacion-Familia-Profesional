@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateTrainingOfferInput {
-  cycleId?: number | null;
-  cycleName?: string;
-  level?: string;
-  shift?: string | null;
+export interface UpdateCycleInput {
+  name?: string;
+  code?: string | null;
+  level?: string | null;
 }

@@ -3,6 +3,8 @@ import { eq, and, or, isNull, inArray, ilike, type SQL } from "drizzle-orm";
 import {
   db,
   modulesTable,
+  cyclesTable,
+  trainingOfferTable,
   groupsTable,
   teachingAssignmentsTable,
   resourcesTable,
@@ -15,6 +17,17 @@ import {
   ListModulesQueryParams,
   ListModulesResponse,
   CreateModuleBody,
+  UpdateModuleParams,
+  UpdateModuleBody,
+  DeleteModuleParams,
+  ListCyclesQueryParams,
+  ListCyclesResponse,
+  CreateCycleBody,
+  UpdateCycleParams,
+  UpdateCycleBody,
+  DeleteCycleParams,
+  ListCycleModulesParams,
+  ListCycleModulesResponse,
   ListModuleMembersParams,
   ListModuleMembersResponse,
   AddModuleMemberParams,
@@ -47,6 +60,7 @@ import {
 } from "../middlewares/auth";
 import {
   toModule,
+  toCycle,
   toModuleMember,
   toGroup,
   toTeachingAssignment,
@@ -82,6 +96,9 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
   const filters: SQL[] = [isNull(modulesTable.deletedAt)];
   if (query.data.centerId != null) {
     filters.push(eq(modulesTable.centerId, query.data.centerId));
+  }
+  if (query.data.cycleId != null) {
+    filters.push(eq(modulesTable.cycleId, query.data.cycleId));
   }
   if (query.data.search) {
     const term = `%${query.data.search}%`;
@@ -181,46 +198,40 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
   );
 });
 
+// Resolve a catalog cycle to its display name (or null if unset/not found).
+async function resolveCycleName(
+  cycleId: number | null | undefined,
+): Promise<{ ok: true; name: string | null } | { ok: false }> {
+  if (cycleId == null) return { ok: true, name: null };
+  const [cycle] = await db
+    .select()
+    .from(cyclesTable)
+    .where(and(eq(cyclesTable.id, cycleId), isNull(cyclesTable.deletedAt)));
+  if (!cycle) return { ok: false };
+  return { ok: true, name: cycle.name };
+}
+
 router.post(
   "/modules",
   requireAuth,
-  requireRole("superadmin", "coordinator", "department_head"),
+  requireRole("superadmin"),
   async (req, res): Promise<void> => {
     const parsed = CreateModuleBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: parsed.error.message });
       return;
     }
-    const caller = req.user!;
-    if (parsed.data.centerId != null) {
-      const [center] = await db
-        .select()
-        .from(centersTable)
-        .where(
-          and(
-            eq(centersTable.id, parsed.data.centerId),
-            isNull(centersTable.deletedAt),
-          ),
-        );
-      if (!center) {
-        res.status(404).json({ message: "Centro no encontrado" });
+
+    // When a catalog cycle is referenced, derive the (back-compat) cycleName
+    // from it; otherwise fall back to any free-text cycleName provided.
+    let cycleName = parsed.data.cycleName ?? null;
+    if (parsed.data.cycleId != null) {
+      const resolved = await resolveCycleName(parsed.data.cycleId);
+      if (!resolved.ok) {
+        res.status(404).json({ message: "Ciclo no encontrado" });
         return;
       }
-      if (
-        !hasScopeOver(caller, {
-          provinceId: center.provinceId,
-          centerId: center.id,
-        })
-      ) {
-        res.status(403).json({ message: "Centro fuera de tu ámbito" });
-        return;
-      }
-    } else if (caller.role !== "superadmin") {
-      // Only superadmin may create global (shared) modules.
-      res
-        .status(403)
-        .json({ message: "Solo un administrador puede crear módulos globales" });
-      return;
+      cycleName = resolved.name;
     }
 
     const [created] = await db
@@ -228,11 +239,262 @@ router.post(
       .values({
         code: parsed.data.code ?? null,
         name: parsed.data.name,
-        cycleName: parsed.data.cycleName ?? null,
+        cycleName,
+        cycleId: parsed.data.cycleId ?? null,
         centerId: parsed.data.centerId ?? null,
       })
       .returning();
     res.status(201).json(toModule(created));
+  },
+);
+
+router.patch(
+  "/modules/:moduleId",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const params = UpdateModuleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = UpdateModuleBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+
+    const existing = await loadModule(params.data.moduleId);
+    if (!existing) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+
+    const updates: Partial<typeof modulesTable.$inferInsert> = {};
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+    if (parsed.data.code !== undefined) updates.code = parsed.data.code ?? null;
+    if (parsed.data.centerId !== undefined)
+      updates.centerId = parsed.data.centerId ?? null;
+    if (parsed.data.cycleId !== undefined) {
+      const resolved = await resolveCycleName(parsed.data.cycleId);
+      if (!resolved.ok) {
+        res.status(404).json({ message: "Ciclo no encontrado" });
+        return;
+      }
+      updates.cycleId = parsed.data.cycleId ?? null;
+      updates.cycleName = resolved.name;
+    }
+
+    const [updated] = await db
+      .update(modulesTable)
+      .set(updates)
+      .where(eq(modulesTable.id, params.data.moduleId))
+      .returning();
+    res.json(toModule(updated));
+  },
+);
+
+router.delete(
+  "/modules/:moduleId",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const params = DeleteModuleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const existing = await loadModule(params.data.moduleId);
+    if (!existing) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    await db
+      .update(modulesTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(modulesTable.id, params.data.moduleId));
+    res.status(204).end();
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Cycles (global catalog of training cycles). Read is broad (for dropdowns);
+// create/update/delete are superadmin-only.
+// ---------------------------------------------------------------------------
+router.get("/cycles", requireAuth, async (req, res): Promise<void> => {
+  const query = ListCyclesQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ message: query.error.message });
+    return;
+  }
+  const filters: SQL[] = [isNull(cyclesTable.deletedAt)];
+  if (query.data.search) {
+    const term = `%${query.data.search}%`;
+    const match = or(
+      ilike(cyclesTable.name, term),
+      ilike(cyclesTable.code, term),
+    );
+    if (match) filters.push(match);
+  }
+
+  const rows = await db
+    .select()
+    .from(cyclesTable)
+    .where(and(...filters))
+    .orderBy(cyclesTable.name);
+
+  const cycleIds = rows.map((c) => c.id);
+  const counts = new Map<number, number>();
+  if (cycleIds.length) {
+    const modRows = await db
+      .select({ cycleId: modulesTable.cycleId })
+      .from(modulesTable)
+      .where(
+        and(
+          inArray(modulesTable.cycleId, cycleIds),
+          isNull(modulesTable.deletedAt),
+        ),
+      );
+    for (const m of modRows) {
+      if (m.cycleId != null)
+        counts.set(m.cycleId, (counts.get(m.cycleId) ?? 0) + 1);
+    }
+  }
+
+  res.json(
+    ListCyclesResponse.parse(
+      rows.map((c) => toCycle(c, { moduleCount: counts.get(c.id) ?? 0 })),
+    ),
+  );
+});
+
+router.post(
+  "/cycles",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const parsed = CreateCycleBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const [created] = await db
+      .insert(cyclesTable)
+      .values({
+        name: parsed.data.name,
+        code: parsed.data.code ?? null,
+        level: parsed.data.level ?? null,
+        createdBy: req.user!.id,
+      })
+      .returning();
+    res.status(201).json(toCycle(created));
+  },
+);
+
+router.patch(
+  "/cycles/:id",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const params = UpdateCycleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const parsed = UpdateCycleBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(cyclesTable)
+      .where(
+        and(eq(cyclesTable.id, params.data.id), isNull(cyclesTable.deletedAt)),
+      );
+    if (!existing) {
+      res.status(404).json({ message: "Ciclo no encontrado" });
+      return;
+    }
+
+    const updates: Partial<typeof cyclesTable.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+    if (parsed.data.code !== undefined) updates.code = parsed.data.code ?? null;
+    if (parsed.data.level !== undefined)
+      updates.level = parsed.data.level ?? null;
+
+    const [updated] = await db
+      .update(cyclesTable)
+      .set(updates)
+      .where(eq(cyclesTable.id, params.data.id))
+      .returning();
+
+    // Keep modules' back-compat cycleName in sync with the catalog rename.
+    if (parsed.data.name !== undefined) {
+      await db
+        .update(modulesTable)
+        .set({ cycleName: updated.name })
+        .where(eq(modulesTable.cycleId, updated.id));
+      await db
+        .update(trainingOfferTable)
+        .set({ cycleName: updated.name })
+        .where(eq(trainingOfferTable.cycleId, updated.id));
+    }
+
+    res.json(toCycle(updated));
+  },
+);
+
+router.delete(
+  "/cycles/:id",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const params = DeleteCycleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(cyclesTable)
+      .where(
+        and(eq(cyclesTable.id, params.data.id), isNull(cyclesTable.deletedAt)),
+      );
+    if (!existing) {
+      res.status(404).json({ message: "Ciclo no encontrado" });
+      return;
+    }
+    await db
+      .update(cyclesTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(cyclesTable.id, params.data.id));
+    res.status(204).end();
+  },
+);
+
+router.get(
+  "/cycles/:id/modules",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListCycleModulesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(modulesTable)
+      .where(
+        and(
+          eq(modulesTable.cycleId, params.data.id),
+          isNull(modulesTable.deletedAt),
+        ),
+      )
+      .orderBy(modulesTable.name);
+    res.json(ListCycleModulesResponse.parse(rows.map((m) => toModule(m))));
   },
 );
 

@@ -9,7 +9,7 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import RecuperarPage from "@/pages/recuperar";
 import DashboardPage from "@/pages/dashboard";
-import PanelControlPage from "@/pages/panel-control";
+import ConfiguracionPage from "@/pages/configuracion";
 import UsuariosPage from "@/pages/usuarios";
 import InvitacionesPage from "@/pages/invitaciones";
 import CentrosPage from "@/pages/centros";
@@ -52,7 +52,7 @@ function AuthedRoutes() {
         <Route path="/memorias" component={MemoriasPage} />
         <Route path="/asistente-ia" component={AsistenteIaPage} />
         <Route path="/app-movil" component={AppMovilPage} />
-        <Route path="/panel-control" component={PanelControlPage} />
+        <Route path="/panel-control" component={ConfiguracionPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

@@ -5,10 +5,8 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SearchQueryParameter } from './searchQueryParameter';
 
-export interface CreateTrainingOfferInput {
-  cycleId?: number | null;
-  cycleName?: string;
-  level?: string;
-  shift?: string | null;
-}
+export type ListCyclesParams = {
+search?: SearchQueryParameter;
+};

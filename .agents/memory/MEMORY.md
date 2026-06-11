@@ -23,6 +23,7 @@
 - [Invitation token lifecycle](invitation-token-lifecycle.md) — single-use tokens; creation by role, renew guards, atomic consumption.
 - [Password reset OTP flow](password-reset-otp.md) — email-based recovery and the single-use atomicity constraint.
 - [Jefe de Departamento model](jefe-departamento-model.md) — modeled as a role, not an entity.
+- [Global cycles→modules catalog](cycles-catalog.md) — superadmin-only global catalog; centers pick offered cycles; Configuración tabs surface at /panel-control.
 - [Dashboard, statistics & annual reports](dashboard-reports-module.md) — scoping rules + gotchas for /dashboard/* and /reports.
 - [Document-submission forms module](document-forms-module.md) — frontend wiring, upload/download contract, field-type model.
 - [Document/file upload security](document-uploads.md) — rules for accepting client-supplied object-storage paths.

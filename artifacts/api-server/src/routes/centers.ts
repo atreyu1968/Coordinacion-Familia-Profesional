@@ -1,6 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, ilike, type SQL } from "drizzle-orm";
-import { db, centersTable, trainingOfferTable } from "@workspace/db";
+import {
+  db,
+  centersTable,
+  trainingOfferTable,
+  cyclesTable,
+} from "@workspace/db";
 import {
   ListCentersQueryParams,
   ListCentersResponse,
@@ -260,12 +265,44 @@ router.post(
       res.status(403).json({ message: "Centro fuera de tu ámbito" });
       return;
     }
+
+    // Prefer referencing a catalog cycle; the back-compat cycleName is derived
+    // from it. Free-text cycleName is still accepted for compatibility.
+    let cycleId: number | null = null;
+    let cycleName: string | null = parsed.data.cycleName ?? null;
+    let level: string | null = parsed.data.level ?? null;
+    if (parsed.data.cycleId != null) {
+      const [cycle] = await db
+        .select()
+        .from(cyclesTable)
+        .where(
+          and(
+            eq(cyclesTable.id, parsed.data.cycleId),
+            isNull(cyclesTable.deletedAt),
+          ),
+        );
+      if (!cycle) {
+        res.status(404).json({ message: "Ciclo no encontrado" });
+        return;
+      }
+      cycleId = cycle.id;
+      cycleName = cycle.name;
+      if (parsed.data.level == null) level = cycle.level ?? null;
+    }
+    if (!cycleName) {
+      res
+        .status(400)
+        .json({ message: "Debe indicar un ciclo del catálogo o un nombre" });
+      return;
+    }
+
     const [offer] = await db
       .insert(trainingOfferTable)
       .values({
         centerId: params.data.id,
-        cycleName: parsed.data.cycleName,
-        level: parsed.data.level ?? null,
+        cycleId,
+        cycleName,
+        level,
         shift: parsed.data.shift ?? null,
       })
       .returning();

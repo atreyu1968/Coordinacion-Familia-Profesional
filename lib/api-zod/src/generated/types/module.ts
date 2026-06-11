@@ -11,6 +11,7 @@ export interface Module {
   code?: string;
   name: string;
   cycleName?: string | null;
+  cycleId?: number | null;
   centerId?: number | null;
   memberCount?: number;
   coordinatorId?: number | null;

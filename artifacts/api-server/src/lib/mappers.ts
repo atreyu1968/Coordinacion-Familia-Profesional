@@ -44,9 +44,23 @@ export function toTrainingOffer(row: TrainingOffer) {
   return {
     id: row.id,
     centerId: row.centerId,
+    cycleId: row.cycleId ?? null,
     cycleName: row.cycleName,
     level: row.level ?? undefined,
     shift: row.shift,
+  };
+}
+
+export function toCycle(
+  row: { id: number; name: string; code: string | null; level: string | null },
+  extra?: { moduleCount?: number },
+) {
+  return {
+    id: row.id,
+    name: row.name,
+    code: row.code ?? null,
+    level: row.level ?? null,
+    ...(extra?.moduleCount != null ? { moduleCount: extra.moduleCount } : {}),
   };
 }
 
@@ -65,6 +79,7 @@ export function toModule(
     code: row.code ?? undefined,
     name: row.name,
     cycleName: row.cycleName,
+    cycleId: row.cycleId ?? null,
     centerId: row.centerId,
     ...(extra
       ? {

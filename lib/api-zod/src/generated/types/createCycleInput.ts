@@ -6,10 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateModuleInput {
-  code?: string;
+export interface CreateCycleInput {
   name: string;
-  cycleName?: string | null;
-  cycleId?: number | null;
-  centerId?: number | null;
+  code?: string | null;
+  level?: string | null;
 }

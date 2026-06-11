@@ -75,8 +75,8 @@ export function AppLayout({ children }: LayoutProps) {
   const navItems = [
     { label: "Panel Principal", path: "/", icon: LayoutDashboard, visible: true },
     { label: "Usuarios", path: "/usuarios", icon: Users, visible: true },
-    { label: "Invitaciones", path: "/invitaciones", icon: Mail, visible: ["superadmin", "coordinator", "department_head"].includes(role) },
-    { label: "Centros", path: "/centros", icon: Building2, visible: true },
+    { label: "Invitaciones", path: "/invitaciones", icon: Mail, visible: ["coordinator", "department_head"].includes(role) },
+    { label: "Centros", path: "/centros", icon: Building2, visible: role !== "superadmin" },
     { label: "Coord. Académica", path: "/academica", icon: GraduationCap, visible: true },
     { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: true },
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
@@ -90,7 +90,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: true },
     { label: "Sugerencias", path: "/sugerencias", icon: MessageSquarePlus, visible: true },
     { label: "App Móvil", path: "/app-movil", icon: Smartphone, visible: true },
-    { label: "Panel de Control", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
+    { label: "Configuración", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
   ];
 
   return (
