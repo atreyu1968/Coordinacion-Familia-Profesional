@@ -1170,20 +1170,43 @@ export interface SendMessageInput {
   content: string;
 }
 
+export interface AnnouncementAttachment {
+  id: number;
+  fileName: string;
+  contentType?: string | null;
+  size?: number | null;
+}
+
 export interface Announcement {
   id: number;
   title: string;
   body: string;
   authorId?: number | null;
   authorName?: string | null;
-  provinceId?: number | null;
+  moduleId?: number | null;
+  moduleName?: string | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
+  audienceLabel?: string | null;
+  attachments?: AnnouncementAttachment[];
   createdAt?: string;
+}
+
+export interface AnnouncementAttachmentInput {
+  /** @minLength 1 */
+  objectPath: string;
+  /** @minLength 1 */
+  fileName: string;
+  contentType?: string | null;
+  size?: number | null;
 }
 
 export interface CreateAnnouncementInput {
   title: string;
   body: string;
-  provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
+  attachments?: AnnouncementAttachmentInput[];
 }
 
 export interface Notification {
@@ -1447,10 +1470,6 @@ export type ListCalendarEventsParams = {
 provinceId?: ProvinceQueryParameter;
 from?: string;
 to?: string;
-};
-
-export type ListAnnouncementsParams = {
-provinceId?: ProvinceQueryParameter;
 };
 
 export type GetDashboardSummaryParams = {

@@ -359,14 +359,36 @@ export function toMessage(row: {
   };
 }
 
-export function toAnnouncement(row: Announcement & { authorName?: string | null }) {
+export function toAnnouncement(
+  row: Announcement & {
+    authorName?: string | null;
+    moduleName?: string | null;
+    audienceLabel?: string | null;
+    attachments?: {
+      id: number;
+      fileName: string;
+      contentType?: string | null;
+      size?: number | null;
+    }[];
+  },
+) {
   return {
     id: row.id,
     title: row.title,
     body: row.body,
     authorId: row.authorId,
     authorName: row.authorName ?? null,
-    provinceId: row.provinceId,
+    moduleId: row.moduleId ?? null,
+    moduleName: row.moduleName ?? null,
+    audienceType: row.audienceType,
+    audienceIds: row.audienceIds ?? [],
+    audienceLabel: row.audienceLabel ?? null,
+    attachments: (row.attachments ?? []).map((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      contentType: a.contentType ?? null,
+      size: a.size ?? null,
+    })),
     createdAt: row.createdAt,
   };
 }

@@ -2632,8 +2632,6 @@ paths:
       summary: Bulletin board
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/ProvinceQuery"
       responses:
         "200":
           description: Announcements
@@ -2661,6 +2659,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Announcement"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /announcements/{id}:
+    delete:
+      operationId: deleteAnnouncement
+      tags: [messaging]
+      summary: Delete an announcement (author or manager)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /notifications:
     get:
       operationId: listNotifications
@@ -4869,6 +4903,20 @@ components:
         content:
           type: string
       required: [content]
+    AnnouncementAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        fileName:
+          type: string
+        contentType:
+          type: string
+          nullable: true
+        size:
+          type: integer
+          nullable: true
+      required: [id, fileName]
     Announcement:
       type: object
       properties:
@@ -4884,13 +4932,45 @@ components:
         authorName:
           type: string
           nullable: true
-        provinceId:
+        moduleId:
           type: integer
           nullable: true
+        moduleName:
+          type: string
+          nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
+        audienceLabel:
+          type: string
+          nullable: true
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnouncementAttachment"
         createdAt:
           type: string
           format: date-time
       required: [id, title, body]
+    AnnouncementAttachmentInput:
+      type: object
+      properties:
+        objectPath:
+          type: string
+          minLength: 1
+        fileName:
+          type: string
+          minLength: 1
+        contentType:
+          type: string
+          nullable: true
+        size:
+          type: integer
+          nullable: true
+      required: [objectPath, fileName]
     CreateAnnouncementInput:
       type: object
       properties:
@@ -4898,9 +4978,16 @@ components:
           type: string
         body:
           type: string
-        provinceId:
-          type: integer
-          nullable: true
+        audienceType:
+          $ref: "#/components/schemas/AudienceType"
+        audienceIds:
+          type: array
+          items:
+            type: integer
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnouncementAttachmentInput"
       required: [title, body]
     Notification:
       type: object

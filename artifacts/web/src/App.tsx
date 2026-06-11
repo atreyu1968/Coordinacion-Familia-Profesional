@@ -21,6 +21,7 @@ import EncuestasPage from "@/pages/encuestas";
 import FormulariosPage from "@/pages/formularios";
 import EventosPage from "@/pages/eventos";
 import VideoconferenciasPage from "@/pages/videoconferencias";
+import AnunciosPage from "@/pages/anuncios";
 import EspacioColaborativoPage from "@/pages/espacio-colaborativo";
 import ForosPage from "@/pages/foros";
 import SugerenciasPage from "@/pages/sugerencias";
@@ -46,6 +47,7 @@ function AuthedRoutes() {
         <Route path="/formularios" component={FormulariosPage} />
         <Route path="/eventos" component={EventosPage} />
         <Route path="/videoconferencias" component={VideoconferenciasPage} />
+        <Route path="/anuncios" component={AnunciosPage} />
         <Route path="/espacio" component={EspacioColaborativoPage} />
         <Route path="/foros" component={ForosPage} />
         <Route path="/sugerencias" component={SugerenciasPage} />

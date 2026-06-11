@@ -5,6 +5,8 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AnnouncementAttachment } from './announcementAttachment';
+import type { AudienceType } from './audienceType';
 
 export interface Announcement {
   id: number;
@@ -12,6 +14,11 @@ export interface Announcement {
   body: string;
   authorId?: number | null;
   authorName?: string | null;
-  provinceId?: number | null;
+  moduleId?: number | null;
+  moduleName?: string | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
+  audienceLabel?: string | null;
+  attachments?: AnnouncementAttachment[];
   createdAt?: Date;
 }

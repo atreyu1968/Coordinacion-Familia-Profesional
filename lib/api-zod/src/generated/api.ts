@@ -1986,26 +1986,51 @@ export const SendGroupMessageBody = zod.object({
 /**
  * @summary Bulletin board
  */
-export const ListAnnouncementsQueryParams = zod.object({
-  "provinceId": zod.coerce.number().optional()
-})
-
 export const ListAnnouncementsResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "body": zod.string(),
   "authorId": zod.number().nullish(),
   "authorName": zod.string().nullish(),
-  "provinceId": zod.number().nullish(),
+  "moduleId": zod.number().nullish(),
+  "moduleName": zod.string().nullish(),
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
+  "audienceLabel": zod.string().nullish(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "fileName": zod.string(),
+  "contentType": zod.string().nullish(),
+  "size": zod.number().nullish()
+})).optional(),
   "createdAt": zod.coerce.date().optional()
 })
 export const ListAnnouncementsResponse = zod.array(ListAnnouncementsResponseItem)
 
 
+
+
+
+
 export const CreateAnnouncementBody = zod.object({
   "title": zod.string(),
   "body": zod.string(),
-  "provinceId": zod.number().nullish()
+  "audienceType": zod.enum(['all', 'province', 'island', 'center', 'module', 'users', 'department_head', 'coordinator']).optional(),
+  "audienceIds": zod.array(zod.number()).optional(),
+  "attachments": zod.array(zod.object({
+  "objectPath": zod.string().min(1),
+  "fileName": zod.string().min(1),
+  "contentType": zod.string().nullish(),
+  "size": zod.number().nullish()
+})).optional()
+})
+
+
+/**
+ * @summary Delete an announcement (author or manager)
+ */
+export const DeleteAnnouncementParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

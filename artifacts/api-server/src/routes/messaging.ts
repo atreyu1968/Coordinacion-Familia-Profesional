@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
+import { Readable } from "stream";
 import { and, eq, inArray, desc, asc, isNull } from "drizzle-orm";
 import {
   db,
@@ -6,9 +7,11 @@ import {
   chatGroupMembersTable,
   messagesTable,
   announcementsTable,
+  announcementAttachmentsTable,
   notificationsTable,
   pushTokensTable,
   usersTable,
+  modulesTable,
 } from "@workspace/db";
 import {
   ListChatGroupsResponse,
@@ -18,9 +21,9 @@ import {
   ListGroupMessagesResponse,
   SendGroupMessageParams,
   SendGroupMessageBody,
-  ListAnnouncementsQueryParams,
   ListAnnouncementsResponse,
   CreateAnnouncementBody,
+  DeleteAnnouncementParams,
   ListNotificationsResponse,
   MarkNotificationReadParams,
   RegisterPushTokenBody,
@@ -36,15 +39,51 @@ import {
   toNotification,
 } from "../lib/mappers";
 import { emitToGroup, emitToUser } from "../lib/realtime";
+import { notifyUsers } from "../lib/notify";
 import {
-  notifyUsers,
-  resolveProvinceAudience,
-} from "../lib/notify";
+  getViewerContext,
+  isInAudience,
+  validateAudience,
+  canManageAudience,
+  resolveAudienceUserIds,
+} from "../lib/audience";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
 import { sendPushToUsers } from "../lib/push";
 import { sendEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router = Router();
+const objectStorageService = new ObjectStorageService();
+
+// A short human-readable label for an announcement's audience, shown on cards.
+function announcementAudienceLabel(
+  type: string,
+  ids: number[] | null | undefined,
+  moduleName?: string | null,
+): string {
+  const n = (ids ?? []).length;
+  switch (type) {
+    case "all":
+      return "Todos los usuarios";
+    case "module":
+      return moduleName ?? (n > 1 ? `${n} módulos` : "Módulo");
+    case "province":
+      return n > 1 ? `${n} provincias` : "Provincia";
+    case "island":
+      return n > 1 ? `${n} islas` : "Isla";
+    case "center":
+      return n > 1 ? `${n} centros` : "Centro";
+    case "users":
+      return n > 1 ? `${n} usuarios` : "1 usuario";
+    case "department_head":
+      return "Jefes de departamento";
+    case "coordinator":
+      return "Coordinadores provinciales";
+    default:
+      return "Destinatarios";
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -413,12 +452,11 @@ router.post(
 // ---------------------------------------------------------------------------
 // Announcements (Tablón)
 // ---------------------------------------------------------------------------
+// List announcements: a user sees an announcement if they authored it, fall
+// within its audience, or have management authority over that audience
+// (superadmin always; provincial coordinators within their province). Each
+// announcement carries its downloadable attachments.
 router.get("/announcements", requireAuth, async (req, res): Promise<void> => {
-  const query = ListAnnouncementsQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ message: query.error.message });
-    return;
-  }
   const caller = req.user!;
 
   const rows = await db
@@ -429,29 +467,67 @@ router.get("/announcements", requireAuth, async (req, res): Promise<void> => {
       authorId: announcementsTable.authorId,
       authorName: usersTable.name,
       provinceId: announcementsTable.provinceId,
+      moduleId: announcementsTable.moduleId,
+      moduleName: modulesTable.name,
+      audienceType: announcementsTable.audienceType,
+      audienceIds: announcementsTable.audienceIds,
       createdAt: announcementsTable.createdAt,
+      deletedAt: announcementsTable.deletedAt,
     })
     .from(announcementsTable)
     .leftJoin(usersTable, eq(usersTable.id, announcementsTable.authorId))
+    .leftJoin(modulesTable, eq(modulesTable.id, announcementsTable.moduleId))
+    .where(isNull(announcementsTable.deletedAt))
     .orderBy(desc(announcementsTable.createdAt))
     .limit(200);
 
-  // Visibility: global announcements (provinceId null) plus those of the
-  // caller's province. Superadmins see everything. An optional provinceId
-  // filter may only NARROW within what the caller can already see — it must
-  // never expand visibility to other provinces.
-  const filterProvince = query.data.provinceId;
-  const visible = rows.filter((r) => {
-    const allowed =
-      caller.role === "superadmin" ||
-      r.provinceId == null ||
-      r.provinceId === caller.provinceId;
-    if (!allowed) return false;
-    if (filterProvince != null) return r.provinceId === filterProvince;
-    return true;
-  });
+  const ctx = await getViewerContext(caller);
+  const visible = [];
+  for (const row of rows) {
+    const ok =
+      row.authorId === caller.id ||
+      isInAudience(row.audienceType, row.audienceIds, ctx) ||
+      (await canManageAudience(caller, row.audienceType, row.audienceIds));
+    if (ok) visible.push(row);
+  }
 
-  res.json(ListAnnouncementsResponse.parse(visible.map(toAnnouncement)));
+  // Load attachments for the visible announcements in a single query.
+  const ids = visible.map((r) => r.id);
+  const attachments = ids.length
+    ? await db
+        .select({
+          id: announcementAttachmentsTable.id,
+          announcementId: announcementAttachmentsTable.announcementId,
+          fileName: announcementAttachmentsTable.fileName,
+          contentType: announcementAttachmentsTable.contentType,
+          size: announcementAttachmentsTable.size,
+        })
+        .from(announcementAttachmentsTable)
+        .where(inArray(announcementAttachmentsTable.announcementId, ids))
+        .orderBy(asc(announcementAttachmentsTable.id))
+    : [];
+  const byAnnouncement = new Map<number, typeof attachments>();
+  for (const a of attachments) {
+    const list = byAnnouncement.get(a.announcementId) ?? [];
+    list.push(a);
+    byAnnouncement.set(a.announcementId, list);
+  }
+
+  res.json(
+    ListAnnouncementsResponse.parse(
+      visible.map((r) =>
+        toAnnouncement({
+          ...r,
+          audienceLabel: announcementAudienceLabel(
+            r.audienceType,
+            r.audienceIds,
+            r.moduleName,
+          ),
+          attachments: byAnnouncement.get(r.id) ?? [],
+        }),
+      ),
+    ),
+  );
 });
 
 router.post(
@@ -465,69 +541,287 @@ router.post(
       return;
     }
     const caller = req.user!;
+    const data = parsed.data;
 
-    // Coordinators are pinned to their own province; superadmins choose freely.
-    let provinceId: number | null;
-    if (caller.role === "superadmin") {
-      provinceId = parsed.data.provinceId ?? null;
-    } else {
-      if (caller.provinceId == null) {
-        res.status(403).json({ message: "No tienes una provincia asignada" });
-        return;
-      }
-      provinceId = caller.provinceId;
+    // Validate/normalize the requested audience against the caller's authority.
+    const audience = await validateAudience(
+      caller,
+      data.audienceType,
+      data.audienceIds,
+    );
+    if (!audience.ok) {
+      res.status(400).json({ message: audience.message });
+      return;
     }
 
-    const [created] = await db
-      .insert(announcementsTable)
-      .values({
-        title: parsed.data.title.trim(),
-        body: parsed.data.body.trim(),
-        authorId: caller.id,
-        provinceId,
-      })
-      .returning();
+    // When the audience is a single module, mirror it on `moduleId` so the card
+    // can show the module name.
+    let moduleId: number | null = null;
+    let moduleName: string | null = null;
+    if (
+      audience.audienceType === "module" &&
+      audience.audienceIds.length === 1
+    ) {
+      moduleId = audience.audienceIds[0]!;
+      const [module] = await db
+        .select({ name: modulesTable.name })
+        .from(modulesTable)
+        .where(
+          and(eq(modulesTable.id, moduleId), isNull(modulesTable.deletedAt)),
+        );
+      if (!module) {
+        res.status(404).json({ message: "Módulo no encontrado" });
+        return;
+      }
+      moduleName = module.name;
+    }
 
-    // In-app + push to the audience (urgent coordinator notice).
-    const audience = await resolveProvinceAudience(provinceId, caller.id);
-    await notifyUsers(audience, {
-      title: created!.title,
-      body: created!.body,
-      type: "announcement",
+    // Bind each uploaded attachment to the caller before accepting it. This both
+    // verifies the object exists and prevents attaching an object owned by
+    // someone else (path-reuse). Storage I/O happens BEFORE the db transaction.
+    const ownerId = String(caller.id);
+    const inputs = data.attachments ?? [];
+    for (const att of inputs) {
+      let objectFile;
+      try {
+        objectFile = await objectStorageService.getObjectEntityFile(
+          att.objectPath,
+        );
+      } catch (err) {
+        if (err instanceof ObjectNotFoundError) {
+          res
+            .status(400)
+            .json({ message: `Documento no encontrado: ${att.fileName}` });
+          return;
+        }
+        throw err;
+      }
+      const policy = await getObjectAclPolicy(objectFile);
+      if (policy?.owner && policy.owner !== ownerId) {
+        res
+          .status(403)
+          .json({ message: `No puedes usar este documento: ${att.fileName}` });
+        return;
+      }
+      if (!policy?.owner) {
+        await setObjectAclPolicy(objectFile, {
+          owner: ownerId,
+          visibility: "private",
+        });
+      }
+    }
+
+    const { created, attachments } = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(announcementsTable)
+        .values({
+          title: data.title.trim(),
+          body: data.body.trim(),
+          authorId: caller.id,
+          moduleId,
+          audienceType: audience.audienceType,
+          audienceIds: audience.audienceIds,
+        })
+        .returning();
+
+      let inserted: (typeof announcementAttachmentsTable.$inferSelect)[] = [];
+      if (inputs.length > 0) {
+        inserted = await tx
+          .insert(announcementAttachmentsTable)
+          .values(
+            inputs.map((att) => ({
+              announcementId: row!.id,
+              objectPath: att.objectPath,
+              fileName: att.fileName.trim(),
+              contentType: att.contentType ?? null,
+              size: att.size ?? null,
+            })),
+          )
+          .returning();
+      }
+      return { created: row!, attachments: inserted };
     });
+
+    // In-app + push to every user in the audience (urgent coordinator notice).
+    const recipientIds = (
+      await resolveAudienceUserIds(audience.audienceType, audience.audienceIds)
+    ).filter((id) => id !== caller.id);
+    if (recipientIds.length > 0) {
+      await notifyUsers(recipientIds, {
+        title: created.title,
+        body: created.body,
+        type: "announcement",
+      });
+    }
 
     // Best-effort email backup; degrades gracefully when Resend is absent.
     let emailPending = false;
     try {
-      const recipients = await db
-        .select({ email: usersTable.email })
-        .from(usersTable)
-        .where(
-          and(
-            inArray(usersTable.id, audience),
-            eq(usersTable.status, "active"),
-          ),
-        );
-      if (recipients.length > 0) {
-        const html = `<h2>${created!.title}</h2><p>${created!.body.replace(/\n/g, "<br/>")}</p><p style="color:#666">— ${caller.name}, Coordina ADG</p>`;
-        const results = await Promise.allSettled(
-          recipients.map((r) =>
-            sendEmail({ to: r.email, subject: created!.title, html }),
-          ),
-        );
-        emailPending = results.some(
-          (r) => r.status === "fulfilled" && r.value.pending,
-        );
+      if (recipientIds.length > 0) {
+        const recipients = await db
+          .select({ email: usersTable.email })
+          .from(usersTable)
+          .where(
+            and(
+              inArray(usersTable.id, recipientIds),
+              eq(usersTable.status, "active"),
+            ),
+          );
+        if (recipients.length > 0) {
+          const html = `<h2>${created.title}</h2><p>${created.body.replace(/\n/g, "<br/>")}</p><p style="color:#666">— ${caller.name}, Coordina ADG</p>`;
+          const results = await Promise.allSettled(
+            recipients.map((r) =>
+              sendEmail({ to: r.email, subject: created.title, html }),
+            ),
+          );
+          emailPending = results.some(
+            (r) => r.status === "fulfilled" && r.value.pending,
+          );
+        }
       }
     } catch (err) {
       logger.error({ err }, "Announcement email backup failed");
     }
 
     res.status(201).json({
-      ...toAnnouncement({ ...created!, authorName: caller.name }),
-      notifiedCount: audience.length,
+      ...toAnnouncement({
+        ...created,
+        authorName: caller.name,
+        moduleName,
+        audienceLabel: announcementAudienceLabel(
+          audience.audienceType,
+          audience.audienceIds,
+          moduleName,
+        ),
+        attachments,
+      }),
+      notifiedCount: recipientIds.length,
       emailPending,
     });
+  },
+);
+
+// Delete an announcement (its author, or a manager of its audience). Soft
+// delete so it disappears from every audience member's board.
+router.delete(
+  "/announcements/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteAnnouncementParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+
+    const [row] = await db
+      .select({
+        authorId: announcementsTable.authorId,
+        audienceType: announcementsTable.audienceType,
+        audienceIds: announcementsTable.audienceIds,
+      })
+      .from(announcementsTable)
+      .where(
+        and(
+          eq(announcementsTable.id, params.data.id),
+          isNull(announcementsTable.deletedAt),
+        ),
+      );
+    if (!row) {
+      res.status(404).json({ message: "Anuncio no encontrado" });
+      return;
+    }
+
+    const canDelete =
+      row.authorId === caller.id ||
+      (await canManageAudience(caller, row.audienceType, row.audienceIds));
+    if (!canDelete) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    await db
+      .update(announcementsTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(announcementsTable.id, params.data.id));
+    res.status(204).end();
+  },
+);
+
+// Download an announcement attachment (author OR audience member OR manager).
+// Streamed binary — authorization enforced against the DB. Not generated as a
+// typed client hook; the frontend fetches this with the Authorization header.
+router.get(
+  "/announcements/attachments/:attachmentId/file",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const attachmentId = Number(req.params.attachmentId);
+    if (!Number.isInteger(attachmentId) || attachmentId <= 0) {
+      res.status(400).json({ message: "Identificador no válido" });
+      return;
+    }
+    const caller = req.user!;
+
+    const [row] = await db
+      .select({
+        objectPath: announcementAttachmentsTable.objectPath,
+        fileName: announcementAttachmentsTable.fileName,
+        authorId: announcementsTable.authorId,
+        audienceType: announcementsTable.audienceType,
+        audienceIds: announcementsTable.audienceIds,
+        deletedAt: announcementsTable.deletedAt,
+      })
+      .from(announcementAttachmentsTable)
+      .innerJoin(
+        announcementsTable,
+        eq(announcementsTable.id, announcementAttachmentsTable.announcementId),
+      )
+      .where(eq(announcementAttachmentsTable.id, attachmentId));
+
+    if (!row || row.deletedAt) {
+      res.status(404).json({ message: "Documento no encontrado" });
+      return;
+    }
+
+    const ctx = await getViewerContext(caller);
+    const allowed =
+      row.authorId === caller.id ||
+      isInAudience(row.audienceType, row.audienceIds, ctx) ||
+      (await canManageAudience(caller, row.audienceType, row.audienceIds));
+    if (!allowed) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        row.objectPath,
+      );
+      const response = await objectStorageService.downloadObject(objectFile);
+      res.status(response.status);
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+      if (row.fileName) {
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(row.fileName)}"`,
+        );
+      }
+      if (response.body) {
+        const nodeStream = Readable.fromWeb(
+          response.body as ReadableStream<Uint8Array>,
+        );
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ message: "Documento no encontrado" });
+        return;
+      }
+      req.log.error({ err: error }, "Error serving announcement attachment");
+      res.status(500).json({ message: "No se pudo servir el documento" });
+    }
   },
 );
 

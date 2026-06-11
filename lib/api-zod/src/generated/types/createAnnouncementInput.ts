@@ -5,9 +5,13 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AnnouncementAttachmentInput } from './announcementAttachmentInput';
+import type { AudienceType } from './audienceType';
 
 export interface CreateAnnouncementInput {
   title: string;
   body: string;
-  provinceId?: number | null;
+  audienceType?: AudienceType;
+  audienceIds?: number[];
+  attachments?: AnnouncementAttachmentInput[];
 }
