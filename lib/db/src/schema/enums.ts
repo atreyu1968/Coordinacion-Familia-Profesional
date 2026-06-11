@@ -6,5 +6,4 @@ export const roleEnum = pgEnum("role", [
   "prospector",
   "department_head",
   "teacher",
-  "student",
 ]);

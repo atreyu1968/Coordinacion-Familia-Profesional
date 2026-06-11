@@ -5,8 +5,10 @@ import {
   useCreateMeeting,
   useDeleteMeeting,
   useGetMeetingToken,
+  useListModules,
   getListMeetingsQueryKey,
   type Meeting,
+  type Module,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import {
   Video,
@@ -23,8 +32,11 @@ import {
   ExternalLink,
   X,
   CalendarClock,
+  BookOpen,
   User as UserIcon,
 } from "lucide-react";
+
+const NO_MODULE = "none";
 
 function formatDate(value?: string | null): string {
   if (!value) return "";
@@ -37,13 +49,24 @@ function formatDate(value?: string | null): string {
 // ---------------------------------------------------------------------------
 // Create form (coordinator / superadmin only)
 // ---------------------------------------------------------------------------
-function CreateForm() {
+function CreateForm({
+  isManager,
+  moduleOptions,
+}: {
+  isManager: boolean;
+  moduleOptions: Module[];
+}) {
   const qc = useQueryClient();
   const createMut = useCreateMeeting();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  // Managers may create a general (module-less) room; module coordinators must
+  // pick one of the modules they coordinate.
+  const [moduleId, setModuleId] = useState<string>(
+    isManager ? NO_MODULE : (moduleOptions[0]?.id?.toString() ?? ""),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (e: FormEvent) => {
@@ -53,11 +76,17 @@ function CreateForm() {
       setError("El título es obligatorio.");
       return;
     }
+    if (!isManager && (moduleId === NO_MODULE || !moduleId)) {
+      setError("Debes seleccionar un módulo.");
+      return;
+    }
     try {
       await createMut.mutateAsync({
         data: {
           title: title.trim(),
           description: description.trim() || null,
+          moduleId:
+            moduleId && moduleId !== NO_MODULE ? Number(moduleId) : null,
           scheduledAt: scheduledAt
             ? new Date(scheduledAt).toISOString()
             : null,
@@ -71,6 +100,7 @@ function CreateForm() {
       setTitle("");
       setDescription("");
       setScheduledAt("");
+      setModuleId(isManager ? NO_MODULE : (moduleOptions[0]?.id?.toString() ?? ""));
     } catch {
       setError("No se pudo crear la sala. Inténtalo de nuevo.");
     }
@@ -92,6 +122,30 @@ function CreateForm() {
               placeholder="Ej. Reunión de coordinación"
               maxLength={140}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Módulo {isManager ? "(opcional)" : "*"}</Label>
+            <Select value={moduleId} onValueChange={setModuleId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un módulo" />
+              </SelectTrigger>
+              <SelectContent>
+                {isManager && (
+                  <SelectItem value={NO_MODULE}>
+                    Sin módulo (general)
+                  </SelectItem>
+                )}
+                {moduleOptions.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Se notificará e invitará a los miembros del módulo, y la sala
+              aparecerá en su calendario.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="m-desc">Descripción</Label>
@@ -182,6 +236,11 @@ function MeetingRow({
         )}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {item.moduleName && (
+          <span className="flex items-center gap-1">
+            <BookOpen className="w-3 h-3" /> {item.moduleName}
+          </span>
+        )}
         {item.hostName && (
           <span className="flex items-center gap-1">
             <UserIcon className="w-3 h-3" /> {item.hostName}
@@ -281,9 +340,18 @@ function CallOverlay({
 // ---------------------------------------------------------------------------
 export default function VideoconferenciasPage() {
   const { user } = useAuth();
-  const canCreate =
+  const isManager =
     user?.role === "superadmin" || user?.role === "coordinator";
   const { data: items = [], isLoading } = useListMeetings();
+  const { data: modules = [] } = useListModules({});
+
+  // Modules the user may open a room for: managers may pick any module (or
+  // none); module coordinators only the modules they coordinate.
+  const coordinatedModules = modules.filter(
+    (m) => m.myRole === "coordinator",
+  );
+  const moduleOptions = isManager ? modules : coordinatedModules;
+  const canCreate = isManager || coordinatedModules.length > 0;
   const tokenMut = useGetMeetingToken();
   const [active, setActive] = useState<{
     title: string;
@@ -334,7 +402,9 @@ export default function VideoconferenciasPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {canCreate && <CreateForm />}
+        {canCreate && (
+          <CreateForm isManager={isManager} moduleOptions={moduleOptions} />
+        )}
 
         <Card className={canCreate ? "" : "lg:col-span-2"}>
           <CardContent className="p-5 space-y-3">
@@ -360,9 +430,7 @@ export default function VideoconferenciasPage() {
                     key={item.id}
                     item={item}
                     busy={tokenMut.isPending}
-                    canDelete={
-                      user?.role === "superadmin" || item.hostId === user?.id
-                    }
+                    canDelete={isManager || item.hostId === user?.id}
                     onJoin={onJoin}
                     onOpenTab={onOpenTab}
                   />

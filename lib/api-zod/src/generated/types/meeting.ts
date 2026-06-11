@@ -13,6 +13,8 @@ export interface Meeting {
   roomName: string;
   hostId: number;
   hostName?: string | null;
+  moduleId?: number | null;
+  moduleName?: string | null;
   scheduledAt?: Date | null;
   createdAt: Date;
 }

@@ -53,6 +53,8 @@ export default function MoreScreen() {
     label: string;
     onPress: () => void;
   }[] = [
+    { icon: "video", label: "Videoconferencias", onPress: () => router.push("/videoconferencias") },
+    { icon: "book-open", label: "Mis módulos", onPress: () => router.push("/modulos") },
     { icon: "maximize", label: "Escanear acreditación (QR)", onPress: () => router.push("/scan") },
     { icon: "bar-chart-2", label: "Encuestas y votaciones", onPress: () => router.push("/surveys") },
     { icon: "briefcase", label: "Alertas de empresa (FCT)", onPress: () => router.push("/alerts") },

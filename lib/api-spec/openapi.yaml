@@ -1208,6 +1208,217 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Module"
+  /modules/{moduleId}/members:
+    get:
+      operationId: listModuleMembers
+      tags: [academics]
+      summary: List the members of a module (members and managers in scope)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleMember"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: addModuleMember
+      tags: [academics]
+      summary: Add a teacher to a module (manager in scope)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddModuleMemberInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleMember"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /modules/{moduleId}/members/{userId}:
+    patch:
+      operationId: updateModuleMember
+      tags: [academics]
+      summary: Set a member's role (designate/transfer module coordinator)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleMemberInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleMember"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: removeModuleMember
+      tags: [academics]
+      summary: Remove a teacher from a module (manager in scope)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /modules/{moduleId}/enroll:
+    post:
+      operationId: enrollInModule
+      tags: [academics]
+      summary: Self-enroll the current teacher into a module
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleMember"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: leaveModule
+      tags: [academics]
+      summary: Leave a module the current teacher is enrolled in
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Left
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /groups:
     get:
       operationId: listGroups
@@ -2616,7 +2827,6 @@ components:
         - prospector
         - department_head
         - teacher
-        - student
     LoginInput:
       type: object
       properties:
@@ -2944,7 +3154,57 @@ components:
         centerId:
           type: integer
           nullable: true
+        memberCount:
+          type: integer
+        coordinatorId:
+          type: integer
+          nullable: true
+        coordinatorName:
+          type: string
+          nullable: true
+        enrolled:
+          type: boolean
+        myRole:
+          type: string
+          nullable: true
       required: [id, name]
+    ModuleMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, moduleId, userId, role, createdAt]
+    AddModuleMemberInput:
+      type: object
+      properties:
+        userId:
+          type: integer
+        role:
+          type: string
+          enum: [member, coordinator]
+      required: [userId]
+    UpdateModuleMemberInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [member, coordinator]
+      required: [role]
     CreateModuleInput:
       type: object
       properties:
@@ -3446,6 +3706,12 @@ components:
         hostName:
           type: string
           nullable: true
+        moduleId:
+          type: integer
+          nullable: true
+        moduleName:
+          type: string
+          nullable: true
         scheduledAt:
           type: string
           format: date-time
@@ -3461,6 +3727,9 @@ components:
           type: string
         description:
           type: string
+          nullable: true
+        moduleId:
+          type: integer
           nullable: true
         scheduledAt:
           type: string
@@ -3840,6 +4109,12 @@ components:
           type: integer
           nullable: true
         description:
+          type: string
+          nullable: true
+        meetingId:
+          type: integer
+          nullable: true
+        roomName:
           type: string
           nullable: true
       required: [id, title, date]

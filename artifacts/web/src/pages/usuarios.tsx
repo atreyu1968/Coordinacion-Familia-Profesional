@@ -51,7 +51,6 @@ const ROLE_LABELS: Record<string, string> = {
   prospector: "Prospector/a",
   department_head: "Jefe/a de departamento",
   teacher: "Profesor/a",
-  student: "Estudiante",
 };
 
 const ROLE_OPTIONS: Role[] = [
@@ -60,7 +59,6 @@ const ROLE_OPTIONS: Role[] = [
   "prospector",
   "department_head",
   "teacher",
-  "student",
 ] as Role[];
 
 export default function UsuariosPage() {

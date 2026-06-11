@@ -8,11 +8,22 @@ import {
   resourcesTable,
   usersTable,
   centersTable,
+  moduleMembershipsTable,
 } from "@workspace/db";
+import type { User } from "@workspace/db";
 import {
   ListModulesQueryParams,
   ListModulesResponse,
   CreateModuleBody,
+  ListModuleMembersParams,
+  ListModuleMembersResponse,
+  AddModuleMemberParams,
+  AddModuleMemberBody,
+  UpdateModuleMemberParams,
+  UpdateModuleMemberBody,
+  RemoveModuleMemberParams,
+  EnrollInModuleParams,
+  LeaveModuleParams,
   ListGroupsQueryParams,
   ListGroupsResponse,
   CreateGroupBody,
@@ -31,9 +42,12 @@ import {
   requireRole,
   hasScopeOver,
   resolveReadScope,
+  isModuleMember,
+  isModuleCoordinator,
 } from "../middlewares/auth";
 import {
   toModule,
+  toModuleMember,
   toGroup,
   toTeachingAssignment,
   toResource,
@@ -101,7 +115,70 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
     .from(modulesTable)
     .where(and(...filters))
     .orderBy(modulesTable.name);
-  res.json(ListModulesResponse.parse(rows.map(toModule)));
+
+  // Enrich each module with membership info: member count, who its coordinator
+  // is, and whether the caller is enrolled (and in what role).
+  const caller = req.user!;
+  const moduleIds = rows.map((m) => m.id);
+  const membershipRows = moduleIds.length
+    ? await db
+        .select({
+          moduleId: moduleMembershipsTable.moduleId,
+          userId: moduleMembershipsTable.userId,
+          role: moduleMembershipsTable.role,
+          userName: usersTable.name,
+        })
+        .from(moduleMembershipsTable)
+        .leftJoin(usersTable, eq(usersTable.id, moduleMembershipsTable.userId))
+        .where(
+          and(
+            inArray(moduleMembershipsTable.moduleId, moduleIds),
+            isNull(moduleMembershipsTable.deletedAt),
+          ),
+        )
+    : [];
+
+  const agg = new Map<
+    number,
+    {
+      count: number;
+      coordinatorId: number | null;
+      coordinatorName: string | null;
+      myRole: string | null;
+    }
+  >();
+  for (const id of moduleIds) {
+    agg.set(id, {
+      count: 0,
+      coordinatorId: null,
+      coordinatorName: null,
+      myRole: null,
+    });
+  }
+  for (const mr of membershipRows) {
+    const a = agg.get(mr.moduleId)!;
+    a.count += 1;
+    if (mr.role === "coordinator") {
+      a.coordinatorId = mr.userId;
+      a.coordinatorName = mr.userName ?? null;
+    }
+    if (mr.userId === caller.id) a.myRole = mr.role;
+  }
+
+  res.json(
+    ListModulesResponse.parse(
+      rows.map((m) => {
+        const a = agg.get(m.id)!;
+        return toModule(m, {
+          memberCount: a.count,
+          coordinatorId: a.coordinatorId,
+          coordinatorName: a.coordinatorName,
+          enrolled: a.myRole !== null,
+          myRole: a.myRole,
+        });
+      }),
+    ),
+  );
 });
 
 router.post(
@@ -156,6 +233,390 @@ router.post(
       })
       .returning();
     res.status(201).json(toModule(created));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Module memberships: teachers self-enroll into modules (multi-module) and
+// managers (gestor) add/remove teachers and designate the per-module
+// coordinator (exactly one per module).
+// ---------------------------------------------------------------------------
+
+async function loadModule(moduleId: number) {
+  const [module] = await db
+    .select()
+    .from(modulesTable)
+    .where(and(eq(modulesTable.id, moduleId), isNull(modulesTable.deletedAt)));
+  return module;
+}
+
+// Whether the caller may administer the membership of a module. Superadmin
+// always; provincial coordinators for global modules and modules in their
+// province; department heads for modules in their own center.
+async function canManageModule(
+  caller: User,
+  module: { centerId: number | null },
+): Promise<boolean> {
+  if (caller.role === "superadmin") return true;
+  if (module.centerId == null) return caller.role === "coordinator";
+  const [center] = await db
+    .select({ provinceId: centersTable.provinceId })
+    .from(centersTable)
+    .where(eq(centersTable.id, module.centerId));
+  return hasScopeOver(caller, {
+    provinceId: center?.provinceId ?? null,
+    centerId: module.centerId,
+  });
+}
+
+// Whether the caller may manage a module's roster (add/remove teachers): any
+// manager in scope, plus the module's own coordinator who invites the module's
+// teachers. Designating/transferring the coordinator stays manager-only.
+async function canManageMembers(
+  caller: User,
+  module: { id: number; centerId: number | null },
+): Promise<boolean> {
+  if (await canManageModule(caller, module)) return true;
+  return isModuleCoordinator(caller.id, module.id);
+}
+
+// Whether the caller may see (and therefore self-enroll into) a module, using
+// the same visibility rules as the module listing.
+async function moduleVisibleToCaller(
+  caller: User,
+  module: { centerId: number | null },
+): Promise<boolean> {
+  if (module.centerId == null) return true;
+  const scope = resolveReadScope(caller);
+  if (scope.kind === "global") return true;
+  if (scope.kind === "center") return module.centerId === scope.centerId;
+  if (scope.kind === "province") {
+    const [center] = await db
+      .select({ provinceId: centersTable.provinceId })
+      .from(centersTable)
+      .where(eq(centersTable.id, module.centerId));
+    return center?.provinceId === scope.provinceId;
+  }
+  return false;
+}
+
+// Insert or revive a membership. When promoting to coordinator, demote the
+// module's current coordinator first so there is always at most one.
+async function upsertMembership(
+  moduleId: number,
+  userId: number,
+  role: string,
+) {
+  if (role === "coordinator") {
+    await db
+      .update(moduleMembershipsTable)
+      .set({ role: "member" })
+      .where(
+        and(
+          eq(moduleMembershipsTable.moduleId, moduleId),
+          eq(moduleMembershipsTable.role, "coordinator"),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      );
+  }
+  const [row] = await db
+    .insert(moduleMembershipsTable)
+    .values({ moduleId, userId, role })
+    .onConflictDoUpdate({
+      target: [moduleMembershipsTable.moduleId, moduleMembershipsTable.userId],
+      set: { role, deletedAt: null },
+    })
+    .returning();
+  return row!;
+}
+
+// List the members of a module (members + managers in scope).
+router.get(
+  "/modules/:moduleId/members",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListModuleMembersParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    const allowed =
+      (await canManageModule(caller, module)) ||
+      (await isModuleMember(caller.id, module.id));
+    if (!allowed) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        id: moduleMembershipsTable.id,
+        moduleId: moduleMembershipsTable.moduleId,
+        userId: moduleMembershipsTable.userId,
+        role: moduleMembershipsTable.role,
+        createdAt: moduleMembershipsTable.createdAt,
+        userName: usersTable.name,
+        email: usersTable.email,
+      })
+      .from(moduleMembershipsTable)
+      .leftJoin(usersTable, eq(usersTable.id, moduleMembershipsTable.userId))
+      .where(
+        and(
+          eq(moduleMembershipsTable.moduleId, module.id),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      )
+      .orderBy(moduleMembershipsTable.role, usersTable.name);
+
+    res.json(ListModuleMembersResponse.parse(rows.map(toModuleMember)));
+  },
+);
+
+// Add a teacher to a module (manager in scope).
+router.post(
+  "/modules/:moduleId/members",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = AddModuleMemberParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const body = AddModuleMemberBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: body.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (!(await canManageMembers(caller, module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    // Only managers may designate the coordinator; coordinators inviting
+    // teachers can only add plain members.
+    const requestedRole = body.data.role ?? "member";
+    if (
+      requestedRole === "coordinator" &&
+      !(await canManageModule(caller, module))
+    ) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const [target] = await db
+      .select()
+      .from(usersTable)
+      .where(
+        and(eq(usersTable.id, body.data.userId), isNull(usersTable.deletedAt)),
+      );
+    if (!target) {
+      res.status(404).json({ message: "Usuario no encontrado" });
+      return;
+    }
+    const role = body.data.role ?? "member";
+    const member = await upsertMembership(module.id, target.id, role);
+    res.status(201).json(
+      toModuleMember({
+        ...member,
+        userName: target.name,
+        email: target.email,
+      }),
+    );
+  },
+);
+
+// Set a member's role (designate/transfer the module coordinator).
+router.patch(
+  "/modules/:moduleId/members/:userId",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = UpdateModuleMemberParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const body = UpdateModuleMemberBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: body.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (!(await canManageModule(caller, module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(moduleMembershipsTable)
+      .where(
+        and(
+          eq(moduleMembershipsTable.moduleId, module.id),
+          eq(moduleMembershipsTable.userId, params.data.userId),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      );
+    if (!existing) {
+      res.status(404).json({ message: "Miembro no encontrado" });
+      return;
+    }
+    const member = await upsertMembership(
+      module.id,
+      params.data.userId,
+      body.data.role,
+    );
+    const [u] = await db
+      .select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, params.data.userId));
+    res.json(
+      toModuleMember({
+        ...member,
+        userName: u?.name ?? null,
+        email: u?.email ?? null,
+      }),
+    );
+  },
+);
+
+// Remove a teacher from a module (manager in scope) — soft delete.
+router.delete(
+  "/modules/:moduleId/members/:userId",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = RemoveModuleMemberParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (!(await canManageMembers(caller, module))) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(moduleMembershipsTable)
+      .where(
+        and(
+          eq(moduleMembershipsTable.moduleId, module.id),
+          eq(moduleMembershipsTable.userId, params.data.userId),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      );
+    if (!existing) {
+      res.status(404).json({ message: "Miembro no encontrado" });
+      return;
+    }
+    // A module coordinator may manage the roster but not remove the module's
+    // coordinator (that designation is reserved for managers).
+    if (
+      existing.role === "coordinator" &&
+      !(await canManageModule(caller, module))
+    ) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    await db
+      .update(moduleMembershipsTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(moduleMembershipsTable.id, existing.id));
+    res.sendStatus(204);
+  },
+);
+
+// Self-enroll the current user into a module (multi-module).
+router.post(
+  "/modules/:moduleId/enroll",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = EnrollInModuleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const module = await loadModule(params.data.moduleId);
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (!(await moduleVisibleToCaller(caller, module))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
+      return;
+    }
+    // Revive a previous membership or create a new one. Preserve an existing
+    // role on conflict so re-enrolling never strips a coordinator.
+    const [row] = await db
+      .insert(moduleMembershipsTable)
+      .values({ moduleId: module.id, userId: caller.id, role: "member" })
+      .onConflictDoUpdate({
+        target: [
+          moduleMembershipsTable.moduleId,
+          moduleMembershipsTable.userId,
+        ],
+        set: { deletedAt: null },
+      })
+      .returning();
+    res.status(201).json(
+      toModuleMember({
+        ...row!,
+        userName: caller.name,
+        email: caller.email,
+      }),
+    );
+  },
+);
+
+// Leave a module the current user is enrolled in — soft delete.
+router.delete(
+  "/modules/:moduleId/enroll",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = LeaveModuleParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [existing] = await db
+      .select()
+      .from(moduleMembershipsTable)
+      .where(
+        and(
+          eq(moduleMembershipsTable.moduleId, params.data.moduleId),
+          eq(moduleMembershipsTable.userId, caller.id),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      );
+    if (!existing) {
+      res.status(404).json({ message: "No estás inscrito en este módulo" });
+      return;
+    }
+    await db
+      .update(moduleMembershipsTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(moduleMembershipsTable.id, existing.id));
+    res.sendStatus(204);
   },
 );
 

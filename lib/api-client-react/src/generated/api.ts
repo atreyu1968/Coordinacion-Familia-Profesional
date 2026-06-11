@@ -21,6 +21,7 @@ import type {
 
 import type {
   Accreditation,
+  AddModuleMemberInput,
   AiChatInput,
   AiChatReply,
   Announcement,
@@ -111,6 +112,7 @@ import type {
   Message,
   MobileAppAccess,
   Module,
+  ModuleMember,
   ModuleSpaceAccess,
   Municipality,
   Notification,
@@ -135,6 +137,7 @@ import type {
   UpdateForumPostInput,
   UpdateForumThreadInput,
   UpdateIntegrationSettingsInput,
+  UpdateModuleMemberInput,
   UpdateProfileInput,
   UpdateUserInput,
   UploadUrlRequest,
@@ -4195,6 +4198,441 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateModuleMutationOptions(options));
+    }
+
+export const getListModuleMembersUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/members`
+}
+
+/**
+ * @summary List the members of a module (members and managers in scope)
+ */
+export const listModuleMembers = async (moduleId: number, options?: RequestInit): Promise<ModuleMember[]> => {
+
+  return customFetch<ModuleMember[]>(getListModuleMembersUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListModuleMembersQueryKey = (moduleId: number,) => {
+    return [
+    `/api/modules/${moduleId}/members`
+    ] as const;
+    }
+
+
+export const getListModuleMembersQueryOptions = <TData = Awaited<ReturnType<typeof listModuleMembers>>, TError = ErrorType<Error>>(moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listModuleMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListModuleMembersQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listModuleMembers>>> = ({ signal }) => listModuleMembers(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(moduleId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listModuleMembers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListModuleMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listModuleMembers>>>
+export type ListModuleMembersQueryError = ErrorType<Error>
+
+
+/**
+ * @summary List the members of a module (members and managers in scope)
+ */
+
+export function useListModuleMembers<TData = Awaited<ReturnType<typeof listModuleMembers>>, TError = ErrorType<Error>>(
+ moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listModuleMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListModuleMembersQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddModuleMemberUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/members`
+}
+
+/**
+ * @summary Add a teacher to a module (manager in scope)
+ */
+export const addModuleMember = async (moduleId: number,
+    addModuleMemberInput: AddModuleMemberInput, options?: RequestInit): Promise<ModuleMember> => {
+
+  return customFetch<ModuleMember>(getAddModuleMemberUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addModuleMemberInput,)
+  }
+);}
+
+
+
+
+export const getAddModuleMemberMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addModuleMember>>, TError,{moduleId: number;data: BodyType<AddModuleMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addModuleMember>>, TError,{moduleId: number;data: BodyType<AddModuleMemberInput>}, TContext> => {
+
+const mutationKey = ['addModuleMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addModuleMember>>, {moduleId: number;data: BodyType<AddModuleMemberInput>}> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  addModuleMember(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddModuleMemberMutationResult = NonNullable<Awaited<ReturnType<typeof addModuleMember>>>
+    export type AddModuleMemberMutationBody = BodyType<AddModuleMemberInput>
+    export type AddModuleMemberMutationError = ErrorType<Error>
+
+    /**
+ * @summary Add a teacher to a module (manager in scope)
+ */
+export const useAddModuleMember = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addModuleMember>>, TError,{moduleId: number;data: BodyType<AddModuleMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addModuleMember>>,
+        TError,
+        {moduleId: number;data: BodyType<AddModuleMemberInput>},
+        TContext
+      > => {
+      return useMutation(getAddModuleMemberMutationOptions(options));
+    }
+
+export const getUpdateModuleMemberUrl = (moduleId: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/members/${userId}`
+}
+
+/**
+ * @summary Set a member's role (designate/transfer module coordinator)
+ */
+export const updateModuleMember = async (moduleId: number,
+    userId: number,
+    updateModuleMemberInput: UpdateModuleMemberInput, options?: RequestInit): Promise<ModuleMember> => {
+
+  return customFetch<ModuleMember>(getUpdateModuleMemberUrl(moduleId,userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateModuleMemberInput,)
+  }
+);}
+
+
+
+
+export const getUpdateModuleMemberMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleMember>>, TError,{moduleId: number;userId: number;data: BodyType<UpdateModuleMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModuleMember>>, TError,{moduleId: number;userId: number;data: BodyType<UpdateModuleMemberInput>}, TContext> => {
+
+const mutationKey = ['updateModuleMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModuleMember>>, {moduleId: number;userId: number;data: BodyType<UpdateModuleMemberInput>}> = (props) => {
+          const {moduleId,userId,data} = props ?? {};
+
+          return  updateModuleMember(moduleId,userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleMemberMutationResult = NonNullable<Awaited<ReturnType<typeof updateModuleMember>>>
+    export type UpdateModuleMemberMutationBody = BodyType<UpdateModuleMemberInput>
+    export type UpdateModuleMemberMutationError = ErrorType<Error>
+
+    /**
+ * @summary Set a member's role (designate/transfer module coordinator)
+ */
+export const useUpdateModuleMember = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleMember>>, TError,{moduleId: number;userId: number;data: BodyType<UpdateModuleMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModuleMember>>,
+        TError,
+        {moduleId: number;userId: number;data: BodyType<UpdateModuleMemberInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleMemberMutationOptions(options));
+    }
+
+export const getRemoveModuleMemberUrl = (moduleId: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/members/${userId}`
+}
+
+/**
+ * @summary Remove a teacher from a module (manager in scope)
+ */
+export const removeModuleMember = async (moduleId: number,
+    userId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveModuleMemberUrl(moduleId,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveModuleMemberMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeModuleMember>>, TError,{moduleId: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeModuleMember>>, TError,{moduleId: number;userId: number}, TContext> => {
+
+const mutationKey = ['removeModuleMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeModuleMember>>, {moduleId: number;userId: number}> = (props) => {
+          const {moduleId,userId} = props ?? {};
+
+          return  removeModuleMember(moduleId,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveModuleMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeModuleMember>>>
+
+    export type RemoveModuleMemberMutationError = ErrorType<Error>
+
+    /**
+ * @summary Remove a teacher from a module (manager in scope)
+ */
+export const useRemoveModuleMember = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeModuleMember>>, TError,{moduleId: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeModuleMember>>,
+        TError,
+        {moduleId: number;userId: number},
+        TContext
+      > => {
+      return useMutation(getRemoveModuleMemberMutationOptions(options));
+    }
+
+export const getEnrollInModuleUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/enroll`
+}
+
+/**
+ * @summary Self-enroll the current teacher into a module
+ */
+export const enrollInModule = async (moduleId: number, options?: RequestInit): Promise<ModuleMember> => {
+
+  return customFetch<ModuleMember>(getEnrollInModuleUrl(moduleId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getEnrollInModuleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollInModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enrollInModule>>, TError,{moduleId: number}, TContext> => {
+
+const mutationKey = ['enrollInModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrollInModule>>, {moduleId: number}> = (props) => {
+          const {moduleId} = props ?? {};
+
+          return  enrollInModule(moduleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnrollInModuleMutationResult = NonNullable<Awaited<ReturnType<typeof enrollInModule>>>
+
+    export type EnrollInModuleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Self-enroll the current teacher into a module
+ */
+export const useEnrollInModule = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollInModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enrollInModule>>,
+        TError,
+        {moduleId: number},
+        TContext
+      > => {
+      return useMutation(getEnrollInModuleMutationOptions(options));
+    }
+
+export const getLeaveModuleUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/modules/${moduleId}/enroll`
+}
+
+/**
+ * @summary Leave a module the current teacher is enrolled in
+ */
+export const leaveModule = async (moduleId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getLeaveModuleUrl(moduleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getLeaveModuleMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveModule>>, TError,{moduleId: number}, TContext> => {
+
+const mutationKey = ['leaveModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveModule>>, {moduleId: number}> = (props) => {
+          const {moduleId} = props ?? {};
+
+          return  leaveModule(moduleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveModuleMutationResult = NonNullable<Awaited<ReturnType<typeof leaveModule>>>
+
+    export type LeaveModuleMutationError = ErrorType<Error>
+
+    /**
+ * @summary Leave a module the current teacher is enrolled in
+ */
+export const useLeaveModule = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveModule>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof leaveModule>>,
+        TError,
+        {moduleId: number},
+        TContext
+      > => {
+      return useMutation(getLeaveModuleMutationOptions(options));
     }
 
 export const getListGroupsUrl = (params?: ListGroupsParams,) => {

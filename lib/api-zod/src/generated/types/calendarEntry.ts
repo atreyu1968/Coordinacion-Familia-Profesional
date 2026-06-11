@@ -14,4 +14,6 @@ export interface CalendarEntry {
   endDate?: Date | null;
   provinceId?: number | null;
   description?: string | null;
+  meetingId?: number | null;
+  roomName?: string | null;
 }

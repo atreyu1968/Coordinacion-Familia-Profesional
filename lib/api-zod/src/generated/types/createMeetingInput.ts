@@ -9,5 +9,6 @@
 export interface CreateMeetingInput {
   title: string;
   description?: string | null;
+  moduleId?: number | null;
   scheduledAt?: Date | null;
 }

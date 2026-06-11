@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq, and, isNull } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, moduleMembershipsTable } from "@workspace/db";
 import type { User } from "@workspace/db";
 import { verifyToken } from "../lib/auth";
 
@@ -60,13 +60,7 @@ export function requireRole(...roles: string[]) {
 }
 
 const INVITE_MATRIX: Record<string, string[]> = {
-  superadmin: [
-    "coordinator",
-    "prospector",
-    "department_head",
-    "teacher",
-    "student",
-  ],
+  superadmin: ["coordinator", "prospector", "department_head", "teacher"],
   coordinator: ["prospector", "department_head"],
   department_head: ["teacher"],
 };
@@ -81,7 +75,6 @@ const ROLE_RANK: Record<string, number> = {
   prospector: 60,
   department_head: 50,
   teacher: 20,
-  student: 10,
 };
 
 export function roleRank(role: string): number {
@@ -97,7 +90,7 @@ type Scope = { provinceId?: number | null; centerId?: number | null };
  *
  * - superadmin: global
  * - province roles (coordinator, prospector): bound to their province
- * - center roles (department_head, teacher, student): bound to their center
+ * - center roles (department_head, teacher): bound to their center
  * - anyone missing the required id: "none" (default-deny)
  */
 export type ReadScope =
@@ -107,7 +100,7 @@ export type ReadScope =
   | { kind: "none" };
 
 const PROVINCE_ROLES = new Set(["coordinator", "prospector"]);
-const CENTER_ROLES = new Set(["department_head", "teacher", "student"]);
+const CENTER_ROLES = new Set(["department_head", "teacher"]);
 
 export function resolveReadScope(caller: User): ReadScope {
   if (caller.role === "superadmin") return { kind: "global" };
@@ -149,4 +142,41 @@ export function canManageUser(caller: User, target: User): boolean {
   if (caller.id === target.id) return false;
   if (roleRank(caller.role) <= roleRank(target.role)) return false;
   return hasScopeOver(caller, target);
+}
+
+/**
+ * Active (non-deleted) module membership for a user in a module, or undefined.
+ */
+export async function getModuleMembership(
+  userId: number,
+  moduleId: number,
+): Promise<{ role: string } | undefined> {
+  const [row] = await db
+    .select({ role: moduleMembershipsTable.role })
+    .from(moduleMembershipsTable)
+    .where(
+      and(
+        eq(moduleMembershipsTable.userId, userId),
+        eq(moduleMembershipsTable.moduleId, moduleId),
+        isNull(moduleMembershipsTable.deletedAt),
+      ),
+    );
+  return row;
+}
+
+/** Whether `userId` is an active member (any role) of `moduleId`. */
+export async function isModuleMember(
+  userId: number,
+  moduleId: number,
+): Promise<boolean> {
+  return (await getModuleMembership(userId, moduleId)) !== undefined;
+}
+
+/** Whether `userId` is the coordinator of `moduleId`. */
+export async function isModuleCoordinator(
+  userId: number,
+  moduleId: number,
+): Promise<boolean> {
+  const m = await getModuleMembership(userId, moduleId);
+  return m?.role === "coordinator";
 }

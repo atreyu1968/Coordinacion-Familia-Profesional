@@ -8,6 +8,8 @@
 
 export * from './accreditation';
 export * from './accreditationRole';
+export * from './addModuleMemberInput';
+export * from './addModuleMemberInputRole';
 export * from './aiChatInput';
 export * from './aiChatInputContext';
 export * from './aiChatReply';
@@ -129,6 +131,7 @@ export * from './meetingTokenInput';
 export * from './message';
 export * from './mobileAppAccess';
 export * from './module';
+export * from './moduleMember';
 export * from './moduleSpaceAccess';
 export * from './municipality';
 export * from './municipalityQueryParameter';
@@ -172,6 +175,8 @@ export * from './updateFeedbackInputStatus';
 export * from './updateForumPostInput';
 export * from './updateForumThreadInput';
 export * from './updateIntegrationSettingsInput';
+export * from './updateModuleMemberInput';
+export * from './updateModuleMemberInputRole';
 export * from './updateProfileInput';
 export * from './updateUserInput';
 export * from './uploadUrlRequest';

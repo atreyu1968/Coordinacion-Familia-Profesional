@@ -12,4 +12,9 @@ export interface Module {
   name: string;
   cycleName?: string | null;
   centerId?: number | null;
+  memberCount?: number;
+  coordinatorId?: number | null;
+  coordinatorName?: string | null;
+  enrolled?: boolean;
+  myRole?: string | null;
 }

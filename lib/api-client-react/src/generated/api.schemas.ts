@@ -199,7 +199,6 @@ export const Role = {
   prospector: 'prospector',
   department_head: 'department_head',
   teacher: 'teacher',
-  student: 'student',
 } as const;
 
 export interface LoginInput {
@@ -370,6 +369,46 @@ export interface Module {
   name: string;
   cycleName?: string | null;
   centerId?: number | null;
+  memberCount?: number;
+  coordinatorId?: number | null;
+  coordinatorName?: string | null;
+  enrolled?: boolean;
+  myRole?: string | null;
+}
+
+export interface ModuleMember {
+  id: number;
+  moduleId: number;
+  userId: number;
+  userName?: string | null;
+  email?: string | null;
+  role: string;
+  createdAt: string;
+}
+
+export type AddModuleMemberInputRole = typeof AddModuleMemberInputRole[keyof typeof AddModuleMemberInputRole];
+
+
+export const AddModuleMemberInputRole = {
+  member: 'member',
+  coordinator: 'coordinator',
+} as const;
+
+export interface AddModuleMemberInput {
+  userId: number;
+  role?: AddModuleMemberInputRole;
+}
+
+export type UpdateModuleMemberInputRole = typeof UpdateModuleMemberInputRole[keyof typeof UpdateModuleMemberInputRole];
+
+
+export const UpdateModuleMemberInputRole = {
+  member: 'member',
+  coordinator: 'coordinator',
+} as const;
+
+export interface UpdateModuleMemberInput {
+  role: UpdateModuleMemberInputRole;
 }
 
 export interface CreateModuleInput {
@@ -716,6 +755,8 @@ export interface Meeting {
   roomName: string;
   hostId: number;
   hostName?: string | null;
+  moduleId?: number | null;
+  moduleName?: string | null;
   scheduledAt?: string | null;
   createdAt: string;
 }
@@ -723,6 +764,7 @@ export interface Meeting {
 export interface CreateMeetingInput {
   title: string;
   description?: string | null;
+  moduleId?: number | null;
   scheduledAt?: string | null;
 }
 
@@ -956,6 +998,8 @@ export interface CalendarEntry {
   endDate?: string | null;
   provinceId?: number | null;
   description?: string | null;
+  meetingId?: number | null;
+  roomName?: string | null;
 }
 
 export interface CreateCalendarEntryInput {

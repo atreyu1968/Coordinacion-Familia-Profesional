@@ -15,5 +15,4 @@ export const Role = {
   prospector: 'prospector',
   department_head: 'department_head',
   teacher: 'teacher',
-  student: 'student',
 } as const;

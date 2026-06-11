@@ -19,7 +19,6 @@ const ROLE_LABELS: Record<string, string> = {
   prospector: "Prospección",
   department_head: "Jefatura de departamento",
   teacher: "Profesorado",
-  student: "Alumnado",
 };
 
 export default function RegisterPage() {

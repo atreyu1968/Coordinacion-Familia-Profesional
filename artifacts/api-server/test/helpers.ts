@@ -13,6 +13,8 @@ import {
   surveyResponsesTable,
   surveyAnswersTable,
   modulesTable,
+  moduleMembershipsTable,
+  meetingsTable,
   forumThreadsTable,
   forumPostsTable,
   forumThreadReadsTable,
@@ -37,6 +39,7 @@ const created = {
   surveyIds: [] as number[],
   moduleIds: [] as number[],
   threadIds: [] as number[],
+  meetingIds: [] as number[],
 };
 
 let userSeq = 0;
@@ -124,6 +127,37 @@ export async function createModule(opts: {
   return row!.id;
 }
 
+// Enroll a user into a module's collaboration space (member or coordinator).
+export async function addMembership(
+  moduleId: number,
+  userId: number,
+  role: "member" | "coordinator" = "member",
+): Promise<void> {
+  await db
+    .insert(moduleMembershipsTable)
+    .values({ moduleId, userId, role });
+}
+
+// Create a meeting row directly (optionally tied to a module / host).
+export async function createMeeting(opts: {
+  roomName: string;
+  hostId: number;
+  moduleId?: number | null;
+  title?: string;
+}): Promise<number> {
+  const [row] = await db
+    .insert(meetingsTable)
+    .values({
+      title: opts.title ?? `Reunión ${RUN_TAG}`,
+      roomName: opts.roomName,
+      hostId: opts.hostId,
+      moduleId: opts.moduleId ?? null,
+    })
+    .returning();
+  created.meetingIds.push(row!.id);
+  return row!.id;
+}
+
 export function trackThread(id: number): void {
   created.threadIds.push(id);
 }
@@ -151,7 +185,15 @@ export async function cleanup(): Promise<void> {
       .delete(forumThreadsTable)
       .where(inArray(forumThreadsTable.id, created.threadIds));
   }
+  if (created.meetingIds.length > 0) {
+    await db
+      .delete(meetingsTable)
+      .where(inArray(meetingsTable.id, created.meetingIds));
+  }
   if (created.moduleIds.length > 0) {
+    await db
+      .delete(moduleMembershipsTable)
+      .where(inArray(moduleMembershipsTable.moduleId, created.moduleIds));
     await db
       .delete(modulesTable)
       .where(inArray(modulesTable.id, created.moduleIds));
@@ -215,4 +257,5 @@ export async function cleanup(): Promise<void> {
   created.surveyIds.length = 0;
   created.moduleIds.length = 0;
   created.threadIds.length = 0;
+  created.meetingIds.length = 0;
 }

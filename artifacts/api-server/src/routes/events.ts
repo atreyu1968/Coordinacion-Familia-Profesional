@@ -1,6 +1,17 @@
 import { Router, type IRouter } from "express";
 import { randomBytes } from "node:crypto";
-import { eq, and, or, isNull, gte, lte, desc, asc, type SQL } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  isNull,
+  gte,
+  lte,
+  desc,
+  asc,
+  inArray,
+  type SQL,
+} from "drizzle-orm";
 import {
   db,
   eventsTable,
@@ -11,6 +22,8 @@ import {
   calendarEntriesTable,
   centersTable,
   usersTable,
+  meetingsTable,
+  moduleMembershipsTable,
   type User,
 } from "@workspace/db";
 import {
@@ -772,7 +785,67 @@ router.get("/calendar", requireAuth, async (req, res): Promise<void> => {
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(asc(calendarEntriesTable.date));
 
-  res.json(ListCalendarEventsResponse.parse(rows.map(toCalendarEntry)));
+  // Mirror visible videoconferences (meetings) into the calendar so their
+  // participants see them as events. Managers see all; others see only
+  // meetings of modules they belong to. A province filter excludes meetings
+  // (they are module-scoped, not province-scoped).
+  const isManager = caller.role === "superadmin" || caller.role === "coordinator";
+  let includeMeetings = query.data.provinceId == null;
+  const meetingConds: SQL[] = [isNull(meetingsTable.deletedAt)];
+  if (includeMeetings && !isManager) {
+    const memberRows = await db
+      .select({ moduleId: moduleMembershipsTable.moduleId })
+      .from(moduleMembershipsTable)
+      .where(
+        and(
+          eq(moduleMembershipsTable.userId, caller.id),
+          isNull(moduleMembershipsTable.deletedAt),
+        ),
+      );
+    const ids = memberRows.map((r) => r.moduleId);
+    if (ids.length === 0) includeMeetings = false;
+    else meetingConds.push(inArray(meetingsTable.moduleId, ids));
+  }
+
+  const meetingEntries = includeMeetings
+    ? (
+        await db
+          .select({
+            id: meetingsTable.id,
+            title: meetingsTable.title,
+            description: meetingsTable.description,
+            roomName: meetingsTable.roomName,
+            scheduledAt: meetingsTable.scheduledAt,
+          })
+          .from(meetingsTable)
+          .where(and(...meetingConds))
+      )
+        .filter((m) => m.scheduledAt != null)
+        .map((m) => ({
+          id: -m.id,
+          title: m.title,
+          type: "meeting",
+          date: toDateString(m.scheduledAt!),
+          endDate: null,
+          provinceId: null,
+          description: m.description,
+          meetingId: m.id,
+          roomName: m.roomName,
+        }))
+        .filter((e) => {
+          if (query.data.from && e.date < toDateString(query.data.from))
+            return false;
+          if (query.data.to && e.date > toDateString(query.data.to))
+            return false;
+          return true;
+        })
+    : [];
+
+  const all = [...rows.map(toCalendarEntry), ...meetingEntries].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+
+  res.json(ListCalendarEventsResponse.parse(all));
 });
 
 router.post(

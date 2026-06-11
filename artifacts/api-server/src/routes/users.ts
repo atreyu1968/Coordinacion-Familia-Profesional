@@ -41,7 +41,7 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
   ) {
     filters.push(eq(usersTable.centerId, caller.centerId));
   } else {
-    // Unscoped roles (prospector/student) and misconfigured accounts may only
+    // Unscoped roles (prospector) and misconfigured accounts may only
     // ever see themselves.
     filters.push(eq(usersTable.id, caller.id));
   }

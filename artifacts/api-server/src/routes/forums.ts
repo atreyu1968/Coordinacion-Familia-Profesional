@@ -44,6 +44,7 @@ import {
   requireAuth,
   resolveReadScope,
   hasScopeOver,
+  isModuleCoordinator,
   type ReadScope,
 } from "../middlewares/auth";
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
@@ -351,11 +352,12 @@ router.delete(
 
     const isAuthor = thread.authorId === caller.id;
     const canManage =
-      MANAGER_ROLES.includes(caller.role) &&
-      hasScopeOver(caller, {
-        provinceId: await provinceOfCenter(thread.centerId),
-        centerId: thread.centerId,
-      });
+      (MANAGER_ROLES.includes(caller.role) &&
+        hasScopeOver(caller, {
+          provinceId: await provinceOfCenter(thread.centerId),
+          centerId: thread.centerId,
+        })) ||
+      (await isModuleCoordinator(caller.id, thread.moduleId));
     if (!isAuthor && !canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -495,11 +497,13 @@ router.delete(
 
     const isAuthor = post.authorId === caller.id;
     const canManage =
-      MANAGER_ROLES.includes(caller.role) &&
-      hasScopeOver(caller, {
-        provinceId: await provinceOfCenter(thread?.centerId ?? null),
-        centerId: thread?.centerId ?? null,
-      });
+      (MANAGER_ROLES.includes(caller.role) &&
+        hasScopeOver(caller, {
+          provinceId: await provinceOfCenter(thread?.centerId ?? null),
+          centerId: thread?.centerId ?? null,
+        })) ||
+      (thread != null &&
+        (await isModuleCoordinator(caller.id, thread.moduleId)));
     if (!isAuthor && !canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -594,11 +598,12 @@ router.put(
     }
 
     const canManage =
-      MANAGER_ROLES.includes(caller.role) &&
-      hasScopeOver(caller, {
-        provinceId: await provinceOfCenter(thread.centerId),
-        centerId: thread.centerId,
-      });
+      (MANAGER_ROLES.includes(caller.role) &&
+        hasScopeOver(caller, {
+          provinceId: await provinceOfCenter(thread.centerId),
+          centerId: thread.centerId,
+        })) ||
+      (await isModuleCoordinator(caller.id, thread.moduleId));
     if (!canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;

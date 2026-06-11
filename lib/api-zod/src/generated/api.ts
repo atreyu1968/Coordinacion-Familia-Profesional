@@ -266,6 +266,8 @@ export const ListMeetingsResponseItem = zod.object({
   "roomName": zod.string(),
   "hostId": zod.number(),
   "hostName": zod.string().nullish(),
+  "moduleId": zod.number().nullish(),
+  "moduleName": zod.string().nullish(),
   "scheduledAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -278,6 +280,7 @@ export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
 export const CreateMeetingBody = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "moduleId": zod.number().nullish(),
   "scheduledAt": zod.coerce.date().nullish()
 })
 
@@ -527,7 +530,7 @@ export const LoginResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -543,7 +546,7 @@ export const GetCurrentUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -571,7 +574,7 @@ export const UpdateProfileResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -588,7 +591,7 @@ export const GetInvitationByTokenParams = zod.object({
 })
 
 export const GetInvitationByTokenResponse = zod.object({
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "inviterName": zod.string().optional(),
   "expiresAt": zod.coerce.date()
 })
@@ -610,7 +613,7 @@ export const RegisterWithTokenResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -664,7 +667,7 @@ export const ListInvitationsResponseItem = zod.object({
   "id": zod.number(),
   "code": zod.string(),
   "email": zod.string().nullish().describe('Email of the user who redeemed the code; null until redeemed.'),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "status": zod.string(),
@@ -682,7 +685,7 @@ export const ListInvitationsResponse = zod.array(ListInvitationsResponseItem)
 export const createInvitationBodyExpiresInHoursDefault = 72;
 
 export const CreateInvitationBody = zod.object({
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "expiresInHours": zod.number().default(createInvitationBodyExpiresInHoursDefault)
@@ -709,7 +712,7 @@ export const ResendInvitationResponse = zod.object({
   "id": zod.number(),
   "code": zod.string(),
   "email": zod.string().nullish().describe('Email of the user who redeemed the code; null until redeemed.'),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "status": zod.string(),
@@ -725,7 +728,7 @@ export const ResendInvitationResponse = zod.object({
  * @summary List users within the caller's scope
  */
 export const ListUsersQueryParams = zod.object({
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']).optional(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
   "provinceId": zod.coerce.number().optional(),
   "centerId": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional()
@@ -735,7 +738,7 @@ export const ListUsersResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -752,7 +755,7 @@ export const GetUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -766,7 +769,7 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']).optional(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
   "status": zod.string().optional(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish()
@@ -776,7 +779,7 @@ export const UpdateUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher', 'student']),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "status": zod.string(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
@@ -983,7 +986,12 @@ export const ListModulesResponseItem = zod.object({
   "code": zod.string().optional(),
   "name": zod.string(),
   "cycleName": zod.string().nullish(),
-  "centerId": zod.number().nullish()
+  "centerId": zod.number().nullish(),
+  "memberCount": zod.number().optional(),
+  "coordinatorId": zod.number().nullish(),
+  "coordinatorName": zod.string().nullish(),
+  "enrolled": zod.boolean().optional(),
+  "myRole": zod.string().nullish()
 })
 export const ListModulesResponse = zod.array(ListModulesResponseItem)
 
@@ -993,6 +1001,86 @@ export const CreateModuleBody = zod.object({
   "name": zod.string(),
   "cycleName": zod.string().nullish(),
   "centerId": zod.number().nullish()
+})
+
+
+/**
+ * @summary List the members of a module (members and managers in scope)
+ */
+export const ListModuleMembersParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const ListModuleMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "role": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListModuleMembersResponse = zod.array(ListModuleMembersResponseItem)
+
+
+/**
+ * @summary Add a teacher to a module (manager in scope)
+ */
+export const AddModuleMemberParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const AddModuleMemberBody = zod.object({
+  "userId": zod.number(),
+  "role": zod.enum(['member', 'coordinator']).optional()
+})
+
+
+/**
+ * @summary Set a member's role (designate/transfer module coordinator)
+ */
+export const UpdateModuleMemberParams = zod.object({
+  "moduleId": zod.coerce.number(),
+  "userId": zod.coerce.number()
+})
+
+export const UpdateModuleMemberBody = zod.object({
+  "role": zod.enum(['member', 'coordinator'])
+})
+
+export const UpdateModuleMemberResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "role": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a teacher from a module (manager in scope)
+ */
+export const RemoveModuleMemberParams = zod.object({
+  "moduleId": zod.coerce.number(),
+  "userId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Self-enroll the current teacher into a module
+ */
+export const EnrollInModuleParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Leave a module the current teacher is enrolled in
+ */
+export const LeaveModuleParams = zod.object({
+  "moduleId": zod.coerce.number()
 })
 
 
@@ -1518,7 +1606,9 @@ export const ListCalendarEventsResponseItem = zod.object({
   "date": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
   "provinceId": zod.number().nullish(),
-  "description": zod.string().nullish()
+  "description": zod.string().nullish(),
+  "meetingId": zod.number().nullish(),
+  "roomName": zod.string().nullish()
 })
 export const ListCalendarEventsResponse = zod.array(ListCalendarEventsResponseItem)
 

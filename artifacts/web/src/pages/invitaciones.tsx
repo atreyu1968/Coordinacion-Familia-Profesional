@@ -54,7 +54,6 @@ const ROLE_LABELS: Record<string, string> = {
   prospector: "Prospector/a",
   department_head: "Jefe/a de departamento",
   teacher: "Profesor/a",
-  student: "Estudiante",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,7 +71,6 @@ function inviteRoleOptions(callerRole: string | undefined): Role[] {
       "prospector",
       "department_head",
       "teacher",
-      "student",
     ] as Role[];
   if (callerRole === "coordinator")
     return ["prospector", "department_head"] as Role[];

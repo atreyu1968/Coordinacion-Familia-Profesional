@@ -8,6 +8,7 @@ export * from "./invitations";
 export * from "./centers";
 export * from "./trainingOffer";
 export * from "./modules";
+export * from "./moduleMemberships";
 export * from "./groups";
 export * from "./teachingAssignments";
 export * from "./resources";

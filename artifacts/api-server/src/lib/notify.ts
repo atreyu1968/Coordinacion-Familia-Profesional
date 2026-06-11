@@ -15,8 +15,7 @@ type Role =
   | "coordinator"
   | "prospector"
   | "department_head"
-  | "teacher"
-  | "student";
+  | "teacher";
 
 /**
  * Resolve the set of active user ids in a province audience.

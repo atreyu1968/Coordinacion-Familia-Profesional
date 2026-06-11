@@ -27,6 +27,10 @@ import {
   TransferDialog,
 } from "@/components/academic-dialogs";
 import {
+  EnrollButton,
+  ModuleMembersDialog,
+} from "@/components/module-members-dialog";
+import {
   GraduationCap,
   Plus,
   Search,
@@ -34,6 +38,7 @@ import {
   Users,
   ClipboardList,
   ArrowLeftRight,
+  Crown,
 } from "lucide-react";
 
 export default function AcademicaPage() {
@@ -191,19 +196,21 @@ export default function AcademicaPage() {
                     <TableHead>Módulo</TableHead>
                     <TableHead>Ciclo</TableHead>
                     <TableHead>Ámbito</TableHead>
+                    <TableHead>Coordinador</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {modulesLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         Cargando...
                       </TableCell>
                     </TableRow>
                   ) : modules.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No hay módulos.
@@ -215,7 +222,20 @@ export default function AcademicaPage() {
                         <TableCell className="font-mono text-sm">
                           {m.code ?? "—"}
                         </TableCell>
-                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {m.name}
+                            {m.myRole === "coordinator" && (
+                              <Badge className="gap-1">
+                                <Crown className="w-3 h-3" /> Coordino
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground font-normal">
+                            {m.memberCount ?? 0}{" "}
+                            {m.memberCount === 1 ? "miembro" : "miembros"}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {m.cycleName ?? "—"}
                         </TableCell>
@@ -225,6 +245,29 @@ export default function AcademicaPage() {
                           ) : (
                             <Badge variant="secondary">Centro</Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {m.coordinatorName ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <EnrollButton module={m} />
+                            {(canManage || m.myRole === "coordinator") && (
+                              <ModuleMembersDialog
+                                module={m}
+                                canDesignateCoordinator={canManage}
+                                trigger={
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1.5"
+                                  >
+                                    <Users className="w-3.5 h-3.5" /> Miembros
+                                  </Button>
+                                }
+                              />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

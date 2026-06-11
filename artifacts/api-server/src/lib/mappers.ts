@@ -50,13 +50,51 @@ export function toTrainingOffer(row: TrainingOffer) {
   };
 }
 
-export function toModule(row: Module) {
+export function toModule(
+  row: Module,
+  extra?: {
+    memberCount?: number;
+    coordinatorId?: number | null;
+    coordinatorName?: string | null;
+    enrolled?: boolean;
+    myRole?: string | null;
+  },
+) {
   return {
     id: row.id,
     code: row.code ?? undefined,
     name: row.name,
     cycleName: row.cycleName,
     centerId: row.centerId,
+    ...(extra
+      ? {
+          memberCount: extra.memberCount,
+          coordinatorId: extra.coordinatorId ?? null,
+          coordinatorName: extra.coordinatorName ?? null,
+          enrolled: extra.enrolled,
+          myRole: extra.myRole ?? null,
+        }
+      : {}),
+  };
+}
+
+export function toModuleMember(row: {
+  id: number;
+  moduleId: number;
+  userId: number;
+  userName?: string | null;
+  email?: string | null;
+  role: string;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    moduleId: row.moduleId,
+    userId: row.userId,
+    userName: row.userName ?? null,
+    email: row.email ?? null,
+    role: row.role,
+    createdAt: row.createdAt,
   };
 }
 
@@ -242,6 +280,8 @@ export function toCalendarEntry(row: CalendarEntry) {
     endDate: row.endDate,
     provinceId: row.provinceId,
     description: row.description,
+    meetingId: null,
+    roomName: null,
   };
 }
 
@@ -332,7 +372,9 @@ export function toFeedback(row: AppFeedback & { userName?: string | null }) {
   };
 }
 
-export function toMeeting(row: Meeting & { hostName?: string | null }) {
+export function toMeeting(
+  row: Meeting & { hostName?: string | null; moduleName?: string | null },
+) {
   return {
     id: row.id,
     title: row.title,
@@ -340,6 +382,8 @@ export function toMeeting(row: Meeting & { hostName?: string | null }) {
     roomName: row.roomName,
     hostId: row.hostId,
     hostName: row.hostName ?? null,
+    moduleId: row.moduleId ?? null,
+    moduleName: row.moduleName ?? null,
     scheduledAt: row.scheduledAt,
     createdAt: row.createdAt,
   };
