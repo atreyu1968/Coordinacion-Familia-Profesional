@@ -8,6 +8,7 @@ import {
   cyclesTable,
   modulesTable,
   teachingAssignmentsTable,
+  syncModuleChatGroup,
 } from "@workspace/db";
 
 // Seeds a handful of TEST teachers for the "Administración y Gestión"
@@ -66,6 +67,10 @@ const TEACHERS: { name: string; email: string; cycle: CycleKey }[] = [
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
   const stats = { teachersCreated: 0, teachersExisting: 0, assignments: 0 };
+  // Modules that ended up with seeded teachers — their auto-managed module
+  // chat groups are synced AFTER the transaction commits (syncModuleChatGroup
+  // reads committed rows through its own connection).
+  const affectedModuleIds = new Set<number>();
 
   await db.transaction(async (tx) => {
     // 1) Resolve the target center (by name, else any with the family).
@@ -164,6 +169,7 @@ async function main(): Promise<void> {
 
       // 4) Upsert teaching assignments (key: teacher+module+center+year).
       for (const m of mods) {
+        affectedModuleIds.add(m.id);
         const [a] = await tx
           .select({ id: teachingAssignmentsTable.id })
           .from(teachingAssignmentsTable)
@@ -189,8 +195,23 @@ async function main(): Promise<void> {
     }
   });
 
+  // Create/sync the auto-managed module chat group for every touched module so
+  // the seeded teachers get their "grupos de mensajes por módulo" — mirroring
+  // what the API does when an assignment is created through the normal flow.
+  const groupStats = { created: 0, updated: 0, unchanged: 0, skipped: 0 };
+  for (const moduleId of affectedModuleIds) {
+    try {
+      groupStats[await syncModuleChatGroup(moduleId)]++;
+    } catch (err) {
+      console.error(`  syncModuleChatGroup failed for module ${moduleId}:`, err);
+    }
+  }
+
   console.log(
     `Test teachers ready — created: ${stats.teachersCreated}, existing: ${stats.teachersExisting}, new assignments: ${stats.assignments}.`,
+  );
+  console.log(
+    `Module chat groups — created: ${groupStats.created}, updated: ${groupStats.updated}, unchanged: ${groupStats.unchanged}, skipped: ${groupStats.skipped}.`,
   );
   console.log(
     `Login: ${TEACHERS.map((t) => t.email).join(", ")} — password: ${PASSWORD}`,

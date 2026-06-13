@@ -79,7 +79,7 @@ import {
   toTeachingAssignment,
   toResource,
 } from "../lib/mappers";
-import { syncModuleChatGroup } from "../lib/moduleChat";
+import { syncModuleChatGroup } from "@workspace/db";
 
 const router: IRouter = Router();
 

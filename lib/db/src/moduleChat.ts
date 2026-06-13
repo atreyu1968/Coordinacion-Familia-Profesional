@@ -1,12 +1,12 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
+import { db } from "./index";
 import {
-  db,
   chatGroupsTable,
   chatGroupMembersTable,
   modulesTable,
   teachingAssignmentsTable,
   usersTable,
-} from "@workspace/db";
+} from "./schema";
 
 export type ModuleChatSyncStatus = "created" | "updated" | "unchanged" | "skipped";
 

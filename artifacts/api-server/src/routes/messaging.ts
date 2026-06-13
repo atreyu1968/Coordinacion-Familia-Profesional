@@ -36,7 +36,7 @@ import {
   requireRole,
   hasScopeOver,
 } from "../middlewares/auth";
-import { syncModuleChatGroup } from "../lib/moduleChat";
+import { syncModuleChatGroup } from "@workspace/db";
 import {
   toChatGroup,
   toMessage,
