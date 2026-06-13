@@ -212,6 +212,9 @@ fi
 echo "==> Applying database schema"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
 
+echo "==> Preloading reference data (provinces, islands, municipalities, FP centers)"
+run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/scripts run seed-reference-data"
+
 echo "==> Restarting service"
 systemctl restart coordina-adg.service
 

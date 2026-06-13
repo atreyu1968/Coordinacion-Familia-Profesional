@@ -1,0 +1,442 @@
+[
+  {
+    "id": 1,
+    "islandId": 1,
+    "name": "Santa Cruz de Tenerife"
+  },
+  {
+    "id": 2,
+    "islandId": 1,
+    "name": "San Cristóbal de La Laguna"
+  },
+  {
+    "id": 3,
+    "islandId": 1,
+    "name": "La Orotava"
+  },
+  {
+    "id": 4,
+    "islandId": 1,
+    "name": "Arona"
+  },
+  {
+    "id": 5,
+    "islandId": 1,
+    "name": "Adeje"
+  },
+  {
+    "id": 6,
+    "islandId": 1,
+    "name": "Granadilla de Abona"
+  },
+  {
+    "id": 7,
+    "islandId": 1,
+    "name": "Puerto de la Cruz"
+  },
+  {
+    "id": 8,
+    "islandId": 1,
+    "name": "Arafo"
+  },
+  {
+    "id": 9,
+    "islandId": 1,
+    "name": "Arico"
+  },
+  {
+    "id": 10,
+    "islandId": 1,
+    "name": "Buenavista del Norte"
+  },
+  {
+    "id": 11,
+    "islandId": 1,
+    "name": "Candelaria"
+  },
+  {
+    "id": 12,
+    "islandId": 1,
+    "name": "El Rosario"
+  },
+  {
+    "id": 13,
+    "islandId": 1,
+    "name": "El Sauzal"
+  },
+  {
+    "id": 14,
+    "islandId": 1,
+    "name": "El Tanque"
+  },
+  {
+    "id": 15,
+    "islandId": 1,
+    "name": "Fasnia"
+  },
+  {
+    "id": 16,
+    "islandId": 1,
+    "name": "Garachico"
+  },
+  {
+    "id": 17,
+    "islandId": 1,
+    "name": "Guía de Isora"
+  },
+  {
+    "id": 18,
+    "islandId": 1,
+    "name": "Güímar"
+  },
+  {
+    "id": 19,
+    "islandId": 1,
+    "name": "Icod de los Vinos"
+  },
+  {
+    "id": 20,
+    "islandId": 1,
+    "name": "La Guancha"
+  },
+  {
+    "id": 21,
+    "islandId": 1,
+    "name": "La Matanza de Acentejo"
+  },
+  {
+    "id": 22,
+    "islandId": 1,
+    "name": "La Victoria de Acentejo"
+  },
+  {
+    "id": 23,
+    "islandId": 1,
+    "name": "Los Realejos"
+  },
+  {
+    "id": 24,
+    "islandId": 1,
+    "name": "Los Silos"
+  },
+  {
+    "id": 25,
+    "islandId": 1,
+    "name": "San Juan de la Rambla"
+  },
+  {
+    "id": 26,
+    "islandId": 1,
+    "name": "San Miguel de Abona"
+  },
+  {
+    "id": 27,
+    "islandId": 1,
+    "name": "Santa Úrsula"
+  },
+  {
+    "id": 28,
+    "islandId": 1,
+    "name": "Santiago del Teide"
+  },
+  {
+    "id": 29,
+    "islandId": 1,
+    "name": "Tacoronte"
+  },
+  {
+    "id": 30,
+    "islandId": 1,
+    "name": "Tegueste"
+  },
+  {
+    "id": 31,
+    "islandId": 1,
+    "name": "Vilaflor de Chasna"
+  },
+  {
+    "id": 32,
+    "islandId": 2,
+    "name": "Barlovento"
+  },
+  {
+    "id": 33,
+    "islandId": 2,
+    "name": "Breña Alta"
+  },
+  {
+    "id": 34,
+    "islandId": 2,
+    "name": "Breña Baja"
+  },
+  {
+    "id": 35,
+    "islandId": 2,
+    "name": "El Paso"
+  },
+  {
+    "id": 36,
+    "islandId": 2,
+    "name": "Fuencaliente de La Palma"
+  },
+  {
+    "id": 37,
+    "islandId": 2,
+    "name": "Garafía"
+  },
+  {
+    "id": 38,
+    "islandId": 2,
+    "name": "Los Llanos de Aridane"
+  },
+  {
+    "id": 39,
+    "islandId": 2,
+    "name": "Puntagorda"
+  },
+  {
+    "id": 40,
+    "islandId": 2,
+    "name": "Puntallana"
+  },
+  {
+    "id": 41,
+    "islandId": 2,
+    "name": "San Andrés y Sauces"
+  },
+  {
+    "id": 42,
+    "islandId": 2,
+    "name": "Santa Cruz de La Palma"
+  },
+  {
+    "id": 43,
+    "islandId": 2,
+    "name": "Tazacorte"
+  },
+  {
+    "id": 44,
+    "islandId": 2,
+    "name": "Tijarafe"
+  },
+  {
+    "id": 45,
+    "islandId": 2,
+    "name": "Villa de Mazo"
+  },
+  {
+    "id": 46,
+    "islandId": 3,
+    "name": "Agulo"
+  },
+  {
+    "id": 47,
+    "islandId": 3,
+    "name": "Alajeró"
+  },
+  {
+    "id": 48,
+    "islandId": 3,
+    "name": "Hermigua"
+  },
+  {
+    "id": 49,
+    "islandId": 3,
+    "name": "San Sebastián de La Gomera"
+  },
+  {
+    "id": 50,
+    "islandId": 3,
+    "name": "Valle Gran Rey"
+  },
+  {
+    "id": 51,
+    "islandId": 3,
+    "name": "Vallehermoso"
+  },
+  {
+    "id": 52,
+    "islandId": 4,
+    "name": "El Pinar de El Hierro"
+  },
+  {
+    "id": 53,
+    "islandId": 4,
+    "name": "Frontera"
+  },
+  {
+    "id": 54,
+    "islandId": 4,
+    "name": "Valverde"
+  },
+  {
+    "id": 55,
+    "islandId": 5,
+    "name": "Agaete"
+  },
+  {
+    "id": 56,
+    "islandId": 5,
+    "name": "Agüimes"
+  },
+  {
+    "id": 57,
+    "islandId": 5,
+    "name": "Artenara"
+  },
+  {
+    "id": 58,
+    "islandId": 5,
+    "name": "Arucas"
+  },
+  {
+    "id": 59,
+    "islandId": 5,
+    "name": "Firgas"
+  },
+  {
+    "id": 60,
+    "islandId": 5,
+    "name": "Gáldar"
+  },
+  {
+    "id": 61,
+    "islandId": 5,
+    "name": "Ingenio"
+  },
+  {
+    "id": 62,
+    "islandId": 5,
+    "name": "La Aldea de San Nicolás"
+  },
+  {
+    "id": 63,
+    "islandId": 5,
+    "name": "Las Palmas de Gran Canaria"
+  },
+  {
+    "id": 64,
+    "islandId": 5,
+    "name": "Mogán"
+  },
+  {
+    "id": 65,
+    "islandId": 5,
+    "name": "Moya"
+  },
+  {
+    "id": 66,
+    "islandId": 5,
+    "name": "San Bartolomé de Tirajana"
+  },
+  {
+    "id": 67,
+    "islandId": 5,
+    "name": "Santa Brígida"
+  },
+  {
+    "id": 68,
+    "islandId": 5,
+    "name": "Santa Lucía de Tirajana"
+  },
+  {
+    "id": 69,
+    "islandId": 5,
+    "name": "Santa María de Guía de Gran Canaria"
+  },
+  {
+    "id": 70,
+    "islandId": 5,
+    "name": "Tejeda"
+  },
+  {
+    "id": 71,
+    "islandId": 5,
+    "name": "Telde"
+  },
+  {
+    "id": 72,
+    "islandId": 5,
+    "name": "Teror"
+  },
+  {
+    "id": 73,
+    "islandId": 5,
+    "name": "Valleseco"
+  },
+  {
+    "id": 74,
+    "islandId": 5,
+    "name": "Valsequillo de Gran Canaria"
+  },
+  {
+    "id": 75,
+    "islandId": 5,
+    "name": "Vega de San Mateo"
+  },
+  {
+    "id": 76,
+    "islandId": 6,
+    "name": "Arrecife"
+  },
+  {
+    "id": 77,
+    "islandId": 6,
+    "name": "Haría"
+  },
+  {
+    "id": 78,
+    "islandId": 6,
+    "name": "San Bartolomé"
+  },
+  {
+    "id": 79,
+    "islandId": 6,
+    "name": "Teguise"
+  },
+  {
+    "id": 80,
+    "islandId": 6,
+    "name": "Tías"
+  },
+  {
+    "id": 81,
+    "islandId": 6,
+    "name": "Tinajo"
+  },
+  {
+    "id": 82,
+    "islandId": 6,
+    "name": "Yaiza"
+  },
+  {
+    "id": 83,
+    "islandId": 7,
+    "name": "Antigua"
+  },
+  {
+    "id": 84,
+    "islandId": 7,
+    "name": "Betancuria"
+  },
+  {
+    "id": 85,
+    "islandId": 7,
+    "name": "La Oliva"
+  },
+  {
+    "id": 86,
+    "islandId": 7,
+    "name": "Pájara"
+  },
+  {
+    "id": 87,
+    "islandId": 7,
+    "name": "Puerto del Rosario"
+  },
+  {
+    "id": 88,
+    "islandId": 7,
+    "name": "Tuineje"
+  }
+]

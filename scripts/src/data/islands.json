@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "provinceId": 1,
+    "name": "Tenerife"
+  },
+  {
+    "id": 2,
+    "provinceId": 1,
+    "name": "La Palma"
+  },
+  {
+    "id": 3,
+    "provinceId": 1,
+    "name": "La Gomera"
+  },
+  {
+    "id": 4,
+    "provinceId": 1,
+    "name": "El Hierro"
+  },
+  {
+    "id": 5,
+    "provinceId": 2,
+    "name": "Gran Canaria"
+  },
+  {
+    "id": 6,
+    "provinceId": 2,
+    "name": "Lanzarote"
+  },
+  {
+    "id": 7,
+    "provinceId": 2,
+    "name": "Fuerteventura"
+  }
+]
