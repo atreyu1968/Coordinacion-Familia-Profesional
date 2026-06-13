@@ -336,6 +336,12 @@ run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' \
   SEED_ADMIN_NAME='${ADMIN_NAME}' pnpm --filter @workspace/scripts run seed-admin"
 
 # ---------------------------------------------------------------------------
+log "Seeding test teachers (Administración y Gestión)"
+# Idempotent: keyed by email + assignment. Set TEST_TEACHER_PASSWORD in the
+# environment to override the default test password.
+run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}'${TEST_TEACHER_PASSWORD:+ TEST_TEACHER_PASSWORD='${TEST_TEACHER_PASSWORD}'} pnpm --filter @workspace/scripts run seed-test-teachers"
+
+# ---------------------------------------------------------------------------
 log "Configuring the systemd service"
 SERVICE_FILE="/etc/systemd/system/coordina-adg.service"
 sed -e "s|__SERVICE_USER__|${SERVICE_USER}|g" \

@@ -219,6 +219,12 @@ run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @wo
 echo "==> Preloading reference data (provinces, islands, municipalities, FP centers)"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/scripts run seed-reference-data"
 
+echo "==> Seeding test teachers (Administración y Gestión)"
+# Idempotent: keyed by email + assignment, so re-running each update never
+# duplicates. Set TEST_TEACHER_PASSWORD in the environment to override the
+# default test password.
+run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}'${TEST_TEACHER_PASSWORD:+ TEST_TEACHER_PASSWORD='${TEST_TEACHER_PASSWORD}'} pnpm --filter @workspace/scripts run seed-test-teachers"
+
 echo "==> Restarting service"
 systemctl restart coordina-adg.service
 
