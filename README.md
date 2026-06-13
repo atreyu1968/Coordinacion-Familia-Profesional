@@ -1,5 +1,7 @@
 # Coordina ADG
 
+**Versión 3.1**
+
 Plataforma de coordinación de Familias Profesionales: gestión de centros,
 profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros,
 videollamadas y formularios documentales.
