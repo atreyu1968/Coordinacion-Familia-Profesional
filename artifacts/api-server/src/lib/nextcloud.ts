@@ -381,6 +381,21 @@ async function removeUserFromGroup(
  * Ensure a Group Folder exists for the module's group and return its id. The
  * Group Folders app exposes its own OCS endpoints under /apps/groupfolders.
  */
+// Storage cap applied to every module's group folder. Defaults to 2 GiB;
+// override with NEXTCLOUD_MODULE_QUOTA_BYTES (bytes; -3 = unlimited).
+const MODULE_FOLDER_QUOTA_BYTES = (() => {
+  const DEFAULT = 2 * 1024 * 1024 * 1024; // 2 GiB
+  const raw = process.env.NEXTCLOUD_MODULE_QUOTA_BYTES;
+  if (raw == null || raw === "") return DEFAULT;
+  const n = Number(raw);
+  // Accept only a positive integer (bytes) or -3 (Group Folders "unlimited").
+  // Anything else (0, decimals, other negatives, NaN) falls back to the default
+  // so a bad value can never break module provisioning.
+  if (n === -3) return -3;
+  if (Number.isInteger(n) && n > 0) return n;
+  return DEFAULT;
+})();
+
 async function ensureGroupFolder(
   config: NextcloudConfig,
   opts: { mount: string; groupId: string },
@@ -438,6 +453,15 @@ async function ensureGroupFolder(
     "POST",
     `/apps/groupfolders/folders/${folderId}/groups/${encodeURIComponent(opts.groupId)}?format=json`,
     { permissions: "31" },
+  );
+  // Cap the folder's storage (default 2 GiB). The Group Folders quota endpoint
+  // is an idempotent "set", so this also enforces the limit on pre-existing
+  // folders the next time the module space is provisioned/opened.
+  await ocs(
+    config,
+    "POST",
+    `/apps/groupfolders/folders/${folderId}/quota?format=json`,
+    { quota: String(MODULE_FOLDER_QUOTA_BYTES) },
   );
   return folderId;
 }

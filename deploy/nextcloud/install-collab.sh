@@ -189,6 +189,50 @@ occ app:install richdocuments >/dev/null 2>&1 || true
 occ app:enable  richdocuments >/dev/null 2>&1 || true
 occ config:app:set richdocuments wopi_url --value="${COLLABORA_URL_PUBLIC}" >/dev/null 2>&1 || true
 
+# --- Brand the workspace + trim the UI (idempotent) ------------------------
+log "Branding Nextcloud and trimming the UI to the module workspace"
+occ app:enable theming >/dev/null 2>&1 || true
+occ theming:config name "Coordina ADG" >/dev/null 2>&1 || true
+# Primary brand colour. The config key was renamed across NC versions, so try
+# the newer name first and fall back to the older one.
+occ theming:config primary_color "#0050b3" >/dev/null 2>&1 || \
+  occ theming:config color "#0050b3" >/dev/null 2>&1 || true
+# Push the app logo into the container, then register it with the Theming app:
+# the colour logo for the (light) login page, the white logo for the coloured
+# top bar.
+nc_cp()    { docker compose -f "${SCRIPT_DIR}/docker-compose.yml" cp "$1" "nextcloud:$2" >/dev/null 2>&1 || true; }
+nc_chown() { docker compose -f "${SCRIPT_DIR}/docker-compose.yml" exec -T -u root nextcloud chown www-data:www-data "$1" >/dev/null 2>&1 || true; }
+if [[ -f "${SCRIPT_DIR}/brand-logo.png" ]]; then
+  nc_cp "${SCRIPT_DIR}/brand-logo.png" /tmp/brand-logo.png
+  nc_chown /tmp/brand-logo.png
+  occ theming:config logo /tmp/brand-logo.png >/dev/null 2>&1 || true
+fi
+if [[ -f "${SCRIPT_DIR}/brand-logo-white.png" ]]; then
+  nc_cp "${SCRIPT_DIR}/brand-logo-white.png" /tmp/brand-logo-white.png
+  nc_chown /tmp/brand-logo-white.png
+  occ theming:config logoheader /tmp/brand-logo-white.png >/dev/null 2>&1 || true
+fi
+# Centre the workspace on the module folder: land users in Files (the SSO link
+# already deep-links into their module group folder) and remove the Dashboard
+# and Photos sections so the space is just the module folder.
+occ config:system:set defaultapp --value=files >/dev/null 2>&1 || true
+occ app:disable dashboard >/dev/null 2>&1 || true
+occ app:disable photos    >/dev/null 2>&1 || true
+
+# Surface silent no-ops: the steps above are best-effort (|| true) so a deploy is
+# never aborted by them, but warn loudly if the trims/branding did not stick.
+enabled_apps="$(occ app:list --enabled 2>/dev/null || true)"
+case "${enabled_apps}" in
+  *dashboard*) note "Nextcloud 'dashboard' is still enabled — disable manually: occ app:disable dashboard" ;;
+esac
+case "${enabled_apps}" in
+  *photos*) note "Nextcloud 'photos' is still enabled — disable manually: occ app:disable photos" ;;
+esac
+case "$(occ theming:config name 2>/dev/null || true)" in
+  *Coordina*) : ;;
+  *) note "Could not confirm Nextcloud branding was applied — set name/logo in Nextcloud admin → Theming if missing." ;;
+esac
+
 # --- Host nginx subpaths ---------------------------------------------------
 log "Configuring nginx subpaths (/nextcloud, /collabora) on ${APP_DOMAIN}"
 # Reuse the upgrade map from the main install; define a local fallback if absent.
