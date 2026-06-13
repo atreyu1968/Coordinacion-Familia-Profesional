@@ -14,6 +14,7 @@ import {
   type ModuleMember,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { EmailLink } from "@/components/contact-link";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -245,7 +246,7 @@ export function ModuleMembersDialog({
                   </div>
                   {m.email && (
                     <div className="text-xs text-muted-foreground truncate">
-                      {m.email}
+                      <EmailLink email={m.email} />
                     </div>
                   )}
                 </div>

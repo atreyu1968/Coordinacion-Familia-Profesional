@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailLink } from "@/components/contact-link";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -210,7 +211,7 @@ export default function UsuariosPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {u.email}
+                      <EmailLink email={u.email} />
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">

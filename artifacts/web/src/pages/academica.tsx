@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmailLink } from "@/components/contact-link";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -149,7 +150,7 @@ export default function AcademicaPage() {
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.name}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {t.email}
+                          <EmailLink email={t.email} />
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant="secondary">

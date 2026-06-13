@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { CenterMap } from "@/components/center-map";
 import { CenterFormDialog } from "@/components/center-form-dialog";
+import { EmailLink, PhoneLink } from "@/components/contact-link";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -233,8 +234,26 @@ export default function CentroDetallePage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <InfoRow icon={MapPin} label="Dirección" value={center.address} />
-            <InfoRow icon={Phone} label="Teléfono" value={center.phone} />
-            <InfoRow icon={Mail} label="Correo" value={center.email} />
+            <InfoRow
+              icon={Phone}
+              label="Teléfono"
+              value={center.phone}
+              node={
+                center.phone ? (
+                  <PhoneLink phone={center.phone} className="font-medium" />
+                ) : undefined
+              }
+            />
+            <InfoRow
+              icon={Mail}
+              label="Correo"
+              value={center.email}
+              node={
+                center.email ? (
+                  <EmailLink email={center.email} className="font-medium" />
+                ) : undefined
+              }
+            />
             <InfoRow
               icon={Globe}
               label="Sitio web"
@@ -307,11 +326,13 @@ function InfoRow({
   label,
   value,
   href,
+  node,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value?: string | null;
   href?: string;
+  node?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-2">
@@ -319,7 +340,9 @@ function InfoRow({
       <div>
         <span className="text-muted-foreground">{label}: </span>
         {value ? (
-          href ? (
+          node ? (
+            node
+          ) : href ? (
             <a
               href={href}
               target="_blank"
