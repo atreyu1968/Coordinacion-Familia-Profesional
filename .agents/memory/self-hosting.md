@@ -170,3 +170,15 @@ override → nginx `server_name` (ignoring `_`/localhost/IPv4). The one-shot use
 `sudo DOMAIN=their-domain bash deploy/update.sh`. When writing back to `.env`, upsert
 with grep-drop-then-append + `cat >` (NOT `mv`) so the file's owner/perms are
 preserved — `mv` from /tmp makes it root:root 600 and the service user can't read it.
+
+## DB schema push in deploy scripts MUST be non-interactive (push-force)
+**Why:** `update.sh`/`install.sh` run with no TTY. Plain `drizzle-kit push`
+(`@workspace/db run push`) prompts for confirmation on any change it deems risky;
+with no stdin it hangs or fails, and `set -e` aborts the deploy BEFORE the
+`seed-reference-data` step → provinces/islands/municipalities/FP-centers tables
+stay EMPTY (symptom: "no centros ni islas" in the dropdowns after an Ubuntu
+deploy/update). **How to apply:** deploy scripts must call `run push-force`
+(non-interactive variant in lib/db/package.json), never `run push`. Schema
+changes in this app are additive, so forcing is safe. Immediate server recovery
+without re-deploying: run the seed directly —
+`DATABASE_URL=$(grep ^DATABASE_URL= .env | cut -d= -f2-) pnpm --filter @workspace/scripts run seed-reference-data`.

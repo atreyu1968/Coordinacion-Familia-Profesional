@@ -210,7 +210,11 @@ if [[ -f "${NGINX_CONF}" ]]; then
 fi
 
 echo "==> Applying database schema"
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
+# Use the non-interactive (push-force) variant: this runs with no TTY, so the
+# interactive `push` would block on any confirmation prompt and `set -e` would
+# abort the update BEFORE the reference-data seed below, leaving provinces/
+# islands/centers empty. Changes in this app are additive, so forcing is safe.
+run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push-force"
 
 echo "==> Preloading reference data (provinces, islands, municipalities, FP centers)"
 run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/scripts run seed-reference-data"

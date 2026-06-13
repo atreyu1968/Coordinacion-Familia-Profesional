@@ -320,7 +320,10 @@ fi
 
 # ---------------------------------------------------------------------------
 log "Applying database schema"
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push"
+# Non-interactive (push-force): the installer runs with no TTY, so the
+# interactive `push` could block on a confirmation prompt and abort the install
+# (set -e) before the reference-data seed runs. Schema changes here are additive.
+run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push-force"
 
 # ---------------------------------------------------------------------------
 log "Preloading reference data (provinces, islands, municipalities, FP centers)"
