@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
   pool,
@@ -9,6 +9,8 @@ import {
   islandsTable,
   municipalitiesTable,
   centersTable,
+  cyclesTable,
+  modulesTable,
 } from "@workspace/db";
 
 // Preloads the official reference data (Canarias provinces, islands,
@@ -58,12 +60,26 @@ type CenterRow = {
   centerType: string | null;
   families: string[];
 };
+type CycleRow = {
+  id: number;
+  name: string;
+  code: string | null;
+  level: string | null;
+};
+type ModuleRow = {
+  id: number;
+  cycleId: number;
+  code: string | null;
+  name: string;
+};
 
 async function main(): Promise<void> {
   const provinces = load<ProvinceRow>("provinces");
   const islands = load<IslandRow>("islands");
   const municipalities = load<MunicipalityRow>("municipalities");
   const centers = load<CenterRow>("centers");
+  const cycles = load<CycleRow>("cycles");
+  const modules = load<ModuleRow>("modules");
 
   // Names keyed by the (source) id used in the JSON, so a center/island can
   // resolve its parent by name and then to the real id in the target DB.
@@ -72,6 +88,7 @@ async function main(): Promise<void> {
   const municipalityNameBySrcId = new Map(
     municipalities.map((m) => [m.id, m.name]),
   );
+  const cycleNameBySrcId = new Map(cycles.map((c) => [c.id, c.name]));
 
   const stats = { inserted: 0, updated: 0, skipped: 0 };
 
@@ -239,6 +256,79 @@ async function main(): Promise<void> {
           nature: c.nature,
           centerType: c.centerType,
           families: c.families ?? [],
+        });
+        stats.inserted++;
+      }
+    }
+
+    // --- cycles (key: name + level) ---------------------------------------
+    const cycleIdBySrcId = new Map<number, number>();
+    for (const cy of cycles) {
+      const existing = await tx
+        .select({ id: cyclesTable.id })
+        .from(cyclesTable)
+        .where(
+          cy.level
+            ? and(
+                eq(cyclesTable.name, cy.name),
+                eq(cyclesTable.level, cy.level),
+              )
+            : eq(cyclesTable.name, cy.name),
+        )
+        .limit(1);
+      let id: number;
+      if (existing.length > 0) {
+        id = existing[0].id;
+        stats.skipped++;
+      } else {
+        const [row] = await tx
+          .insert(cyclesTable)
+          .values({ name: cy.name, code: cy.code, level: cy.level })
+          .returning({ id: cyclesTable.id });
+        id = row.id;
+        stats.inserted++;
+      }
+      cycleIdBySrcId.set(cy.id, id);
+    }
+
+    // --- modules (global catalog: centerId NULL; key: cycleId + name) ------
+    for (const mod of modules) {
+      const cycleId = cycleIdBySrcId.get(mod.cycleId);
+      if (cycleId === undefined) {
+        throw new Error(
+          `Module "${mod.name}" references unknown cycle id ${mod.cycleId}`,
+        );
+      }
+      const cycleName = cycleNameBySrcId.get(mod.cycleId) ?? null;
+      const existing = await tx
+        .select({ id: modulesTable.id, code: modulesTable.code })
+        .from(modulesTable)
+        .where(
+          and(
+            eq(modulesTable.cycleId, cycleId),
+            eq(modulesTable.name, mod.name),
+            isNull(modulesTable.centerId),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        // Backfill the official code if it is still missing.
+        if (!existing[0].code && mod.code) {
+          await tx
+            .update(modulesTable)
+            .set({ code: mod.code })
+            .where(eq(modulesTable.id, existing[0].id));
+          stats.updated++;
+        } else {
+          stats.skipped++;
+        }
+      } else {
+        await tx.insert(modulesTable).values({
+          name: mod.name,
+          code: mod.code,
+          cycleId,
+          cycleName,
+          centerId: null,
         });
         stats.inserted++;
       }

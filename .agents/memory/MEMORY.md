@@ -1,4 +1,5 @@
 - [Self-hosting Coordina ADG](self-hosting.md) — non-obvious constraints for running outside Replit (no GCS); local storage driver + installer wiring.
+- [FP catalog seed](fp-catalog-seed.md) — cycles/modules come from todofp.es Grados D; modules are global (centerId null); dedupe modules by resolved cycleId (cross-family duplication gotcha).
 - [Móvil PWA install assets](movil-pwa-assets.md) — install icon comes from public/manifest.json + public/icon-*.png, NOT app.json; regenerate from brand logo.
 - [Móvil web side strips](movil-webframe-side-strips.md) — light strips beside the blue header on phone are WebMobileFrame's desktop frame, NOT safe-area; gate it on width<600.
 - [PWA + Web Push (Expo web build)](pwa-web-push.md) — how the mobile app is made installable and how browser/web-push notifications work, incl. SDK54 quirks.

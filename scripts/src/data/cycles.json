@@ -1,0 +1,1088 @@
+[
+  {
+    "id": 1,
+    "name": "Técnico en Actividades Ecuestres",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 2,
+    "name": "Técnico en Guía en el Medio Natural y de Tiempo Libre",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 3,
+    "name": "Técnico en Gestión Administrativa",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 4,
+    "name": "Técnico en Aprovechamiento y Conservación del Medio Natural",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 5,
+    "name": "Técnico en Jardinería y Floristería",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 6,
+    "name": "Técnico en Producción Agroecológica",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 7,
+    "name": "Técnico en Producción Agropecuaria",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 8,
+    "name": "Técnico en Impresión Gráfica",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 9,
+    "name": "Técnico en Postimpresión y Acabados Gráficos",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 10,
+    "name": "Técnico en Preimpresión Digital",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 11,
+    "name": "Técnico en Actividades Comerciales",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 12,
+    "name": "Técnico en Comercialización de Productos Alimentarios",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 13,
+    "name": "Técnico en Construcción",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 14,
+    "name": "Técnico en Obras de Interior, Decoración y Rehabilitación",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 15,
+    "name": "Técnico en Instalaciones Eléctricas y Automáticas",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 16,
+    "name": "Técnico en Instalaciones de Telecomunicaciones",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 17,
+    "name": "Técnico en Redes y Estaciones de Tratamiento de Aguas",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 18,
+    "name": "Técnico en Conformado por Moldeo de Metales y Polímeros",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 19,
+    "name": "Técnico en Mecanizado",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 20,
+    "name": "Técnico en Montaje de Estructuras e Instalación de Sistemas Aeronáuticos",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 21,
+    "name": "Técnico en Soldadura y Calderería",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 22,
+    "name": "Técnico en Cocina y Gastronomía",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 23,
+    "name": "Técnico en Servicios en Restauración",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 24,
+    "name": "Técnico en Estética y Belleza",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 25,
+    "name": "Técnico en Peluquería y Cosmética Capilar",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 26,
+    "name": "Técnico en Vídeo Disc-Jockey y Sonido",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 27,
+    "name": "Técnico en Aceites de Oliva y Vinos",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 28,
+    "name": "Técnico en Elaboración de Productos Alimenticios",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 29,
+    "name": "Técnico en Panadería, Repostería y Confitería",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 30,
+    "name": "Técnico en Excavaciones y Sondeos",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 31,
+    "name": "Técnico en Piedra Natural",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 32,
+    "name": "Técnico en Sistemas Microinformáticos y Redes",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 33,
+    "name": "Técnico en Instalaciones Frigoríficas y de Climatización",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 34,
+    "name": "Técnico en Instalaciones de Producción de Calor",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 35,
+    "name": "Técnico en Mantenimiento Electromecánico",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 36,
+    "name": "Técnico en Carpintería y Mueble",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 37,
+    "name": "Técnico en Instalación y Amueblamiento",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 38,
+    "name": "Técnico en Procesado y Transformación de la Madera",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 39,
+    "name": "Técnico en Cultivos Acuícolas",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 40,
+    "name": "Técnico en Mantenimiento y Control de la Maquinaria de Buques y Embarcaciones",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 41,
+    "name": "Técnico en Navegación y Pesca de Litoral",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 42,
+    "name": "Técnico en Operaciones Subacuáticas e Hiperbáricas",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 43,
+    "name": "Técnico en Operaciones de Laboratorio",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 44,
+    "name": "Técnico en Planta Química",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 45,
+    "name": "Técnico en Emergencias Sanitarias",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 46,
+    "name": "Técnico en Farmacia y Parafarmacia",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 47,
+    "name": "Técnico en Emergencias y Protección Civil",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 48,
+    "name": "Técnico en Sanidad Ambiental Aplicada",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 49,
+    "name": "Técnico en Seguridad",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 50,
+    "name": "Técnico en Atención a Personas en Situación de Dependencia",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 51,
+    "name": "Técnico en Servicios Funerarios",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 52,
+    "name": "Técnico en Calzado y Complementos de Moda",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 53,
+    "name": "Técnico en Confección y Moda",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 54,
+    "name": "Técnico en Fabricación y Ennoblecimiento de Productos Textiles",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 55,
+    "name": "Técnico en Carrocería",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 56,
+    "name": "Técnico en Conducción de Vehículos de Transporte por Carretera",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 57,
+    "name": "Técnico en Electromecánica de Maquinaria",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 58,
+    "name": "Técnico en Electromecánica de Vehículos Automóviles",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 59,
+    "name": "Técnico en Mantenimiento de Embarcaciones de Recreo",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 60,
+    "name": "Técnico en Mantenimiento de Estructuras de Madera y Mobiliario de Embarcaciones de Recreo",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 61,
+    "name": "Técnico en Mantenimiento de Material Rodante Ferroviario",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 62,
+    "name": "Técnico en Fabricación de Productos Cerámicos",
+    "code": null,
+    "level": "Grado Medio"
+  },
+  {
+    "id": 63,
+    "name": "Técnico Superior en Acondicionamiento Físico",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 64,
+    "name": "Técnico Superior en Enseñanza y Animación Sociodeportiva",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 65,
+    "name": "Técnico Superior en Administración y Finanzas",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 66,
+    "name": "Técnico Superior en Asistencia a la Dirección",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 67,
+    "name": "Técnico Superior en Ganadería y Asistencia en Sanidad Animal",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 68,
+    "name": "Técnico Superior en Gestión Forestal y del Medio Natural",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 69,
+    "name": "Técnico Superior en Paisajismo y Medio Rural",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 70,
+    "name": "Técnico Superior en Diseño y Edición de Publicaciones Impresas y Multimedia",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 71,
+    "name": "Técnico Superior en Diseño y Gestión de la Producción Gráfica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 72,
+    "name": "Técnico Superior Artista Fallero y Construcción de Escenografías",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 73,
+    "name": "Técnico Superior en Diseño y construcción artesanal de instrumentos musicales de cuerda",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 74,
+    "name": "Técnico Superior en Comercio Internacional",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 75,
+    "name": "Técnico Superior en Gestión de Ventas y Espacios Comerciales",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 76,
+    "name": "Técnico Superior en Marketing y Publicidad",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 77,
+    "name": "Técnico Superior en Transporte y Logística",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 78,
+    "name": "Técnico Superior en Organización y Control de Obras de Construcción",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 79,
+    "name": "Técnico Superior en Proyectos de Edificación",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 80,
+    "name": "Técnico Superior en Proyectos de Obra Civil",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 81,
+    "name": "Técnico Superior en Automatización y Robótica Industrial",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 82,
+    "name": "Técnico Superior en Electromedicina Clínica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 83,
+    "name": "Técnico Superior en Mantenimiento Electrónico",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 84,
+    "name": "Técnico Superior en Sistemas Electrotécnicos y Automatizados",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 85,
+    "name": "Técnico Superior en Sistemas de Telecomunicaciones e Informáticos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 86,
+    "name": "Técnico Superior en Centrales Eléctricas",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 87,
+    "name": "Técnico Superior en Eficiencia Energética y Energía Solar Térmica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 88,
+    "name": "Técnico Superior en Energías Renovables",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 89,
+    "name": "Técnico Superior en Gestión del Agua",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 90,
+    "name": "Técnico Superior en Construcciones Metálicas",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 91,
+    "name": "Técnico Superior en Diseño en Fabricación Mecánica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 92,
+    "name": "Técnico Superior en Programación de la Producción en Fabricación Mecánica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 93,
+    "name": "Técnico Superior en Programación de la Producción en Moldeo de Metales y Polímeros",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 94,
+    "name": "Técnico Superior en Agencias de Viajes y Gestión de Eventos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 95,
+    "name": "Técnico Superior en Dirección de Cocina",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 96,
+    "name": "Técnico Superior en Dirección de Servicios de Restauración",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 97,
+    "name": "Técnico Superior en Gestión de Alojamientos Turísticos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 98,
+    "name": "Técnico Superior en Guía, Información y Asistencias Turísticas",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 99,
+    "name": "Técnico Superior en Asesoría de Imagen Personal y Corporativa",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 100,
+    "name": "Técnico Superior en Caracterización y Maquillaje Profesional",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 101,
+    "name": "Técnico Superior en Estilismo y Dirección de Peluquería",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 102,
+    "name": "Técnico Superior en Estética Integral y Bienestar",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 103,
+    "name": "Técnico Superior en Termalismo y Bienestar",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 104,
+    "name": "Técnico Superior en Animaciones 3D, Juegos y Entornos Interactivos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 105,
+    "name": "Técnico Superior en Iluminación, Captación y Tratamiento de Imagen",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 106,
+    "name": "Técnico Superior en Producción de Audiovisuales y Espectáculos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 107,
+    "name": "Técnico Superior en Realización de Proyectos Audiovisuales y Espectáculos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 108,
+    "name": "Técnico Superior en Sonido para Audiovisuales y Espectáculos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 109,
+    "name": "Técnico Superior en Procesos y Calidad en la Industria Alimentaria",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 110,
+    "name": "Técnico Superior en Vitivinicultura",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 111,
+    "name": "Técnico Superior en Administración de Sistemas Informáticos en Red",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 112,
+    "name": "Técnico Superior en Desarrollo de Aplicaciones Multiplataforma",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 113,
+    "name": "Técnico Superior en Desarrollo de Aplicaciones Web",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 114,
+    "name": "Técnico Superior en Desarrollo de Proyectos de Instalaciones Térmicas y de Fluidos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 115,
+    "name": "Técnico Superior en Mantenimiento de Instalaciones Térmicas y de Fluidos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 116,
+    "name": "Técnico Superior en Mecatrónica Industrial",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 117,
+    "name": "Técnico Superior en Diseño y Amueblamiento",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 118,
+    "name": "Técnico Superior en Acuicultura",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 119,
+    "name": "Técnico Superior en Organización del Mantenimiento de Maquinaria de Buques y Embarcaciones",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 120,
+    "name": "Técnico Superior en Transporte Marítimo y Pesca de Altura",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 121,
+    "name": "Técnico Superior en Fabricación de Productos Farmacéuticos, Biotecnológicos y Afines",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 122,
+    "name": "Técnico Superior en Laboratorio de Análisis y de Control de Calidad",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 123,
+    "name": "Técnico Superior en Química Industrial",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 124,
+    "name": "Técnico Superior en Anatomía Patológica y Citodiagnóstico",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 125,
+    "name": "Técnico Superior en Audiología Protésica",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 126,
+    "name": "Técnico Superior en Documentación y Administración Sanitarias",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 127,
+    "name": "Técnico Superior en Higiene Bucodental",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 128,
+    "name": "Técnico Superior en Imagen para el Diagnóstico y Medicina Nuclear",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 129,
+    "name": "Técnico Superior en Laboratorio Clínico y Biomédico",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 130,
+    "name": "Técnico Superior en Ortoprótesis y Productos de Apoyo",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 131,
+    "name": "Técnico Superior en Prótesis Dentales",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 132,
+    "name": "Técnico Superior en Radioterapia y Dosimetría",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 133,
+    "name": "Técnico Superior en Coordinación de Emergencias y Protección Civil",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 134,
+    "name": "Técnico Superior en Educación y Control Ambiental",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 135,
+    "name": "Técnico Superior en Prevención de Riesgos Profesionales",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 136,
+    "name": "Técnico Superior en Química y Salud Ambiental",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 137,
+    "name": "Técnico Superior en Animación Sociocultural y Turística",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 138,
+    "name": "Técnico Superior en Educación Infantil",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 139,
+    "name": "Técnico Superior en Formación para la Movilidad Segura y Sostenible",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 140,
+    "name": "Técnico Superior en Integración Social",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 141,
+    "name": "Técnico Superior en Mediación Comunicativa",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 142,
+    "name": "Técnico Superior en Promoción de Igualdad de Género",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 143,
+    "name": "Técnico Superior en Diseño Técnico en Textil y Piel",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 144,
+    "name": "Técnico Superior en Diseño y Producción de Calzado y Complementos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 145,
+    "name": "Técnico Superior en Patronaje y Moda",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 146,
+    "name": "Técnico Superior en Vestuario a Medida y de Espectáculos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 147,
+    "name": "Técnico Superior en Automoción",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 148,
+    "name": "Técnico Superior en Mantenimiento Aeromecánico de Aviones con Motor de Pistón",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 149,
+    "name": "Técnico Superior en Mantenimiento Aeromecánico de Aviones con Motor de Turbina",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 150,
+    "name": "Técnico Superior en Mantenimiento Aeromecánico de Helicópteros con Motor de Pistón",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 151,
+    "name": "Técnico Superior en Mantenimiento Aeromecánico de Helicópteros con Motor de Turbina",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 152,
+    "name": "Técnico Superior en Mantenimiento de Sistemas Electrónicos y Aviónicos de Aeronaves",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 153,
+    "name": "Técnico Superior en Desarrollo y Fabricación de Productos Cerámicos",
+    "code": null,
+    "level": "Grado Superior"
+  },
+  {
+    "id": 154,
+    "name": "Título Profesional Básico en Acceso y Conservación en Instalaciones Deportivas",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 155,
+    "name": "Título Profesional Básico en Informática de Oficina",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 156,
+    "name": "Título Profesional Básico en Servicios Administrativos",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 157,
+    "name": "Título Profesional Básico en Actividades Agropecuarias",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 158,
+    "name": "Título Profesional Básico en Agro-jardinería y Composiciones Florales",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 159,
+    "name": "Título Profesional Básico en Aprovechamientos Forestales",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 160,
+    "name": "Título Profesional Básico en Artes Gráficas",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 161,
+    "name": "Título Profesional Básico en Servicios Comerciales",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 162,
+    "name": "Título Profesional Básico en Reforma y Mantenimiento de Edificios",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 163,
+    "name": "Título Profesional Básico en Electricidad y Electrónica",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 164,
+    "name": "Título Profesional Básico en Fabricación de Elementos Metálicos",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 165,
+    "name": "Título Profesional Básico en Instalaciones Electrotécnicas y Mecánica",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 166,
+    "name": "Título Profesional Básico en Fabricación y Montaje",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 167,
+    "name": "Título Profesional Básico en Actividades de Panadería y Pastelería",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 168,
+    "name": "Título Profesional Básico en Alojamiento y Lavandería",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 169,
+    "name": "Título Profesional Básico en Cocina y Restauración",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 170,
+    "name": "Título Profesional Básico en Peluquería y Estética",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 171,
+    "name": "Título Profesional Básico en Industrias Alimentarias",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 172,
+    "name": "Título Profesional Básico en Informática y Comunicaciones",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 173,
+    "name": "Título Profesional Básico en Mantenimiento de Viviendas",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 174,
+    "name": "Título Profesional Básico en Carpintería y Mueble",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 175,
+    "name": "Título Profesional Básico en Actividades Marítimo-Pesqueras",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 176,
+    "name": "Título Profesional Básico en Mantenimiento de Embarcaciones Deportivas y de Recreo",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 177,
+    "name": "Título Profesional Básico en Actividades Domésticas y Limpieza de Edificios",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 178,
+    "name": "Título Profesional Básico en Arreglo y Reparación de Artículos Textiles y de Piel",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 179,
+    "name": "Título Profesional Básico en Tapicería y Cortinaje",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 180,
+    "name": "Título Profesional Básico en Mantenimiento de Vehículos",
+    "code": null,
+    "level": "Grado Básico"
+  },
+  {
+    "id": 181,
+    "name": "Título Profesional Básico en Vidriería y Alfarería",
+    "code": null,
+    "level": "Grado Básico"
+  }
+]
