@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -13,18 +14,43 @@ import { router, useFocusEffect } from "expo-router";
 
 import {
   useListChatGroups,
+  useSyncModuleChatGroups,
   type ChatGroup,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, EmptyState, ErrorState, Loading } from "@/components/ui";
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatRelative, initials } from "@/lib/format";
 
 export default function ChatListScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useListChatGroups();
   const [search, setSearch] = useState("");
+
+  const canManageModules =
+    user?.role === "superadmin" ||
+    user?.role === "coordinator" ||
+    user?.role === "department_head";
+  const syncModules = useSyncModuleChatGroups();
+
+  const generateModuleGroups = () => {
+    if (syncModules.isPending) return;
+    syncModules.mutate(undefined, {
+      onSuccess: (result) => {
+        void refetch();
+        Alert.alert(
+          "Grupos de módulos",
+          `Creados: ${result.created} · Actualizados: ${result.updated}`,
+        );
+      },
+      onError: () => {
+        Alert.alert("Error", "No se pudieron generar los grupos.");
+      },
+    });
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -46,13 +72,22 @@ export default function ChatListScreen() {
       <AppHeader
         title="Mensajes"
         right={
-          <Pressable
-            onPress={() => router.push("/new-chat")}
-            hitSlop={12}
-            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-          >
-            <Feather name="edit" size={22} color="#ffffff" />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => router.push("/new-group")}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <Feather name="users" size={22} color="#ffffff" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/new-chat")}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <Feather name="edit" size={22} color="#ffffff" />
+            </Pressable>
+          </View>
         }
       />
       {isLoading ? (
@@ -68,35 +103,62 @@ export default function ChatListScreen() {
           refreshing={isRefetching}
           scrollEnabled={filtered.length > 0}
           ListHeaderComponent={
-            (data ?? []).length > 0 ? (
-              <View style={styles.searchWrap}>
-                <View
-                  style={[
-                    styles.searchBox,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                      borderRadius: colors.radius,
-                    },
-                  ]}
-                >
-                  <Feather name="search" size={18} color={colors.mutedForeground} />
-                  <TextInput
-                    value={search}
-                    onChangeText={setSearch}
-                    placeholder="Buscar conversaciones"
-                    placeholderTextColor={colors.mutedForeground}
-                    autoCapitalize="none"
-                    style={[styles.searchInput, { color: colors.foreground }]}
-                  />
-                  {search.length > 0 ? (
-                    <Pressable onPress={() => setSearch("")} hitSlop={8}>
-                      <Feather name="x" size={18} color={colors.mutedForeground} />
-                    </Pressable>
-                  ) : null}
+            <View>
+              {canManageModules ? (
+                <View style={styles.generateWrap}>
+                  <Pressable
+                    onPress={generateModuleGroups}
+                    disabled={syncModules.isPending}
+                    style={({ pressed }) => [
+                      styles.generateBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        borderRadius: colors.radius,
+                        opacity: pressed || syncModules.isPending ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather name="refresh-cw" size={16} color={colors.primaryForeground} />
+                    <Text
+                      style={[styles.generateText, { color: colors.primaryForeground }]}
+                    >
+                      {syncModules.isPending
+                        ? "Generando…"
+                        : "Generar grupos de módulos"}
+                    </Text>
+                  </Pressable>
                 </View>
-              </View>
-            ) : null
+              ) : null}
+              {(data ?? []).length > 0 ? (
+                <View style={styles.searchWrap}>
+                  <View
+                    style={[
+                      styles.searchBox,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        borderRadius: colors.radius,
+                      },
+                    ]}
+                  >
+                    <Feather name="search" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      value={search}
+                      onChangeText={setSearch}
+                      placeholder="Buscar conversaciones"
+                      placeholderTextColor={colors.mutedForeground}
+                      autoCapitalize="none"
+                      style={[styles.searchInput, { color: colors.foreground }]}
+                    />
+                    {search.length > 0 ? (
+                      <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                        <Feather name="x" size={18} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+              ) : null}
+            </View>
           }
           ListEmptyComponent={
             search.trim() ? (
@@ -161,6 +223,17 @@ export default function ChatListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 18 },
+  generateWrap: { paddingHorizontal: 16, paddingTop: 16 },
+  generateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  generateText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   searchWrap: { padding: 16 },
   searchBox: {
     flexDirection: "row",

@@ -81,6 +81,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="chat/[id]" />
         <Stack.Screen name="new-chat" options={{ presentation: "modal" }} />
+        <Stack.Screen name="new-group" options={{ presentation: "modal" }} />
         <Stack.Screen name="scan" options={{ presentation: "modal" }} />
         <Stack.Screen name="surveys" />
         <Stack.Screen name="survey/[id]" />

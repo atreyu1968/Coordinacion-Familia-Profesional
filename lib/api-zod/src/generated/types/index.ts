@@ -176,6 +176,7 @@ export * from './surveyQuestionType';
 export * from './surveyResults';
 export * from './surveyStatus';
 export * from './surveyType';
+export * from './syncModuleChatGroupsResult';
 export * from './teachingAssignment';
 export * from './timeSeriesPoint';
 export * from './trainingOffer';

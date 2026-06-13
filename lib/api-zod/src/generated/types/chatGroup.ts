@@ -12,6 +12,7 @@ export interface ChatGroup {
   type?: string;
   provinceId?: number | null;
   centerId?: number | null;
+  moduleId?: number | null;
   lastMessageAt?: Date | null;
   unreadCount?: number;
 }

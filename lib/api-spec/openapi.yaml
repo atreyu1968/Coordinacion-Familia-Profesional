@@ -2596,6 +2596,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatGroup"
+  /chat/groups/sync-modules:
+    post:
+      operationId: syncModuleChatGroups
+      tags: [messaging]
+      summary: >-
+        Create/sync a group chat for each teaching module in the caller's scope,
+        with the module's assigned teachers as members (idempotent).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncModuleChatGroupsResult"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /chat/groups/{id}/read:
     post:
       operationId: markChatRead
@@ -4955,6 +4977,9 @@ components:
         centerId:
           type: integer
           nullable: true
+        moduleId:
+          type: integer
+          nullable: true
         lastMessageAt:
           type: string
           format: date-time
@@ -4980,6 +5005,14 @@ components:
           items:
             type: integer
       required: [name]
+    SyncModuleChatGroupsResult:
+      type: object
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+      required: [created, updated]
     Message:
       type: object
       properties:

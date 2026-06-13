@@ -12,10 +12,13 @@ import {
   pushTokensTable,
   usersTable,
   modulesTable,
+  teachingAssignmentsTable,
+  centersTable,
 } from "@workspace/db";
 import {
   ListChatGroupsResponse,
   CreateChatGroupBody,
+  SyncModuleChatGroupsResponse,
   MarkChatReadParams,
   ListGroupMessagesParams,
   ListGroupMessagesResponse,
@@ -31,7 +34,9 @@ import {
 import {
   requireAuth,
   requireRole,
+  hasScopeOver,
 } from "../middlewares/auth";
+import { syncModuleChatGroup } from "../lib/moduleChat";
 import {
   toChatGroup,
   toMessage,
@@ -306,6 +311,75 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
 
   res.status(201).json(toChatGroup({ ...group, name: displayName }));
 });
+
+// Provision/sync a group chat for every teaching module within the caller's
+// scope, with the module's assigned teachers as members. Idempotent: creating
+// the groups is a one-tap action that never duplicates them.
+router.post(
+  "/chat/groups/sync-modules",
+  requireAuth,
+  requireRole("superadmin", "coordinator", "department_head"),
+  async (req, res): Promise<void> => {
+    const caller = req.user!;
+
+    // Modules that currently have at least one active assigned teacher, paired
+    // with the centers those assignments belong to (used for scope filtering).
+    const rows = await db
+      .selectDistinct({
+        moduleId: teachingAssignmentsTable.moduleId,
+        centerId: teachingAssignmentsTable.centerId,
+      })
+      .from(teachingAssignmentsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, teachingAssignmentsTable.teacherId),
+      )
+      .where(
+        and(
+          isNull(teachingAssignmentsTable.deletedAt),
+          eq(usersTable.status, "active"),
+          isNull(usersTable.deletedAt),
+        ),
+      );
+
+    const centerIds = Array.from(new Set(rows.map((r) => r.centerId)));
+    const centers = centerIds.length
+      ? await db
+          .select({ id: centersTable.id, provinceId: centersTable.provinceId })
+          .from(centersTable)
+          .where(inArray(centersTable.id, centerIds))
+      : [];
+    const provinceByCenter = new Map(centers.map((c) => [c.id, c.provinceId]));
+
+    const moduleCenters = new Map<number, number[]>();
+    for (const r of rows) {
+      const list = moduleCenters.get(r.moduleId) ?? [];
+      list.push(r.centerId);
+      moduleCenters.set(r.moduleId, list);
+    }
+
+    let created = 0;
+    let updated = 0;
+    for (const [moduleId, cIds] of moduleCenters) {
+      // syncModuleChatGroup recomputes membership from ALL of the module's
+      // assignments, so a scoped manager may only bulk-sync modules whose
+      // assignments fall entirely within their scope. Modules spanning scopes
+      // are provisioned by superadmin or by the auto-sync on assignment edits.
+      const inScope = cIds.every((cid) =>
+        hasScopeOver(caller, {
+          provinceId: provinceByCenter.get(cid) ?? null,
+          centerId: cid,
+        }),
+      );
+      if (!inScope) continue;
+      const status = await syncModuleChatGroup(moduleId);
+      if (status === "created") created += 1;
+      else if (status === "updated") updated += 1;
+    }
+
+    res.json(SyncModuleChatGroupsResponse.parse({ created, updated }));
+  },
+);
 
 // Mark a chat group as read for the caller, persisting the marker server-side
 // so unread counts stay accurate across devices and reinstalls.

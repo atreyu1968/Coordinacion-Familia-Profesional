@@ -1959,6 +1959,7 @@ export const ListChatGroupsResponseItem = zod.object({
   "type": zod.string().optional(),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
+  "moduleId": zod.number().nullish(),
   "lastMessageAt": zod.coerce.date().nullish(),
   "unreadCount": zod.number().optional()
 })
@@ -1971,6 +1972,15 @@ export const CreateChatGroupBody = zod.object({
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "memberIds": zod.array(zod.number()).optional()
+})
+
+
+/**
+ * @summary Create/sync a group chat for each teaching module in the caller's scope, with the module's assigned teachers as members (idempotent).
+ */
+export const SyncModuleChatGroupsResponse = zod.object({
+  "created": zod.number(),
+  "updated": zod.number()
 })
 
 

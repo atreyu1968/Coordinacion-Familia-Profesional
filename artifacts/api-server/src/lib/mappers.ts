@@ -328,6 +328,7 @@ export function toChatGroup(row: {
   type: string;
   provinceId: number | null;
   centerId: number | null;
+  moduleId?: number | null;
   lastMessageAt: Date | null;
   unreadCount?: number;
 }) {
@@ -337,6 +338,7 @@ export function toChatGroup(row: {
     type: row.type,
     provinceId: row.provinceId,
     centerId: row.centerId,
+    moduleId: row.moduleId ?? null,
     lastMessageAt: row.lastMessageAt,
     unreadCount: row.unreadCount ?? 0,
   };

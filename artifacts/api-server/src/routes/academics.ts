@@ -79,6 +79,7 @@ import {
   toTeachingAssignment,
   toResource,
 } from "../lib/mappers";
+import { syncModuleChatGroup } from "../lib/moduleChat";
 
 const router: IRouter = Router();
 
@@ -1531,6 +1532,15 @@ router.post(
         schoolYear: parsed.data.schoolYear ?? null,
       })
       .returning();
+
+    // Keep the module's group chat membership in sync with its teachers.
+    // Best-effort: a sync failure must not break the assignment itself.
+    try {
+      await syncModuleChatGroup(parsed.data.moduleId);
+    } catch (err) {
+      console.error("syncModuleChatGroup (create) failed", err);
+    }
+
     res.status(201).json(
       toTeachingAssignment({
         ...created,
@@ -1618,10 +1628,25 @@ router.post(
       return;
     }
 
+    // Capture the modules whose membership will shift, before the update.
+    const affected = await db
+      .selectDistinct({ moduleId: teachingAssignmentsTable.moduleId })
+      .from(teachingAssignmentsTable)
+      .where(and(...conditions));
+
     await db
       .update(teachingAssignmentsTable)
       .set({ teacherId: toTeacherId })
       .where(and(...conditions));
+
+    // Best-effort resync of every affected module's group chat.
+    for (const { moduleId } of affected) {
+      try {
+        await syncModuleChatGroup(moduleId);
+      } catch (err) {
+        console.error("syncModuleChatGroup (transfer) failed", err);
+      }
+    }
 
     res.json(TransferTeachingAssignmentsResponse.parse({ ok: true }));
   },

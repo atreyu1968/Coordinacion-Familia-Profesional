@@ -1176,6 +1176,7 @@ export interface ChatGroup {
   type?: string;
   provinceId?: number | null;
   centerId?: number | null;
+  moduleId?: number | null;
   lastMessageAt?: string | null;
   unreadCount?: number;
 }
@@ -1186,6 +1187,11 @@ export interface CreateChatGroupInput {
   provinceId?: number | null;
   centerId?: number | null;
   memberIds?: number[];
+}
+
+export interface SyncModuleChatGroupsResult {
+  created: number;
+  updated: number;
 }
 
 export interface Message {

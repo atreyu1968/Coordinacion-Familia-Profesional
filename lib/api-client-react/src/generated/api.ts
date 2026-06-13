@@ -137,6 +137,7 @@ import type {
   Survey,
   SurveyDetail,
   SurveyResults,
+  SyncModuleChatGroupsResult,
   TeachingAssignment,
   TrainingOffer,
   TransferInput,
@@ -8505,6 +8506,76 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateChatGroupMutationOptions(options));
+    }
+
+export const getSyncModuleChatGroupsUrl = () => {
+
+
+
+
+  return `/api/chat/groups/sync-modules`
+}
+
+/**
+ * @summary Create/sync a group chat for each teaching module in the caller's scope, with the module's assigned teachers as members (idempotent).
+ */
+export const syncModuleChatGroups = async ( options?: RequestInit): Promise<SyncModuleChatGroupsResult> => {
+
+  return customFetch<SyncModuleChatGroupsResult>(getSyncModuleChatGroupsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncModuleChatGroupsMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncModuleChatGroups>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncModuleChatGroups>>, TError,void, TContext> => {
+
+const mutationKey = ['syncModuleChatGroups'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncModuleChatGroups>>, void> = () => {
+
+
+          return  syncModuleChatGroups(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncModuleChatGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof syncModuleChatGroups>>>
+
+    export type SyncModuleChatGroupsMutationError = ErrorType<Error>
+
+    /**
+ * @summary Create/sync a group chat for each teaching module in the caller's scope, with the module's assigned teachers as members (idempotent).
+ */
+export const useSyncModuleChatGroups = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncModuleChatGroups>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncModuleChatGroups>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncModuleChatGroupsMutationOptions(options));
     }
 
 export const getMarkChatReadUrl = (id: number,) => {
