@@ -1,4 +1,5 @@
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import {
@@ -41,6 +42,7 @@ const SIDEBAR_PINNED_KEY = "coordina_adg_sidebar_pinned";
 
 export function AppLayout({ children }: LayoutProps) {
   const { user, isLoading, logout } = useAuth();
+  const { customLogoUrl, appName } = useBranding();
   const [location, setLocation] = useLocation();
   // The sidebar is collapsed (icons only) by default and expands on hover. The
   // pin (chincheta) at its foot keeps it open; that choice is persisted.
@@ -101,8 +103,8 @@ export function AppLayout({ children }: LayoutProps) {
       <header className="h-14 flex items-center justify-between gap-4 px-3 md:px-4 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0">
         <div className="flex items-center gap-2">
           <img
-            src={logoWhite}
-            alt="Coordina ADG"
+            src={customLogoUrl ?? logoWhite}
+            alt={appName}
             className="h-8 w-auto"
           />
         </div>

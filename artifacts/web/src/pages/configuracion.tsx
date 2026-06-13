@@ -4,6 +4,7 @@ import PanelControlPage from "@/pages/panel-control";
 import InvitacionesPage from "@/pages/invitaciones";
 import CentrosPage from "@/pages/centros";
 import CiclosModulos from "@/components/ciclos-modulos";
+import AparienciaSettings from "@/components/apariencia-settings";
 
 export default function ConfiguracionPage() {
   const { user } = useAuth();
@@ -30,12 +31,16 @@ export default function ConfiguracionPage() {
       <Tabs defaultValue="integraciones" className="space-y-6">
         <TabsList>
           <TabsTrigger value="integraciones">Integraciones y copias</TabsTrigger>
+          <TabsTrigger value="apariencia">Apariencia</TabsTrigger>
           <TabsTrigger value="invitaciones">Invitaciones</TabsTrigger>
           <TabsTrigger value="centros">Centros</TabsTrigger>
           <TabsTrigger value="ciclos">Ciclos y módulos</TabsTrigger>
         </TabsList>
         <TabsContent value="integraciones">
           <PanelControlPage />
+        </TabsContent>
+        <TabsContent value="apariencia">
+          <AparienciaSettings />
         </TabsContent>
         <TabsContent value="invitaciones">
           <InvitacionesPage />

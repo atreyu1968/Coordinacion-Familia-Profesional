@@ -2914,6 +2914,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/IntegrationSettings"
 
+  /settings/branding:
+    get:
+      operationId: getBranding
+      tags: [settings]
+      summary: Public app branding (name + whether a custom logo/favicon exist)
+      responses:
+        "200":
+          description: Branding settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingSettings"
+    put:
+      operationId: updateBranding
+      tags: [settings]
+      summary: Update app name, logo and favicon (superadmin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBrandingInput"
+      responses:
+        "200":
+          description: Updated branding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingSettings"
+
   # ---------------------------------------------------------------------------
   # Collaborative space (Nextcloud Drive + Collabora)
   # ---------------------------------------------------------------------------
@@ -5327,6 +5359,37 @@ components:
         nextcloudOidcClientSecret:
           type: string
           nullable: true
+    BrandingSettings:
+      type: object
+      properties:
+        appName:
+          type: string
+          nullable: true
+          description: Custom app name; null means use the built-in default.
+        hasLogo:
+          type: boolean
+          description: Whether a custom logo is set (served at /settings/branding/logo).
+        hasFavicon:
+          type: boolean
+          description: Whether a custom favicon is set (served at /settings/branding/favicon).
+        version:
+          type: string
+          description: Cache-busting token; changes when branding is updated.
+      required: [hasLogo, hasFavicon, version]
+    UpdateBrandingInput:
+      type: object
+      properties:
+        appName:
+          type: string
+          nullable: true
+        logoPath:
+          type: string
+          nullable: true
+          description: Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears.
+        faviconPath:
+          type: string
+          nullable: true
+          description: Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears.
     CollabStatus:
       type: object
       properties:

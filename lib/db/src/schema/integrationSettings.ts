@@ -9,6 +9,12 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   jaasKid: text("jaas_kid"),
   jaasPrivateKey: text("jaas_private_key"),
   mobileWebUrl: text("mobile_web_url"),
+  // App branding configurable from the control panel. appName overrides the
+  // built-in "Coordina ADG"; logoPath/faviconPath are stored object-entity
+  // paths (/objects/uploads/<id>) served publicly via /settings/branding/*.
+  appName: text("app_name"),
+  logoPath: text("logo_path"),
+  faviconPath: text("favicon_path"),
   vapidPublicKey: text("vapid_public_key"),
   vapidPrivateKey: text("vapid_private_key"),
   vapidSubject: text("vapid_subject"),

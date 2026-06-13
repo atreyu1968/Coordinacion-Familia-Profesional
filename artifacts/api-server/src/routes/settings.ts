@@ -1,12 +1,20 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
+import { Readable } from "stream";
 import { eq } from "drizzle-orm";
 import { db, integrationSettingsTable } from "@workspace/db";
+import type { IntegrationSettings } from "@workspace/db";
 import {
   GetIntegrationSettingsResponse,
   UpdateIntegrationSettingsBody,
   UpdateIntegrationSettingsResponse,
+  GetBrandingResponse,
+  UpdateBrandingBody,
 } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+} from "../lib/objectStorage";
 import {
   getSettings,
   isDeepseekConfigured,
@@ -16,6 +24,128 @@ import {
 } from "../lib/settings";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
+
+// Build the public branding payload. `version` busts client image caches: it
+// changes whenever the row is updated (logo/favicon may be replaced in place).
+function brandingResponse(s: IntegrationSettings) {
+  return GetBrandingResponse.parse({
+    appName: s.appName ?? null,
+    hasLogo: !!s.logoPath,
+    hasFavicon: !!s.faviconPath,
+    version: String(s.updatedAt instanceof Date ? s.updatedAt.getTime() : Date.now()),
+  });
+}
+
+// Uploaded objects live under the private "uploads/" prefix; only accept those
+// normalized entity paths as branding sources. The branding image routes are
+// PUBLIC, so this guard must be strict: a loose `startsWith` check would let a
+// crafted path (e.g. "/objects/uploads/../secret") traverse out of the uploads
+// prefix and publicly expose unrelated private objects. We therefore require a
+// canonical, single-segment id with no traversal, slashes, or encoded escapes.
+function isValidUploadPath(p: string): boolean {
+  return /^\/objects\/uploads\/[A-Za-z0-9._-]+$/.test(p);
+}
+
+// Stream a stored object-entity branding asset (logo/favicon) publicly. The
+// underlying object is private, but branding images are intentionally public
+// (the login screen renders them before authentication), so we serve them
+// through our own route instead of exposing the object directly.
+async function serveBrandingObject(
+  res: Response,
+  req: Request,
+  objectPath: string | null,
+): Promise<void> {
+  if (!objectPath || !isValidUploadPath(objectPath)) {
+    res.status(404).json({ message: "No configurado" });
+    return;
+  }
+  try {
+    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const response = await objectStorageService.downloadObject(file);
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      // Override caching: these are public assets keyed by the ?v= version.
+      if (key.toLowerCase() === "cache-control") return;
+      res.setHeader(key, value);
+    });
+    res.setHeader("Cache-Control", "public, max-age=300");
+
+    if (response.body) {
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ message: "No encontrado" });
+      return;
+    }
+    req.log.error({ err: error }, "Error serving branding asset");
+    res.status(500).json({ message: "No se pudo servir el recurso" });
+  }
+}
+
+router.get("/settings/branding", async (_req, res): Promise<void> => {
+  const settings = await getSettings();
+  res.json(brandingResponse(settings));
+});
+
+router.put(
+  "/settings/branding",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const parsed = UpdateBrandingBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+
+    const current = await getSettings();
+    const updates: Record<string, string | null> = {};
+
+    if (parsed.data.appName !== undefined) {
+      const name = (parsed.data.appName ?? "").trim();
+      updates["appName"] = name || null;
+    }
+    if (parsed.data.logoPath !== undefined) {
+      const p = (parsed.data.logoPath ?? "").trim();
+      if (p && !isValidUploadPath(p)) {
+        res.status(400).json({ message: "Ruta de logo no válida" });
+        return;
+      }
+      updates["logoPath"] = p || null;
+    }
+    if (parsed.data.faviconPath !== undefined) {
+      const p = (parsed.data.faviconPath ?? "").trim();
+      if (p && !isValidUploadPath(p)) {
+        res.status(400).json({ message: "Ruta de favicon no válida" });
+        return;
+      }
+      updates["faviconPath"] = p || null;
+    }
+
+    const [updated] = await db
+      .update(integrationSettingsTable)
+      .set(updates)
+      .where(eq(integrationSettingsTable.id, current.id))
+      .returning();
+
+    res.json(brandingResponse(updated));
+  },
+);
+
+router.get("/settings/branding/logo", async (req, res): Promise<void> => {
+  const settings = await getSettings();
+  await serveBrandingObject(res, req, settings.logoPath);
+});
+
+router.get("/settings/branding/favicon", async (req, res): Promise<void> => {
+  const settings = await getSettings();
+  await serveBrandingObject(res, req, settings.faviconPath);
+});
 
 router.get("/settings/integrations", requireAuth, async (_req, res): Promise<void> => {
   const settings = await getSettings();

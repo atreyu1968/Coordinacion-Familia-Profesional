@@ -1343,6 +1343,25 @@ export interface UpdateIntegrationSettingsInput {
   nextcloudOidcClientSecret?: string | null;
 }
 
+export interface BrandingSettings {
+  /** Custom app name; null means use the built-in default. */
+  appName?: string | null;
+  /** Whether a custom logo is set (served at /settings/branding/logo). */
+  hasLogo: boolean;
+  /** Whether a custom favicon is set (served at /settings/branding/favicon). */
+  hasFavicon: boolean;
+  /** Cache-busting token; changes when branding is updated. */
+  version: string;
+}
+
+export interface UpdateBrandingInput {
+  appName?: string | null;
+  /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */
+  logoPath?: string | null;
+  /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */
+  faviconPath?: string | null;
+}
+
 export interface CollabStatus {
   configured: boolean;
   nextcloudUrl?: string | null;

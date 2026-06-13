@@ -28,6 +28,7 @@ import type {
   AnnualReport,
   AssignEventStaffInput,
   AuthResult,
+  BrandingSettings,
   CalendarEntry,
   Center,
   CenterDetail,
@@ -141,6 +142,7 @@ import type {
   TeachingAssignment,
   TrainingOffer,
   TransferInput,
+  UpdateBrandingInput,
   UpdateCenterInput,
   UpdateCycleInput,
   UpdateEvaluationCriterionInput,
@@ -9735,6 +9737,154 @@ export const useUpdateIntegrationSettings = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateIntegrationSettingsMutationOptions(options));
+    }
+
+export const getGetBrandingUrl = () => {
+
+
+
+
+  return `/api/settings/branding`
+}
+
+/**
+ * @summary Public app branding (name + whether a custom logo/favicon exist)
+ */
+export const getBranding = async ( options?: RequestInit): Promise<BrandingSettings> => {
+
+  return customFetch<BrandingSettings>(getGetBrandingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBrandingQueryKey = () => {
+    return [
+    `/api/settings/branding`
+    ] as const;
+    }
+
+
+export const getGetBrandingQueryOptions = <TData = Awaited<ReturnType<typeof getBranding>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBrandingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBranding>>> = ({ signal }) => getBranding({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBrandingQueryResult = NonNullable<Awaited<ReturnType<typeof getBranding>>>
+export type GetBrandingQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Public app branding (name + whether a custom logo/favicon exist)
+ */
+
+export function useGetBranding<TData = Awaited<ReturnType<typeof getBranding>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBrandingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateBrandingUrl = () => {
+
+
+
+
+  return `/api/settings/branding`
+}
+
+/**
+ * @summary Update app name, logo and favicon (superadmin only)
+ */
+export const updateBranding = async (updateBrandingInput: UpdateBrandingInput, options?: RequestInit): Promise<BrandingSettings> => {
+
+  return customFetch<BrandingSettings>(getUpdateBrandingUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateBrandingInput,)
+  }
+);}
+
+
+
+
+export const getUpdateBrandingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext> => {
+
+const mutationKey = ['updateBranding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBranding>>, {data: BodyType<UpdateBrandingInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateBranding(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBrandingMutationResult = NonNullable<Awaited<ReturnType<typeof updateBranding>>>
+    export type UpdateBrandingMutationBody = BodyType<UpdateBrandingInput>
+    export type UpdateBrandingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update app name, logo and favicon (superadmin only)
+ */
+export const useUpdateBranding = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBranding>>,
+        TError,
+        {data: BodyType<UpdateBrandingInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateBrandingMutationOptions(options));
     }
 
 export const getGetCollabStatusUrl = () => {

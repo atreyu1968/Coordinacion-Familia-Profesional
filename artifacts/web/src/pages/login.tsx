@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { customLogoUrl, appName } = useBranding();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +63,7 @@ export default function LoginPage() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">
-          <img src={logo} alt="Coordina ADG" className="h-14 w-auto" />
+          <img src={customLogoUrl ?? logo} alt={appName} className="h-14 w-auto" />
 
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">
