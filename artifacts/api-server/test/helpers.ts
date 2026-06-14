@@ -19,6 +19,11 @@ import {
   forumPostsTable,
   forumThreadReadsTable,
   passwordResetTokensTable,
+  academicYearsTable,
+  teacherYearConfirmationsTable,
+  teachingAssignmentsTable,
+  groupsTable,
+  trainingOfferTable,
   type User,
 } from "@workspace/db";
 import { inArray } from "drizzle-orm";
@@ -40,6 +45,8 @@ const created = {
   moduleIds: [] as number[],
   threadIds: [] as number[],
   meetingIds: [] as number[],
+  academicYearIds: [] as number[],
+  schoolYears: [] as string[],
 };
 
 let userSeq = 0;
@@ -166,6 +173,109 @@ export function trackSurvey(id: number): void {
   created.surveyIds.push(id);
 }
 
+// Register an official academic year (curso). Tracked so cleanup removes it.
+export async function createAcademicYear(name: string): Promise<number> {
+  const [row] = await db
+    .insert(academicYearsTable)
+    .values({ name })
+    .returning();
+  created.academicYearIds.push(row!.id);
+  created.schoolYears.push(name);
+  return row!.id;
+}
+
+// Track a free-text school year so confirmations/assignments/groups/offer rows
+// tagged with it are removed during cleanup, even when seeded for other users.
+export function trackSchoolYear(year: string): void {
+  created.schoolYears.push(year);
+}
+
+export async function createGroup(opts: {
+  centerId: number;
+  name: string;
+  cycleName?: string | null;
+  schoolYear: string;
+}): Promise<number> {
+  trackSchoolYear(opts.schoolYear);
+  const [row] = await db
+    .insert(groupsTable)
+    .values({
+      centerId: opts.centerId,
+      name: opts.name,
+      cycleName: opts.cycleName ?? null,
+      schoolYear: opts.schoolYear,
+    })
+    .returning();
+  return row!.id;
+}
+
+export async function createTrainingOffer(opts: {
+  centerId: number;
+  cycleName: string;
+  shift?: string | null;
+  level?: string | null;
+  schoolYear: string;
+}): Promise<number> {
+  trackSchoolYear(opts.schoolYear);
+  const [row] = await db
+    .insert(trainingOfferTable)
+    .values({
+      centerId: opts.centerId,
+      cycleName: opts.cycleName,
+      shift: opts.shift ?? null,
+      level: opts.level ?? null,
+      schoolYear: opts.schoolYear,
+    })
+    .returning();
+  return row!.id;
+}
+
+export async function createTeachingAssignment(opts: {
+  teacherId: number;
+  moduleId: number;
+  centerId: number;
+  groupId?: number | null;
+  schoolYear: string;
+}): Promise<number> {
+  trackSchoolYear(opts.schoolYear);
+  const [row] = await db
+    .insert(teachingAssignmentsTable)
+    .values({
+      teacherId: opts.teacherId,
+      moduleId: opts.moduleId,
+      centerId: opts.centerId,
+      groupId: opts.groupId ?? null,
+      schoolYear: opts.schoolYear,
+    })
+    .returning();
+  return row!.id;
+}
+
+// Insert a teacher year confirmation row directly (bypassing the open-window
+// route so a single teacher can be set up with a controlled deadline/status).
+export async function createYearConfirmation(opts: {
+  teacherId: number;
+  schoolYear: string;
+  status?: string;
+  deadline: Date;
+  centerId?: number | null;
+  confirmedAt?: Date | null;
+}): Promise<number> {
+  trackSchoolYear(opts.schoolYear);
+  const [row] = await db
+    .insert(teacherYearConfirmationsTable)
+    .values({
+      teacherId: opts.teacherId,
+      schoolYear: opts.schoolYear,
+      status: opts.status ?? "pending",
+      deadline: opts.deadline,
+      centerId: opts.centerId ?? null,
+      confirmedAt: opts.confirmedAt ?? null,
+    })
+    .returning();
+  return row!.id;
+}
+
 export function authHeader(token: string): { Authorization: string } {
   return { Authorization: `Bearer ${token}` };
 }
@@ -174,6 +284,35 @@ export function authHeader(token: string): { Authorization: string } {
 // schema uses logical (not enforced) foreign keys, but we delete children
 // first anyway to keep things tidy.
 export async function cleanup(): Promise<void> {
+  if (created.userIds.length > 0) {
+    await db
+      .delete(teachingAssignmentsTable)
+      .where(inArray(teachingAssignmentsTable.teacherId, created.userIds));
+    await db
+      .delete(teacherYearConfirmationsTable)
+      .where(inArray(teacherYearConfirmationsTable.teacherId, created.userIds));
+  }
+  if (created.centerIds.length > 0) {
+    await db
+      .delete(teachingAssignmentsTable)
+      .where(inArray(teachingAssignmentsTable.centerId, created.centerIds));
+    await db
+      .delete(groupsTable)
+      .where(inArray(groupsTable.centerId, created.centerIds));
+    await db
+      .delete(trainingOfferTable)
+      .where(inArray(trainingOfferTable.centerId, created.centerIds));
+  }
+  if (created.schoolYears.length > 0) {
+    await db
+      .delete(teacherYearConfirmationsTable)
+      .where(inArray(teacherYearConfirmationsTable.schoolYear, created.schoolYears));
+  }
+  if (created.academicYearIds.length > 0) {
+    await db
+      .delete(academicYearsTable)
+      .where(inArray(academicYearsTable.id, created.academicYearIds));
+  }
   if (created.threadIds.length > 0) {
     await db
       .delete(forumThreadReadsTable)
@@ -258,4 +397,6 @@ export async function cleanup(): Promise<void> {
   created.moduleIds.length = 0;
   created.threadIds.length = 0;
   created.meetingIds.length = 0;
+  created.academicYearIds.length = 0;
+  created.schoolYears.length = 0;
 }
