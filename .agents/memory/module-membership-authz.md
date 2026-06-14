@@ -21,9 +21,16 @@ per-module coordinator is a membership role, not a global account role.
   superadmin / provincial coordinator / department head in scope.
 
 ## Meeting access (meetings.ts)
-- `canAccessMeeting(caller,{moduleId,hostId})` = host OR `managerScopeOverModule`
-  OR (module != null AND `isModuleMember`). Legacy null-module meetings are
-  visible only to scoped managers.
+- `callerCanSeeMeeting(caller,ctx,row)` = host OR superadmin OR (moduleId != null
+  AND (member via `ctx.moduleIds` OR `managerScopeOverModule`)) OR
+  (specific non-"all" audience AND `isInAudience`) OR `canManageAudience`.
+  Legacy/null-module meetings are visible only to host + scoped managers.
+- **GOTCHA:** `meetings.audience_type` column DEFAULTS to `"all"`. So a meeting
+  inserted without going through `validateAudience` (legacy rows, test helpers)
+  silently gets audience `"all"`. Treating `"all"` as a public visibility grant
+  (plain `isInAudience`) leaks every such meeting to every user — that was the
+  bug. For meetings, `"all"` is NOT a public grant: visibility must run through
+  module-membership / manager-scope / specific-audience instead.
 - **`POST /meetings/token` must look up the meeting by `roomName` and enforce
   `canAccessMeeting` before issuing a join URL.** Otherwise a leaked/guessed room
   name is an IDOR — any authenticated user could join.

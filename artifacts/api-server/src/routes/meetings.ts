@@ -6,6 +6,7 @@ import {
   meetingsTable,
   usersTable,
   modulesTable,
+  centersTable,
   type User,
 } from "@workspace/db";
 import {
@@ -15,7 +16,11 @@ import {
   GetMeetingTokenBody,
   GetMeetingTokenResponse,
 } from "@workspace/api-zod";
-import { requireAuth, isModuleCoordinator } from "../middlewares/auth";
+import {
+  requireAuth,
+  isModuleCoordinator,
+  hasScopeOver,
+} from "../middlewares/auth";
 import {
   getViewerContext,
   isInAudience,
@@ -23,6 +28,7 @@ import {
   canManageAudience,
   canCreateFormsSurveys,
   resolveAudienceUserIds,
+  type ViewerContext,
 } from "../lib/audience";
 import { toMeeting } from "../lib/mappers";
 import { resolveJaasCreds, buildJaasUrl, publicJitsiUrl } from "../lib/jaas";
@@ -65,10 +71,66 @@ function audienceLabel(
   }
 }
 
+// Whether a manager (superadmin / provincial coordinator / department head) has
+// administrative scope over a module via its center, mirroring academics.ts.
+async function managerScopeOverModule(
+  caller: User,
+  moduleId: number,
+): Promise<boolean> {
+  if (caller.role === "superadmin") return true;
+  const [module] = await db
+    .select({ centerId: modulesTable.centerId })
+    .from(modulesTable)
+    .where(eq(modulesTable.id, moduleId));
+  if (!module) return false;
+  if (module.centerId == null) return caller.role === "coordinator";
+  const [center] = await db
+    .select({ provinceId: centersTable.provinceId })
+    .from(centersTable)
+    .where(eq(centersTable.id, module.centerId));
+  return hasScopeOver(caller, {
+    provinceId: center?.provinceId ?? null,
+    centerId: module.centerId,
+  });
+}
+
+// Whether `caller` may see / join a registered meeting. Meetings are primarily
+// scoped by module membership: a module-bound meeting is visible to the host,
+// the module's members, and managers with scope over the module. Non-module
+// meetings honor specific audience targeting (province/island/center/users/
+// role); the catch-all "all" audience (also the column default on legacy rows)
+// is NOT a public grant — such meetings are visible only to the host and
+// scoped managers, so leaked/guessed rooms can't be joined by outsiders.
+async function callerCanSeeMeeting(
+  caller: User,
+  ctx: ViewerContext,
+  row: {
+    hostId: number;
+    moduleId: number | null;
+    audienceType: string;
+    audienceIds: number[] | null;
+  },
+): Promise<boolean> {
+  if (row.hostId === caller.id) return true;
+  if (caller.role === "superadmin") return true;
+  if (row.moduleId != null) {
+    if (ctx.moduleIds.includes(row.moduleId)) return true;
+    return managerScopeOverModule(caller, row.moduleId);
+  }
+  if (
+    row.audienceType !== "all" &&
+    isInAudience(row.audienceType, row.audienceIds, ctx)
+  ) {
+    return true;
+  }
+  return canManageAudience(caller, row.audienceType, row.audienceIds);
+}
+
 // ---------------------------------------------------------------------------
-// List meeting rooms: a user sees a meeting if they host it, fall within its
-// audience, or have management authority over that audience (superadmin always;
-// provincial coordinators for audiences within their province).
+// List meeting rooms: a user sees a meeting if they host it, belong to its
+// module (module meetings), fall within a specific targeted audience, or have
+// management authority over it (superadmin always; provincial coordinators /
+// department heads within their scope).
 // ---------------------------------------------------------------------------
 router.get("/meetings", requireAuth, async (req, res): Promise<void> => {
   const caller = req.user!;
@@ -98,11 +160,7 @@ router.get("/meetings", requireAuth, async (req, res): Promise<void> => {
   const ctx = await getViewerContext(caller);
   const visible = [];
   for (const row of rows) {
-    const ok =
-      row.hostId === caller.id ||
-      isInAudience(row.audienceType, row.audienceIds, ctx) ||
-      (await canManageAudience(caller, row.audienceType, row.audienceIds));
-    if (ok) visible.push(row);
+    if (await callerCanSeeMeeting(caller, ctx, row)) visible.push(row);
   }
 
   res.json(
@@ -247,15 +305,7 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
     );
   if (meeting) {
     const ctx = await getViewerContext(caller);
-    const canSee =
-      meeting.hostId === caller.id ||
-      isInAudience(meeting.audienceType, meeting.audienceIds, ctx) ||
-      (await canManageAudience(
-        caller,
-        meeting.audienceType,
-        meeting.audienceIds,
-      ));
-    if (!canSee) {
+    if (!(await callerCanSeeMeeting(caller, ctx, meeting))) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }

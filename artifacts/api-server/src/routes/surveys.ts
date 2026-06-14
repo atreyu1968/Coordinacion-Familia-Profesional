@@ -126,11 +126,17 @@ router.post(
       return;
     }
 
-    const audience = await validateAudience(
-      caller,
-      data.audienceType,
-      data.audienceIds,
-    );
+    // A bare `provinceId` (legacy field, no explicit audience) means the survey
+    // is scoped to that province. Translate it into a province audience so
+    // visibility is enforced consistently via the audience model below.
+    let rawType = data.audienceType;
+    let rawIds = data.audienceIds;
+    if (rawType == null && data.provinceId != null) {
+      rawType = "province";
+      rawIds = [data.provinceId];
+    }
+
+    const audience = await validateAudience(caller, rawType, rawIds);
     if (!audience.ok) {
       res.status(403).json({ message: audience.message });
       return;
