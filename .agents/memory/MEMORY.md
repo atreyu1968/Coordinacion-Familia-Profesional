@@ -37,6 +37,7 @@
 - [Module group chats (auto)](module-chat-groups.md) — one auto-managed group per module; members = teachers ∪ scoped managers (GET /chat/groups is member-only); scope from teaching_assignments.centerId not modules.centerId (NULL); bulk sync needs every center in scope.
 - [Biometric unlock (movil)](biometric-unlock-mobile.md) — cross-platform app-lock model and SecureStore-on-web gotcha.
 - [Mobile install/QR target on Replit](expo-go-qr-target.md) — what URL the QR must encode to install the mobile app.
+- [Expo typed routes & movil typecheck](expo-typed-routes.md) — a new movil screen fails typecheck until the expo dev server regenerates .expo/types/router.d.ts; restart the workflow.
 - [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
 - [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.

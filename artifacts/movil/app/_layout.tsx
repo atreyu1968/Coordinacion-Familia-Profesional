@@ -92,6 +92,7 @@ function RootLayoutNav() {
         <Stack.Screen name="foros/tema/[id]" />
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
+        <Stack.Screen name="confirmar-curso" />
       </Stack>
       {token && locked ? <AppLock /> : null}
     </>

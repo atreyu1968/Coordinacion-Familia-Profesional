@@ -17,6 +17,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { TeacherConfirmationBanner } from "@/components/TeacherConfirmationBanner";
 import { Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
@@ -89,7 +90,8 @@ export default function BoardScreen() {
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
           onRefresh={refetch}
           refreshing={isRefetching}
-          scrollEnabled={!!data && data.length > 0}
+          scrollEnabled
+          ListHeaderComponent={<TeacherConfirmationBanner />}
           ListEmptyComponent={
             <EmptyState
               icon="layout"
