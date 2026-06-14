@@ -1,4 +1,8 @@
-import { getSettings, isResendConfigured } from "./settings";
+import {
+  getSettings,
+  isResendConfigured,
+  DEFAULT_PROFESSIONAL_FAMILY,
+} from "./settings";
 import { logger } from "./logger";
 
 export interface SendEmailResult {
@@ -140,13 +144,15 @@ export function buildInvitationEmail(params: {
   inviterName: string;
   inviteUrl: string;
   role: string;
+  professionalFamily?: string;
 }): { subject: string; html: string } {
+  const family = (params.professionalFamily ?? "").trim() || DEFAULT_PROFESSIONAL_FAMILY;
   return {
     subject: "Invitación a Coordina ADG",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto;">
         <h2>Coordina ADG</h2>
-        <p>${params.inviterName} te ha invitado a unirte a la plataforma de coordinación de la familia profesional de Administración y Gestión.</p>
+        <p>${params.inviterName} te ha invitado a unirte a la plataforma de coordinación de la familia profesional de ${family}.</p>
         <p>Para completar tu registro, haz clic en el siguiente enlace:</p>
         <p><a href="${params.inviteUrl}" style="display:inline-block;padding:12px 20px;background:#1b4965;color:#fff;text-decoration:none;border-radius:6px;">Completar registro</a></p>
         <p>O copia esta dirección en tu navegador:<br>${params.inviteUrl}</p>

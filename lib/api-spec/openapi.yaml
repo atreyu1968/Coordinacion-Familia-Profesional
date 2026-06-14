@@ -5366,6 +5366,9 @@ components:
           type: string
           nullable: true
           description: Custom app name; null means use the built-in default.
+        professionalFamily:
+          type: string
+          description: Professional family the app is destined for (defaults to "Administración y Gestión").
         hasLogo:
           type: boolean
           description: Whether a custom logo is set (served at /settings/branding/logo).
@@ -5375,13 +5378,17 @@ components:
         version:
           type: string
           description: Cache-busting token; changes when branding is updated.
-      required: [hasLogo, hasFavicon, version]
+      required: [hasLogo, hasFavicon, version, professionalFamily]
     UpdateBrandingInput:
       type: object
       properties:
         appName:
           type: string
           nullable: true
+        professionalFamily:
+          type: string
+          nullable: true
+          description: Empty/null resets to the built-in default ("Administración y Gestión").
         logoPath:
           type: string
           nullable: true

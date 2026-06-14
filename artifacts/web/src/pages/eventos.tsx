@@ -34,6 +34,7 @@ import {
   type RsvpInputStatus,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,6 +253,7 @@ function EventFormDialog({
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { professionalFamily } = useBranding();
   const { data: provinces = [] } = useListProvinces();
   const createMut = useCreateEvent();
   const updateMut = useUpdateEvent();
@@ -334,7 +336,7 @@ function EventFormDialog({
           <DialogTitle>{isEdit ? "Editar evento" : "Nuevo evento"}</DialogTitle>
           <DialogDescription>
             Organiza una jornada, un evento Canarias Skills u otro acto del
-            profesorado de la familia ADG.
+            profesorado de la familia {professionalFamily}.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -1649,6 +1651,7 @@ function EventsCalendarView({
 // ---------------------------------------------------------------------------
 export default function EventosPage() {
   const { user } = useAuth();
+  const { professionalFamily } = useBranding();
   const { data: events = [], isLoading } = useListEvents();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [view, setView] = useState<"cards" | "calendar">("cards");
@@ -1670,7 +1673,7 @@ export default function EventosPage() {
             <CalendarDays className="w-6 h-6" /> Eventos y Protocolo
           </h1>
           <p className="text-sm text-muted-foreground">
-            Canarias Skills, jornadas y actos del profesorado de la familia ADG.
+            Canarias Skills, jornadas y actos del profesorado de la familia {professionalFamily}.
           </p>
         </div>
         {canManage && <CreateEventDialog />}

@@ -9,6 +9,7 @@
 import { useGetBranding } from "@workspace/api-client-react";
 
 const DEFAULT_APP_NAME = "Coordina ADG";
+const DEFAULT_PROFESSIONAL_FAMILY = "Administración y Gestión";
 
 function brandingApiBase(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -17,6 +18,8 @@ function brandingApiBase(): string {
 
 export interface BrandingAssets {
   appName: string;
+  /** Professional family the app is destined for (default when unset). */
+  professionalFamily: string;
   /** Remote logo URL when a custom logo is set, otherwise null (use bundled asset). */
   logoUri: string | null;
   /** Remote favicon URL when a custom favicon is set, otherwise null. */
@@ -33,6 +36,7 @@ export function useBrandingAssets(): BrandingAssets {
   const v = data?.version ? encodeURIComponent(data.version) : "";
   return {
     appName: data?.appName || DEFAULT_APP_NAME,
+    professionalFamily: data?.professionalFamily?.trim() || DEFAULT_PROFESSIONAL_FAMILY,
     logoUri: data?.hasLogo ? `${base}/logo?v=${v}` : null,
     faviconUri: data?.hasFavicon ? `${base}/favicon?v=${v}` : null,
   };

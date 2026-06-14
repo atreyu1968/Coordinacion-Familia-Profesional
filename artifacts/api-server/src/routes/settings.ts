@@ -17,6 +17,7 @@ import {
 } from "../lib/objectStorage";
 import {
   getSettings,
+  professionalFamilyOf,
   isDeepseekConfigured,
   isResendConfigured,
   isJaasConfigured,
@@ -31,6 +32,7 @@ const objectStorageService = new ObjectStorageService();
 function brandingResponse(s: IntegrationSettings) {
   return GetBrandingResponse.parse({
     appName: s.appName ?? null,
+    professionalFamily: professionalFamilyOf(s),
     hasLogo: !!s.logoPath,
     hasFavicon: !!s.faviconPath,
     version: String(s.updatedAt instanceof Date ? s.updatedAt.getTime() : Date.now()),
@@ -109,6 +111,10 @@ router.put(
     if (parsed.data.appName !== undefined) {
       const name = (parsed.data.appName ?? "").trim();
       updates["appName"] = name || null;
+    }
+    if (parsed.data.professionalFamily !== undefined) {
+      const fam = (parsed.data.professionalFamily ?? "").trim();
+      updates["professionalFamily"] = fam || null;
     }
     if (parsed.data.logoPath !== undefined) {
       const p = (parsed.data.logoPath ?? "").trim();

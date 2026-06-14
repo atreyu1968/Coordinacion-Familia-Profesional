@@ -95,10 +95,13 @@ export function setupPwa(): void {
 
 interface PublicBranding {
   appName: string | null;
+  professionalFamily: string | null;
   hasLogo: boolean;
   hasFavicon: boolean;
   version: string;
 }
+
+const DEFAULT_PROFESSIONAL_FAMILY = "Administración y Gestión";
 
 /**
  * Fetch the public branding and apply the custom app name + icon to the
@@ -145,11 +148,11 @@ async function applyBranding(): Promise<void> {
           purpose: "any maskable",
         }));
 
+    const family = b.professionalFamily?.trim() || DEFAULT_PROFESSIONAL_FAMILY;
     const manifest = {
       name,
       short_name: name,
-      description:
-        "Plataforma de coordinación de la familia profesional ADG en Canarias.",
+      description: `Plataforma de coordinación de la familia profesional de ${family} en Canarias.`,
       start_url: `${origin}${BASE_PATH}/`,
       scope: `${origin}${BASE_PATH}/`,
       display: "standalone",

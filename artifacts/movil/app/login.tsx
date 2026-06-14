@@ -21,7 +21,7 @@ import { useBrandingAssets } from "@/lib/branding";
 export default function LoginScreen() {
   const colors = useColors();
   const scheme = useColorScheme();
-  const { logoUri } = useBrandingAssets();
+  const { logoUri, professionalFamily } = useBrandingAssets();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
@@ -105,7 +105,7 @@ export default function LoginScreen() {
           resizeMode="contain"
         />
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Coordinación de Administración y Gestión · Canarias
+          Coordinación de {professionalFamily} · Canarias
         </Text>
 
         <View style={styles.form}>

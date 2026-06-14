@@ -69,6 +69,7 @@ import {
 } from "../lib/mappers";
 import { sendEmail, buildAccreditationEmail } from "../lib/email";
 import { generateQrDataUrl, generateCertificatePdfBase64 } from "../lib/documents";
+import { getSettings, professionalFamilyOf } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -796,6 +797,8 @@ router.post(
         ),
       );
 
+    const professionalFamily = professionalFamilyOf(await getSettings());
+
     let issued = 0;
     for (const attendee of attendees) {
       if (!attendee.email || !attendee.fullName) continue;
@@ -804,6 +807,7 @@ router.post(
         eventName: loaded.event.name,
         location: loaded.event.location,
         date: loaded.event.startAt,
+        professionalFamily,
       });
       const result = await sendEmail({
         to: attendee.email,

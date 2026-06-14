@@ -54,6 +54,16 @@ export async function seedIntegrationSettingsFromEnv(): Promise<void> {
   );
 }
 
+// Professional family the app instance is destined for. Used both as an identity
+// string (login/emails/AI prompts) and to scope the centers data view. Falls back
+// to the founding family when the control panel leaves it unset.
+export const DEFAULT_PROFESSIONAL_FAMILY = "Administración y Gestión";
+
+export function professionalFamilyOf(s: IntegrationSettings): string {
+  const fam = (s.professionalFamily ?? "").trim();
+  return fam || DEFAULT_PROFESSIONAL_FAMILY;
+}
+
 export function isDeepseekConfigured(s: IntegrationSettings): boolean {
   return typeof s.deepseekApiKey === "string" && s.deepseekApiKey.length > 0;
 }

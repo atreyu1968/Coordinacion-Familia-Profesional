@@ -1346,6 +1346,8 @@ export interface UpdateIntegrationSettingsInput {
 export interface BrandingSettings {
   /** Custom app name; null means use the built-in default. */
   appName?: string | null;
+  /** Professional family the app is destined for (defaults to "Administración y Gestión"). */
+  professionalFamily: string;
   /** Whether a custom logo is set (served at /settings/branding/logo). */
   hasLogo: boolean;
   /** Whether a custom favicon is set (served at /settings/branding/favicon). */
@@ -1356,6 +1358,8 @@ export interface BrandingSettings {
 
 export interface UpdateBrandingInput {
   appName?: string | null;
+  /** Empty/null resets to the built-in default ("Administración y Gestión"). */
+  professionalFamily?: string | null;
   /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */
   logoPath?: string | null;
   /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */

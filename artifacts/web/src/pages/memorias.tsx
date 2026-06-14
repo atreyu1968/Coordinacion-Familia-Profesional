@@ -8,6 +8,7 @@ import {
   type AnnualReport,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import {
   Card,
   CardContent,
@@ -51,6 +52,7 @@ function ambitoLabel(report: AnnualReport, provinceName?: string): string {
 
 export default function MemoriasPage() {
   const { user } = useAuth();
+  const { professionalFamily } = useBranding();
   const qc = useQueryClient();
   const isSuperadmin = user?.role === "superadmin";
   const canGenerate = isSuperadmin || user?.role === "coordinator";
@@ -135,7 +137,7 @@ export default function MemoriasPage() {
         <h1 className="text-2xl font-bold tracking-tight">Memorias anuales</h1>
         <p className="text-muted-foreground">
           Genera y consulta memorias institucionales de la familia profesional
-          de Administración y Gestión, redactadas con IA a partir de los datos
+          de {professionalFamily}, redactadas con IA a partir de los datos
           de la plataforma.
         </p>
       </div>

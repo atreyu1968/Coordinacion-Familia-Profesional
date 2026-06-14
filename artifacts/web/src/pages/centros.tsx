@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useListCenters,
@@ -9,6 +9,7 @@ import {
   type ListCentersParams,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ const ALL = "all";
 
 export default function CentrosPage() {
   const { user } = useAuth();
+  const { professionalFamily, isLoading: brandingLoading } = useBranding();
   const canManage =
     user?.role === "superadmin" || user?.role === "coordinator";
 
@@ -54,6 +56,20 @@ export default function CentrosPage() {
   const familyOptions = facets?.families ?? [];
   const natureOptions = facets?.natures ?? [];
   const centerTypeOptions = facets?.centerTypes ?? [];
+
+  // The app is destined for one professional family: pre-select it as the default
+  // centers filter (only once, when the facet exists). The user can still switch
+  // to "Todas las familias" or any other afterwards.
+  const [familyInitialized, setFamilyInitialized] = useState(false);
+  useEffect(() => {
+    if (familyInitialized || brandingLoading || familyOptions.length === 0) {
+      return;
+    }
+    if (familyOptions.includes(professionalFamily)) {
+      setFamily(professionalFamily);
+    }
+    setFamilyInitialized(true);
+  }, [familyInitialized, brandingLoading, familyOptions, professionalFamily]);
 
   const islandOptions = islands.filter(
     (i) => provinceId == null || i.provinceId === provinceId,

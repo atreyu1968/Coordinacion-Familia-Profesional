@@ -6,6 +6,7 @@ import { BrandingContext } from "./branding-context";
 export { useBranding } from "./branding-context";
 
 const DEFAULT_APP_NAME = "Coordina ADG";
+const DEFAULT_PROFESSIONAL_FAMILY = "Administración y Gestión";
 const DEFAULT_FAVICON = "/favicon.png";
 
 // Branding images are served by the API at the same origin under /api. They are
@@ -23,6 +24,8 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const version = data?.version ?? "0";
     return {
       appName: data?.appName?.trim() || DEFAULT_APP_NAME,
+      professionalFamily:
+        data?.professionalFamily?.trim() || DEFAULT_PROFESSIONAL_FAMILY,
       customLogoUrl: data?.hasLogo ? brandingAssetUrl("logo", version) : null,
       faviconUrl: data?.hasFavicon
         ? brandingAssetUrl("favicon", version)

@@ -15,6 +15,10 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   appName: text("app_name"),
   logoPath: text("logo_path"),
   faviconPath: text("favicon_path"),
+  // Professional family (familia profesional) the app instance is destined for,
+  // e.g. "Administración y Gestión". Overrides the hardcoded identity texts and
+  // conditions the centers data view; falls back to that default when unset.
+  professionalFamily: text("professional_family"),
   vapidPublicKey: text("vapid_public_key"),
   vapidPrivateKey: text("vapid_private_key"),
   vapidSubject: text("vapid_subject"),

@@ -20,6 +20,7 @@ import {
   Legend,
 } from "recharts";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import {
   Card,
   CardContent,
@@ -64,6 +65,7 @@ type Point = { label: string; value: number };
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
   const { data: provinces = [] } = useListProvinces();
   const [provinceFilter, setProvinceFilter] = useState<string>(GLOBAL);
@@ -147,7 +149,7 @@ export default function DashboardPage() {
 
   const onExportPdf = () =>
     exportTablesPdf(
-      `Estadísticas ADG — ${scopeLabel}`,
+      `Estadísticas · ${professionalFamily} — ${scopeLabel}`,
       buildSheets(),
       `${fileBase}.pdf`,
     );

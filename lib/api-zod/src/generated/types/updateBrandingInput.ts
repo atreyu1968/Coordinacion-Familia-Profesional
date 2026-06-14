@@ -8,6 +8,8 @@
 
 export interface UpdateBrandingInput {
   appName?: string | null;
+  /** Empty/null resets to the built-in default ("Administración y Gestión"). */
+  professionalFamily?: string | null;
   /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */
   logoPath?: string | null;
   /** Object-entity path (/objects/uploads/<id>) from an upload; null/empty clears. */

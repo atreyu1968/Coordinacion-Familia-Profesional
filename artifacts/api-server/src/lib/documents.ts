@@ -18,6 +18,7 @@ export async function generateCertificatePdfBase64(params: {
   eventName: string;
   location?: string | null;
   date?: Date | null;
+  professionalFamily: string;
 }): Promise<string> {
   const doc = await PDFDocument.create();
   // A4 landscape (points): 841.89 x 595.28
@@ -55,7 +56,7 @@ export async function generateCertificatePdfBase64(params: {
 
   center("COORDINA ADG", height - 110, 22, sans, ink);
   center(
-    "Familia Profesional de Administración y Gestión · Canarias",
+    `Familia Profesional de ${params.professionalFamily} · Canarias`,
     height - 134,
     12,
     sans,

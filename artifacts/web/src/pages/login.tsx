@@ -12,7 +12,7 @@ import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { customLogoUrl, appName } = useBranding();
+  const { customLogoUrl, appName, professionalFamily } = useBranding();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,8 +53,8 @@ export default function LoginPage() {
               Tu futuro es la Formación Profesional
             </h2>
             <p className="text-muted-foreground">
-              Plataforma de coordinación de la familia profesional de
-              Administración y Gestión en Canarias.
+              Plataforma de coordinación de la familia profesional de{" "}
+              {professionalFamily} en Canarias.
             </p>
           </div>
         </div>
@@ -70,8 +70,8 @@ export default function LoginPage() {
               Acceso usuarios
             </h1>
             <p className="text-muted-foreground">
-              Herramienta de coordinación de FP y prospección de la familia de
-              Administración y Gestión.
+              Herramienta de coordinación de FP y prospección de la familia de{" "}
+              {professionalFamily}.
             </p>
           </div>
 

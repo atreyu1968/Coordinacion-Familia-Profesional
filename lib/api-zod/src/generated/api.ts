@@ -2245,6 +2245,7 @@ export const UpdateIntegrationSettingsResponse = zod.object({
  */
 export const GetBrandingResponse = zod.object({
   "appName": zod.string().nullish().describe('Custom app name; null means use the built-in default.'),
+  "professionalFamily": zod.string().describe('Professional family the app is destined for (defaults to \"Administración y Gestión\").'),
   "hasLogo": zod.boolean().describe('Whether a custom logo is set (served at \/settings\/branding\/logo).'),
   "hasFavicon": zod.boolean().describe('Whether a custom favicon is set (served at \/settings\/branding\/favicon).'),
   "version": zod.string().describe('Cache-busting token; changes when branding is updated.')
@@ -2256,12 +2257,14 @@ export const GetBrandingResponse = zod.object({
  */
 export const UpdateBrandingBody = zod.object({
   "appName": zod.string().nullish(),
+  "professionalFamily": zod.string().nullish().describe('Empty\/null resets to the built-in default (\"Administración y Gestión\").'),
   "logoPath": zod.string().nullish().describe('Object-entity path (\/objects\/uploads\/<id>) from an upload; null\/empty clears.'),
   "faviconPath": zod.string().nullish().describe('Object-entity path (\/objects\/uploads\/<id>) from an upload; null\/empty clears.')
 })
 
 export const UpdateBrandingResponse = zod.object({
   "appName": zod.string().nullish().describe('Custom app name; null means use the built-in default.'),
+  "professionalFamily": zod.string().describe('Professional family the app is destined for (defaults to \"Administración y Gestión\").'),
   "hasLogo": zod.boolean().describe('Whether a custom logo is set (served at \/settings\/branding\/logo).'),
   "hasFavicon": zod.boolean().describe('Whether a custom favicon is set (served at \/settings\/branding\/favicon).'),
   "version": zod.string().describe('Cache-busting token; changes when branding is updated.')

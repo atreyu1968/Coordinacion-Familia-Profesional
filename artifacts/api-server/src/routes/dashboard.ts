@@ -33,7 +33,7 @@ import {
   GenerateReportBody,
 } from "@workspace/api-zod";
 import { requireAuth, requireRole, resolveReadScope } from "../middlewares/auth";
-import { getSettings, isDeepseekConfigured } from "../lib/settings";
+import { getSettings, isDeepseekConfigured, professionalFamilyOf } from "../lib/settings";
 import { toAnnualReport } from "../lib/mappers";
 
 const router: IRouter = Router();
@@ -459,14 +459,15 @@ router.post(
     };
     const stats = await gatherReportStats(scope);
     const ambito = provinceId == null ? "autonómico (toda Canarias)" : "provincial";
+    const family = professionalFamilyOf(settings);
 
     const systemPrompt =
-      "Eres un técnico de coordinación de la familia profesional de Administración y Gestión " +
+      `Eres un técnico de coordinación de la familia profesional de ${family} ` +
       "(FP) en Canarias. Redactas memorias anuales institucionales en español, con tono formal, " +
       "estructura clara y secciones con encabezados.";
     const userPrompt =
       `Redacta la memoria anual del curso ${parsed.data.schoolYear} para el ámbito ${ambito} ` +
-      "de la familia profesional de Administración y Gestión en Canarias. " +
+      `de la familia profesional de ${family} en Canarias. ` +
       "Utiliza los siguientes datos reales de la plataforma como base cuantitativa:\n" +
       `- Centros educativos: ${stats.centers}\n` +
       `- Profesorado: ${stats.teachers}\n` +

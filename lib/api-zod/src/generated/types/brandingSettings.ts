@@ -9,6 +9,8 @@
 export interface BrandingSettings {
   /** Custom app name; null means use the built-in default. */
   appName?: string | null;
+  /** Professional family the app is destined for (defaults to "Administración y Gestión"). */
+  professionalFamily: string;
   /** Whether a custom logo is set (served at /settings/branding/logo). */
   hasLogo: boolean;
   /** Whether a custom favicon is set (served at /settings/branding/favicon). */

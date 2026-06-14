@@ -6,6 +6,7 @@ import {
   useRegisterWithToken,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function RegisterPage() {
   const { login } = useAuth();
+  const { professionalFamily } = useBranding();
   const [, setLocation] = useLocation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -181,8 +183,8 @@ export default function RegisterPage() {
               Tu futuro es la Formación Profesional
             </h2>
             <p className="text-muted-foreground">
-              Plataforma de coordinación de la familia profesional de
-              Administración y Gestión en Canarias.
+              Plataforma de coordinación de la familia profesional de{" "}
+              {professionalFamily} en Canarias.
             </p>
           </div>
         </div>

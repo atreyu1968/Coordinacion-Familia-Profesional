@@ -3,6 +3,10 @@ import { createContext, useContext } from "react";
 export interface BrandingContextType {
   // Display name of the app (built-in default when no custom name is set).
   appName: string;
+  // Professional family the app is destined for, e.g. "Administración y
+  // Gestión". Used in identity texts (login, descriptions); defaults to the
+  // founding family when unset.
+  professionalFamily: string;
   // URL of the custom uploaded logo, or null to use the caller's built-in
   // fallback. The header and the login screen use different default assets
   // (white vs. colored), so each applies its own fallback.

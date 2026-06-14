@@ -32,6 +32,7 @@ export default function AparienciaSettings() {
   const uploadMut = useRequestUploadUrl();
 
   const [appName, setAppName] = useState("");
+  const [professionalFamily, setProfessionalFamily] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -44,6 +45,10 @@ export default function AparienciaSettings() {
   useEffect(() => {
     setAppName(branding?.appName ?? "");
   }, [branding?.appName]);
+
+  useEffect(() => {
+    setProfessionalFamily(branding?.professionalFamily ?? "");
+  }, [branding?.professionalFamily]);
 
   // Upload one image to object storage and return its normalized object path.
   const uploadImage = async (file: File): Promise<string> => {
@@ -67,6 +72,7 @@ export default function AparienciaSettings() {
     try {
       const payload: {
         appName?: string | null;
+        professionalFamily?: string | null;
         logoPath?: string | null;
         faviconPath?: string | null;
       } = {};
@@ -74,6 +80,10 @@ export default function AparienciaSettings() {
       const trimmedName = appName.trim();
       if (trimmedName !== (branding?.appName ?? "")) {
         payload.appName = trimmedName || null;
+      }
+      const trimmedFamily = professionalFamily.trim();
+      if (trimmedFamily !== (branding?.professionalFamily ?? "")) {
+        payload.professionalFamily = trimmedFamily || null;
       }
       if (logoFile) payload.logoPath = await uploadImage(logoFile);
       if (faviconFile) payload.faviconPath = await uploadImage(faviconFile);
@@ -177,6 +187,34 @@ export default function AparienciaSettings() {
                 value={appName}
                 onChange={(e) => setAppName(e.target.value)}
                 maxLength={80}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Type className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Familia profesional</CardTitle>
+            </div>
+            <CardDescription>
+              Familia profesional a la que se destina la aplicación. Se usa en los
+              textos de la plataforma (acceso, correos, descripciones) y como
+              filtro por defecto en Centros. Déjala vacía para usar «Administración
+              y Gestión».
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="professionalFamily">Familia profesional</Label>
+              <Input
+                id="professionalFamily"
+                type="text"
+                placeholder="Administración y Gestión"
+                value={professionalFamily}
+                onChange={(e) => setProfessionalFamily(e.target.value)}
+                maxLength={120}
               />
             </div>
           </CardContent>

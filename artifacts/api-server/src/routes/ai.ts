@@ -7,7 +7,7 @@ import {
 import { and, isNull, desc, inArray } from "drizzle-orm";
 import { db, gdcanResourcesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { getSettings, isDeepseekConfigured } from "../lib/settings";
+import { getSettings, isDeepseekConfigured, professionalFamilyOf } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -67,10 +67,11 @@ router.post("/ai/chat", requireAuth, requireRole("superadmin"), async (req, res)
     return;
   }
 
+  const family = professionalFamilyOf(settings);
   let systemPrompt =
     parsed.data.context === "gdcan"
-      ? "Eres un asistente experto en la normativa y recursos del Gobierno de Canarias (GDCAN) para la familia profesional de Administración y Gestión."
-      : "Eres un asistente experto en el currículo de la familia profesional de Administración y Gestión de Formación Profesional en Canarias.";
+      ? `Eres un asistente experto en la normativa y recursos del Gobierno de Canarias (GDCAN) para la familia profesional de ${family}.`
+      : `Eres un asistente experto en el currículo de la familia profesional de ${family} de Formación Profesional en Canarias.`;
 
   // Ground GDCAN answers in the institution's own manuals and FAQs so replies
   // reflect the uploaded documentation instead of generic model knowledge.
