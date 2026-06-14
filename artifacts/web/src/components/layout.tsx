@@ -32,7 +32,7 @@ import { ProfileDialog } from "./profile-dialog";
 import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
-const APP_VERSION = "3.1";
+const APP_VERSION = "3.2";
 
 interface LayoutProps {
   children: React.ReactNode;
