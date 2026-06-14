@@ -16,7 +16,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Image, Type, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Image, Type, Trash2, AlertTriangle } from "lucide-react";
 
 // Same-origin public branding image routes (served by the API under /api).
 function brandingAssetUrl(kind: "logo" | "favicon", version: string): string {
@@ -38,6 +49,11 @@ export default function AparienciaSettings() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Changing the active professional family re-scopes the whole app, so it is
+  // gated behind an explicit double confirmation (a warning dialog + an
+  // acknowledgement checkbox the admin must tick before confirming).
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -64,8 +80,22 @@ export default function AparienciaSettings() {
     return res.objectPath;
   };
 
-  const onSubmit = async (e: FormEvent) => {
+  const familyChanged =
+    professionalFamily.trim() !== (branding?.professionalFamily ?? "");
+
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
+    // Re-scoping the app is consequential: require the extra confirmation step
+    // before saving when (and only when) the active family actually changes.
+    if (familyChanged) {
+      setAcknowledged(false);
+      setConfirmOpen(true);
+      return;
+    }
+    void doSave();
+  };
+
+  const doSave = async () => {
     setSavedMessage(null);
     setErrorMessage(null);
     setSaving(true);
@@ -321,6 +351,53 @@ export default function AparienciaSettings() {
           {saving ? "Guardando…" : "Guardar cambios"}
         </Button>
       </form>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Cambiar la familia profesional activa
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Toda la aplicación está restringida a la familia profesional
+                  activa. Si la cambias de{" "}
+                  <strong>«{branding?.professionalFamily || "Administración y Gestión"}»</strong>{" "}
+                  a <strong>«{professionalFamily.trim() || "Administración y Gestión"}»</strong>,
+                  el directorio de centros, el panel y los informes pasarán a
+                  mostrar únicamente la nueva familia para <strong>todas las
+                  personas usuarias</strong>.
+                </p>
+                <label className="flex items-start gap-2 text-sm text-foreground">
+                  <Checkbox
+                    checked={acknowledged}
+                    onCheckedChange={(v) => setAcknowledged(v === true)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Entiendo que este cambio afecta a lo que ve toda la
+                    plataforma y confirmo que quiero continuar.
+                  </span>
+                </label>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!acknowledged}
+              onClick={() => {
+                setConfirmOpen(false);
+                void doSave();
+              }}
+            >
+              Sí, cambiar la familia activa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

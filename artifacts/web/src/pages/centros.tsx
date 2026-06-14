@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useListCenters,
@@ -37,7 +37,7 @@ const ALL = "all";
 
 export default function CentrosPage() {
   const { user } = useAuth();
-  const { professionalFamily, isLoading: brandingLoading } = useBranding();
+  const { professionalFamily } = useBranding();
   const canManage =
     user?.role === "superadmin" || user?.role === "coordinator";
 
@@ -45,7 +45,6 @@ export default function CentrosPage() {
   const [provinceId, setProvinceId] = useState<number | null>(null);
   const [islandId, setIslandId] = useState<number | null>(null);
   const [municipalityId, setMunicipalityId] = useState<number | null>(null);
-  const [family, setFamily] = useState<string | null>(null);
   const [nature, setNature] = useState<string | null>(null);
   const [centerType, setCenterType] = useState<string | null>(null);
 
@@ -53,23 +52,8 @@ export default function CentrosPage() {
   const { data: islands = [] } = useListIslands();
   const { data: municipalities = [] } = useListMunicipalities();
   const { data: facets } = useListCenterFacets();
-  const familyOptions = facets?.families ?? [];
   const natureOptions = facets?.natures ?? [];
   const centerTypeOptions = facets?.centerTypes ?? [];
-
-  // The app is destined for one professional family: pre-select it as the default
-  // centers filter (only once, when the facet exists). The user can still switch
-  // to "Todas las familias" or any other afterwards.
-  const [familyInitialized, setFamilyInitialized] = useState(false);
-  useEffect(() => {
-    if (familyInitialized || brandingLoading || familyOptions.length === 0) {
-      return;
-    }
-    if (familyOptions.includes(professionalFamily)) {
-      setFamily(professionalFamily);
-    }
-    setFamilyInitialized(true);
-  }, [familyInitialized, brandingLoading, familyOptions, professionalFamily]);
 
   const islandOptions = islands.filter(
     (i) => provinceId == null || i.provinceId === provinceId,
@@ -92,7 +76,6 @@ export default function CentrosPage() {
   if (islandId != null) params.islandId = islandId;
   if (municipalityId != null) params.municipalityId = municipalityId;
   if (search.trim()) params.search = search.trim();
-  if (family) params.family = family;
   if (nature) params.nature = nature;
   if (centerType) params.centerType = centerType;
 
@@ -128,7 +111,8 @@ export default function CentrosPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Centros</h1>
           <p className="text-muted-foreground">
-            Directorio de centros de Formación Profesional en Canarias.
+            Directorio de centros que imparten la familia profesional de{" "}
+            {professionalFamily} en Canarias.
           </p>
         </div>
         {canManage && (
@@ -209,23 +193,6 @@ export default function CentrosPage() {
             {municipalityOptions.map((m) => (
               <SelectItem key={m.id} value={String(m.id)}>
                 {m.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={family ?? ALL}
-          onValueChange={(v) => setFamily(v === ALL ? null : v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Familia profesional" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas las familias</SelectItem>
-            {familyOptions.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f}
               </SelectItem>
             ))}
           </SelectContent>

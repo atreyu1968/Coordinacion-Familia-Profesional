@@ -33,7 +33,12 @@ import {
   GenerateReportBody,
 } from "@workspace/api-zod";
 import { requireAuth, requireRole, resolveReadScope } from "../middlewares/auth";
-import { getSettings, isDeepseekConfigured, professionalFamilyOf } from "../lib/settings";
+import {
+  getSettings,
+  getActiveFamily,
+  isDeepseekConfigured,
+  professionalFamilyOf,
+} from "../lib/settings";
 import { toAnnualReport } from "../lib/mappers";
 
 const router: IRouter = Router();
@@ -98,28 +103,45 @@ function provinceColFilter(
   return undefined;
 }
 
-// Resources have no provinceId; they hang off a center. A province caller sees
-// resources whose center belongs to the province (plus center-less resources);
-// a center caller sees only their center's resources.
-function resourceScopeFilters(scope: DashboardScope): SQL[] {
-  const filters: SQL[] = [isNull(resourcesTable.deletedAt)];
-  if (scope.centerId != null) {
-    filters.push(eq(resourcesTable.centerId, scope.centerId));
-  } else if (scope.provinceId != null) {
-    const centerIds = db
-      .select({ id: centersTable.id })
-      .from(centersTable)
-      .where(
-        and(
-          isNull(centersTable.deletedAt),
-          eq(centersTable.provinceId, scope.provinceId),
-        ),
-      );
-    filters.push(
-      or(inArray(resourcesTable.centerId, centerIds), isNull(resourcesTable.centerId))!,
-    );
+// SQL predicate: a center offers the app's active professional family. The whole
+// instance is locked to one family, so every center-derived figure is restricted
+// to it.
+function centerInActiveFamily(activeFamily: string): SQL {
+  return sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`;
+}
+
+// Center ids inside the caller's scope that offer the active family. Used to
+// constrain center-hung figures (teachers, resources) so the dashboard reflects
+// only the active family's footprint.
+function activeFamilyCenterIds(scope: DashboardScope, activeFamily: string) {
+  const conds: SQL[] = [
+    isNull(centersTable.deletedAt),
+    centerInActiveFamily(activeFamily),
+  ];
+  if (scope.provinceId != null) {
+    conds.push(eq(centersTable.provinceId, scope.provinceId));
   }
-  return filters;
+  if (scope.centerId != null) {
+    conds.push(eq(centersTable.id, scope.centerId));
+  }
+  return db
+    .select({ id: centersTable.id })
+    .from(centersTable)
+    .where(and(...conds));
+}
+
+// Resources have no provinceId; they hang off a center. The instance is locked to
+// the active family, so a resource counts only when its center is one of the
+// active-family centers within the caller's scope (center-less resources are
+// excluded, as they cannot be attributed to the family).
+function resourceScopeFilters(
+  scope: DashboardScope,
+  activeFamily: string,
+): SQL[] {
+  return [
+    isNull(resourcesTable.deletedAt),
+    inArray(resourcesTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+  ];
 }
 
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
@@ -144,7 +166,12 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     return;
   }
 
-  const centerFilters: SQL[] = [isNull(centersTable.deletedAt)];
+  const activeFamily = await getActiveFamily();
+
+  const centerFilters: SQL[] = [
+    isNull(centersTable.deletedAt),
+    centerInActiveFamily(activeFamily),
+  ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
   }
@@ -156,25 +183,23 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(centersTable)
     .where(and(...centerFilters));
 
-  const teacherFilters: SQL[] = [
-    isNull(usersTable.deletedAt),
-    eq(usersTable.role, "teacher"),
-  ];
-  if (scope.provinceId != null) {
-    teacherFilters.push(eq(usersTable.provinceId, scope.provinceId));
-  }
-  if (scope.centerId != null) {
-    teacherFilters.push(eq(usersTable.centerId, scope.centerId));
-  }
+  // Teachers hang off a center; restrict to staff at the active-family centers
+  // within scope so the figure matches the locked family.
   const [teachersCount] = await db
     .select({ value: count() })
     .from(usersTable)
-    .where(and(...teacherFilters));
+    .where(
+      and(
+        isNull(usersTable.deletedAt),
+        eq(usersTable.role, "teacher"),
+        inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+      ),
+    );
 
   const [resourcesCount] = await db
     .select({ value: count() })
     .from(resourcesTable)
-    .where(and(...resourceScopeFilters(scope)));
+    .where(and(...resourceScopeFilters(scope, activeFamily)));
 
   const surveyFilters: SQL[] = [
     isNull(surveysTable.deletedAt),
@@ -239,11 +264,13 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     return;
   }
 
+  const activeFamily = await getActiveFamily();
+
   const resourceMonth = sql<string>`to_char(${resourcesTable.createdAt}, 'YYYY-MM')`;
   const resourcesByMonthRows = await db
     .select({ label: resourceMonth, value: count() })
     .from(resourcesTable)
-    .where(and(...resourceScopeFilters(scope)))
+    .where(and(...resourceScopeFilters(scope, activeFamily)))
     .groupBy(resourceMonth)
     .orderBy(resourceMonth);
 
@@ -260,7 +287,10 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     .where(and(...userFilters))
     .groupBy(usersTable.role);
 
-  const centerFilters: SQL[] = [isNull(centersTable.deletedAt)];
+  const centerFilters: SQL[] = [
+    isNull(centersTable.deletedAt),
+    centerInActiveFamily(activeFamily),
+  ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
   }
@@ -353,8 +383,11 @@ router.get("/reports", requireAuth, requireRole("superadmin", "coordinator"), as
 
 // Compute a compact set of aggregate figures for a province scope, used to
 // ground the AI-generated annual report in real platform data.
-async function gatherReportStats(scope: DashboardScope) {
-  const centerFilters: SQL[] = [isNull(centersTable.deletedAt)];
+async function gatherReportStats(scope: DashboardScope, activeFamily: string) {
+  const centerFilters: SQL[] = [
+    isNull(centersTable.deletedAt),
+    centerInActiveFamily(activeFamily),
+  ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
   }
@@ -363,22 +396,21 @@ async function gatherReportStats(scope: DashboardScope) {
     .from(centersTable)
     .where(and(...centerFilters));
 
-  const teacherFilters: SQL[] = [
-    isNull(usersTable.deletedAt),
-    eq(usersTable.role, "teacher"),
-  ];
-  if (scope.provinceId != null) {
-    teacherFilters.push(eq(usersTable.provinceId, scope.provinceId));
-  }
   const [teachers] = await db
     .select({ value: count() })
     .from(usersTable)
-    .where(and(...teacherFilters));
+    .where(
+      and(
+        isNull(usersTable.deletedAt),
+        eq(usersTable.role, "teacher"),
+        inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+      ),
+    );
 
   const [resources] = await db
     .select({ value: count() })
     .from(resourcesTable)
-    .where(and(...resourceScopeFilters(scope)));
+    .where(and(...resourceScopeFilters(scope, activeFamily)));
 
   const surveyFilters: SQL[] = [isNull(surveysTable.deletedAt)];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
@@ -457,9 +489,9 @@ router.post(
       centerId: null,
       empty: false,
     };
-    const stats = await gatherReportStats(scope);
-    const ambito = provinceId == null ? "autonómico (toda Canarias)" : "provincial";
     const family = professionalFamilyOf(settings);
+    const stats = await gatherReportStats(scope, family);
+    const ambito = provinceId == null ? "autonómico (toda Canarias)" : "provincial";
 
     const systemPrompt =
       `Eres un técnico de coordinación de la familia profesional de ${family} ` +

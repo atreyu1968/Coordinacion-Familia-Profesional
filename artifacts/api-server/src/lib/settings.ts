@@ -64,6 +64,13 @@ export function professionalFamilyOf(s: IntegrationSettings): string {
   return fam || DEFAULT_PROFESSIONAL_FAMILY;
 }
 
+// The single professional family the whole app instance is locked to. Used to
+// restrict the centers data view (and the center-derived dashboard/report
+// figures) to that family for every user.
+export async function getActiveFamily(): Promise<string> {
+  return professionalFamilyOf(await getSettings());
+}
+
 export function isDeepseekConfigured(s: IntegrationSettings): boolean {
   return typeof s.deepseekApiKey === "string" && s.deepseekApiKey.length > 0;
 }

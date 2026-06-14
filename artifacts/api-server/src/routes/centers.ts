@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireRole, hasScopeOver } from "../middlewares/auth";
 import { toCenter, toTrainingOffer } from "../lib/mappers";
+import { getActiveFamily } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -46,10 +47,13 @@ router.get("/centers", async (req, res): Promise<void> => {
     filters.push(eq(centersTable.nature, query.data.nature));
   if (query.data.centerType)
     filters.push(eq(centersTable.centerType, query.data.centerType));
-  if (query.data.family)
-    filters.push(
-      sql`${centersTable.families} @> ${JSON.stringify([query.data.family])}::jsonb`,
-    );
+  // The app instance is locked to a single active professional family: every
+  // centers listing is filtered to it for all users (the client no longer offers
+  // a family selector). The incoming `family` param is intentionally ignored.
+  const activeFamily = await getActiveFamily();
+  filters.push(
+    sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+  );
 
   const rows = await db
     .select()
@@ -62,17 +66,27 @@ router.get("/centers", async (req, res): Promise<void> => {
 // Distinct values for the Centros page filter selects. Defined before
 // "/centers/:id" so Express does not treat "facets" as an :id.
 router.get("/centers/facets", async (_req, res): Promise<void> => {
+  // Facets must reflect the locked instance too: only derive distinct values
+  // from centers that offer the active professional family.
+  const activeFamily = await getActiveFamily();
+  const familyJson = JSON.stringify([activeFamily]);
+  // A center may list several families; expanding them all would leak other
+  // families. Keep only the active one (the instance is locked to it).
   const familiesRes = await db.execute<{ value: string }>(
-    sql`SELECT DISTINCT jsonb_array_elements_text(families) AS value
-        FROM centers WHERE deleted_at IS NULL ORDER BY value`,
+    sql`SELECT DISTINCT elem AS value
+        FROM centers, jsonb_array_elements_text(families) AS elem
+        WHERE deleted_at IS NULL AND families @> ${familyJson}::jsonb
+          AND elem = ${activeFamily} ORDER BY value`,
   );
   const typesRes = await db.execute<{ value: string }>(
     sql`SELECT DISTINCT center_type AS value FROM centers
-        WHERE deleted_at IS NULL AND center_type IS NOT NULL ORDER BY value`,
+        WHERE deleted_at IS NULL AND center_type IS NOT NULL
+          AND families @> ${familyJson}::jsonb ORDER BY value`,
   );
   const naturesRes = await db.execute<{ value: string }>(
     sql`SELECT DISTINCT nature AS value FROM centers
-        WHERE deleted_at IS NULL AND nature IS NOT NULL ORDER BY value`,
+        WHERE deleted_at IS NULL AND nature IS NOT NULL
+          AND families @> ${familyJson}::jsonb ORDER BY value`,
   );
   res.json(
     ListCenterFacetsResponse.parse({
@@ -121,11 +135,18 @@ router.get("/centers/:id", async (req, res): Promise<void> => {
     res.status(400).json({ message: params.error.message });
     return;
   }
+  // The instance is locked to the active family: a center outside it does not
+  // exist as far as this app is concerned (404), preventing access by direct ID.
+  const activeFamily = await getActiveFamily();
   const [center] = await db
     .select()
     .from(centersTable)
     .where(
-      and(eq(centersTable.id, params.data.id), isNull(centersTable.deletedAt)),
+      and(
+        eq(centersTable.id, params.data.id),
+        isNull(centersTable.deletedAt),
+        sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ),
     );
   if (!center) {
     res.status(404).json({ message: "Centro no encontrado" });
@@ -163,11 +184,16 @@ router.patch(
       res.status(400).json({ message: parsed.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
     const [existing] = await db
       .select()
       .from(centersTable)
       .where(
-        and(eq(centersTable.id, params.data.id), isNull(centersTable.deletedAt)),
+        and(
+          eq(centersTable.id, params.data.id),
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ),
       );
     if (!existing) {
       res.status(404).json({ message: "Centro no encontrado" });
@@ -219,11 +245,16 @@ router.delete(
       res.status(400).json({ message: params.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
     const [existing] = await db
       .select()
       .from(centersTable)
       .where(
-        and(eq(centersTable.id, params.data.id), isNull(centersTable.deletedAt)),
+        and(
+          eq(centersTable.id, params.data.id),
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ),
       );
     if (!existing) {
       res.status(404).json({ message: "Centro no encontrado" });
@@ -250,6 +281,22 @@ router.get("/centers/:id/training-offer", async (req, res): Promise<void> => {
   const params = ListTrainingOfferParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ message: params.error.message });
+    return;
+  }
+  // Do not expose the offer of a center outside the active family.
+  const activeFamily = await getActiveFamily();
+  const [center] = await db
+    .select({ id: centersTable.id })
+    .from(centersTable)
+    .where(
+      and(
+        eq(centersTable.id, params.data.id),
+        isNull(centersTable.deletedAt),
+        sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ),
+    );
+  if (!center) {
+    res.status(404).json({ message: "Centro no encontrado" });
     return;
   }
   const rows = await db
@@ -279,11 +326,16 @@ router.post(
       res.status(400).json({ message: parsed.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
     const [center] = await db
       .select()
       .from(centersTable)
       .where(
-        and(eq(centersTable.id, params.data.id), isNull(centersTable.deletedAt)),
+        and(
+          eq(centersTable.id, params.data.id),
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ),
       );
     if (!center) {
       res.status(404).json({ message: "Centro no encontrado" });
