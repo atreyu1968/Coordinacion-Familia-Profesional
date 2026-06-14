@@ -361,6 +361,7 @@ export interface TrainingOffer {
   cycleName: string;
   level?: string;
   shift?: string | null;
+  schoolYear?: string | null;
 }
 
 export type CenterDetail = Center & {
@@ -435,6 +436,7 @@ export interface CreateTrainingOfferInput {
   cycleName?: string;
   level?: string;
   shift?: string | null;
+  schoolYear?: string | null;
 }
 
 export interface Module {
@@ -1377,6 +1379,92 @@ export interface ModuleSpaceAccess {
   nextcloudUrl: string;
 }
 
+export interface AcademicYear {
+  id: number;
+  name: string;
+  active: boolean;
+  groupCount?: number;
+  assignmentCount?: number;
+  offerCount?: number;
+}
+
+export interface AcademicYearsResponse {
+  activeYear?: string | null;
+  years: AcademicYear[];
+}
+
+export interface CreateAcademicYearInput {
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface RenameAcademicYearInput {
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface SetActiveAcademicYearInput {
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface AcademicYearTransitionInput {
+  /** @minLength 1 */
+  fromYear: string;
+  /** @minLength 1 */
+  toYear: string;
+  copyGroups?: boolean;
+  copyTrainingOffer?: boolean;
+  copyAssignments?: boolean;
+}
+
+export interface AcademicYearTransitionResult {
+  groupsCopied: number;
+  offerCopied: number;
+  assignmentsCopied: number;
+}
+
+export interface OpenConfirmationInput {
+  /** @minLength 1 */
+  year: string;
+  /** Days until the confirmation deadline (defaults to 15). */
+  deadlineDays?: number;
+}
+
+export interface OpenConfirmationResult {
+  created: number;
+  emailed: number;
+  emailPending: boolean;
+  deadline?: string;
+}
+
+export interface TeacherYearConfirmation {
+  id: number;
+  teacherId: number;
+  teacherName?: string | null;
+  schoolYear: string;
+  /** pending | confirmed */
+  status: string;
+  centerId?: number | null;
+  deadline: string;
+  confirmedAt?: string | null;
+}
+
+export interface MyYearConfirmation {
+  year?: string | null;
+  /** none (no window open) | pending | confirmed */
+  status: string;
+  deadline?: string | null;
+  confirmedAt?: string | null;
+  centerId?: number | null;
+  moduleIds?: number[];
+}
+
+export interface ConfirmYearInput {
+  centerId: number;
+  moduleIds: number[];
+}
+
 /**
  * Error
  */
@@ -1480,11 +1568,19 @@ search?: SearchQueryParameter;
 
 export type ListGroupsParams = {
 centerId?: CenterQueryParameter;
+/**
+ * Filter by academic year. Defaults to the active course; pass "all" to list every year.
+ */
+schoolYear?: string;
 };
 
 export type ListTeachingAssignmentsParams = {
 centerId?: CenterQueryParameter;
 teacherId?: number;
+/**
+ * Filter by academic year. Defaults to the active course; pass "all" to list every year.
+ */
+schoolYear?: string;
 };
 
 export type ListResourcesParams = {
@@ -1542,5 +1638,12 @@ provinceId?: ProvinceQueryParameter;
 
 export type GetDashboardStatisticsParams = {
 provinceId?: ProvinceQueryParameter;
+};
+
+export type ListYearConfirmationsParams = {
+/**
+ * Academic year to inspect. Defaults to the active course.
+ */
+schoolYear?: string;
 };
 

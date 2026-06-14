@@ -19,6 +19,11 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   // e.g. "Administración y Gestión". Overrides the hardcoded identity texts and
   // conditions the centers data view; falls back to that default when unset.
   professionalFamily: text("professional_family"),
+  // Active academic year (curso activo), e.g. "2025/2026". Filters academic
+  // views (groups, assignments, training offer) and dashboard/report figures by
+  // default. Backed by the academic_years list; changing it is a high-impact
+  // action gated by a double confirmation in the control panel.
+  activeAcademicYear: text("active_academic_year"),
   vapidPublicKey: text("vapid_public_key"),
   vapidPrivateKey: text("vapid_private_key"),
   vapidSubject: text("vapid_subject"),

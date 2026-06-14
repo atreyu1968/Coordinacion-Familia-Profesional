@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { YearPicker, useAcademicYears } from "@/components/year-selector";
 
 const GLOBAL = "global";
 
@@ -200,6 +201,7 @@ export function GroupDialog({ trigger }: { trigger: ReactNode }) {
   const qc = useQueryClient();
   const { centers, fixedCenterId } = useScopeCenters();
   const { data: cycles = [] } = useListCycles();
+  const { activeYear } = useAcademicYears();
   const createMut = useCreateGroup();
 
   const [open, setOpen] = useState(false);
@@ -213,11 +215,11 @@ export function GroupDialog({ trigger }: { trigger: ReactNode }) {
     if (open) {
       setName("");
       setCycleName("");
-      setSchoolYear("");
+      setSchoolYear(activeYear ?? "");
       setCenterId(fixedCenterId ?? centers[0]?.id ?? null);
       setError(null);
     }
-  }, [open, fixedCenterId, centers]);
+  }, [open, fixedCenterId, centers, activeYear]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -313,11 +315,10 @@ export function GroupDialog({ trigger }: { trigger: ReactNode }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="g-year">Curso</Label>
-              <Input
+              <YearPicker
                 id="g-year"
                 value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                placeholder="2025/2026"
+                onChange={setSchoolYear}
               />
             </div>
           </div>
@@ -342,6 +343,7 @@ export function AssignmentDialog({ trigger }: { trigger: ReactNode }) {
   const createMut = useCreateTeachingAssignment();
   const { data: teachers = [] } = useListUsers({ role: "teacher" });
   const { data: modules = [] } = useListModules({});
+  const { activeYear } = useAcademicYears();
 
   const [open, setOpen] = useState(false);
   const [teacherId, setTeacherId] = useState<number | null>(null);
@@ -355,10 +357,10 @@ export function AssignmentDialog({ trigger }: { trigger: ReactNode }) {
       setTeacherId(null);
       setModuleId(null);
       setCenterId(fixedCenterId ?? centers[0]?.id ?? null);
-      setSchoolYear("");
+      setSchoolYear(activeYear ?? "");
       setError(null);
     }
-  }, [open, fixedCenterId, centers]);
+  }, [open, fixedCenterId, centers, activeYear]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -464,11 +466,10 @@ export function AssignmentDialog({ trigger }: { trigger: ReactNode }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="a-year">Curso</Label>
-              <Input
+              <YearPicker
                 id="a-year"
                 value={schoolYear}
-                onChange={(e) => setSchoolYear(e.target.value)}
-                placeholder="2025/2026"
+                onChange={setSchoolYear}
               />
             </div>
           </div>

@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useListModules,
   useListGroups,
   useListTeachingAssignments,
   useListUsers,
+  useListYearConfirmations,
+  getListYearConfirmationsQueryKey,
   type ListModulesParams,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -32,6 +34,11 @@ import {
   ModuleMembersDialog,
 } from "@/components/module-members-dialog";
 import {
+  YearFilter,
+  ALL_YEARS,
+  useAcademicYears,
+} from "@/components/year-selector";
+import {
   GraduationCap,
   Plus,
   Search,
@@ -50,18 +57,47 @@ export default function AcademicaPage() {
     user?.role === "department_head";
 
   const [moduleSearch, setModuleSearch] = useState("");
+  const { activeYear } = useAcademicYears();
+  const [year, setYear] = useState<string>("");
+
+  useEffect(() => {
+    if (!year && activeYear) setYear(activeYear);
+  }, [activeYear, year]);
 
   const moduleParams: ListModulesParams = {};
   if (moduleSearch.trim()) moduleParams.search = moduleSearch.trim();
 
+  const yearParam = !year ? undefined : year === ALL_YEARS ? "all" : year;
+  const showConfirmation = canManage && !!year && year !== ALL_YEARS;
+
   const { data: modules = [], isLoading: modulesLoading } =
     useListModules(moduleParams);
-  const { data: groups = [], isLoading: groupsLoading } = useListGroups({});
+  const { data: groups = [], isLoading: groupsLoading } = useListGroups(
+    yearParam ? { schoolYear: yearParam } : {},
+  );
   const { data: assignments = [], isLoading: assignmentsLoading } =
-    useListTeachingAssignments({});
+    useListTeachingAssignments(yearParam ? { schoolYear: yearParam } : {});
   const { data: teachers = [], isLoading: teachersLoading } = useListUsers({
     role: "teacher",
   });
+  const confirmationParams = showConfirmation ? { schoolYear: year } : undefined;
+  const { data: confirmations = [] } = useListYearConfirmations(
+    confirmationParams,
+    {
+      query: {
+        queryKey: getListYearConfirmationsQueryKey(confirmationParams),
+        enabled: showConfirmation,
+      },
+    },
+  );
+
+  const confirmationByTeacher = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const c of confirmations) {
+      map.set(c.teacherId, c.status);
+    }
+    return map;
+  }, [confirmations]);
 
   const assignmentsByTeacher = useMemo(() => {
     const map = new Map<number, number>();
@@ -73,17 +109,22 @@ export default function AcademicaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          <GraduationCap className="w-5 h-5" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Coordinación Académica
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Plantilla docente, módulos, grupos y movilidad del profesorado.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Coordinación Académica
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Plantilla docente, módulos, grupos y movilidad del profesorado.
-          </p>
+        <div className="w-full sm:w-56">
+          <YearFilter value={year} onChange={setYear} />
         </div>
       </div>
 
@@ -126,39 +167,54 @@ export default function AcademicaPage() {
                   <TableRow>
                     <TableHead>Profesor</TableHead>
                     <TableHead>Correo</TableHead>
+                    {showConfirmation && <TableHead>Confirmación</TableHead>}
                     <TableHead className="text-right">Módulos</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {teachersLoading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8">
+                      <TableCell colSpan={showConfirmation ? 4 : 3} className="text-center py-8">
                         Cargando...
                       </TableCell>
                     </TableRow>
                   ) : teachers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={3}
+                        colSpan={showConfirmation ? 4 : 3}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No hay profesorado registrado.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    teachers.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-medium">{t.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          <EmailLink email={t.email} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="secondary">
-                            {assignmentsByTeacher.get(t.id) ?? 0}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    teachers.map((t) => {
+                      const confStatus = confirmationByTeacher.get(t.id);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium">{t.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            <EmailLink email={t.email} />
+                          </TableCell>
+                          {showConfirmation && (
+                            <TableCell>
+                              {confStatus === "confirmed" ? (
+                                <Badge variant="secondary">Confirmado</Badge>
+                              ) : confStatus === "pending" ? (
+                                <Badge variant="outline">Pendiente</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right">
+                            <Badge variant="secondary">
+                              {assignmentsByTeacher.get(t.id) ?? 0}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

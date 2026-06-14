@@ -24,7 +24,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireRole, hasScopeOver } from "../middlewares/auth";
 import { toCenter, toTrainingOffer } from "../lib/mappers";
-import { getActiveFamily } from "../lib/settings";
+import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -381,6 +381,11 @@ router.post(
       return;
     }
 
+    const schoolYear =
+      (parsed.data.schoolYear ?? "").trim() ||
+      (await getActiveAcademicYear()) ||
+      null;
+
     const [offer] = await db
       .insert(trainingOfferTable)
       .values({
@@ -389,6 +394,7 @@ router.post(
         cycleName,
         level,
         shift: parsed.data.shift ?? null,
+        schoolYear,
       })
       .returning();
     res.status(201).json(toTrainingOffer(offer));

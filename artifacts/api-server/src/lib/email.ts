@@ -161,6 +161,40 @@ export function buildInvitationEmail(params: {
   };
 }
 
+export function buildYearConfirmationEmail(params: {
+  teacherName: string;
+  schoolYear: string;
+  deadline: Date;
+  appUrl?: string | null;
+}): { subject: string; html: string } {
+  const deadlineLabel = new Date(params.deadline).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const link = (params.appUrl ?? "").trim().replace(/\/+$/, "");
+  return {
+    subject: `Confirma tu participación · Curso ${params.schoolYear}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color:#18181b;">
+        <h2>Coordina ADG · Confirmación de curso</h2>
+        <p>Hola ${params.teacherName},</p>
+        <p>Ha comenzado el curso <strong>${params.schoolYear}</strong>. Para seguir
+        activo en la plataforma debes confirmar el <strong>centro</strong> y los
+        <strong>módulos</strong> que vas a impartir este curso.</p>
+        <p>Tienes hasta el <strong>${deadlineLabel}</strong>. Si no confirmas antes
+        de esa fecha, tu cuenta se desactivará automáticamente y deberás solicitar
+        su reactivación al administrador.</p>
+        ${
+          link
+            ? `<p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#1b4965;color:#fff;text-decoration:none;border-radius:6px;">Confirmar ahora</a></p>`
+            : `<p>Accede a la plataforma para confirmar tu participación.</p>`
+        }
+      </div>
+    `,
+  };
+}
+
 export function buildPasswordResetEmail(params: {
   code: string;
 }): { subject: string; html: string } {

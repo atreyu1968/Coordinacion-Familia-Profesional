@@ -1881,6 +1881,11 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/CenterQuery"
+        - name: schoolYear
+          in: query
+          description: Filter by academic year. Defaults to the active course; pass "all" to list every year.
+          schema:
+            type: string
       responses:
         "200":
           description: Groups
@@ -1920,6 +1925,11 @@ paths:
           in: query
           schema:
             type: integer
+        - name: schoolYear
+          in: query
+          description: Filter by academic year. Defaults to the active course; pass "all" to list every year.
+          schema:
+            type: string
       responses:
         "200":
           description: Assignments
@@ -3020,6 +3030,249 @@ paths:
               schema:
                 $ref: "#/components/schemas/VapidPublicKey"
 
+  /academic-years:
+    get:
+      operationId: listAcademicYears
+      tags: [academics]
+      summary: Official list of academic years and the active course
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Academic years with usage counts and the active course.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYearsResponse"
+    post:
+      operationId: createAcademicYear
+      tags: [academics]
+      summary: Add an academic year to the official list (superadmin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAcademicYearInput"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYear"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /academic-years/active:
+    put:
+      operationId: setActiveAcademicYear
+      tags: [academics]
+      summary: Set the active course (superadmin, double confirmation in UI)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetActiveAcademicYearInput"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYearsResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /academic-years/transition:
+    post:
+      operationId: transitionAcademicYear
+      tags: [academics]
+      summary: "Pasar de curso: clone groups, offer and assignments to a new year"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcademicYearTransitionInput"
+      responses:
+        "200":
+          description: Transition result (idempotent, skips already-copied rows).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYearTransitionResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /academic-years/open-confirmation:
+    post:
+      operationId: openYearConfirmation
+      tags: [academics]
+      summary: Open the annual teacher confirmation window for a year (superadmin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenConfirmationInput"
+      responses:
+        "200":
+          description: Confirmation window opened; reminder emails attempted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenConfirmationResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /academic-years/confirmations:
+    get:
+      operationId: listYearConfirmations
+      tags: [academics]
+      summary: Teacher confirmation status for a year (managers)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: schoolYear
+          in: query
+          description: Academic year to inspect. Defaults to the active course.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmations within the caller's scope.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherYearConfirmation"
+        "403":
+          $ref: "#/components/responses/Error"
+  /academic-years/my-confirmation:
+    get:
+      operationId: getMyYearConfirmation
+      tags: [academics]
+      summary: The caller's own confirmation for the active course
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The caller's confirmation state for the active course.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyYearConfirmation"
+  /academic-years/confirm:
+    post:
+      operationId: confirmYear
+      tags: [academics]
+      summary: Teacher confirms center and modules for the active course
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmYearInput"
+      responses:
+        "200":
+          description: Confirmed; teaching assignments generated for the year.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherYearConfirmation"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /academic-years/{id}:
+    patch:
+      operationId: renameAcademicYear
+      tags: [academics]
+      summary: Rename an academic year (superadmin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenameAcademicYearInput"
+      responses:
+        "200":
+          description: Renamed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYear"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteAcademicYear
+      tags: [academics]
+      summary: Remove an academic year from the official list (superadmin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted.
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /users/{id}/reactivate:
+    post:
+      operationId: reactivateUser
+      tags: [users]
+      summary: Reactivate a deactivated user and reopen their year confirmation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Reactivated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3833,6 +4086,9 @@ components:
         shift:
           type: string
           nullable: true
+        schoolYear:
+          type: string
+          nullable: true
       required: [id, centerId, cycleName]
     CreateTrainingOfferInput:
       type: object
@@ -3845,6 +4101,9 @@ components:
         level:
           type: string
         shift:
+          type: string
+          nullable: true
+        schoolYear:
           type: string
           nullable: true
     Module:
@@ -5415,3 +5674,161 @@ components:
         nextcloudUrl:
           type: string
       required: [url, nextcloudUrl]
+    AcademicYear:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        active:
+          type: boolean
+        groupCount:
+          type: integer
+        assignmentCount:
+          type: integer
+        offerCount:
+          type: integer
+      required: [id, name, active]
+    AcademicYearsResponse:
+      type: object
+      properties:
+        activeYear:
+          type: string
+          nullable: true
+        years:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcademicYear"
+      required: [years]
+    CreateAcademicYearInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required: [name]
+    RenameAcademicYearInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required: [name]
+    SetActiveAcademicYearInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+      required: [name]
+    AcademicYearTransitionInput:
+      type: object
+      properties:
+        fromYear:
+          type: string
+          minLength: 1
+        toYear:
+          type: string
+          minLength: 1
+        copyGroups:
+          type: boolean
+        copyTrainingOffer:
+          type: boolean
+        copyAssignments:
+          type: boolean
+      required: [fromYear, toYear]
+    AcademicYearTransitionResult:
+      type: object
+      properties:
+        groupsCopied:
+          type: integer
+        offerCopied:
+          type: integer
+        assignmentsCopied:
+          type: integer
+      required: [groupsCopied, offerCopied, assignmentsCopied]
+    OpenConfirmationInput:
+      type: object
+      properties:
+        year:
+          type: string
+          minLength: 1
+        deadlineDays:
+          type: integer
+          description: Days until the confirmation deadline (defaults to 15).
+      required: [year]
+    OpenConfirmationResult:
+      type: object
+      properties:
+        created:
+          type: integer
+        emailed:
+          type: integer
+        emailPending:
+          type: boolean
+        deadline:
+          type: string
+          format: date-time
+      required: [created, emailed, emailPending]
+    TeacherYearConfirmation:
+      type: object
+      properties:
+        id:
+          type: integer
+        teacherId:
+          type: integer
+        teacherName:
+          type: string
+          nullable: true
+        schoolYear:
+          type: string
+        status:
+          type: string
+          description: pending | confirmed
+        centerId:
+          type: integer
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, teacherId, schoolYear, status, deadline]
+    MyYearConfirmation:
+      type: object
+      properties:
+        year:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: none (no window open) | pending | confirmed
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+        moduleIds:
+          type: array
+          items:
+            type: integer
+      required: [status]
+    ConfirmYearInput:
+      type: object
+      properties:
+        centerId:
+          type: integer
+        moduleIds:
+          type: array
+          items:
+            type: integer
+      required: [centerId, moduleIds]

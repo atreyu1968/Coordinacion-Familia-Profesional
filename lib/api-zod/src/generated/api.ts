@@ -937,7 +937,8 @@ export const GetCenterResponse = zod.object({
   "cycleId": zod.number().nullish(),
   "cycleName": zod.string(),
   "level": zod.string().optional(),
-  "shift": zod.string().nullish()
+  "shift": zod.string().nullish(),
+  "schoolYear": zod.string().nullish()
 })).optional()
 }))
 
@@ -1000,7 +1001,8 @@ export const ListTrainingOfferResponseItem = zod.object({
   "cycleId": zod.number().nullish(),
   "cycleName": zod.string(),
   "level": zod.string().optional(),
-  "shift": zod.string().nullish()
+  "shift": zod.string().nullish(),
+  "schoolYear": zod.string().nullish()
 })
 export const ListTrainingOfferResponse = zod.array(ListTrainingOfferResponseItem)
 
@@ -1013,7 +1015,8 @@ export const AddTrainingOfferBody = zod.object({
   "cycleId": zod.number().nullish(),
   "cycleName": zod.string().optional(),
   "level": zod.string().optional(),
-  "shift": zod.string().nullish()
+  "shift": zod.string().nullish(),
+  "schoolYear": zod.string().nullish()
 })
 
 
@@ -1381,7 +1384,8 @@ export const DeleteEvaluationCriterionParams = zod.object({
 
 
 export const ListGroupsQueryParams = zod.object({
-  "centerId": zod.coerce.number().optional()
+  "centerId": zod.coerce.number().optional(),
+  "schoolYear": zod.coerce.string().optional().describe('Filter by academic year. Defaults to the active course; pass \"all\" to list every year.')
 })
 
 export const ListGroupsResponseItem = zod.object({
@@ -1404,7 +1408,8 @@ export const CreateGroupBody = zod.object({
 
 export const ListTeachingAssignmentsQueryParams = zod.object({
   "centerId": zod.coerce.number().optional(),
-  "teacherId": zod.coerce.number().optional()
+  "teacherId": zod.coerce.number().optional(),
+  "schoolYear": zod.coerce.string().optional().describe('Filter by academic year. Defaults to the active course; pass \"all\" to list every year.')
 })
 
 export const ListTeachingAssignmentsResponseItem = zod.object({
@@ -2309,6 +2314,201 @@ export const GetMobileAppResponse = zod.object({
  */
 export const GetVapidPublicKeyResponse = zod.object({
   "key": zod.string().optional().describe('Base64url VAPID public key, absent when web push is disabled')
+})
+
+
+/**
+ * @summary Official list of academic years and the active course
+ */
+export const ListAcademicYearsResponse = zod.object({
+  "activeYear": zod.string().nullish(),
+  "years": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "groupCount": zod.number().optional(),
+  "assignmentCount": zod.number().optional(),
+  "offerCount": zod.number().optional()
+}))
+})
+
+
+/**
+ * @summary Add an academic year to the official list (superadmin)
+ */
+
+
+
+export const CreateAcademicYearBody = zod.object({
+  "name": zod.string().min(1)
+})
+
+
+/**
+ * @summary Set the active course (superadmin, double confirmation in UI)
+ */
+
+
+
+export const SetActiveAcademicYearBody = zod.object({
+  "name": zod.string().min(1)
+})
+
+export const SetActiveAcademicYearResponse = zod.object({
+  "activeYear": zod.string().nullish(),
+  "years": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "groupCount": zod.number().optional(),
+  "assignmentCount": zod.number().optional(),
+  "offerCount": zod.number().optional()
+}))
+})
+
+
+/**
+ * @summary Pasar de curso: clone groups, offer and assignments to a new year
+ */
+
+
+
+
+export const TransitionAcademicYearBody = zod.object({
+  "fromYear": zod.string().min(1),
+  "toYear": zod.string().min(1),
+  "copyGroups": zod.boolean().optional(),
+  "copyTrainingOffer": zod.boolean().optional(),
+  "copyAssignments": zod.boolean().optional()
+})
+
+export const TransitionAcademicYearResponse = zod.object({
+  "groupsCopied": zod.number(),
+  "offerCopied": zod.number(),
+  "assignmentsCopied": zod.number()
+})
+
+
+/**
+ * @summary Open the annual teacher confirmation window for a year (superadmin)
+ */
+
+
+
+export const OpenYearConfirmationBody = zod.object({
+  "year": zod.string().min(1),
+  "deadlineDays": zod.number().optional().describe('Days until the confirmation deadline (defaults to 15).')
+})
+
+export const OpenYearConfirmationResponse = zod.object({
+  "created": zod.number(),
+  "emailed": zod.number(),
+  "emailPending": zod.boolean(),
+  "deadline": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Teacher confirmation status for a year (managers)
+ */
+export const ListYearConfirmationsQueryParams = zod.object({
+  "schoolYear": zod.coerce.string().optional().describe('Academic year to inspect. Defaults to the active course.')
+})
+
+export const ListYearConfirmationsResponseItem = zod.object({
+  "id": zod.number(),
+  "teacherId": zod.number(),
+  "teacherName": zod.string().nullish(),
+  "schoolYear": zod.string(),
+  "status": zod.string().describe('pending | confirmed'),
+  "centerId": zod.number().nullish(),
+  "deadline": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullish()
+})
+export const ListYearConfirmationsResponse = zod.array(ListYearConfirmationsResponseItem)
+
+
+/**
+ * @summary The caller's own confirmation for the active course
+ */
+export const GetMyYearConfirmationResponse = zod.object({
+  "year": zod.string().nullish(),
+  "status": zod.string().describe('none (no window open) | pending | confirmed'),
+  "deadline": zod.coerce.date().nullish(),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "centerId": zod.number().nullish(),
+  "moduleIds": zod.array(zod.number()).optional()
+})
+
+
+/**
+ * @summary Teacher confirms center and modules for the active course
+ */
+export const ConfirmYearBody = zod.object({
+  "centerId": zod.number(),
+  "moduleIds": zod.array(zod.number())
+})
+
+export const ConfirmYearResponse = zod.object({
+  "id": zod.number(),
+  "teacherId": zod.number(),
+  "teacherName": zod.string().nullish(),
+  "schoolYear": zod.string(),
+  "status": zod.string().describe('pending | confirmed'),
+  "centerId": zod.number().nullish(),
+  "deadline": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Rename an academic year (superadmin)
+ */
+export const RenameAcademicYearParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const RenameAcademicYearBody = zod.object({
+  "name": zod.string().min(1)
+})
+
+export const RenameAcademicYearResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "groupCount": zod.number().optional(),
+  "assignmentCount": zod.number().optional(),
+  "offerCount": zod.number().optional()
+})
+
+
+/**
+ * @summary Remove an academic year from the official list (superadmin)
+ */
+export const DeleteAcademicYearParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Reactivate a deactivated user and reopen their year confirmation
+ */
+export const ReactivateUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReactivateUserResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "status": zod.string(),
+  "provinceId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 
 

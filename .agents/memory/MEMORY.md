@@ -46,3 +46,4 @@
 - [Bash domain validation locale](bash-domain-validation-locale.md) — validate domains with LC_ALL=C grep, not bash =~; UTF-8 locale lets accented letters pass [a-z]
 - [App branding customization](branding-customization.md) — superadmin name/logo/favicon in DB; public asset routes need strict canonical path validation at write AND serve time.
 - [Configurable professional family](professional-family-setting.md) — familia profesional is a branding value; all identity texts + the Centros default filter must derive from it, never a hardcoded "Administración y Gestión".
+- [Academic year management](academic-year-management.md) — managed curso académico; active year is the DEFAULT app filter (never ALL); annual teacher confirmation + 15-day auto-deactivation; transition wizard; school_year stays free TEXT.

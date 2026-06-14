@@ -5,6 +5,7 @@ import InvitacionesPage from "@/pages/invitaciones";
 import CentrosPage from "@/pages/centros";
 import CiclosModulos from "@/components/ciclos-modulos";
 import AparienciaSettings from "@/components/apariencia-settings";
+import AcademicYearsSettings from "@/components/academic-years-settings";
 
 export default function ConfiguracionPage() {
   const { user } = useAuth();
@@ -35,6 +36,7 @@ export default function ConfiguracionPage() {
           <TabsTrigger value="invitaciones">Invitaciones</TabsTrigger>
           <TabsTrigger value="centros">Centros</TabsTrigger>
           <TabsTrigger value="ciclos">Ciclos y módulos</TabsTrigger>
+          <TabsTrigger value="cursos">Cursos académicos</TabsTrigger>
         </TabsList>
         <TabsContent value="integraciones">
           <PanelControlPage />
@@ -50,6 +52,9 @@ export default function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="ciclos">
           <CiclosModulos />
+        </TabsContent>
+        <TabsContent value="cursos">
+          <AcademicYearsSettings />
         </TabsContent>
       </Tabs>
     </div>

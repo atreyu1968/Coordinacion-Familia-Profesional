@@ -5,6 +5,7 @@ import {
   useListProvinces,
   useListCenters,
   useDeactivateUser,
+  useReactivateUser,
   getListUsersQueryKey,
   type ListUsersParams,
   type Role,
@@ -42,7 +43,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { Search, UserX } from "lucide-react";
+import { Search, UserX, UserCheck } from "lucide-react";
 
 const ALL = "all";
 
@@ -94,6 +95,7 @@ export default function UsuariosPage() {
   const { data: users = [], isLoading } = useListUsers(params);
 
   const deactivateMut = useDeactivateUser();
+  const reactivateMut = useReactivateUser();
 
   const onDeactivate = async (id: number, name: string) => {
     try {
@@ -103,6 +105,23 @@ export default function UsuariosPage() {
     } catch {
       toast({
         title: "No se pudo desactivar",
+        description: "Comprueba tus permisos e inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onReactivate = async (id: number, name: string) => {
+    try {
+      await reactivateMut.mutateAsync({ id });
+      await qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      toast({
+        title: "Usuario reactivado",
+        description: `${name} ya puede acceder de nuevo.`,
+      });
+    } catch {
+      toast({
+        title: "No se pudo reactivar",
         description: "Comprueba tus permisos e inténtalo de nuevo.",
         variant: "destructive",
       });
@@ -260,6 +279,18 @@ export default function UsuariosPage() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                        )}
+                        {!isActive && u.role !== "superadmin" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-primary hover:text-primary"
+                            disabled={reactivateMut.isPending}
+                            onClick={() => onReactivate(u.id, u.name)}
+                          >
+                            <UserCheck className="h-4 w-4" />
+                            Reactivar
+                          </Button>
                         )}
                       </TableCell>
                     )}

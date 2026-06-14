@@ -71,6 +71,14 @@ export async function getActiveFamily(): Promise<string> {
   return professionalFamilyOf(await getSettings());
 }
 
+// The academic year (course) the app currently operates on. Used to default the
+// year filter for groups/teaching-assignments/training-offer and the academic
+// dashboard/report figures. Returns null when no course has been activated yet.
+export async function getActiveAcademicYear(): Promise<string | null> {
+  const value = ((await getSettings()).activeAcademicYear ?? "").trim();
+  return value || null;
+}
+
 export function isDeepseekConfigured(s: IntegrationSettings): boolean {
   return typeof s.deepseekApiKey === "string" && s.deepseekApiKey.length > 0;
 }

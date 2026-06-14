@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
+import { TeacherConfirmationBanner } from "./teacher-confirmation-banner";
 import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
@@ -212,6 +213,7 @@ export function AppLayout({ children }: LayoutProps) {
         <main className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 p-6 md:p-8 overflow-y-auto">
             <div className="max-w-7xl mx-auto w-full">
+              <TeacherConfirmationBanner />
               {children}
             </div>
           </div>

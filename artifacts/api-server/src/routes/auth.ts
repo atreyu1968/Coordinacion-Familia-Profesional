@@ -55,7 +55,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .from(usersTable)
     .where(and(eq(usersTable.email, email), isNull(usersTable.deletedAt)));
 
-  if (!user || user.status !== "active") {
+  if (!user) {
     res.status(401).json({ message: "Credenciales incorrectas" });
     return;
   }
@@ -63,6 +63,18 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const ok = await verifyPassword(parsed.data.password, user.passwordHash);
   if (!ok) {
     res.status(401).json({ message: "Credenciales incorrectas" });
+    return;
+  }
+
+  // Credentials are valid: if the account is not active (e.g. deactivated for
+  // not confirming the academic year in time), give a clear message so the user
+  // knows to ask the administrator to reactivate it, instead of the generic
+  // "wrong credentials" error.
+  if (user.status !== "active") {
+    res.status(403).json({
+      message:
+        "Tu cuenta está desactivada. Solicita al administrador que la reactive para poder acceder.",
+    });
     return;
   }
 

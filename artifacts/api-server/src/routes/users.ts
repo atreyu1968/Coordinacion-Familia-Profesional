@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, ilike, or, desc, type SQL } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, teacherYearConfirmationsTable } from "@workspace/db";
 import {
   ListUsersQueryParams,
   ListUsersResponse,
@@ -10,7 +10,9 @@ import {
   UpdateUserBody,
   UpdateUserResponse,
   DeactivateUserParams,
+  ReactivateUserParams,
 } from "@workspace/api-zod";
+import { getActiveAcademicYear } from "../lib/settings";
 import {
   requireAuth,
   requireRole,
@@ -206,6 +208,76 @@ router.delete(
       .where(eq(usersTable.id, params.data.id));
 
     res.sendStatus(204);
+  },
+);
+
+router.post(
+  "/users/:id/reactivate",
+  requireAuth,
+  requireRole("superadmin", "coordinator", "department_head"),
+  async (req, res): Promise<void> => {
+    const params = ReactivateUserParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+
+    // A deactivated account may have deletedAt set (manual deactivation) or null
+    // (auto-deactivation for an unconfirmed year), so we do not filter on it.
+    const [target] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, params.data.id));
+
+    if (!target) {
+      res.status(404).json({ message: "Usuario no encontrado" });
+      return;
+    }
+
+    const caller = req.user!;
+    if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ status: "active", deletedAt: null })
+      .where(eq(usersTable.id, params.data.id))
+      .returning();
+
+    // Reopen the annual confirmation for the active course so the reactivated
+    // teacher gets a fresh window instead of being immediately re-deactivated.
+    if (updated.role === "teacher") {
+      const year = await getActiveAcademicYear();
+      if (year) {
+        const deadline = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        const [existing] = await db
+          .select()
+          .from(teacherYearConfirmationsTable)
+          .where(
+            and(
+              eq(teacherYearConfirmationsTable.teacherId, updated.id),
+              eq(teacherYearConfirmationsTable.schoolYear, year),
+            ),
+          );
+        if (existing) {
+          await db
+            .update(teacherYearConfirmationsTable)
+            .set({ status: "pending", deadline, confirmedAt: null })
+            .where(eq(teacherYearConfirmationsTable.id, existing.id));
+        } else {
+          await db.insert(teacherYearConfirmationsTable).values({
+            teacherId: updated.id,
+            schoolYear: year,
+            status: "pending",
+            deadline,
+          });
+        }
+      }
+    }
+
+    res.json(UpdateUserResponse.parse(updated));
   },
 );
 

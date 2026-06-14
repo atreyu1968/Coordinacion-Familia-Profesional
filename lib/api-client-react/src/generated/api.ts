@@ -20,6 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcademicYear,
+  AcademicYearTransitionInput,
+  AcademicYearTransitionResult,
+  AcademicYearsResponse,
   Accreditation,
   AddModuleMemberInput,
   AiChatInput,
@@ -39,6 +43,8 @@ import type {
   CollabStatus,
   CompanyAlert,
   CompanyAlertCreated,
+  ConfirmYearInput,
+  CreateAcademicYearInput,
   CreateAccreditationInput,
   CreateAnnouncementInput,
   CreateCalendarEntryInput,
@@ -113,6 +119,7 @@ import type {
   ListSurveysParams,
   ListTeachingAssignmentsParams,
   ListUsersParams,
+  ListYearConfirmationsParams,
   LoginInput,
   Meeting,
   MeetingAccess,
@@ -123,22 +130,28 @@ import type {
   ModuleMember,
   ModuleSpaceAccess,
   Municipality,
+  MyYearConfirmation,
   Notification,
   OkResult,
+  OpenConfirmationInput,
+  OpenConfirmationResult,
   PinForumThreadInput,
   Province,
   RegisterInput,
   RegisterPushTokenInput,
+  RenameAcademicYearInput,
   ResetPasswordInput,
   Resource,
   RsvpInput,
   SendMessageInput,
+  SetActiveAcademicYearInput,
   SubmitDocumentFormInput,
   SubmitSurveyResponseInput,
   Survey,
   SurveyDetail,
   SurveyResults,
   SyncModuleChatGroupsResult,
+  TeacherYearConfirmation,
   TeachingAssignment,
   TrainingOffer,
   TransferInput,
@@ -10187,4 +10200,809 @@ export function useGetVapidPublicKey<TData = Awaited<ReturnType<typeof getVapidP
 
 
 
+
+export const getListAcademicYearsUrl = () => {
+
+
+
+
+  return `/api/academic-years`
+}
+
+/**
+ * @summary Official list of academic years and the active course
+ */
+export const listAcademicYears = async ( options?: RequestInit): Promise<AcademicYearsResponse> => {
+
+  return customFetch<AcademicYearsResponse>(getListAcademicYearsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAcademicYearsQueryKey = () => {
+    return [
+    `/api/academic-years`
+    ] as const;
+    }
+
+
+export const getListAcademicYearsQueryOptions = <TData = Awaited<ReturnType<typeof listAcademicYears>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAcademicYears>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAcademicYearsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAcademicYears>>> = ({ signal }) => listAcademicYears({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAcademicYears>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAcademicYearsQueryResult = NonNullable<Awaited<ReturnType<typeof listAcademicYears>>>
+export type ListAcademicYearsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Official list of academic years and the active course
+ */
+
+export function useListAcademicYears<TData = Awaited<ReturnType<typeof listAcademicYears>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAcademicYears>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAcademicYearsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateAcademicYearUrl = () => {
+
+
+
+
+  return `/api/academic-years`
+}
+
+/**
+ * @summary Add an academic year to the official list (superadmin)
+ */
+export const createAcademicYear = async (createAcademicYearInput: CreateAcademicYearInput, options?: RequestInit): Promise<AcademicYear> => {
+
+  return customFetch<AcademicYear>(getCreateAcademicYearUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createAcademicYearInput,)
+  }
+);}
+
+
+
+
+export const getCreateAcademicYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,{data: BodyType<CreateAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,{data: BodyType<CreateAcademicYearInput>}, TContext> => {
+
+const mutationKey = ['createAcademicYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAcademicYear>>, {data: BodyType<CreateAcademicYearInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAcademicYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof createAcademicYear>>>
+    export type CreateAcademicYearMutationBody = BodyType<CreateAcademicYearInput>
+    export type CreateAcademicYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add an academic year to the official list (superadmin)
+ */
+export const useCreateAcademicYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,{data: BodyType<CreateAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAcademicYear>>,
+        TError,
+        {data: BodyType<CreateAcademicYearInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAcademicYearMutationOptions(options));
+    }
+
+export const getSetActiveAcademicYearUrl = () => {
+
+
+
+
+  return `/api/academic-years/active`
+}
+
+/**
+ * @summary Set the active course (superadmin, double confirmation in UI)
+ */
+export const setActiveAcademicYear = async (setActiveAcademicYearInput: SetActiveAcademicYearInput, options?: RequestInit): Promise<AcademicYearsResponse> => {
+
+  return customFetch<AcademicYearsResponse>(getSetActiveAcademicYearUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      setActiveAcademicYearInput,)
+  }
+);}
+
+
+
+
+export const getSetActiveAcademicYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setActiveAcademicYear>>, TError,{data: BodyType<SetActiveAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setActiveAcademicYear>>, TError,{data: BodyType<SetActiveAcademicYearInput>}, TContext> => {
+
+const mutationKey = ['setActiveAcademicYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setActiveAcademicYear>>, {data: BodyType<SetActiveAcademicYearInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setActiveAcademicYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetActiveAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof setActiveAcademicYear>>>
+    export type SetActiveAcademicYearMutationBody = BodyType<SetActiveAcademicYearInput>
+    export type SetActiveAcademicYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set the active course (superadmin, double confirmation in UI)
+ */
+export const useSetActiveAcademicYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setActiveAcademicYear>>, TError,{data: BodyType<SetActiveAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setActiveAcademicYear>>,
+        TError,
+        {data: BodyType<SetActiveAcademicYearInput>},
+        TContext
+      > => {
+      return useMutation(getSetActiveAcademicYearMutationOptions(options));
+    }
+
+export const getTransitionAcademicYearUrl = () => {
+
+
+
+
+  return `/api/academic-years/transition`
+}
+
+/**
+ * @summary Pasar de curso: clone groups, offer and assignments to a new year
+ */
+export const transitionAcademicYear = async (academicYearTransitionInput: AcademicYearTransitionInput, options?: RequestInit): Promise<AcademicYearTransitionResult> => {
+
+  return customFetch<AcademicYearTransitionResult>(getTransitionAcademicYearUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      academicYearTransitionInput,)
+  }
+);}
+
+
+
+
+export const getTransitionAcademicYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transitionAcademicYear>>, TError,{data: BodyType<AcademicYearTransitionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transitionAcademicYear>>, TError,{data: BodyType<AcademicYearTransitionInput>}, TContext> => {
+
+const mutationKey = ['transitionAcademicYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transitionAcademicYear>>, {data: BodyType<AcademicYearTransitionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  transitionAcademicYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TransitionAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof transitionAcademicYear>>>
+    export type TransitionAcademicYearMutationBody = BodyType<AcademicYearTransitionInput>
+    export type TransitionAcademicYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Pasar de curso: clone groups, offer and assignments to a new year
+ */
+export const useTransitionAcademicYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transitionAcademicYear>>, TError,{data: BodyType<AcademicYearTransitionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof transitionAcademicYear>>,
+        TError,
+        {data: BodyType<AcademicYearTransitionInput>},
+        TContext
+      > => {
+      return useMutation(getTransitionAcademicYearMutationOptions(options));
+    }
+
+export const getOpenYearConfirmationUrl = () => {
+
+
+
+
+  return `/api/academic-years/open-confirmation`
+}
+
+/**
+ * @summary Open the annual teacher confirmation window for a year (superadmin)
+ */
+export const openYearConfirmation = async (openConfirmationInput: OpenConfirmationInput, options?: RequestInit): Promise<OpenConfirmationResult> => {
+
+  return customFetch<OpenConfirmationResult>(getOpenYearConfirmationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      openConfirmationInput,)
+  }
+);}
+
+
+
+
+export const getOpenYearConfirmationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openYearConfirmation>>, TError,{data: BodyType<OpenConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openYearConfirmation>>, TError,{data: BodyType<OpenConfirmationInput>}, TContext> => {
+
+const mutationKey = ['openYearConfirmation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openYearConfirmation>>, {data: BodyType<OpenConfirmationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  openYearConfirmation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenYearConfirmationMutationResult = NonNullable<Awaited<ReturnType<typeof openYearConfirmation>>>
+    export type OpenYearConfirmationMutationBody = BodyType<OpenConfirmationInput>
+    export type OpenYearConfirmationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Open the annual teacher confirmation window for a year (superadmin)
+ */
+export const useOpenYearConfirmation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openYearConfirmation>>, TError,{data: BodyType<OpenConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof openYearConfirmation>>,
+        TError,
+        {data: BodyType<OpenConfirmationInput>},
+        TContext
+      > => {
+      return useMutation(getOpenYearConfirmationMutationOptions(options));
+    }
+
+export const getListYearConfirmationsUrl = (params?: ListYearConfirmationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic-years/confirmations?${stringifiedParams}` : `/api/academic-years/confirmations`
+}
+
+/**
+ * @summary Teacher confirmation status for a year (managers)
+ */
+export const listYearConfirmations = async (params?: ListYearConfirmationsParams, options?: RequestInit): Promise<TeacherYearConfirmation[]> => {
+
+  return customFetch<TeacherYearConfirmation[]>(getListYearConfirmationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListYearConfirmationsQueryKey = (params?: ListYearConfirmationsParams,) => {
+    return [
+    `/api/academic-years/confirmations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListYearConfirmationsQueryOptions = <TData = Awaited<ReturnType<typeof listYearConfirmations>>, TError = ErrorType<ErrorResponse>>(params?: ListYearConfirmationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listYearConfirmations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListYearConfirmationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listYearConfirmations>>> = ({ signal }) => listYearConfirmations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listYearConfirmations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListYearConfirmationsQueryResult = NonNullable<Awaited<ReturnType<typeof listYearConfirmations>>>
+export type ListYearConfirmationsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Teacher confirmation status for a year (managers)
+ */
+
+export function useListYearConfirmations<TData = Awaited<ReturnType<typeof listYearConfirmations>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListYearConfirmationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listYearConfirmations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListYearConfirmationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMyYearConfirmationUrl = () => {
+
+
+
+
+  return `/api/academic-years/my-confirmation`
+}
+
+/**
+ * @summary The caller's own confirmation for the active course
+ */
+export const getMyYearConfirmation = async ( options?: RequestInit): Promise<MyYearConfirmation> => {
+
+  return customFetch<MyYearConfirmation>(getGetMyYearConfirmationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyYearConfirmationQueryKey = () => {
+    return [
+    `/api/academic-years/my-confirmation`
+    ] as const;
+    }
+
+
+export const getGetMyYearConfirmationQueryOptions = <TData = Awaited<ReturnType<typeof getMyYearConfirmation>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyYearConfirmation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyYearConfirmationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyYearConfirmation>>> = ({ signal }) => getMyYearConfirmation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyYearConfirmation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyYearConfirmationQueryResult = NonNullable<Awaited<ReturnType<typeof getMyYearConfirmation>>>
+export type GetMyYearConfirmationQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The caller's own confirmation for the active course
+ */
+
+export function useGetMyYearConfirmation<TData = Awaited<ReturnType<typeof getMyYearConfirmation>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyYearConfirmation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyYearConfirmationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getConfirmYearUrl = () => {
+
+
+
+
+  return `/api/academic-years/confirm`
+}
+
+/**
+ * @summary Teacher confirms center and modules for the active course
+ */
+export const confirmYear = async (confirmYearInput: ConfirmYearInput, options?: RequestInit): Promise<TeacherYearConfirmation> => {
+
+  return customFetch<TeacherYearConfirmation>(getConfirmYearUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      confirmYearInput,)
+  }
+);}
+
+
+
+
+export const getConfirmYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmYear>>, TError,{data: BodyType<ConfirmYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmYear>>, TError,{data: BodyType<ConfirmYearInput>}, TContext> => {
+
+const mutationKey = ['confirmYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmYear>>, {data: BodyType<ConfirmYearInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmYearMutationResult = NonNullable<Awaited<ReturnType<typeof confirmYear>>>
+    export type ConfirmYearMutationBody = BodyType<ConfirmYearInput>
+    export type ConfirmYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Teacher confirms center and modules for the active course
+ */
+export const useConfirmYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmYear>>, TError,{data: BodyType<ConfirmYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmYear>>,
+        TError,
+        {data: BodyType<ConfirmYearInput>},
+        TContext
+      > => {
+      return useMutation(getConfirmYearMutationOptions(options));
+    }
+
+export const getRenameAcademicYearUrl = (id: number,) => {
+
+
+
+
+  return `/api/academic-years/${id}`
+}
+
+/**
+ * @summary Rename an academic year (superadmin)
+ */
+export const renameAcademicYear = async (id: number,
+    renameAcademicYearInput: RenameAcademicYearInput, options?: RequestInit): Promise<AcademicYear> => {
+
+  return customFetch<AcademicYear>(getRenameAcademicYearUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      renameAcademicYearInput,)
+  }
+);}
+
+
+
+
+export const getRenameAcademicYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameAcademicYear>>, TError,{id: number;data: BodyType<RenameAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renameAcademicYear>>, TError,{id: number;data: BodyType<RenameAcademicYearInput>}, TContext> => {
+
+const mutationKey = ['renameAcademicYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renameAcademicYear>>, {id: number;data: BodyType<RenameAcademicYearInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  renameAcademicYear(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenameAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof renameAcademicYear>>>
+    export type RenameAcademicYearMutationBody = BodyType<RenameAcademicYearInput>
+    export type RenameAcademicYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Rename an academic year (superadmin)
+ */
+export const useRenameAcademicYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameAcademicYear>>, TError,{id: number;data: BodyType<RenameAcademicYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renameAcademicYear>>,
+        TError,
+        {id: number;data: BodyType<RenameAcademicYearInput>},
+        TContext
+      > => {
+      return useMutation(getRenameAcademicYearMutationOptions(options));
+    }
+
+export const getDeleteAcademicYearUrl = (id: number,) => {
+
+
+
+
+  return `/api/academic-years/${id}`
+}
+
+/**
+ * @summary Remove an academic year from the official list (superadmin)
+ */
+export const deleteAcademicYear = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAcademicYearUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAcademicYearMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAcademicYear>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAcademicYear>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAcademicYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAcademicYear>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAcademicYear(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAcademicYear>>>
+
+    export type DeleteAcademicYearMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove an academic year from the official list (superadmin)
+ */
+export const useDeleteAcademicYear = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAcademicYear>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAcademicYear>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAcademicYearMutationOptions(options));
+    }
+
+export const getReactivateUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/users/${id}/reactivate`
+}
+
+/**
+ * @summary Reactivate a deactivated user and reopen their year confirmation
+ */
+export const reactivateUser = async (id: number, options?: RequestInit): Promise<User> => {
+
+  return customFetch<User>(getReactivateUserUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReactivateUserMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['reactivateUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reactivateUser>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  reactivateUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReactivateUserMutationResult = NonNullable<Awaited<ReturnType<typeof reactivateUser>>>
+
+    export type ReactivateUserMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Reactivate a deactivated user and reopen their year confirmation
+ */
+export const useReactivateUser = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reactivateUser>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getReactivateUserMutationOptions(options));
+    }
 

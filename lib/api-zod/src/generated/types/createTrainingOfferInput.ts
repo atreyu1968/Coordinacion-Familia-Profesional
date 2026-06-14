@@ -11,4 +11,5 @@ export interface CreateTrainingOfferInput {
   cycleName?: string;
   level?: string;
   shift?: string | null;
+  schoolYear?: string | null;
 }

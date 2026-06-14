@@ -80,8 +80,22 @@ import {
   toResource,
 } from "../lib/mappers";
 import { syncModuleChatGroup } from "@workspace/db";
+import { getActiveAcademicYear } from "../lib/settings";
 
 const router: IRouter = Router();
+
+// Resolves the academic-year filter for list endpoints. When the client passes
+// no year we default to the active course; passing the literal "all" lists every
+// year. Returns null when no filter should be applied (either "all" or there is
+// no active course yet).
+async function resolveYearFilter(
+  queryYear: string | undefined,
+): Promise<string | null> {
+  const value = (queryYear ?? "").trim();
+  if (value.toLowerCase() === "all") return null;
+  if (value) return value;
+  return await getActiveAcademicYear();
+}
 
 // Subquery of center ids belonging to a province (non-deleted).
 function centerIdsInProvince(provinceId: number) {
@@ -1301,6 +1315,10 @@ router.get("/groups", requireAuth, async (req, res): Promise<void> => {
   if (query.data.centerId != null) {
     filters.push(eq(groupsTable.centerId, query.data.centerId));
   }
+  const yearFilter = await resolveYearFilter(query.data.schoolYear);
+  if (yearFilter) {
+    filters.push(eq(groupsTable.schoolYear, yearFilter));
+  }
   if (scope.kind === "province") {
     filters.push(
       inArray(groupsTable.centerId, centerIdsInProvince(scope.provinceId)),
@@ -1388,6 +1406,10 @@ router.get(
       filters.push(
         eq(teachingAssignmentsTable.teacherId, query.data.teacherId),
       );
+    }
+    const yearFilter = await resolveYearFilter(query.data.schoolYear);
+    if (yearFilter) {
+      filters.push(eq(teachingAssignmentsTable.schoolYear, yearFilter));
     }
     if (scope.kind === "province") {
       filters.push(

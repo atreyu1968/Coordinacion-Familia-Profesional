@@ -10,4 +10,8 @@ import type { CenterQueryParameter } from './centerQueryParameter';
 export type ListTeachingAssignmentsParams = {
 centerId?: CenterQueryParameter;
 teacherId?: number;
+/**
+ * Filter by academic year. Defaults to the active course; pass "all" to list every year.
+ */
+schoolYear?: string;
 };

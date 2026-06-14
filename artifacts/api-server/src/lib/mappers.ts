@@ -17,6 +17,8 @@ import type {
   Notification,
   AppFeedback,
   Meeting,
+  AcademicYear,
+  TeacherYearConfirmation,
 } from "@workspace/db";
 
 export function toProvince(row: Province) {
@@ -51,6 +53,30 @@ export function toTrainingOffer(row: TrainingOffer) {
     cycleName: row.cycleName,
     level: row.level ?? undefined,
     shift: row.shift,
+    schoolYear: row.schoolYear ?? null,
+  };
+}
+
+export function toAcademicYear(row: AcademicYear) {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toTeacherYearConfirmation(
+  row: TeacherYearConfirmation & { teacherName?: string | null },
+) {
+  return {
+    id: row.id,
+    teacherId: row.teacherId,
+    teacherName: row.teacherName ?? undefined,
+    schoolYear: row.schoolYear,
+    status: row.status,
+    centerId: row.centerId ?? null,
+    deadline: row.deadline.toISOString(),
+    confirmedAt: row.confirmedAt ? row.confirmedAt.toISOString() : null,
   };
 }
 

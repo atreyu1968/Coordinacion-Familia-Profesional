@@ -13,6 +13,8 @@ export * from "./learningOutcomes";
 export * from "./moduleMemberships";
 export * from "./groups";
 export * from "./teachingAssignments";
+export * from "./academicYears";
+export * from "./teacherYearConfirmations";
 export * from "./resources";
 export * from "./companyAlerts";
 export * from "./gdcanResources";

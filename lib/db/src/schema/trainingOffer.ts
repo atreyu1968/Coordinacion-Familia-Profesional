@@ -13,6 +13,7 @@ export const trainingOfferTable = pgTable("training_offer", {
   cycleName: text("cycle_name").notNull(),
   level: text("level"),
   shift: text("shift"),
+  schoolYear: text("school_year"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

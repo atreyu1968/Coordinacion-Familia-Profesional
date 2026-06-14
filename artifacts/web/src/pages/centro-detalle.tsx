@@ -54,6 +54,7 @@ import {
 import { CenterMap } from "@/components/center-map";
 import { CenterFormDialog } from "@/components/center-form-dialog";
 import { EmailLink, PhoneLink } from "@/components/contact-link";
+import { YearPicker, useAcademicYears } from "@/components/year-selector";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -308,6 +309,9 @@ export default function CentroDetallePage() {
                 >
                   <span className="font-medium">{o.cycleName}</span>
                   <div className="flex flex-wrap gap-2">
+                    {o.schoolYear && (
+                      <Badge variant="default">{o.schoolYear}</Badge>
+                    )}
                     {o.level && <Badge variant="secondary">{o.level}</Badge>}
                     {o.shift && <Badge variant="outline">{o.shift}</Badge>}
                   </div>
@@ -365,10 +369,12 @@ function InfoRow({
 function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
   const qc = useQueryClient();
   const { data: cycles = [] } = useListCycles();
+  const { activeYear } = useAcademicYears();
   const [open, setOpen] = useState(false);
   const [cycleId, setCycleId] = useState<number | null>(null);
   const [level, setLevel] = useState<string>("");
   const [shift, setShift] = useState<string>("");
+  const [schoolYear, setSchoolYear] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const addMut = useAddTrainingOffer();
 
@@ -376,6 +382,7 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
     setCycleId(null);
     setLevel("");
     setShift("");
+    setSchoolYear(activeYear ?? "");
     setError(null);
   };
 
@@ -391,6 +398,7 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
       cycleId,
       level: level || undefined,
       shift: shift || null,
+      schoolYear: schoolYear || null,
     };
     try {
       await addMut.mutateAsync({ id: centerId, data });
@@ -408,7 +416,8 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (!o) reset();
+        if (o) setSchoolYear(activeYear ?? "");
+        else reset();
       }}
     >
       <DialogTrigger asChild>
@@ -478,6 +487,14 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="o-year">Curso académico</Label>
+            <YearPicker
+              id="o-year"
+              value={schoolYear}
+              onChange={setSchoolYear}
+            />
           </div>
           {error && (
             <p className="text-sm font-medium text-destructive">{error}</p>

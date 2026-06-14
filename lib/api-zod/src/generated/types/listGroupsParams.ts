@@ -9,4 +9,8 @@ import type { CenterQueryParameter } from './centerQueryParameter';
 
 export type ListGroupsParams = {
 centerId?: CenterQueryParameter;
+/**
+ * Filter by academic year. Defaults to the active course; pass "all" to list every year.
+ */
+schoolYear?: string;
 };
