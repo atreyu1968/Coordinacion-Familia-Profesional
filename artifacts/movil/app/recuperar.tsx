@@ -20,12 +20,14 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useBrandingAssets } from "@/lib/branding";
 
 type Step = "email" | "code" | "done";
 
 export default function RecuperarScreen() {
   const colors = useColors();
   const scheme = useColorScheme();
+  const { logoUri } = useBrandingAssets();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -110,9 +112,11 @@ export default function RecuperarScreen() {
       >
         <Image
           source={
-            scheme === "dark"
-              ? require("@/assets/images/logo-white.png")
-              : require("@/assets/images/logo.png")
+            logoUri
+              ? { uri: logoUri }
+              : scheme === "dark"
+                ? require("@/assets/images/logo-white.png")
+                : require("@/assets/images/logo.png")
           }
           style={styles.logo}
           resizeMode="contain"

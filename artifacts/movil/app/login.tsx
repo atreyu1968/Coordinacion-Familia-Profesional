@@ -16,10 +16,12 @@ import * as Haptics from "expo-haptics";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { useBrandingAssets } from "@/lib/branding";
 
 export default function LoginScreen() {
   const colors = useColors();
   const scheme = useColorScheme();
+  const { logoUri } = useBrandingAssets();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
@@ -93,9 +95,11 @@ export default function LoginScreen() {
       >
         <Image
           source={
-            scheme === "dark"
-              ? require("@/assets/images/logo-white.png")
-              : require("@/assets/images/logo.png")
+            logoUri
+              ? { uri: logoUri }
+              : scheme === "dark"
+                ? require("@/assets/images/logo-white.png")
+                : require("@/assets/images/logo.png")
           }
           style={styles.logo}
           resizeMode="contain"

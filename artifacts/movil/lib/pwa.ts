@@ -15,6 +15,11 @@ import { Platform } from "react-native";
 import { getAuthToken } from "@/contexts/AuthContext";
 
 const THEME_COLOR = "#0050b3";
+const DEFAULT_APP_NAME = "Coordina ADG";
+
+// In-memory cache of the resolved branding icon URL so foreground web
+// notifications use the custom favicon when one is configured.
+let notificationIconUrl: string | null = null;
 
 // Sub-path the web build is served under (e.g. "/app" in production). Empty in
 // dev / root deployments. Baked in at build time via EXPO_PUBLIC_BASE_PATH so
@@ -57,6 +62,8 @@ function ensureLink(rel: string, href: string): void {
 export function setupPwa(): void {
   if (!isWeb()) return;
   try {
+    // Static fallback first so the PWA shell is valid even if the branding
+    // fetch is slow or fails; applyBranding() refines it afterwards.
     ensureLink("manifest", `${BASE_PATH}/manifest.json`);
     // viewport-fit=cover lets the app paint edge-to-edge into the device safe
     // areas (notch / rounded corners / home indicator). Without it an installed
@@ -70,7 +77,7 @@ export function setupPwa(): void {
     ensureMeta("apple-mobile-web-app-capable", "yes");
     ensureMeta("mobile-web-app-capable", "yes");
     ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
-    ensureMeta("apple-mobile-web-app-title", "Coordina ADG");
+    ensureMeta("apple-mobile-web-app-title", DEFAULT_APP_NAME);
     ensureLink("apple-touch-icon", `${BASE_PATH}/apple-touch-icon.png`);
 
     if ("serviceWorker" in navigator) {
@@ -80,6 +87,84 @@ export function setupPwa(): void {
     }
   } catch (err) {
     console.warn("setupPwa failed", err);
+  }
+
+  // Apply DB-configured branding (name + favicon) over the static defaults.
+  void applyBranding();
+}
+
+interface PublicBranding {
+  appName: string | null;
+  hasLogo: boolean;
+  hasFavicon: boolean;
+  version: string;
+}
+
+/**
+ * Fetch the public branding and apply the custom app name + icon to the
+ * document title, Apple web-app metas and the installable web manifest. The
+ * manifest is built on the client and injected as a Blob URL so its
+ * `start_url`/`scope` resolve to this document's own origin regardless of where
+ * the API lives. Best-effort: on any failure the static defaults remain.
+ *
+ * Note: browsers cache the installed name/icon at install time, so already
+ * installed home-screen apps only pick up new branding after a reinstall.
+ */
+async function applyBranding(): Promise<void> {
+  if (!isWeb()) return;
+  try {
+    const res = await fetch(`${apiBase()}/settings/branding`);
+    if (!res.ok) return;
+    const b = (await res.json()) as PublicBranding;
+
+    const name = b.appName || DEFAULT_APP_NAME;
+    document.title = name;
+    ensureMeta("apple-mobile-web-app-title", name);
+
+    const v = encodeURIComponent(b.version || "");
+    const iconUrl = b.hasFavicon
+      ? `${apiBase()}/settings/branding/favicon?v=${v}`
+      : null;
+    if (iconUrl) {
+      ensureLink("apple-touch-icon", iconUrl);
+      notificationIconUrl = iconUrl;
+    }
+
+    const origin = window.location.origin;
+    const icons = iconUrl
+      ? [192, 512].map((size) => ({
+          src: iconUrl,
+          sizes: `${size}x${size}`,
+          type: "image/png",
+          purpose: "any maskable",
+        }))
+      : [192, 512].map((size) => ({
+          src: `${origin}${BASE_PATH}/icon-${size}.png`,
+          sizes: `${size}x${size}`,
+          type: "image/png",
+          purpose: "any maskable",
+        }));
+
+    const manifest = {
+      name,
+      short_name: name,
+      description:
+        "Plataforma de coordinación de la familia profesional ADG en Canarias.",
+      start_url: `${origin}${BASE_PATH}/`,
+      scope: `${origin}${BASE_PATH}/`,
+      display: "standalone",
+      orientation: "portrait",
+      background_color: "#fbfaf9",
+      theme_color: THEME_COLOR,
+      lang: "es",
+      icons,
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {
+      type: "application/manifest+json",
+    });
+    ensureLink("manifest", URL.createObjectURL(blob));
+  } catch (err) {
+    console.warn("applyBranding failed", err);
   }
 }
 
@@ -166,18 +251,19 @@ export async function showLocalNotification(
 ): Promise<void> {
   if (!isWeb() || typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
+  const icon = notificationIconUrl ?? `${BASE_PATH}/icon-192.png`;
   try {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, {
         body: body ?? "",
-        icon: `${BASE_PATH}/icon-192.png`,
-        badge: `${BASE_PATH}/icon-192.png`,
+        icon,
+        badge: icon,
         data: data ?? {},
       });
       return;
     }
-    new Notification(title, { body: body ?? "", icon: `${BASE_PATH}/icon-192.png` });
+    new Notification(title, { body: body ?? "", icon });
   } catch {
     // best-effort
   }
