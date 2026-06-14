@@ -33,7 +33,7 @@
 - [Document/file upload security](document-uploads.md) — rules for accepting client-supplied object-storage paths.
 - [Events module contract & calendar mirror](events-module.md) — field-naming gotchas + calendar-mirror lifecycle.
 - [Survey/vote anonymity model](surveys-anonymity.md) — how anonymous surveys guarantee unlinkability at the DB level.
-- [Module group chats (auto)](module-chat-groups.md) — one auto-managed group per module synced from teaching_assignments; bulk sync needs every center in scope.
+- [Module group chats (auto)](module-chat-groups.md) — one auto-managed group per module; members = teachers ∪ scoped managers (GET /chat/groups is member-only); scope from teaching_assignments.centerId not modules.centerId (NULL); bulk sync needs every center in scope.
 - [Biometric unlock (movil)](biometric-unlock-mobile.md) — cross-platform app-lock model and SecureStore-on-web gotcha.
 - [Mobile install/QR target on Replit](expo-go-qr-target.md) — what URL the QR must encode to install the mobile app.
 - [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
