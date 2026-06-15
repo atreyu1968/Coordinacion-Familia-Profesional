@@ -1,10 +1,32 @@
 # Coordina ADG
 
-**Versión 3.1**
+**Versión 3.4**
 
 Plataforma de coordinación de Familias Profesionales: gestión de centros,
 profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros,
 videollamadas y formularios documentales.
+
+### Novedades de la versión 3.4 — Mensajería estilo WhatsApp
+
+La mensajería (chat) se ha renovado por completo en **web y móvil** con una
+experiencia tipo WhatsApp. La web estrena una sección de **Mensajes** propia
+(antes no existía) y la app móvil amplía su chat. Funciones nuevas en ambas
+plataformas:
+
+- **Reacciones con emoji** a cualquier mensaje (👍 ❤️ 😂 😮 😢 🙏), con
+  recuento agregado y resaltado de tus propias reacciones.
+- **Responder / citar** un mensaje, mostrando la cita dentro de la burbuja.
+- **Editar y eliminar** tus propios mensajes (los borrados quedan como
+  *“Mensaje eliminado”*; los editados muestran la etiqueta *editado*).
+- **Adjuntos** de imágenes y archivos: las imágenes se ven en línea y los
+  archivos se descargan o se abren con un toque.
+- **Mensajes de voz** con grabación y reproductor (play/pausa y duración).
+- **Indicador de “escribiendo…”** en tiempo real.
+- **Confirmaciones de lectura**: un check ✓ (enviado) y doble check ✓✓ (leído).
+- **Búsqueda dentro de la conversación** sobre los mensajes cargados.
+- **Reenviar** mensajes a otras conversaciones.
+- **Vista de miembros** del grupo, con su rol.
+- **Diferenciación por color** entre chats directos y de grupo/módulo.
 
 Es un monorepo **pnpm** con tres aplicaciones y dos librerías compartidas:
 
