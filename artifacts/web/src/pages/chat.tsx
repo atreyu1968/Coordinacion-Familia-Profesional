@@ -75,6 +75,13 @@ import {
 
 const TOKEN_KEY = "coordina_adg_token";
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const EMOJIS = [
+  "😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎",
+  "🤔", "😅", "🙂", "😉", "😢", "😡", "🥳", "😴",
+  "👍", "👎", "🙏", "👏", "🙌", "💪", "🤝", "👀",
+  "❤️", "🔥", "🎉", "💯", "✅", "❌", "⚠️", "✨",
+  "📌", "📅", "📍", "📎", "📝", "☕", "🚀", "⭐",
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -596,6 +603,7 @@ function ConversationView({
   const [typingNames, setTypingNames] = useState<Record<number, string>>({});
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
 
   const sendMut = useSendGroupMessage();
   const editMut = useEditMessage();
@@ -1073,6 +1081,36 @@ function ConversationView({
         >
           <Paperclip className="w-5 h-5" />
         </Button>
+        <Popover open={showEmojis} onOpenChange={setShowEmojis}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={recording}
+              aria-label="Emojis"
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2" align="start">
+            <div className="grid grid-cols-8 gap-1">
+              {EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    setDraft((d) => d + emoji);
+                    if (!editing) emitTyping();
+                  }}
+                  className="text-xl hover:scale-125 transition-transform p-1"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <Input
           value={draft}
           onChange={(e) => {
