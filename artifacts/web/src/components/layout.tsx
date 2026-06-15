@@ -83,7 +83,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Invitaciones", path: "/invitaciones", icon: Mail, visible: ["coordinator", "department_head"].includes(role) },
     { label: "Centros", path: "/centros", icon: Building2, visible: role !== "superadmin" },
     { label: "Coord. Académica", path: "/academica", icon: GraduationCap, visible: true },
-    { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: true },
+    { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: false },
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
     { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
