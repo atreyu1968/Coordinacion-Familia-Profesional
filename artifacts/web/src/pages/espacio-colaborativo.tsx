@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useListModules,
   useGetCollabStatus,
@@ -6,6 +6,7 @@ import {
   type Module,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -74,12 +75,14 @@ export default function EspacioColaborativoPage() {
   const { data: modules = [], isLoading: modulesLoading } = useListModules();
   const openMut = useOpenModuleSpace();
 
+  const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<{
     title: string;
     url: string;
     moduleId: Module["id"];
   } | null>(null);
+  const [didAutoOpen, setDidAutoOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -114,6 +117,14 @@ export default function EspacioColaborativoPage() {
       });
     }
   };
+
+  useEffect(() => {
+    if (didAutoOpen || moduleParam == null || modules.length === 0) return;
+    const match = modules.find((m) => m.id === moduleParam);
+    setDidAutoOpen(true);
+    if (match) void onOpen(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [didAutoOpen, moduleParam, modules]);
 
   // The iframe consumes its one-time SSO ticket on load, so the original URL is
   // already spent. Opening it in a new tab must mint a *fresh* ticket. Open the

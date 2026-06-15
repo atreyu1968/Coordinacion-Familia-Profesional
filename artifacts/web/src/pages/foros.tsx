@@ -20,6 +20,7 @@ import {
   type ForumPost,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -706,9 +707,18 @@ function ModuleThreads({
 // Landing: modules grouped by cycle
 // ---------------------------------------------------------------------------
 export default function ForosPage() {
+  const moduleParam = useModuleParam();
   const { data: modules = [], isLoading } = useListForumModules();
   const [active, setActive] = useState<ForumModule | null>(null);
   const [search, setSearch] = useState("");
+  const [didPreselect, setDidPreselect] = useState(false);
+
+  useEffect(() => {
+    if (didPreselect || moduleParam == null || modules.length === 0) return;
+    const match = modules.find((m) => m.id === moduleParam);
+    if (match) setActive(match);
+    setDidPreselect(true);
+  }, [didPreselect, moduleParam, modules]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

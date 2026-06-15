@@ -16,6 +16,7 @@ import InvitacionesPage from "@/pages/invitaciones";
 import CentrosPage from "@/pages/centros";
 import CentroDetallePage from "@/pages/centro-detalle";
 import AcademicaPage from "@/pages/academica";
+import ModuloDetallePage from "@/pages/modulo-detalle";
 import RecursosPage from "@/pages/recursos";
 import FctPage from "@/pages/fct";
 import EncuestasPage from "@/pages/encuestas";
@@ -43,6 +44,7 @@ function AuthedRoutes() {
         <Route path="/centros" component={CentrosPage} />
         <Route path="/centros/:id" component={CentroDetallePage} />
         <Route path="/academica" component={AcademicaPage} />
+        <Route path="/academica/modulo/:id" component={ModuloDetallePage} />
         <Route path="/recursos" component={RecursosPage} />
         <Route path="/fct" component={FctPage} />
         <Route path="/encuestas" component={EncuestasPage} />

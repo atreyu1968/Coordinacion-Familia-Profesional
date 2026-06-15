@@ -9,6 +9,7 @@ import {
   type Meeting,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import {
   AudiencePicker,
   useFormSurveyCreator,
@@ -323,7 +324,12 @@ export default function VideoconferenciasPage() {
   const { user } = useAuth();
   const isManager =
     user?.role === "superadmin" || user?.role === "coordinator";
-  const { data: items = [], isLoading } = useListMeetings();
+  const moduleParam = useModuleParam();
+  const { data: allItems = [], isLoading } = useListMeetings();
+  const items =
+    moduleParam == null
+      ? allItems
+      : allItems.filter((m) => m.moduleId === moduleParam);
   // Anyone who may create forms/surveys may also open a meeting room.
   const { canCreate } = useFormSurveyCreator();
   const tokenMut = useGetMeetingToken();

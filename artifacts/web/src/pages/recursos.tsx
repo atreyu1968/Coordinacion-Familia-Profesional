@@ -10,6 +10,7 @@ import {
   type CreateResourceInput,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,8 +209,9 @@ export default function RecursosPage() {
   const qc = useQueryClient();
   const deleteMut = useDeleteResource();
 
+  const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
-  const [moduleId, setModuleId] = useState<number | null>(null);
+  const [moduleId, setModuleId] = useState<number | null>(moduleParam);
 
   const { data: modules = [] } = useListModules({});
 

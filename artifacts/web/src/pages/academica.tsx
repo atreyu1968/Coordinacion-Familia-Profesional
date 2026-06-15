@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import {
   useListModules,
-  useListGroups,
   useListTeachingAssignments,
   useListUsers,
   useListYearConfirmations,
   getListYearConfirmationsQueryKey,
   type ListModulesParams,
+  type Module,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +26,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ModuleDialog,
-  GroupDialog,
   AssignmentDialog,
   TransferDialog,
 } from "@/components/academic-dialogs";
@@ -47,7 +47,103 @@ import {
   ClipboardList,
   ArrowLeftRight,
   Crown,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
+
+function ModuleNavRow({
+  module: m,
+  canManage,
+}: {
+  module: Module;
+  canManage: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 p-3">
+      <Link
+        href={`/academica/modulo/${m.id}`}
+        className="flex items-center gap-3 min-w-0 flex-1 hover:text-foreground/80"
+      >
+        <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium truncate">{m.name}</span>
+            {m.code && (
+              <Badge variant="secondary" className="font-mono shrink-0">
+                {m.code}
+              </Badge>
+            )}
+            {m.myRole === "coordinator" && (
+              <Badge className="gap-1 shrink-0">
+                <Crown className="w-3 h-3" /> Coordino
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {m.memberCount ?? 0} {m.memberCount === 1 ? "miembro" : "miembros"}
+            {m.coordinatorName ? ` · ${m.coordinatorName}` : ""}
+          </p>
+        </div>
+      </Link>
+      <div className="flex items-center gap-2 shrink-0">
+        <EnrollButton module={m} />
+        {(canManage || m.myRole === "coordinator") && (
+          <ModuleMembersDialog
+            module={m}
+            canDesignateCoordinator={canManage}
+            trigger={
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Users className="w-3.5 h-3.5" /> Miembros
+              </Button>
+            }
+          />
+        )}
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      </div>
+    </div>
+  );
+}
+
+function CycleGroup({
+  cycleName,
+  modules,
+  canManage,
+  defaultOpen,
+}: {
+  cycleName: string;
+  modules: Module[];
+  canManage: boolean;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-lg border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 p-3 text-left"
+      >
+        {open ? (
+          <ChevronDown className="w-4 h-4 shrink-0" />
+        ) : (
+          <ChevronRight className="w-4 h-4 shrink-0" />
+        )}
+        <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+        <span className="font-medium truncate flex-1">{cycleName}</span>
+        <Badge variant="secondary" className="shrink-0">
+          {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+        </Badge>
+      </button>
+      {open && (
+        <div className="border-t divide-y">
+          {modules.map((m) => (
+            <ModuleNavRow key={m.id} module={m} canManage={canManage} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AcademicaPage() {
   const { user } = useAuth();
@@ -72,9 +168,6 @@ export default function AcademicaPage() {
 
   const { data: modules = [], isLoading: modulesLoading } =
     useListModules(moduleParams);
-  const { data: groups = [], isLoading: groupsLoading } = useListGroups(
-    yearParam ? { schoolYear: yearParam } : {},
-  );
   const { data: assignments = [], isLoading: assignmentsLoading } =
     useListTeachingAssignments(yearParam ? { schoolYear: yearParam } : {});
   const { data: teachers = [], isLoading: teachersLoading } = useListUsers({
@@ -107,6 +200,21 @@ export default function AcademicaPage() {
     return map;
   }, [assignments]);
 
+  const modulesByCycle = useMemo(() => {
+    const map = new Map<string, Module[]>();
+    for (const m of modules) {
+      const key = m.cycleName ?? "Sin ciclo";
+      const arr = map.get(key);
+      if (arr) arr.push(m);
+      else map.set(key, [m]);
+    }
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === "Sin ciclo") return 1;
+      if (b === "Sin ciclo") return -1;
+      return a.localeCompare(b);
+    });
+  }, [modules]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -119,7 +227,7 @@ export default function AcademicaPage() {
               Coordinación Académica
             </h1>
             <p className="text-sm text-muted-foreground">
-              Plantilla docente, módulos, grupos y movilidad del profesorado.
+              Plantilla docente, módulos por ciclo y movilidad del profesorado.
             </p>
           </div>
         </div>
@@ -135,9 +243,6 @@ export default function AcademicaPage() {
           </TabsTrigger>
           <TabsTrigger value="modulos" className="gap-2">
             <BookOpen className="w-4 h-4" /> Módulos
-          </TabsTrigger>
-          <TabsTrigger value="grupos" className="gap-2">
-            <GraduationCap className="w-4 h-4" /> Grupos
           </TabsTrigger>
           <TabsTrigger value="asignaciones" className="gap-2">
             <ClipboardList className="w-4 h-4" /> Asignaciones
@@ -244,153 +349,31 @@ export default function AcademicaPage() {
               />
             )}
           </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Módulo</TableHead>
-                    <TableHead>Ciclo</TableHead>
-                    <TableHead>Ámbito</TableHead>
-                    <TableHead>Coordinador</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {modulesLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        Cargando...
-                      </TableCell>
-                    </TableRow>
-                  ) : modules.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="text-center py-8 text-muted-foreground"
-                      >
-                        No hay módulos.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    modules.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-mono text-sm">
-                          {m.code ?? "—"}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {m.name}
-                            {m.myRole === "coordinator" && (
-                              <Badge className="gap-1">
-                                <Crown className="w-3 h-3" /> Coordino
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground font-normal">
-                            {m.memberCount ?? 0}{" "}
-                            {m.memberCount === 1 ? "miembro" : "miembros"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {m.cycleName ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          {m.centerId == null ? (
-                            <Badge variant="outline">Global</Badge>
-                          ) : (
-                            <Badge variant="secondary">Centro</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {m.coordinatorName ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            <EnrollButton module={m} />
-                            {(canManage || m.myRole === "coordinator") && (
-                              <ModuleMembersDialog
-                                module={m}
-                                canDesignateCoordinator={canManage}
-                                trigger={
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1.5"
-                                  >
-                                    <Users className="w-3.5 h-3.5" /> Miembros
-                                  </Button>
-                                }
-                              />
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Grupos */}
-        <TabsContent value="grupos" className="space-y-4">
-          <div className="flex items-center justify-end">
-            {canManage && (
-              <GroupDialog
-                trigger={
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" /> Nuevo grupo
-                  </Button>
-                }
-              />
-            )}
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Grupo</TableHead>
-                    <TableHead>Ciclo</TableHead>
-                    <TableHead>Curso</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupsLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8">
-                        Cargando...
-                      </TableCell>
-                    </TableRow>
-                  ) : groups.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={3}
-                        className="text-center py-8 text-muted-foreground"
-                      >
-                        No hay grupos.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    groups.map((g) => (
-                      <TableRow key={g.id}>
-                        <TableCell className="font-medium">{g.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {g.cycleName ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {g.schoolYear ?? "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          {modulesLoading ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Cargando...
+              </CardContent>
+            </Card>
+          ) : modules.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No hay módulos.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {modulesByCycle.map(([cycleName, cycleModules]) => (
+                <CycleGroup
+                  key={cycleName}
+                  cycleName={cycleName}
+                  modules={cycleModules}
+                  canManage={canManage}
+                  defaultOpen={modulesByCycle.length <= 3}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Asignaciones */}

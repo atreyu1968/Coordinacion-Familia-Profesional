@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateModule,
-  useCreateGroup,
   useCreateTeachingAssignment,
   useTransferTeachingAssignments,
   useListCenters,
@@ -11,10 +10,8 @@ import {
   useListUsers,
   useListTeachingAssignments,
   getListModulesQueryKey,
-  getListGroupsQueryKey,
   getListTeachingAssignmentsQueryKey,
   type CreateModuleInput,
-  type CreateGroupInput,
   type CreateTeachingAssignmentInput,
   type TransferInput,
 } from "@workspace/api-client-react";
@@ -188,146 +185,6 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
           <DialogFooter>
             <Button type="submit" disabled={createMut.isPending}>
               {createMut.isPending ? "Guardando..." : "Crear módulo"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// --------------------------------------------------------------------------
-export function GroupDialog({ trigger }: { trigger: ReactNode }) {
-  const qc = useQueryClient();
-  const { centers, fixedCenterId } = useScopeCenters();
-  const { data: cycles = [] } = useListCycles();
-  const { activeYear } = useAcademicYears();
-  const createMut = useCreateGroup();
-
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [cycleName, setCycleName] = useState("");
-  const [schoolYear, setSchoolYear] = useState("");
-  const [centerId, setCenterId] = useState<number | null>(fixedCenterId);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setName("");
-      setCycleName("");
-      setSchoolYear(activeYear ?? "");
-      setCenterId(fixedCenterId ?? centers[0]?.id ?? null);
-      setError(null);
-    }
-  }, [open, fixedCenterId, centers, activeYear]);
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!name.trim()) {
-      setError("El nombre del grupo es obligatorio.");
-      return;
-    }
-    if (centerId == null) {
-      setError("Selecciona un centro.");
-      return;
-    }
-    const payload: CreateGroupInput = {
-      centerId,
-      name: name.trim(),
-      cycleName: cycleName.trim() || null,
-      schoolYear: schoolYear.trim() || null,
-    };
-    try {
-      await createMut.mutateAsync({ data: payload });
-      await qc.invalidateQueries({ queryKey: getListGroupsQueryKey() });
-      toast({ title: "Grupo creado", description: name.trim() });
-      setOpen(false);
-    } catch {
-      setError("No se pudo crear el grupo. Comprueba tus permisos.");
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nuevo grupo</DialogTitle>
-          <DialogDescription>Crea un grupo-clase del centro.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="g-name">Nombre *</Label>
-            <Input
-              id="g-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="1º AyF"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Centro *</Label>
-            {fixedCenterId != null ? (
-              <Input
-                disabled
-                value={
-                  centers.find((c) => c.id === fixedCenterId)?.name ?? "Tu centro"
-                }
-              />
-            ) : (
-              <Select
-                value={centerId != null ? String(centerId) : ""}
-                onValueChange={(v) => setCenterId(Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  {centers.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Ciclo</Label>
-              <Select
-                value={cycleName || "none"}
-                onValueChange={(v) => setCycleName(v === "none" ? "" : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin ciclo</SelectItem>
-                  {cycles.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="g-year">Curso</Label>
-              <YearPicker
-                id="g-year"
-                value={schoolYear}
-                onChange={setSchoolYear}
-              />
-            </div>
-          </div>
-          {error && (
-            <p className="text-sm font-medium text-destructive">{error}</p>
-          )}
-          <DialogFooter>
-            <Button type="submit" disabled={createMut.isPending}>
-              {createMut.isPending ? "Guardando..." : "Crear grupo"}
             </Button>
           </DialogFooter>
         </form>

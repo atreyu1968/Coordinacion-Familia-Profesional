@@ -23,6 +23,7 @@ import {
   type ChatMember,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import { connectSocket } from "@/lib/socket";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1170,10 +1171,19 @@ function ConversationView({
 // Page
 // ---------------------------------------------------------------------------
 export default function ChatPage() {
+  const moduleParam = useModuleParam();
   const token = useMemo(() => localStorage.getItem(TOKEN_KEY), []);
   const { data: groups = [], isLoading, refetch } = useListChatGroups();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
+  const [didPreselect, setDidPreselect] = useState(false);
+
+  useEffect(() => {
+    if (didPreselect || moduleParam == null || groups.length === 0) return;
+    const match = groups.find((g) => g.moduleId === moduleParam);
+    if (match) setSelectedId(match.id);
+    setDidPreselect(true);
+  }, [didPreselect, moduleParam, groups]);
 
   // Refresh the chat list on chat_update events (new messages / unread badges).
   useEffect(() => {

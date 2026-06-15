@@ -22,6 +22,7 @@ import {
   type DocumentSubmissionValue,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { useModuleParam } from "@/lib/use-module-param";
 import {
   AudiencePicker,
   useFormSurveyCreator,
@@ -896,7 +897,16 @@ function FillFormDialog({
 export default function FormulariosPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: forms = [], isLoading } = useListDocumentForms();
+  const moduleParam = useModuleParam();
+  const { data: allForms = [], isLoading } = useListDocumentForms();
+  const forms =
+    moduleParam == null
+      ? allForms
+      : allForms.filter(
+          (f) =>
+            f.audienceType === "module" &&
+            (f.audienceIds ?? []).includes(moduleParam),
+        );
   const { data: provinces = [] } = useListProvinces();
   const deleteMut = useDeleteDocumentForm();
 
