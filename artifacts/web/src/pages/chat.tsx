@@ -1178,7 +1178,7 @@ export default function ChatPage() {
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid md:grid-cols-[320px_1fr] h-[calc(100vh-16rem)] min-h-[480px]">
+          <div className="grid grid-rows-1 md:grid-cols-[320px_1fr] h-[calc(100vh-16rem)] min-h-[480px]">
             {/* Left: conversation list */}
             <div
               className={`border-r flex flex-col ${
