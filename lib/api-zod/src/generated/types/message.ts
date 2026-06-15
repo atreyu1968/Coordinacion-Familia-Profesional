@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MessageReaction } from './messageReaction';
 
 export interface Message {
   id: number;
@@ -13,5 +14,22 @@ export interface Message {
   senderName?: string | null;
   recipientId?: number | null;
   content: string;
+  /** text | image | file | audio */
+  kind?: string;
+  replyToId?: number | null;
+  replyToContent?: string | null;
+  replyToSenderName?: string | null;
+  forwardedFrom?: string | null;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
+  /** Short-lived URL to download/stream the attachment. */
+  attachmentUrl?: string | null;
+  editedAt?: Date | null;
+  deleted?: boolean;
+  /** How many members other than the sender have read this message. */
+  readByCount?: number;
+  reactions?: MessageReaction[];
   createdAt: Date;
 }

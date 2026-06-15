@@ -38,6 +38,7 @@ import type {
   CenterDetail,
   CenterFacets,
   ChatGroup,
+  ChatMember,
   CheckInInput,
   CheckInResult,
   CollabStatus,
@@ -76,6 +77,7 @@ import type {
   DocumentFormDetail,
   DocumentFormSubmissionsResponse,
   DocumentFormSummary,
+  EditMessageInput,
   Error,
   ErrorResponse,
   EvaluationCriterion,
@@ -88,6 +90,7 @@ import type {
   ForumModule,
   ForumPost,
   ForumThread,
+  ForwardMessageInput,
   GdcanResource,
   GenerateReportInput,
   GetDashboardStatisticsParams,
@@ -137,6 +140,7 @@ import type {
   OpenConfirmationResult,
   PinForumThreadInput,
   Province,
+  ReactToMessageInput,
   RegisterInput,
   RegisterPushTokenInput,
   RenameAcademicYearInput,
@@ -8663,6 +8667,83 @@ export const useMarkChatRead = <TError = ErrorType<unknown>,
       return useMutation(getMarkChatReadMutationOptions(options));
     }
 
+export const getListChatMembersUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/groups/${id}/members`
+}
+
+/**
+ * @summary List the members of a chat group
+ */
+export const listChatMembers = async (id: number, options?: RequestInit): Promise<ChatMember[]> => {
+
+  return customFetch<ChatMember[]>(getListChatMembersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChatMembersQueryKey = (id: number,) => {
+    return [
+    `/api/chat/groups/${id}/members`
+    ] as const;
+    }
+
+
+export const getListChatMembersQueryOptions = <TData = Awaited<ReturnType<typeof listChatMembers>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChatMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChatMembersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChatMembers>>> = ({ signal }) => listChatMembers(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChatMembers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListChatMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listChatMembers>>>
+export type ListChatMembersQueryError = ErrorType<Error>
+
+
+/**
+ * @summary List the members of a chat group
+ */
+
+export function useListChatMembers<TData = Awaited<ReturnType<typeof listChatMembers>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChatMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListChatMembersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getListGroupMessagesUrl = (id: number,) => {
 
 
@@ -8693,7 +8774,7 @@ export const getListGroupMessagesQueryKey = (id: number,) => {
     }
 
 
-export const getListGroupMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListGroupMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -8712,11 +8793,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListGroupMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listGroupMessages>>>
-export type ListGroupMessagesQueryError = ErrorType<unknown>
+export type ListGroupMessagesQueryError = ErrorType<Error>
 
 
 
-export function useListGroupMessages<TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<unknown>>(
+export function useListGroupMessages<TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<Error>>(
  id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -8758,7 +8839,7 @@ export const sendGroupMessage = async (id: number,
 
 
 
-export const getSendGroupMessageMutationOptions = <TError = ErrorType<unknown>,
+export const getSendGroupMessageMutationOptions = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendGroupMessage>>, TError,{id: number;data: BodyType<SendMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sendGroupMessage>>, TError,{id: number;data: BodyType<SendMessageInput>}, TContext> => {
 
@@ -8787,9 +8868,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SendGroupMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendGroupMessage>>>
     export type SendGroupMessageMutationBody = BodyType<SendMessageInput>
-    export type SendGroupMessageMutationError = ErrorType<unknown>
+    export type SendGroupMessageMutationError = ErrorType<Error>
 
-    export const useSendGroupMessage = <TError = ErrorType<unknown>,
+    export const useSendGroupMessage = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendGroupMessage>>, TError,{id: number;data: BodyType<SendMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof sendGroupMessage>>,
@@ -8798,6 +8879,292 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSendGroupMessageMutationOptions(options));
+    }
+
+export const getEditMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}`
+}
+
+/**
+ * @summary Edit one's own message
+ */
+export const editMessage = async (id: number,
+    editMessageInput: EditMessageInput, options?: RequestInit): Promise<Message> => {
+
+  return customFetch<Message>(getEditMessageUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      editMessageInput,)
+  }
+);}
+
+
+
+
+export const getEditMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{id: number;data: BodyType<EditMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{id: number;data: BodyType<EditMessageInput>}, TContext> => {
+
+const mutationKey = ['editMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editMessage>>, {id: number;data: BodyType<EditMessageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  editMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditMessageMutationResult = NonNullable<Awaited<ReturnType<typeof editMessage>>>
+    export type EditMessageMutationBody = BodyType<EditMessageInput>
+    export type EditMessageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Edit one's own message
+ */
+export const useEditMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{id: number;data: BodyType<EditMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editMessage>>,
+        TError,
+        {id: number;data: BodyType<EditMessageInput>},
+        TContext
+      > => {
+      return useMutation(getEditMessageMutationOptions(options));
+    }
+
+export const getDeleteMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}`
+}
+
+/**
+ * @summary Delete one's own message (soft delete / tombstone)
+ */
+export const deleteMessage = async (id: number, options?: RequestInit): Promise<Message> => {
+
+  return customFetch<Message>(getDeleteMessageUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMessage>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMessage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMessageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMessage>>>
+
+    export type DeleteMessageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Delete one's own message (soft delete / tombstone)
+ */
+export const useDeleteMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMessage>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMessageMutationOptions(options));
+    }
+
+export const getReactToMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}/react`
+}
+
+/**
+ * @summary Toggle an emoji reaction on a message
+ */
+export const reactToMessage = async (id: number,
+    reactToMessageInput: ReactToMessageInput, options?: RequestInit): Promise<Message> => {
+
+  return customFetch<Message>(getReactToMessageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reactToMessageInput,)
+  }
+);}
+
+
+
+
+export const getReactToMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactToMessage>>, TError,{id: number;data: BodyType<ReactToMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reactToMessage>>, TError,{id: number;data: BodyType<ReactToMessageInput>}, TContext> => {
+
+const mutationKey = ['reactToMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reactToMessage>>, {id: number;data: BodyType<ReactToMessageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reactToMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReactToMessageMutationResult = NonNullable<Awaited<ReturnType<typeof reactToMessage>>>
+    export type ReactToMessageMutationBody = BodyType<ReactToMessageInput>
+    export type ReactToMessageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Toggle an emoji reaction on a message
+ */
+export const useReactToMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactToMessage>>, TError,{id: number;data: BodyType<ReactToMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reactToMessage>>,
+        TError,
+        {id: number;data: BodyType<ReactToMessageInput>},
+        TContext
+      > => {
+      return useMutation(getReactToMessageMutationOptions(options));
+    }
+
+export const getForwardMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}/forward`
+}
+
+/**
+ * @summary Forward a message to one or more chats
+ */
+export const forwardMessage = async (id: number,
+    forwardMessageInput: ForwardMessageInput, options?: RequestInit): Promise<Message[]> => {
+
+  return customFetch<Message[]>(getForwardMessageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      forwardMessageInput,)
+  }
+);}
+
+
+
+
+export const getForwardMessageMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forwardMessage>>, TError,{id: number;data: BodyType<ForwardMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof forwardMessage>>, TError,{id: number;data: BodyType<ForwardMessageInput>}, TContext> => {
+
+const mutationKey = ['forwardMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof forwardMessage>>, {id: number;data: BodyType<ForwardMessageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  forwardMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ForwardMessageMutationResult = NonNullable<Awaited<ReturnType<typeof forwardMessage>>>
+    export type ForwardMessageMutationBody = BodyType<ForwardMessageInput>
+    export type ForwardMessageMutationError = ErrorType<Error>
+
+    /**
+ * @summary Forward a message to one or more chats
+ */
+export const useForwardMessage = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forwardMessage>>, TError,{id: number;data: BodyType<ForwardMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof forwardMessage>>,
+        TError,
+        {id: number;data: BodyType<ForwardMessageInput>},
+        TContext
+      > => {
+      return useMutation(getForwardMessageMutationOptions(options));
     }
 
 export const getListAnnouncementsUrl = () => {

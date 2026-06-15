@@ -9,6 +9,7 @@ let io: IOServer | null = null;
 
 interface AuthedSocket extends Socket {
   userId?: number;
+  userName?: string;
 }
 
 export function initRealtime(server: HttpServer): void {
@@ -35,7 +36,11 @@ export function initRealtime(server: HttpServer): void {
     // is not enough — tokens are long-lived, so a deactivated/deleted user must
     // not keep a realtime session.
     const [user] = await db
-      .select({ id: usersTable.id, status: usersTable.status })
+      .select({
+        id: usersTable.id,
+        status: usersTable.status,
+        name: usersTable.name,
+      })
       .from(usersTable)
       .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
     if (!user || user.status !== "active") {
@@ -43,6 +48,7 @@ export function initRealtime(server: HttpServer): void {
       return;
     }
     socket.userId = user.id;
+    socket.userName = user.name;
     next();
   });
 
@@ -75,6 +81,24 @@ export function initRealtime(server: HttpServer): void {
       const groupId = Number(rawGroupId);
       if (Number.isInteger(groupId)) void socket.leave(`group:${groupId}`);
     });
+
+    // Typing indicator relay. Only members already in the room (verified at
+    // join) can broadcast typing; we forward to the rest of the room, never
+    // back to the sender. Ephemeral — nothing is persisted.
+    const relayTyping = (rawGroupId: unknown, typing: boolean) => {
+      const groupId = Number(rawGroupId);
+      if (!Number.isInteger(groupId)) return;
+      if (!socket.rooms.has(`group:${groupId}`)) return;
+      socket.to(`group:${groupId}`).emit(typing ? "typing" : "stop_typing", {
+        groupId,
+        userId,
+        name: socket.userName ?? null,
+      });
+    };
+    socket.on("typing", (rawGroupId: unknown) => relayTyping(rawGroupId, true));
+    socket.on("stop_typing", (rawGroupId: unknown) =>
+      relayTyping(rawGroupId, false),
+    );
   });
 
   logger.info("Realtime (Socket.io) initialised at /api/socket.io");

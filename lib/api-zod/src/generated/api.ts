@@ -2001,6 +2001,22 @@ export const MarkChatReadResponse = zod.object({
 })
 
 
+/**
+ * @summary List the members of a chat group
+ */
+export const ListChatMembersParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListChatMembersResponseItem = zod.object({
+  "userId": zod.number(),
+  "name": zod.string().nullish(),
+  "role": zod.string().nullish(),
+  "lastReadAt": zod.coerce.date().nullish()
+})
+export const ListChatMembersResponse = zod.array(ListChatMembersResponseItem)
+
+
 export const ListGroupMessagesParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -2012,6 +2028,24 @@ export const ListGroupMessagesResponseItem = zod.object({
   "senderName": zod.string().nullish(),
   "recipientId": zod.number().nullish(),
   "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download\/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number(),
+  "reactedByMe": zod.boolean()
+})).optional(),
   "createdAt": zod.coerce.date()
 })
 export const ListGroupMessagesResponse = zod.array(ListGroupMessagesResponseItem)
@@ -2022,7 +2056,148 @@ export const SendGroupMessageParams = zod.object({
 })
 
 export const SendGroupMessageBody = zod.object({
-  "content": zod.string()
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio (defaults to text)'),
+  "replyToId": zod.number().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish().describe('Object-entity path (\/objects\/uploads\/<id>) from an upload.'),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().nullish()
+})
+
+
+/**
+ * @summary Edit one's own message
+ */
+export const EditMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const EditMessageBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+export const EditMessageResponse = zod.object({
+  "id": zod.number(),
+  "groupId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string().nullish(),
+  "recipientId": zod.number().nullish(),
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download\/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number(),
+  "reactedByMe": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete one's own message (soft delete / tombstone)
+ */
+export const DeleteMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMessageResponse = zod.object({
+  "id": zod.number(),
+  "groupId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string().nullish(),
+  "recipientId": zod.number().nullish(),
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download\/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number(),
+  "reactedByMe": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Toggle an emoji reaction on a message
+ */
+export const ReactToMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const ReactToMessageBody = zod.object({
+  "emoji": zod.string().min(1)
+})
+
+export const ReactToMessageResponse = zod.object({
+  "id": zod.number(),
+  "groupId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string().nullish(),
+  "recipientId": zod.number().nullish(),
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download\/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number(),
+  "reactedByMe": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Forward a message to one or more chats
+ */
+export const ForwardMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ForwardMessageBody = zod.object({
+  "groupIds": zod.array(zod.number())
 })
 
 

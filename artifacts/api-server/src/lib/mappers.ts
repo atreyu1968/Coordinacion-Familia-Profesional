@@ -378,15 +378,60 @@ export function toMessage(row: {
   recipientId: number | null;
   content: string;
   createdAt: Date;
+  kind?: string | null;
+  replyToId?: number | null;
+  replyToContent?: string | null;
+  replyToSenderName?: string | null;
+  forwardedFrom?: string | null;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
+  reactions?: { emoji: string; count: number; reactedByMe: boolean }[];
+  readByCount?: number;
 }) {
+  const deleted = Boolean(row.deletedAt);
+  const hasAttachment = !deleted && Boolean(row.attachmentPath);
   return {
     id: row.id,
     groupId: row.groupId,
     senderId: row.senderId,
     senderName: row.senderName ?? null,
     recipientId: row.recipientId,
-    content: row.content,
+    content: deleted ? "" : row.content,
+    kind: deleted ? "text" : row.kind ?? "text",
+    replyToId: row.replyToId ?? null,
+    replyToContent: deleted ? null : row.replyToContent ?? null,
+    replyToSenderName: deleted ? null : row.replyToSenderName ?? null,
+    forwardedFrom: deleted ? null : row.forwardedFrom ?? null,
+    attachmentPath: null,
+    attachmentName: hasAttachment ? row.attachmentName ?? null : null,
+    attachmentType: hasAttachment ? row.attachmentType ?? null : null,
+    attachmentSize: hasAttachment ? row.attachmentSize ?? null : null,
+    // A relative API path the client streams with its Authorization header;
+    // the raw object path is never exposed to clients.
+    attachmentUrl: hasAttachment ? `chat/messages/${row.id}/attachment` : null,
+    editedAt: deleted ? null : row.editedAt ?? null,
+    deleted,
+    readByCount: row.readByCount ?? 0,
+    reactions: deleted ? [] : row.reactions ?? [],
     createdAt: row.createdAt,
+  };
+}
+
+export function toChatMember(row: {
+  userId: number;
+  name?: string | null;
+  role?: string | null;
+  lastReadAt?: Date | null;
+}) {
+  return {
+    userId: row.userId,
+    name: row.name ?? null,
+    role: row.role ?? null,
+    lastReadAt: row.lastReadAt ?? null,
   };
 }
 

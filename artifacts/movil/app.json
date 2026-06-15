@@ -51,6 +51,12 @@
           "icon": "./assets/images/icon.png",
           "color": "#ffffff"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Coordina ADG usa el micrófono para grabar mensajes de voz."
+        }
       ]
     ],
     "experiments": {

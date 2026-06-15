@@ -26,6 +26,7 @@ export * from "./integrationSettings";
 export * from "./chatGroups";
 export * from "./chatGroupMembers";
 export * from "./messages";
+export * from "./messageReactions";
 export * from "./announcements";
 export * from "./notifications";
 export * from "./pushTokens";

@@ -19,10 +19,26 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
-import { Avatar, EmptyState, ErrorState, Loading } from "@/components/ui";
+import { EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatRelative, initials } from "@/lib/format";
+
+// Visual identity per conversation kind so direct chats are instantly
+// distinguishable from group/module chats in the list (frontend-only, derived
+// from ChatGroup.type).
+function chatTypeMeta(
+  type: string | null | undefined,
+  colors: ReturnType<typeof useColors>,
+): { color: string; label: string; icon: React.ComponentProps<typeof Feather>["name"] } {
+  if (type === "direct") {
+    return { color: colors.primary, label: "Directo", icon: "user" };
+  }
+  if (type === "module") {
+    return { color: colors.success, label: "Módulo", icon: "book-open" };
+  }
+  return { color: colors.secondary, label: "Grupo", icon: "users" };
+}
 
 export default function ChatListScreen() {
   const colors = useColors();
@@ -175,7 +191,9 @@ export default function ChatListScreen() {
               />
             )
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const meta = chatTypeMeta(item.type, colors);
+            return (
             <Pressable
               onPress={() =>
                 router.push({ pathname: "/chat/[id]", params: { id: String(item.id), name: item.name } })
@@ -185,7 +203,20 @@ export default function ChatListScreen() {
                 { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 },
               ]}
             >
-              <Avatar text={initials(item.name)} />
+              <View
+                style={[
+                  styles.typeAvatar,
+                  { backgroundColor: meta.color + "22", borderColor: meta.color },
+                ]}
+              >
+                {item.type === "direct" ? (
+                  <Text style={[styles.typeAvatarText, { color: meta.color }]}>
+                    {initials(item.name)}
+                  </Text>
+                ) : (
+                  <Feather name={meta.icon} size={20} color={meta.color} />
+                )}
+              </View>
               <View style={styles.rowBody}>
                 <Text
                   style={[styles.name, { color: colors.foreground }]}
@@ -193,9 +224,14 @@ export default function ChatListScreen() {
                 >
                   {item.name}
                 </Text>
-                <Text style={[styles.preview, { color: colors.mutedForeground }]}>
-                  {item.type === "direct" ? "Mensaje directo" : "Grupo"}
-                </Text>
+                <View style={styles.previewRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: meta.color + "22" }]}>
+                    <Feather name={meta.icon} size={10} color={meta.color} />
+                    <Text style={[styles.typeBadgeText, { color: meta.color }]}>
+                      {meta.label}
+                    </Text>
+                  </View>
+                </View>
               </View>
               <View style={styles.rowEnd}>
                 {item.lastMessageAt ? (
@@ -214,7 +250,8 @@ export default function ChatListScreen() {
                 ) : null}
               </View>
             </Pressable>
-          )}
+            );
+          }}
         />
       )}
     </View>
@@ -252,10 +289,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
-  rowBody: { flex: 1, gap: 3 },
+  rowBody: { flex: 1, gap: 4 },
   rowEnd: { alignItems: "flex-end", gap: 6 },
   name: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  preview: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  previewRow: { flexDirection: "row", alignItems: "center" },
+  typeAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+  },
+  typeAvatarText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  typeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  typeBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   time: { fontSize: 12, fontFamily: "Inter_400Regular" },
   badge: {
     minWidth: 20,

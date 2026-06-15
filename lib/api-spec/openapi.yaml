@@ -2644,6 +2644,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OkResult"
+  /chat/groups/{id}/members:
+    get:
+      operationId: listChatMembers
+      tags: [messaging]
+      summary: List the members of a chat group
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMember"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /chat/groups/{id}/messages:
     get:
       operationId: listGroupMessages
@@ -2661,6 +2685,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     post:
       operationId: sendGroupMessage
       tags: [messaging]
@@ -2681,6 +2711,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chat/messages/{id}:
+    patch:
+      operationId: editMessage
+      tags: [messaging]
+      summary: Edit one's own message
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditMessageInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteMessage
+      tags: [messaging]
+      summary: Delete one's own message (soft delete / tombstone)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chat/messages/{id}/react:
+    post:
+      operationId: reactToMessage
+      tags: [messaging]
+      summary: Toggle an emoji reaction on a message
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactToMessageInput"
+      responses:
+        "200":
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /chat/messages/{id}/forward:
+    post:
+      operationId: forwardMessage
+      tags: [messaging]
+      summary: Forward a message to one or more chats
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForwardMessageInput"
+      responses:
+        "201":
+          description: Forwarded messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /announcements:
     get:
       operationId: listAnnouncements
@@ -5322,16 +5489,130 @@ components:
           nullable: true
         content:
           type: string
+        kind:
+          type: string
+          description: "text | image | file | audio"
+        replyToId:
+          type: integer
+          nullable: true
+        replyToContent:
+          type: string
+          nullable: true
+        replyToSenderName:
+          type: string
+          nullable: true
+        forwardedFrom:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+          nullable: true
+        attachmentName:
+          type: string
+          nullable: true
+        attachmentType:
+          type: string
+          nullable: true
+        attachmentSize:
+          type: integer
+          nullable: true
+        attachmentUrl:
+          type: string
+          nullable: true
+          description: Short-lived URL to download/stream the attachment.
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deleted:
+          type: boolean
+        readByCount:
+          type: integer
+          description: How many members other than the sender have read this message.
+        reactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageReaction"
         createdAt:
           type: string
           format: date-time
       required: [id, senderId, content, createdAt]
+    MessageReaction:
+      type: object
+      properties:
+        emoji:
+          type: string
+        count:
+          type: integer
+        reactedByMe:
+          type: boolean
+      required: [emoji, count, reactedByMe]
+    ChatMember:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        lastReadAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [userId]
     SendMessageInput:
       type: object
       properties:
         content:
           type: string
+        kind:
+          type: string
+          description: "text | image | file | audio (defaults to text)"
+        replyToId:
+          type: integer
+          nullable: true
+        forwardedFrom:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+          nullable: true
+          description: Object-entity path (/objects/uploads/<id>) from an upload.
+        attachmentName:
+          type: string
+          nullable: true
+        attachmentType:
+          type: string
+          nullable: true
+        attachmentSize:
+          type: integer
+          nullable: true
       required: [content]
+    EditMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
+    ReactToMessageInput:
+      type: object
+      properties:
+        emoji:
+          type: string
+          minLength: 1
+      required: [emoji]
+    ForwardMessageInput:
+      type: object
+      properties:
+        groupIds:
+          type: array
+          items:
+            type: integer
+      required: [groupIds]
     AnnouncementAttachment:
       type: object
       properties:

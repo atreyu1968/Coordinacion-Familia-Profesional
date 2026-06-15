@@ -8,4 +8,13 @@
 
 export interface SendMessageInput {
   content: string;
+  /** text | image | file | audio (defaults to text) */
+  kind?: string;
+  replyToId?: number | null;
+  forwardedFrom?: string | null;
+  /** Object-entity path (/objects/uploads/<id>) from an upload. */
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
 }

@@ -6,6 +6,7 @@ import {
   chatGroupsTable,
   chatGroupMembersTable,
   messagesTable,
+  messageReactionsTable,
   announcementsTable,
   announcementAttachmentsTable,
   notificationsTable,
@@ -24,6 +25,15 @@ import {
   ListGroupMessagesResponse,
   SendGroupMessageParams,
   SendGroupMessageBody,
+  ListChatMembersParams,
+  ListChatMembersResponse,
+  EditMessageParams,
+  EditMessageBody,
+  DeleteMessageParams,
+  ReactToMessageParams,
+  ReactToMessageBody,
+  ForwardMessageParams,
+  ForwardMessageBody,
   ListAnnouncementsResponse,
   CreateAnnouncementBody,
   DeleteAnnouncementParams,
@@ -40,6 +50,7 @@ import { syncModuleChatGroup } from "@workspace/db";
 import {
   toChatGroup,
   toMessage,
+  toChatMember,
   toAnnouncement,
   toNotification,
 } from "../lib/mappers";
@@ -107,6 +118,163 @@ async function isGroupMember(
       ),
     );
   return Boolean(m);
+}
+
+// The full set of message columns we read for the rich chat UI.
+const messageColumns = {
+  id: messagesTable.id,
+  groupId: messagesTable.groupId,
+  senderId: messagesTable.senderId,
+  senderName: usersTable.name,
+  recipientId: messagesTable.recipientId,
+  content: messagesTable.content,
+  kind: messagesTable.kind,
+  replyToId: messagesTable.replyToId,
+  forwardedFrom: messagesTable.forwardedFrom,
+  attachmentPath: messagesTable.attachmentPath,
+  attachmentName: messagesTable.attachmentName,
+  attachmentType: messagesTable.attachmentType,
+  attachmentSize: messagesTable.attachmentSize,
+  editedAt: messagesTable.editedAt,
+  deletedAt: messagesTable.deletedAt,
+  createdAt: messagesTable.createdAt,
+};
+
+type MessageRow = {
+  id: number;
+  groupId: number | null;
+  senderId: number;
+  senderName: string | null;
+  recipientId: number | null;
+  content: string;
+  kind: string;
+  replyToId: number | null;
+  forwardedFrom: string | null;
+  attachmentPath: string | null;
+  attachmentName: string | null;
+  attachmentType: string | null;
+  attachmentSize: number | null;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+  createdAt: Date;
+};
+
+// Enrich raw message rows with aggregated reactions, reply previews and read
+// receipts, returning DTOs ready for the API contract. `memberReads` holds the
+// per-member lastReadAt markers for the group (drives the read-receipt ticks).
+async function assembleMessages(
+  rows: MessageRow[],
+  callerId: number,
+  memberReads: { userId: number; lastReadAt: Date | null }[],
+) {
+  const ids = rows.map((r) => r.id);
+
+  // Reactions, aggregated per message+emoji.
+  const reactionRows = ids.length
+    ? await db
+        .select({
+          messageId: messageReactionsTable.messageId,
+          userId: messageReactionsTable.userId,
+          emoji: messageReactionsTable.emoji,
+        })
+        .from(messageReactionsTable)
+        .where(inArray(messageReactionsTable.messageId, ids))
+        .orderBy(asc(messageReactionsTable.id))
+    : [];
+  const reactionMap = new Map<
+    number,
+    Map<string, { count: number; mine: boolean }>
+  >();
+  for (const r of reactionRows) {
+    const m = reactionMap.get(r.messageId) ?? new Map();
+    const e = m.get(r.emoji) ?? { count: 0, mine: false };
+    e.count += 1;
+    if (r.userId === callerId) e.mine = true;
+    m.set(r.emoji, e);
+    reactionMap.set(r.messageId, m);
+  }
+
+  // Reply/quote previews (a single lookup of the referenced messages).
+  const replyIds = Array.from(
+    new Set(rows.map((r) => r.replyToId).filter((x): x is number => x != null)),
+  );
+  const replyMap = new Map<
+    number,
+    { content: string; senderName: string | null; deletedAt: Date | null }
+  >();
+  if (replyIds.length) {
+    const rrows = await db
+      .select({
+        id: messagesTable.id,
+        content: messagesTable.content,
+        senderName: usersTable.name,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
+      .where(inArray(messagesTable.id, replyIds));
+    for (const rr of rrows) replyMap.set(rr.id, rr);
+  }
+
+  return rows.map((row) => {
+    const rMap = reactionMap.get(row.id);
+    const reactions = rMap
+      ? Array.from(rMap.entries()).map(([emoji, v]) => ({
+          emoji,
+          count: v.count,
+          reactedByMe: v.mine,
+        }))
+      : [];
+    let replyToContent: string | null = null;
+    let replyToSenderName: string | null = null;
+    if (row.replyToId != null) {
+      const rp = replyMap.get(row.replyToId);
+      if (rp) {
+        replyToContent = rp.deletedAt
+          ? "Mensaje eliminado"
+          : rp.content || "Archivo adjunto";
+        replyToSenderName = rp.senderName;
+      }
+    }
+    // A member (other than the sender) has "read" a message when their read
+    // marker is at or after the message's timestamp.
+    const readByCount = memberReads.filter(
+      (m) =>
+        m.userId !== row.senderId &&
+        m.lastReadAt != null &&
+        m.lastReadAt.getTime() >= row.createdAt.getTime(),
+    ).length;
+    return toMessage({
+      ...row,
+      replyToContent,
+      replyToSenderName,
+      reactions,
+      readByCount,
+    });
+  });
+}
+
+async function groupMemberReads(groupId: number) {
+  return db
+    .select({
+      userId: chatGroupMembersTable.userId,
+      lastReadAt: chatGroupMembersTable.lastReadAt,
+    })
+    .from(chatGroupMembersTable)
+    .where(eq(chatGroupMembersTable.groupId, groupId));
+}
+
+// Load + assemble a single message by id (used by edit/delete/react responses).
+async function loadAssembledMessage(messageId: number, callerId: number) {
+  const [row] = await db
+    .select(messageColumns)
+    .from(messagesTable)
+    .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
+    .where(eq(messagesTable.id, messageId));
+  if (!row || row.groupId == null) return null;
+  const reads = await groupMemberReads(row.groupId);
+  const [dto] = await assembleMessages([row as MessageRow], callerId, reads);
+  return dto ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,23 +598,51 @@ router.get(
       return;
     }
 
-    const rows = await db
-      .select({
-        id: messagesTable.id,
-        groupId: messagesTable.groupId,
-        senderId: messagesTable.senderId,
-        senderName: usersTable.name,
-        recipientId: messagesTable.recipientId,
-        content: messagesTable.content,
-        createdAt: messagesTable.createdAt,
-      })
+    const rows = (await db
+      .select(messageColumns)
       .from(messagesTable)
       .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
       .where(eq(messagesTable.groupId, groupId))
       .orderBy(asc(messagesTable.createdAt))
-      .limit(200);
+      .limit(200)) as MessageRow[];
 
-    res.json(ListGroupMessagesResponse.parse(rows.map(toMessage)));
+    const reads = await groupMemberReads(groupId);
+    const dtos = await assembleMessages(rows, caller.id, reads);
+    res.json(ListGroupMessagesResponse.parse(dtos));
+  },
+);
+
+// List the members of a chat group (everyone who belongs to it). Used by the
+// "members" panel and to label direct vs group conversations.
+router.get(
+  "/chat/groups/:id/members",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListChatMembersParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const groupId = params.data.id;
+    if (!(await isGroupMember(groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a este chat" });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        userId: chatGroupMembersTable.userId,
+        name: usersTable.name,
+        role: usersTable.role,
+        lastReadAt: chatGroupMembersTable.lastReadAt,
+      })
+      .from(chatGroupMembersTable)
+      .leftJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+      .where(eq(chatGroupMembersTable.groupId, groupId))
+      .orderBy(asc(usersTable.name));
+
+    res.json(ListChatMembersResponse.parse(rows.map(toChatMember)));
   },
 );
 
@@ -471,12 +667,74 @@ router.post(
       return;
     }
 
+    const data = body.data;
+    const allowedKinds = ["text", "image", "file", "audio"];
+    const kind =
+      data.kind && allowedKinds.includes(data.kind) ? data.kind : "text";
+    const content = (data.content ?? "").trim();
+
+    // A message must carry either text or an attachment.
+    if (kind === "text" && !content) {
+      res.status(400).json({ message: "El mensaje está vacío" });
+      return;
+    }
+    if (kind !== "text" && !data.attachmentPath) {
+      res.status(400).json({ message: "Falta el archivo adjunto" });
+      return;
+    }
+
+    // Bind the uploaded object to the caller (verifies existence + ownership),
+    // mirroring the announcement-attachment flow. Done BEFORE the insert.
+    if (data.attachmentPath) {
+      const ownerId = String(caller.id);
+      let objectFile;
+      try {
+        objectFile = await objectStorageService.getObjectEntityFile(
+          data.attachmentPath,
+        );
+      } catch (err) {
+        if (err instanceof ObjectNotFoundError) {
+          res.status(400).json({ message: "Archivo no encontrado" });
+          return;
+        }
+        throw err;
+      }
+      const policy = await getObjectAclPolicy(objectFile);
+      if (policy?.owner && policy.owner !== ownerId) {
+        res.status(403).json({ message: "No puedes usar este archivo" });
+        return;
+      }
+      if (!policy?.owner) {
+        await setObjectAclPolicy(objectFile, {
+          owner: ownerId,
+          visibility: "private",
+        });
+      }
+    }
+
+    // A reply must reference a message in the same group.
+    let replyToId: number | null = null;
+    if (data.replyToId != null) {
+      const [target] = await db
+        .select({ id: messagesTable.id, groupId: messagesTable.groupId })
+        .from(messagesTable)
+        .where(eq(messagesTable.id, data.replyToId));
+      if (target && target.groupId === groupId) replyToId = target.id;
+    }
+
     const [created] = await db
       .insert(messagesTable)
       .values({
         groupId,
         senderId: caller.id,
-        content: body.data.content.trim(),
+        content,
+        kind,
+        replyToId,
+        forwardedFrom: data.forwardedFrom?.trim() || null,
+        attachmentPath: data.attachmentPath ?? null,
+        attachmentName: data.attachmentName ?? null,
+        attachmentType: data.attachmentType ?? null,
+        attachmentSize: data.attachmentSize ?? null,
       })
       .returning();
 
@@ -485,17 +743,18 @@ router.post(
       .set({ lastMessageAt: created!.createdAt })
       .where(eq(chatGroupsTable.id, groupId));
 
-    const mapped = toMessage({ ...created!, senderName: caller.name });
+    const reads = await groupMemberReads(groupId);
+    const [mapped] = await assembleMessages(
+      [{ ...created!, senderName: caller.name } as MessageRow],
+      caller.id,
+      reads,
+    );
 
     // Real-time delivery to everyone currently in the chat room.
     emitToGroup(groupId, "message", mapped);
 
     // Notify other members' personal rooms for chat-list/badge updates.
-    const members = await db
-      .select({ userId: chatGroupMembersTable.userId })
-      .from(chatGroupMembersTable)
-      .where(eq(chatGroupMembersTable.groupId, groupId));
-    const otherMemberIds = members
+    const otherMemberIds = reads
       .map((m) => m.userId)
       .filter((id) => id !== caller.id);
     for (const userId of otherMemberIds) {
@@ -512,14 +771,329 @@ router.post(
         .select({ name: chatGroupsTable.name })
         .from(chatGroupsTable)
         .where(eq(chatGroupsTable.id, groupId));
+      const preview =
+        kind === "image"
+          ? "📷 Foto"
+          : kind === "audio"
+            ? "🎤 Mensaje de voz"
+            : kind === "file"
+              ? `📎 ${data.attachmentName ?? "Archivo"}`
+              : content;
       void sendPushToUsers(otherMemberIds, {
         title: group?.name ?? "Nuevo mensaje",
-        body: `${caller.name}: ${created!.content}`,
+        body: `${caller.name}: ${preview}`,
         data: { type: "message", groupId },
       });
     }
 
     res.status(201).json(mapped);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Message actions: edit, delete, react, forward, attachment streaming
+// ---------------------------------------------------------------------------
+
+// Edit one's own message. Author-only; sets editedAt. Deleted messages and
+// attachment/voice messages cannot be edited (only text content).
+router.patch(
+  "/chat/messages/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = EditMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const body = EditMessageBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: body.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [msg] = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!msg) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    if (msg.senderId !== caller.id) {
+      res.status(403).json({ message: "Solo puedes editar tus mensajes" });
+      return;
+    }
+    if (msg.deletedAt) {
+      res.status(403).json({ message: "El mensaje fue eliminado" });
+      return;
+    }
+    if (msg.kind !== "text") {
+      res.status(403).json({ message: "Solo se pueden editar mensajes de texto" });
+      return;
+    }
+    const content = body.data.content.trim();
+    if (!content) {
+      res.status(400).json({ message: "El mensaje está vacío" });
+      return;
+    }
+
+    await db
+      .update(messagesTable)
+      .set({ content, editedAt: new Date() })
+      .where(eq(messagesTable.id, msg.id));
+
+    const mapped = await loadAssembledMessage(msg.id, caller.id);
+    if (msg.groupId != null) emitToGroup(msg.groupId, "message_edited", mapped);
+    res.json(mapped);
+  },
+);
+
+// Delete one's own message (soft delete → tombstone "Mensaje eliminado").
+router.delete(
+  "/chat/messages/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [msg] = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!msg) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    if (msg.senderId !== caller.id) {
+      res.status(403).json({ message: "Solo puedes eliminar tus mensajes" });
+      return;
+    }
+    if (!msg.deletedAt) {
+      await db
+        .update(messagesTable)
+        .set({ deletedAt: new Date() })
+        .where(eq(messagesTable.id, msg.id));
+      // Reactions on a deleted message are meaningless — clear them.
+      await db
+        .delete(messageReactionsTable)
+        .where(eq(messageReactionsTable.messageId, msg.id));
+    }
+
+    const mapped = await loadAssembledMessage(msg.id, caller.id);
+    if (msg.groupId != null) emitToGroup(msg.groupId, "message_deleted", mapped);
+    res.json(mapped);
+  },
+);
+
+// Toggle an emoji reaction on a message. Adding the same emoji again removes it.
+router.post(
+  "/chat/messages/:id/react",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ReactToMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const body = ReactToMessageBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: body.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const emoji = body.data.emoji.trim();
+    if (!emoji) {
+      res.status(400).json({ message: "Emoji no válido" });
+      return;
+    }
+    const [msg] = await db
+      .select({
+        id: messagesTable.id,
+        groupId: messagesTable.groupId,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!msg || msg.groupId == null) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    if (msg.deletedAt) {
+      res.status(403).json({ message: "El mensaje fue eliminado" });
+      return;
+    }
+    if (!(await isGroupMember(msg.groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a este chat" });
+      return;
+    }
+
+    const [existing] = await db
+      .select({ id: messageReactionsTable.id })
+      .from(messageReactionsTable)
+      .where(
+        and(
+          eq(messageReactionsTable.messageId, msg.id),
+          eq(messageReactionsTable.userId, caller.id),
+          eq(messageReactionsTable.emoji, emoji),
+        ),
+      );
+    if (existing) {
+      await db
+        .delete(messageReactionsTable)
+        .where(eq(messageReactionsTable.id, existing.id));
+    } else {
+      await db
+        .insert(messageReactionsTable)
+        .values({ messageId: msg.id, userId: caller.id, emoji })
+        .onConflictDoNothing();
+    }
+
+    const mapped = await loadAssembledMessage(msg.id, caller.id);
+    emitToGroup(msg.groupId, "message_reaction", mapped);
+    res.json(mapped);
+  },
+);
+
+// Forward a message to one or more of the caller's chats.
+router.post(
+  "/chat/messages/:id/forward",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ForwardMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const body = ForwardMessageBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: body.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [src] = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!src || src.deletedAt) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    // The caller must be able to see the source message.
+    if (src.groupId == null || !(await isGroupMember(src.groupId, caller.id))) {
+      res.status(403).json({ message: "No puedes reenviar este mensaje" });
+      return;
+    }
+
+    // Resolve the original sender's name for the "Reenviado" label.
+    const [origSender] = await db
+      .select({ name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.id, src.senderId));
+    const forwardedFrom = src.forwardedFrom ?? origSender?.name ?? null;
+
+    const targetIds = Array.from(new Set(body.data.groupIds ?? [])).filter(
+      (id) => Number.isInteger(id),
+    );
+    const results = [];
+    for (const targetId of targetIds) {
+      if (!(await isGroupMember(targetId, caller.id))) continue;
+      const [created] = await db
+        .insert(messagesTable)
+        .values({
+          groupId: targetId,
+          senderId: caller.id,
+          content: src.content,
+          kind: src.kind,
+          forwardedFrom,
+          attachmentPath: src.attachmentPath,
+          attachmentName: src.attachmentName,
+          attachmentType: src.attachmentType,
+          attachmentSize: src.attachmentSize,
+        })
+        .returning();
+      await db
+        .update(chatGroupsTable)
+        .set({ lastMessageAt: created!.createdAt })
+        .where(eq(chatGroupsTable.id, targetId));
+
+      const reads = await groupMemberReads(targetId);
+      const [mapped] = await assembleMessages(
+        [{ ...created!, senderName: caller.name } as MessageRow],
+        caller.id,
+        reads,
+      );
+      emitToGroup(targetId, "message", mapped);
+      for (const userId of reads
+        .map((m) => m.userId)
+        .filter((uid) => uid !== caller.id)) {
+        emitToUser(userId, "chat_update", { groupId: targetId });
+      }
+      results.push(mapped);
+    }
+
+    res.status(201).json(results);
+  },
+);
+
+// Stream a chat attachment (image/file/voice). Membership-gated; the raw object
+// path is never exposed. The frontend fetches this with its Authorization
+// header (so it is not generated as a typed client hook).
+router.get(
+  "/chat/messages/:id/attachment",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const messageId = Number(req.params.id);
+    if (!Number.isInteger(messageId) || messageId <= 0) {
+      res.status(400).json({ message: "Identificador no válido" });
+      return;
+    }
+    const caller = req.user!;
+    const [msg] = await db
+      .select({
+        groupId: messagesTable.groupId,
+        attachmentPath: messagesTable.attachmentPath,
+        attachmentName: messagesTable.attachmentName,
+        attachmentType: messagesTable.attachmentType,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, messageId));
+    if (!msg || msg.deletedAt || !msg.attachmentPath || msg.groupId == null) {
+      res.status(404).json({ message: "Archivo no encontrado" });
+      return;
+    }
+    if (!(await isGroupMember(msg.groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a este chat" });
+      return;
+    }
+
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        msg.attachmentPath,
+      );
+      const response = await objectStorageService.downloadObject(objectFile);
+      res.status(response.status);
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+      if (msg.attachmentType) res.setHeader("Content-Type", msg.attachmentType);
+      if (response.body) {
+        const nodeStream = Readable.fromWeb(
+          response.body as ReadableStream<Uint8Array>,
+        );
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        res.status(404).json({ message: "Archivo no encontrado" });
+        return;
+      }
+      req.log.error({ err: error }, "Error serving chat attachment");
+      res.status(500).json({ message: "No se pudo servir el archivo" });
+    }
   },
 );
 

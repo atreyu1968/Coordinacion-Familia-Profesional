@@ -24,6 +24,7 @@ import {
   Smartphone,
   MessageSquarePlus,
   MessagesSquare,
+  MessageCircle,
   Pin,
   PinOff,
 } from "lucide-react";
@@ -86,6 +87,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
     { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
+    { label: "Mensajes", path: "/chat", icon: MessageCircle, visible: true },
     { label: "Espacio colaborativo", path: "/espacio", icon: FolderKanban, visible: true },
     { label: "Foros", path: "/foros", icon: MessagesSquare, visible: true },
     { label: "Encuestas", path: "/encuestas", icon: BarChart, visible: true },

@@ -1196,6 +1196,12 @@ export interface SyncModuleChatGroupsResult {
   updated: number;
 }
 
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  reactedByMe: boolean;
+}
+
 export interface Message {
   id: number;
   groupId?: number | null;
@@ -1203,11 +1209,58 @@ export interface Message {
   senderName?: string | null;
   recipientId?: number | null;
   content: string;
+  /** text | image | file | audio */
+  kind?: string;
+  replyToId?: number | null;
+  replyToContent?: string | null;
+  replyToSenderName?: string | null;
+  forwardedFrom?: string | null;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
+  /** Short-lived URL to download/stream the attachment. */
+  attachmentUrl?: string | null;
+  editedAt?: string | null;
+  deleted?: boolean;
+  /** How many members other than the sender have read this message. */
+  readByCount?: number;
+  reactions?: MessageReaction[];
   createdAt: string;
+}
+
+export interface ChatMember {
+  userId: number;
+  name?: string | null;
+  role?: string | null;
+  lastReadAt?: string | null;
 }
 
 export interface SendMessageInput {
   content: string;
+  /** text | image | file | audio (defaults to text) */
+  kind?: string;
+  replyToId?: number | null;
+  forwardedFrom?: string | null;
+  /** Object-entity path (/objects/uploads/<id>) from an upload. */
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
+}
+
+export interface EditMessageInput {
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface ReactToMessageInput {
+  /** @minLength 1 */
+  emoji: string;
+}
+
+export interface ForwardMessageInput {
+  groupIds: number[];
 }
 
 export interface AnnouncementAttachment {
