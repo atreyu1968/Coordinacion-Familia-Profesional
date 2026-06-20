@@ -409,6 +409,40 @@ automáticamente. La IP es la misma que la del dominio principal.)
 Tras crear los registros, espera a que propaguen (unos minutos) y ejecuta o
 vuelve a ejecutar `sudo bash deploy/outline/install-outline.sh`.
 
+##### «Pero yo accedo a mi servidor a través de Cloudflare»
+
+No hay problema: **tu dominio principal puede seguir entrando por Cloudflare
+(nube naranja) como hasta ahora.** Lo que recomendamos es dejar **solo** los dos
+subdominios `docs.` y `files.` en **gris (DNS only)**. Cloudflare permite
+mezclarlo sin problema: la app principal sigue protegida por el proxy y únicamente
+esos dos subdominios resuelven directos a tu servidor (que es lo que necesita el
+instalador automático). Esta es la opción más sencilla y la que funciona sin
+tocar nada más.
+
+Solo necesitas el otro camino si tienes el servidor **blindado para aceptar
+únicamente tráfico de Cloudflare** (firewall restringido a las IP de Cloudflare).
+En ese caso `docs.` y `files.` también tienen que ir en **naranja**, y entonces:
+
+1. **SSL/TLS → modo de cifrado = «Full (strict)»** en Cloudflare (nunca
+   «Flexible»: Outline fuerza HTTPS y «Flexible» provoca bucles de redirección).
+2. **El origen necesita un certificado válido.** Como `certbot` por HTTP no puede
+   validar a través del proxy, usa una de estas dos vías:
+   - **Certificado de origen de Cloudflare** (SSL/TLS → *Origin Server* → *Create
+     Certificate*, dura 15 años) instalado en nginx para `docs.` y `files.`, o
+   - **`certbot` por DNS-01** con un token de API de Cloudflare
+     (`python3-certbot-dns-cloudflare`), que valida sin necesidad del puerto 80.
+
+   En ambos casos el certificado se configura a mano (el paso automático de
+   `certbot` del instalador asume nube gris), así que ejecuta el instalador y
+   sustituye luego el certificado en la configuración de nginx de esos subdominios.
+3. **`files.` (MinIO):** crea una *Cache Rule* de **«Bypass cache»** para ese host
+   (las descargas llevan URLs firmadas que no deben cachearse) y ten en cuenta el
+   **límite de tamaño de subida** del proxy (100 MB en el plan gratuito; el
+   instalador ya limita a 50 MB, así que entra de sobra).
+
+En resumen: si solo quieres que funcione, deja `docs.` y `files.` en **gris** y tu
+dominio principal sigue por Cloudflare igual que siempre.
+
 **Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
 dominio HTTPS real y aceptas instalar la wiki, este componente se instala e
 integra **solo** (levanta Outline + Postgres + Redis + MinIO con Docker, configura
