@@ -20,4 +20,9 @@ export interface IntegrationSettings {
   collaboraUrl?: string | null;
   nextcloudAdminUser?: string | null;
   nextcloudOidcClientId?: string | null;
+  outlineConfigured: boolean;
+  outlineOidcClientSecretConfigured: boolean;
+  outlineApiTokenConfigured: boolean;
+  outlineUrl?: string | null;
+  outlineOidcClientId?: string | null;
 }

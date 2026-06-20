@@ -16,6 +16,7 @@ import {
   verifyPkce,
   type OidcClaims,
 } from "../lib/oidc";
+import type { IntegrationSettings } from "@workspace/db";
 import { getSettings } from "../lib/settings";
 import {
   resolveNextcloudOidcClient,
@@ -23,12 +24,23 @@ import {
   nextcloudUid,
   moduleFolderName,
 } from "../lib/nextcloud";
+import {
+  resolveOutlineOidcClient,
+  resolveOutlineUrl,
+  isOutlineRedirectUri,
+  getModuleWikiMapping,
+  moduleCollectionPath,
+} from "../lib/outline";
+import type { OidcTarget } from "../lib/oidc";
 import { getAppBaseUrl, readCookie } from "../lib/appUrl";
 import { logger } from "../lib/logger";
 
 // ---------------------------------------------------------------------------
-// OIDC provider endpoints (mounted under /api). Nextcloud's user_oidc app is
-// the only client. The issuer is `${appBaseUrl}/api/oidc`.
+// OIDC provider endpoints (mounted under /api). This app is the source of truth
+// for identities; external apps log in here so users never see a second login.
+// Two clients are supported: Nextcloud's `user_oidc` (collaborative space) and
+// Outline (documentation wiki). Each is resolved by its client_id and validated
+// against its own callback origin/path. The issuer is `${appBaseUrl}/api/oidc`.
 // ---------------------------------------------------------------------------
 
 const router: IRouter = Router();
@@ -74,6 +86,50 @@ export function isAllowedRedirectUri(redirectUri: string, nextcloudUrl: string):
   // Only allow the Nextcloud user_oidc callback path (with or without the
   // index.php front controller prefix).
   return /^\/(index\.php\/)?apps\/user_oidc\//.test(rest);
+}
+
+// A configured OIDC client (Nextcloud or Outline), with its own redirect policy.
+interface ResolvedOidcClient {
+  target: OidcTarget;
+  clientId: string;
+  clientSecret: string;
+  baseUrl: string;
+  isAllowedRedirect: (uri: string) => boolean;
+}
+
+/** All OIDC clients currently configured (URL + client id/secret present). */
+function resolveClients(settings: IntegrationSettings): ResolvedOidcClient[] {
+  const clients: ResolvedOidcClient[] = [];
+  const nc = resolveNextcloudOidcClient(settings);
+  const ncUrl = resolveNextcloudUrl(settings);
+  if (nc && ncUrl) {
+    clients.push({
+      target: "nextcloud",
+      clientId: nc.clientId,
+      clientSecret: nc.clientSecret,
+      baseUrl: ncUrl,
+      isAllowedRedirect: (uri) => isAllowedRedirectUri(uri, ncUrl),
+    });
+  }
+  const ol = resolveOutlineOidcClient(settings);
+  const olUrl = resolveOutlineUrl(settings);
+  if (ol && olUrl) {
+    clients.push({
+      target: "outline",
+      clientId: ol.clientId,
+      clientSecret: ol.clientSecret,
+      baseUrl: olUrl,
+      isAllowedRedirect: (uri) => isOutlineRedirectUri(uri, olUrl),
+    });
+  }
+  return clients;
+}
+
+function findClientById(
+  settings: IntegrationSettings,
+  clientId: string,
+): ResolvedOidcClient | null {
+  return resolveClients(settings).find((c) => c.clientId === clientId) ?? null;
 }
 
 function claimsFor(user: User): OidcClaims {
@@ -122,20 +178,41 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
     return;
   }
   const settings = await getSettings();
+
+  // Establish the short-lived SSO session the /authorize endpoint reads. Scoped
+  // to /api/oidc so it is only sent to the provider endpoints.
+  const setSsoCookie = (): void => {
+    const sid = createSession(user.id);
+    res.cookie(SESSION_COOKIE, sid, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isSecure(req),
+      path: "/api/oidc",
+      maxAge: 30 * 60 * 1000,
+    });
+  };
+
+  if (rec.target === "outline") {
+    const outlineUrl = resolveOutlineUrl(settings);
+    if (!outlineUrl) {
+      res.status(503).send("La documentación no está configurada");
+      return;
+    }
+    setSsoCookie();
+    // Deep-link to the module's collection. Outline (with OIDC as the sole
+    // sign-in method) auto-redirects an unauthenticated visit through our
+    // provider; the SSO cookie above makes that handshake silent.
+    const mapping = await getModuleWikiMapping(rec.moduleId);
+    res.redirect(`${outlineUrl}${moduleCollectionPath(mapping)}`);
+    return;
+  }
+
   const nextcloudUrl = resolveNextcloudUrl(settings);
   if (!nextcloudUrl) {
     res.status(503).send("Espacio colaborativo no configurado");
     return;
   }
-
-  const sid = createSession(user.id);
-  res.cookie(SESSION_COOKIE, sid, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isSecure(req),
-    path: "/api/oidc",
-    maxAge: 30 * 60 * 1000,
-  });
+  setSsoCookie();
 
   // Where the user should land inside Nextcloud after SSO completes.
   let target = "/apps/files";
@@ -165,12 +242,6 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
 
 router.get("/oidc/authorize", async (req: Request, res: Response): Promise<void> => {
   const settings = await getSettings();
-  const client = resolveNextcloudOidcClient(settings);
-  const nextcloudUrl = resolveNextcloudUrl(settings);
-  if (!client || !nextcloudUrl) {
-    res.status(503).send("Espacio colaborativo no configurado");
-    return;
-  }
 
   const clientId = (req.query["client_id"] as string) || "";
   const redirectUri = (req.query["redirect_uri"] as string) || "";
@@ -179,7 +250,12 @@ router.get("/oidc/authorize", async (req: Request, res: Response): Promise<void>
   const nonce = (req.query["nonce"] as string) || undefined;
   const codeChallenge = (req.query["code_challenge"] as string) || undefined;
 
-  if (clientId !== client.clientId) {
+  if (resolveClients(settings).length === 0) {
+    res.status(503).send("Inicio de sesión único no configurado");
+    return;
+  }
+  const client = findClientById(settings, clientId);
+  if (!client) {
     res.status(400).send("client_id desconocido");
     return;
   }
@@ -187,7 +263,7 @@ router.get("/oidc/authorize", async (req: Request, res: Response): Promise<void>
     res.status(400).send("response_type no soportado");
     return;
   }
-  if (!isAllowedRedirectUri(redirectUri, nextcloudUrl)) {
+  if (!client.isAllowedRedirect(redirectUri)) {
     res.status(400).send("redirect_uri no permitido");
     return;
   }
@@ -198,7 +274,7 @@ router.get("/oidc/authorize", async (req: Request, res: Response): Promise<void>
     // No active SSO session — the flow must start from the app.
     res
       .status(401)
-      .send("Sesión no encontrada. Abre el espacio colaborativo desde la plataforma.");
+      .send("Sesión no encontrada. Abre el recurso desde la plataforma.");
     return;
   }
 
@@ -241,8 +317,7 @@ function clientCreds(
 
 router.post("/oidc/token", async (req: Request, res: Response): Promise<void> => {
   const settings = await getSettings();
-  const client = resolveNextcloudOidcClient(settings);
-  if (!client) {
+  if (resolveClients(settings).length === 0) {
     res.status(503).json({ error: "temporarily_unavailable" });
     return;
   }
@@ -252,7 +327,8 @@ router.post("/oidc/token", async (req: Request, res: Response): Promise<void> =>
     return;
   }
   const creds = clientCreds(req);
-  if (!creds || creds.id !== client.clientId || creds.secret !== client.clientSecret) {
+  const client = creds ? findClientById(settings, creds.id) : null;
+  if (!creds || !client || creds.secret !== client.clientSecret) {
     res.status(401).json({ error: "invalid_client" });
     return;
   }

@@ -20,4 +20,8 @@ export interface UpdateIntegrationSettingsInput {
   nextcloudAdminPassword?: string | null;
   nextcloudOidcClientId?: string | null;
   nextcloudOidcClientSecret?: string | null;
+  outlineUrl?: string | null;
+  outlineOidcClientId?: string | null;
+  outlineOidcClientSecret?: string | null;
+  outlineApiToken?: string | null;
 }

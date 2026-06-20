@@ -22,6 +22,7 @@ import {
   isResendConfigured,
   isJaasConfigured,
   isNextcloudConfigured,
+  isOutlineConfigured,
 } from "../lib/settings";
 
 const router: IRouter = Router();
@@ -170,6 +171,11 @@ router.get("/settings/integrations", requireAuth, async (_req, res): Promise<voi
       collaboraUrl: settings.collaboraUrl,
       nextcloudAdminUser: settings.nextcloudAdminUser,
       nextcloudOidcClientId: settings.nextcloudOidcClientId,
+      outlineConfigured: isOutlineConfigured(settings),
+      outlineOidcClientSecretConfigured: !!settings.outlineOidcClientSecret,
+      outlineApiTokenConfigured: !!settings.outlineApiToken,
+      outlineUrl: settings.outlineUrl,
+      outlineOidcClientId: settings.outlineOidcClientId,
     }),
   );
 });
@@ -234,6 +240,21 @@ router.put(
       updates["nextcloudOidcClientSecret"] =
         parsed.data.nextcloudOidcClientSecret || null;
     }
+    if (parsed.data.outlineUrl !== undefined) {
+      updates["outlineUrl"] = parsed.data.outlineUrl
+        ? parsed.data.outlineUrl.trim().replace(/\/+$/, "")
+        : null;
+    }
+    if (parsed.data.outlineOidcClientId !== undefined) {
+      updates["outlineOidcClientId"] = parsed.data.outlineOidcClientId || null;
+    }
+    if (parsed.data.outlineOidcClientSecret !== undefined) {
+      updates["outlineOidcClientSecret"] =
+        parsed.data.outlineOidcClientSecret || null;
+    }
+    if (parsed.data.outlineApiToken !== undefined) {
+      updates["outlineApiToken"] = parsed.data.outlineApiToken || null;
+    }
 
     const [updated] = await db
       .update(integrationSettingsTable)
@@ -256,6 +277,11 @@ router.put(
         collaboraUrl: updated.collaboraUrl,
         nextcloudAdminUser: updated.nextcloudAdminUser,
         nextcloudOidcClientId: updated.nextcloudOidcClientId,
+        outlineConfigured: isOutlineConfigured(updated),
+        outlineOidcClientSecretConfigured: !!updated.outlineOidcClientSecret,
+        outlineApiTokenConfigured: !!updated.outlineApiToken,
+        outlineUrl: updated.outlineUrl,
+        outlineOidcClientId: updated.outlineOidcClientId,
       }),
     );
   },

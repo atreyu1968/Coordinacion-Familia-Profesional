@@ -23,6 +23,7 @@ import meetingsRouter from "./meetings";
 import forumsRouter from "./forums";
 import oidcRouter from "./oidc";
 import collabRouter from "./collab";
+import wikiRouter from "./wiki";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(meetingsRouter);
 router.use(forumsRouter);
 router.use(oidcRouter);
 router.use(collabRouter);
+router.use(wikiRouter);
 
 export default router;

@@ -2380,7 +2380,12 @@ export const GetIntegrationSettingsResponse = zod.object({
   "nextcloudUrl": zod.string().nullish(),
   "collaboraUrl": zod.string().nullish(),
   "nextcloudAdminUser": zod.string().nullish(),
-  "nextcloudOidcClientId": zod.string().nullish()
+  "nextcloudOidcClientId": zod.string().nullish(),
+  "outlineConfigured": zod.boolean(),
+  "outlineOidcClientSecretConfigured": zod.boolean(),
+  "outlineApiTokenConfigured": zod.boolean(),
+  "outlineUrl": zod.string().nullish(),
+  "outlineOidcClientId": zod.string().nullish()
 })
 
 
@@ -2400,7 +2405,11 @@ export const UpdateIntegrationSettingsBody = zod.object({
   "nextcloudAdminUser": zod.string().nullish(),
   "nextcloudAdminPassword": zod.string().nullish(),
   "nextcloudOidcClientId": zod.string().nullish(),
-  "nextcloudOidcClientSecret": zod.string().nullish()
+  "nextcloudOidcClientSecret": zod.string().nullish(),
+  "outlineUrl": zod.string().nullish(),
+  "outlineOidcClientId": zod.string().nullish(),
+  "outlineOidcClientSecret": zod.string().nullish(),
+  "outlineApiToken": zod.string().nullish()
 })
 
 export const UpdateIntegrationSettingsResponse = zod.object({
@@ -2416,7 +2425,12 @@ export const UpdateIntegrationSettingsResponse = zod.object({
   "nextcloudUrl": zod.string().nullish(),
   "collaboraUrl": zod.string().nullish(),
   "nextcloudAdminUser": zod.string().nullish(),
-  "nextcloudOidcClientId": zod.string().nullish()
+  "nextcloudOidcClientId": zod.string().nullish(),
+  "outlineConfigured": zod.boolean(),
+  "outlineOidcClientSecretConfigured": zod.boolean(),
+  "outlineApiTokenConfigured": zod.boolean(),
+  "outlineUrl": zod.string().nullish(),
+  "outlineOidcClientId": zod.string().nullish()
 })
 
 
@@ -2470,6 +2484,70 @@ export const OpenModuleSpaceParams = zod.object({
 export const OpenModuleSpaceResponse = zod.object({
   "url": zod.string().describe('Single-use URL that establishes SSO and opens the module space.'),
   "nextcloudUrl": zod.string()
+})
+
+
+/**
+ * @summary Whether the documentation wiki (Outline) is configured
+ */
+export const GetWikiStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "outlineUrl": zod.string().nullish()
+})
+
+
+/**
+ * @summary Provision and open the documentation wiki for a module (SSO)
+ */
+export const OpenModuleWikiParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const OpenModuleWikiResponse = zod.object({
+  "url": zod.string().describe('Single-use URL that establishes SSO and opens the module wiki.'),
+  "outlineUrl": zod.string()
+})
+
+
+/**
+ * @summary List a module's wiki editors and the users that can be granted edit
+ */
+export const GetModuleWikiEditorsParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const GetModuleWikiEditorsResponse = zod.object({
+  "canManage": zod.boolean().describe('Whether the caller may change the editor set for this module.'),
+  "editorIds": zod.array(zod.number()),
+  "candidates": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "role": zod.string()
+})).describe('Users the caller is allowed to grant edit access to.')
+})
+
+
+/**
+ * @summary Set the users allowed to edit a module's wiki
+ */
+export const UpdateModuleWikiEditorsParams = zod.object({
+  "moduleId": zod.coerce.number()
+})
+
+export const UpdateModuleWikiEditorsBody = zod.object({
+  "userIds": zod.array(zod.number())
+})
+
+export const UpdateModuleWikiEditorsResponse = zod.object({
+  "canManage": zod.boolean().describe('Whether the caller may change the editor set for this module.'),
+  "editorIds": zod.array(zod.number()),
+  "candidates": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "role": zod.string()
+})).describe('Users the caller is allowed to grant edit access to.')
 })
 
 

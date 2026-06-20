@@ -132,6 +132,8 @@ import type {
   Module,
   ModuleMember,
   ModuleSpaceAccess,
+  ModuleWikiAccess,
+  ModuleWikiEditors,
   Municipality,
   MyYearConfirmation,
   Notification,
@@ -171,12 +173,14 @@ import type {
   UpdateLearningOutcomeInput,
   UpdateModuleInput,
   UpdateModuleMemberInput,
+  UpdateModuleWikiEditorsInput,
   UpdateProfileInput,
   UpdateUserInput,
   UploadUrlRequest,
   UploadUrlResponse,
   User,
-  VapidPublicKey
+  VapidPublicKey,
+  WikiStatus
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -10412,6 +10416,302 @@ export const useOpenModuleSpace = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getOpenModuleSpaceMutationOptions(options));
+    }
+
+export const getGetWikiStatusUrl = () => {
+
+
+
+
+  return `/api/wiki/status`
+}
+
+/**
+ * @summary Whether the documentation wiki (Outline) is configured
+ */
+export const getWikiStatus = async ( options?: RequestInit): Promise<WikiStatus> => {
+
+  return customFetch<WikiStatus>(getGetWikiStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWikiStatusQueryKey = () => {
+    return [
+    `/api/wiki/status`
+    ] as const;
+    }
+
+
+export const getGetWikiStatusQueryOptions = <TData = Awaited<ReturnType<typeof getWikiStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWikiStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWikiStatus>>> = ({ signal }) => getWikiStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWikiStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getWikiStatus>>>
+export type GetWikiStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Whether the documentation wiki (Outline) is configured
+ */
+
+export function useGetWikiStatus<TData = Awaited<ReturnType<typeof getWikiStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWikiStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOpenModuleWikiUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/wiki/modules/${moduleId}/space`
+}
+
+/**
+ * @summary Provision and open the documentation wiki for a module (SSO)
+ */
+export const openModuleWiki = async (moduleId: number, options?: RequestInit): Promise<ModuleWikiAccess> => {
+
+  return customFetch<ModuleWikiAccess>(getOpenModuleWikiUrl(moduleId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getOpenModuleWikiMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext> => {
+
+const mutationKey = ['openModuleWiki'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openModuleWiki>>, {moduleId: number}> = (props) => {
+          const {moduleId} = props ?? {};
+
+          return  openModuleWiki(moduleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenModuleWikiMutationResult = NonNullable<Awaited<ReturnType<typeof openModuleWiki>>>
+
+    export type OpenModuleWikiMutationError = ErrorType<void>
+
+    /**
+ * @summary Provision and open the documentation wiki for a module (SSO)
+ */
+export const useOpenModuleWiki = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof openModuleWiki>>,
+        TError,
+        {moduleId: number},
+        TContext
+      > => {
+      return useMutation(getOpenModuleWikiMutationOptions(options));
+    }
+
+export const getGetModuleWikiEditorsUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/wiki/modules/${moduleId}/editors`
+}
+
+/**
+ * @summary List a module's wiki editors and the users that can be granted edit
+ */
+export const getModuleWikiEditors = async (moduleId: number, options?: RequestInit): Promise<ModuleWikiEditors> => {
+
+  return customFetch<ModuleWikiEditors>(getGetModuleWikiEditorsUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetModuleWikiEditorsQueryKey = (moduleId: number,) => {
+    return [
+    `/api/wiki/modules/${moduleId}/editors`
+    ] as const;
+    }
+
+
+export const getGetModuleWikiEditorsQueryOptions = <TData = Awaited<ReturnType<typeof getModuleWikiEditors>>, TError = ErrorType<void>>(moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModuleWikiEditors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetModuleWikiEditorsQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getModuleWikiEditors>>> = ({ signal }) => getModuleWikiEditors(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(moduleId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getModuleWikiEditors>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetModuleWikiEditorsQueryResult = NonNullable<Awaited<ReturnType<typeof getModuleWikiEditors>>>
+export type GetModuleWikiEditorsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List a module's wiki editors and the users that can be granted edit
+ */
+
+export function useGetModuleWikiEditors<TData = Awaited<ReturnType<typeof getModuleWikiEditors>>, TError = ErrorType<void>>(
+ moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModuleWikiEditors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetModuleWikiEditorsQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateModuleWikiEditorsUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/wiki/modules/${moduleId}/editors`
+}
+
+/**
+ * @summary Set the users allowed to edit a module's wiki
+ */
+export const updateModuleWikiEditors = async (moduleId: number,
+    updateModuleWikiEditorsInput: UpdateModuleWikiEditorsInput, options?: RequestInit): Promise<ModuleWikiEditors> => {
+
+  return customFetch<ModuleWikiEditors>(getUpdateModuleWikiEditorsUrl(moduleId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateModuleWikiEditorsInput,)
+  }
+);}
+
+
+
+
+export const getUpdateModuleWikiEditorsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleWikiEditors>>, TError,{moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModuleWikiEditors>>, TError,{moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>}, TContext> => {
+
+const mutationKey = ['updateModuleWikiEditors'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModuleWikiEditors>>, {moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>}> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  updateModuleWikiEditors(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleWikiEditorsMutationResult = NonNullable<Awaited<ReturnType<typeof updateModuleWikiEditors>>>
+    export type UpdateModuleWikiEditorsMutationBody = BodyType<UpdateModuleWikiEditorsInput>
+    export type UpdateModuleWikiEditorsMutationError = ErrorType<void>
+
+    /**
+ * @summary Set the users allowed to edit a module's wiki
+ */
+export const useUpdateModuleWikiEditors = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleWikiEditors>>, TError,{moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModuleWikiEditors>>,
+        TError,
+        {moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleWikiEditorsMutationOptions(options));
     }
 
 export const getGetMobileAppUrl = () => {

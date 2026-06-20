@@ -22,6 +22,7 @@ import {
   Sparkles,
   Video,
   FolderKanban,
+  BookText,
   DatabaseBackup,
   Download,
   Upload,
@@ -53,6 +54,10 @@ export default function PanelControlPage() {
   const [nextcloudAdminPassword, setNextcloudAdminPassword] = useState("");
   const [nextcloudOidcClientId, setNextcloudOidcClientId] = useState("");
   const [nextcloudOidcClientSecret, setNextcloudOidcClientSecret] = useState("");
+  const [outlineUrl, setOutlineUrl] = useState("");
+  const [outlineOidcClientId, setOutlineOidcClientId] = useState("");
+  const [outlineOidcClientSecret, setOutlineOidcClientSecret] = useState("");
+  const [outlineApiToken, setOutlineApiToken] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -97,6 +102,15 @@ export default function PanelControlPage() {
     if (settings?.nextcloudOidcClientId)
       setNextcloudOidcClientId(settings.nextcloudOidcClientId);
   }, [settings?.nextcloudOidcClientId]);
+
+  useEffect(() => {
+    if (settings?.outlineUrl) setOutlineUrl(settings.outlineUrl);
+  }, [settings?.outlineUrl]);
+
+  useEffect(() => {
+    if (settings?.outlineOidcClientId)
+      setOutlineOidcClientId(settings.outlineOidcClientId);
+  }, [settings?.outlineOidcClientId]);
 
   if (user && user.role !== "superadmin") {
     return (
@@ -208,6 +222,10 @@ export default function PanelControlPage() {
       nextcloudAdminPassword?: string;
       nextcloudOidcClientId?: string;
       nextcloudOidcClientSecret?: string;
+      outlineUrl?: string;
+      outlineOidcClientId?: string;
+      outlineOidcClientSecret?: string;
+      outlineApiToken?: string;
     } = {};
     if (deepseekApiKey.trim()) payload.deepseekApiKey = deepseekApiKey.trim();
     if (resendApiKey.trim()) payload.resendApiKey = resendApiKey.trim();
@@ -236,6 +254,18 @@ export default function PanelControlPage() {
     if (nextcloudOidcClientSecret.trim()) {
       payload.nextcloudOidcClientSecret = nextcloudOidcClientSecret.trim();
     }
+    if (outlineUrl !== (settings?.outlineUrl ?? "")) {
+      payload.outlineUrl = outlineUrl.trim();
+    }
+    if (outlineOidcClientId !== (settings?.outlineOidcClientId ?? "")) {
+      payload.outlineOidcClientId = outlineOidcClientId.trim();
+    }
+    if (outlineOidcClientSecret.trim()) {
+      payload.outlineOidcClientSecret = outlineOidcClientSecret.trim();
+    }
+    if (outlineApiToken.trim()) {
+      payload.outlineApiToken = outlineApiToken.trim();
+    }
 
     try {
       await updateMutation.mutateAsync({ data: payload });
@@ -245,6 +275,8 @@ export default function PanelControlPage() {
       setJaasPrivateKey("");
       setNextcloudAdminPassword("");
       setNextcloudOidcClientSecret("");
+      setOutlineOidcClientSecret("");
+      setOutlineApiToken("");
       setSavedMessage("Configuración guardada correctamente.");
       await refetch();
     } catch {
@@ -557,6 +589,80 @@ export default function PanelControlPage() {
                 blanco para conservar el valor guardado. El cliente OIDC debe
                 registrarse en Nextcloud (app «user_oidc») apuntando a esta
                 plataforma como proveedor de identidad.
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center gap-2">
+                <BookText className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Documentación (Outline)</h3>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="outlineUrl">URL de Outline</Label>
+                  <Input
+                    id="outlineUrl"
+                    type="url"
+                    placeholder="https://docs.tu-dominio.com"
+                    value={outlineUrl}
+                    onChange={(e) => setOutlineUrl(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="outlineApiToken">Token de API</Label>
+                  <Input
+                    id="outlineApiToken"
+                    type="password"
+                    placeholder={
+                      settings?.outlineApiTokenConfigured
+                        ? "•••••••• (sin cambios)"
+                        : "Token de API de Outline"
+                    }
+                    value={outlineApiToken}
+                    onChange={(e) => setOutlineApiToken(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="outlineOidcClientId">Client ID (OIDC)</Label>
+                  <Input
+                    id="outlineOidcClientId"
+                    placeholder="coordina-outline"
+                    value={outlineOidcClientId}
+                    onChange={(e) => setOutlineOidcClientId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="outlineOidcClientSecret">
+                    Client Secret (OIDC)
+                  </Label>
+                  <Input
+                    id="outlineOidcClientSecret"
+                    type="password"
+                    placeholder={
+                      settings?.outlineOidcClientSecretConfigured
+                        ? "•••••••• (sin cambios)"
+                        : "Secreto del cliente OIDC"
+                    }
+                    value={outlineOidcClientSecret}
+                    onChange={(e) => setOutlineOidcClientSecret(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Outline aloja la wiki de documentación de cada módulo. Requiere
+                su propio subdominio (no admite subcarpeta). Configura Outline
+                con esta plataforma como único proveedor de identidad (OIDC)
+                para que el profesorado entre sin volver a iniciar sesión. El
+                token de API permite crear colecciones y gestionar editores.
               </p>
             </div>
 

@@ -42,6 +42,11 @@ export async function seedIntegrationSettingsFromEnv(): Promise<void> {
   fill("nextcloudOidcClientId", envClean("NEXTCLOUD_OIDC_CLIENT_ID"));
   fill("nextcloudOidcClientSecret", envClean("NEXTCLOUD_OIDC_CLIENT_SECRET"));
 
+  fill("outlineUrl", envUrl("OUTLINE_URL"));
+  fill("outlineOidcClientId", envClean("OUTLINE_OIDC_CLIENT_ID"));
+  fill("outlineOidcClientSecret", envClean("OUTLINE_OIDC_CLIENT_SECRET"));
+  fill("outlineApiToken", envClean("OUTLINE_API_TOKEN"));
+
   if (Object.keys(updates).length === 0) return;
 
   await db
@@ -89,3 +94,4 @@ export function isResendConfigured(s: IntegrationSettings): boolean {
 
 export { isJaasConfigured } from "./jaas";
 export { isNextcloudConfigured } from "./nextcloud";
+export { isOutlineConfigured } from "./outline";

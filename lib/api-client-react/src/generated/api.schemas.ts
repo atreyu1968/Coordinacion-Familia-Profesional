@@ -1380,6 +1380,11 @@ export interface IntegrationSettings {
   collaboraUrl?: string | null;
   nextcloudAdminUser?: string | null;
   nextcloudOidcClientId?: string | null;
+  outlineConfigured: boolean;
+  outlineOidcClientSecretConfigured: boolean;
+  outlineApiTokenConfigured: boolean;
+  outlineUrl?: string | null;
+  outlineOidcClientId?: string | null;
 }
 
 export interface UpdateIntegrationSettingsInput {
@@ -1396,6 +1401,10 @@ export interface UpdateIntegrationSettingsInput {
   nextcloudAdminPassword?: string | null;
   nextcloudOidcClientId?: string | null;
   nextcloudOidcClientSecret?: string | null;
+  outlineUrl?: string | null;
+  outlineOidcClientId?: string | null;
+  outlineOidcClientSecret?: string | null;
+  outlineApiToken?: string | null;
 }
 
 export interface BrandingSettings {
@@ -1430,6 +1439,36 @@ export interface ModuleSpaceAccess {
   /** Single-use URL that establishes SSO and opens the module space. */
   url: string;
   nextcloudUrl: string;
+}
+
+export interface WikiStatus {
+  configured: boolean;
+  outlineUrl?: string | null;
+}
+
+export interface ModuleWikiAccess {
+  /** Single-use URL that establishes SSO and opens the module wiki. */
+  url: string;
+  outlineUrl: string;
+}
+
+export interface WikiEditorUser {
+  id: number;
+  name: string;
+  email?: string | null;
+  role: string;
+}
+
+export interface ModuleWikiEditors {
+  /** Whether the caller may change the editor set for this module. */
+  canManage: boolean;
+  editorIds: number[];
+  /** Users the caller is allowed to grant edit access to. */
+  candidates: WikiEditorUser[];
+}
+
+export interface UpdateModuleWikiEditorsInput {
+  userIds: number[];
 }
 
 export interface AcademicYear {

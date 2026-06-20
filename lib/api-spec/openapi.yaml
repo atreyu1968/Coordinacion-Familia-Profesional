@@ -3167,6 +3167,104 @@ paths:
         "503":
           description: Collaborative space not configured
 
+  /wiki/status:
+    get:
+      operationId: getWikiStatus
+      tags: [wiki]
+      summary: Whether the documentation wiki (Outline) is configured
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Wiki status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiStatus"
+  /wiki/modules/{moduleId}/space:
+    post:
+      operationId: openModuleWiki
+      tags: [wiki]
+      summary: Provision and open the documentation wiki for a module (SSO)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Single-use SSO URL for the module wiki
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleWikiAccess"
+        "403":
+          description: No access to this module
+        "404":
+          description: Module not found
+        "503":
+          description: Wiki not configured
+  /wiki/modules/{moduleId}/editors:
+    get:
+      operationId: getModuleWikiEditors
+      tags: [wiki]
+      summary: List a module's wiki editors and the users that can be granted edit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Editors and grantable candidates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleWikiEditors"
+        "403":
+          description: Not allowed to manage this module's editors
+        "404":
+          description: Module not found
+    put:
+      operationId: updateModuleWikiEditors
+      tags: [wiki]
+      summary: Set the users allowed to edit a module's wiki
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleWikiEditorsInput"
+      responses:
+        "200":
+          description: Updated editors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleWikiEditors"
+        "400":
+          description: Invalid editor selection
+        "403":
+          description: Not allowed to manage this module's editors
+        "404":
+          description: Module not found
+        "503":
+          description: Wiki not configured
+
   /mobile-app:
     get:
       operationId: getMobileApp
@@ -5848,6 +5946,18 @@ components:
         nextcloudOidcClientId:
           type: string
           nullable: true
+        outlineConfigured:
+          type: boolean
+        outlineOidcClientSecretConfigured:
+          type: boolean
+        outlineApiTokenConfigured:
+          type: boolean
+        outlineUrl:
+          type: string
+          nullable: true
+        outlineOidcClientId:
+          type: string
+          nullable: true
       required:
         [
           deepseekConfigured,
@@ -5856,6 +5966,9 @@ components:
           nextcloudConfigured,
           nextcloudAdminPasswordConfigured,
           nextcloudOidcClientSecretConfigured,
+          outlineConfigured,
+          outlineOidcClientSecretConfigured,
+          outlineApiTokenConfigured,
         ]
     UpdateIntegrationSettingsInput:
       type: object
@@ -5897,6 +6010,18 @@ components:
           type: string
           nullable: true
         nextcloudOidcClientSecret:
+          type: string
+          nullable: true
+        outlineUrl:
+          type: string
+          nullable: true
+        outlineOidcClientId:
+          type: string
+          nullable: true
+        outlineOidcClientSecret:
+          type: string
+          nullable: true
+        outlineApiToken:
           type: string
           nullable: true
     BrandingSettings:
@@ -5955,6 +6080,61 @@ components:
         nextcloudUrl:
           type: string
       required: [url, nextcloudUrl]
+    WikiStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        outlineUrl:
+          type: string
+          nullable: true
+      required: [configured]
+    ModuleWikiAccess:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Single-use URL that establishes SSO and opens the module wiki.
+        outlineUrl:
+          type: string
+      required: [url, outlineUrl]
+    WikiEditorUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+      required: [id, name, role]
+    ModuleWikiEditors:
+      type: object
+      properties:
+        canManage:
+          type: boolean
+          description: Whether the caller may change the editor set for this module.
+        editorIds:
+          type: array
+          items:
+            type: integer
+        candidates:
+          type: array
+          description: Users the caller is allowed to grant edit access to.
+          items:
+            $ref: "#/components/schemas/WikiEditorUser"
+      required: [canManage, editorIds, candidates]
+    UpdateModuleWikiEditorsInput:
+      type: object
+      properties:
+        userIds:
+          type: array
+          items:
+            type: integer
+      required: [userIds]
     AcademicYear:
       type: object
       properties:

@@ -1,0 +1,92 @@
+# ===========================================================================
+# Coordina ADG — documentation wiki stack (Outline).
+#
+# Self-hosted, optional add-on for the main platform. Outline stores the
+# per-module documentation (one collection per module) and provides a rich
+# wiki/knowledge-base UI. Single sign-on is handled by the api-server acting as
+# an OIDC provider (Outline's built-in generic OIDC client is configured to
+# point at it).
+#
+# Unlike the collaborative space (Nextcloud), Outline does NOT support being
+# served from a subpath: it must live on its OWN SUBDOMAIN (e.g.
+# https://docs.<domain>). install-outline.sh creates a dedicated nginx server
+# block and certbot certificate for that subdomain.
+#
+# Bring it up with:
+#   cd deploy/outline && cp .env.example .env && $EDITOR .env
+#   docker compose up -d
+#
+# All values come from the local .env (see .env.example). Nothing here is
+# specific to a machine, so the file is safe to commit.
+# ===========================================================================
+
+services:
+  outline-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - outline-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${OUTLINE_DB_NAME:-outline}
+      POSTGRES_USER: ${OUTLINE_DB_USER:-outline}
+      POSTGRES_PASSWORD: ${OUTLINE_DB_PASSWORD:?set OUTLINE_DB_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${OUTLINE_DB_USER:-outline}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  outline-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  outline:
+    image: outlinewiki/outline:0.82.0
+    restart: unless-stopped
+    depends_on:
+      outline-db:
+        condition: service_healthy
+      outline-redis:
+        condition: service_started
+    ports:
+      # Bind to loopback only; the host nginx terminates TLS and proxies in.
+      - "127.0.0.1:${OUTLINE_PORT:-3500}:3000"
+    volumes:
+      # Local file storage for uploaded images/attachments (no S3 needed).
+      - outline-data:/var/lib/outline/data
+    environment:
+      NODE_ENV: production
+      # Two independent 32-byte secrets (see .env). Rotating SECRET_KEY logs
+      # everyone out; rotating UTILS_SECRET invalidates internal tokens.
+      SECRET_KEY: ${OUTLINE_SECRET_KEY:?set OUTLINE_SECRET_KEY in .env}
+      UTILS_SECRET: ${OUTLINE_UTILS_SECRET:?set OUTLINE_UTILS_SECRET in .env}
+      DATABASE_URL: postgres://${OUTLINE_DB_USER:-outline}:${OUTLINE_DB_PASSWORD}@outline-db:5432/${OUTLINE_DB_NAME:-outline}
+      PGSSLMODE: disable
+      REDIS_URL: redis://outline-redis:6379
+      # Public origin (its own subdomain). Outline bakes this into links/emails.
+      URL: ${OUTLINE_URL:?set OUTLINE_URL in .env}
+      PORT: "3000"
+      FORCE_HTTPS: "true"
+      # Local disk storage instead of S3.
+      FILE_STORAGE: local
+      FILE_STORAGE_LOCAL_ROOT_DIR: /var/lib/outline/data
+      FILE_STORAGE_UPLOAD_MAX_SIZE: "26214400"
+      # --- Single sign-on against the Coordina ADG api-server (OIDC) ---------
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+      OIDC_AUTH_URI: https://${APP_DOMAIN:?set APP_DOMAIN in .env}/api/oidc/authorize
+      OIDC_TOKEN_URI: https://${APP_DOMAIN}/api/oidc/token
+      OIDC_USERINFO_URI: https://${APP_DOMAIN}/api/oidc/userinfo
+      OIDC_USERNAME_CLAIM: email
+      OIDC_DISPLAY_NAME: Coordina ADG
+      OIDC_SCOPES: openid profile email
+
+volumes:
+  outline-db:
+  outline-data:

@@ -59,7 +59,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-
       {/* Right form panel */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">
@@ -151,9 +150,7 @@ export default function LoginPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-primary hover:underline"
-            >
-              www.fpcanarias.org
-            </a>
+            >www.coordinacionfp.org</a>
           </div>
         </div>
       </div>

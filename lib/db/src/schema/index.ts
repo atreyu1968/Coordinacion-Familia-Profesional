@@ -33,3 +33,5 @@ export * from "./pushTokens";
 export * from "./feedback";
 export * from "./meetings";
 export * from "./forums";
+export * from "./wikiModuleCollections";
+export * from "./wikiModuleEditors";

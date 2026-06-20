@@ -36,6 +36,15 @@ export const integrationSettingsTable = pgTable("integration_settings", {
   nextcloudAdminPassword: text("nextcloud_admin_password"),
   nextcloudOidcClientId: text("nextcloud_oidc_client_id"),
   nextcloudOidcClientSecret: text("nextcloud_oidc_client_secret"),
+  // Outline (open-source wiki / documentation). The public URL is opened via a
+  // fullscreen iframe / new tab; the OIDC client pair lets Outline authenticate
+  // its users against this app (SSO); the API token drives provisioning of
+  // collections, groups and memberships from this app. Outline must be hosted on
+  // its own subdomain (it does not support subpath hosting).
+  outlineUrl: text("outline_url"),
+  outlineOidcClientId: text("outline_oidc_client_id"),
+  outlineOidcClientSecret: text("outline_oidc_client_secret"),
+  outlineApiToken: text("outline_api_token"),
   // RSA private key (PEM) used to sign OIDC id_tokens. Auto-generated on first
   // use and never returned to clients.
   oidcSigningKey: text("oidc_signing_key"),

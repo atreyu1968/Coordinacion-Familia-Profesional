@@ -220,16 +220,30 @@ export function getAccessTokenUser(t: string): number | null {
   return accessTokens.get(t)?.userId ?? null;
 }
 
+// Which client a login ticket targets, so /start knows where to bounce the
+// browser after establishing the SSO session.
+export type OidcTarget = "nextcloud" | "outline";
+
 interface TicketRecord extends Expiring {
   userId: number;
   moduleId: number;
+  target: OidcTarget;
 }
 const tickets = new Map<string, TicketRecord>();
 
-export function createTicket(userId: number, moduleId: number): string {
+export function createTicket(
+  userId: number,
+  moduleId: number,
+  target: OidcTarget = "nextcloud",
+): string {
   sweep(tickets);
   const t = token();
-  tickets.set(t, { userId, moduleId, expiresAt: Date.now() + TICKET_TTL_MS });
+  tickets.set(t, {
+    userId,
+    moduleId,
+    target,
+    expiresAt: Date.now() + TICKET_TTL_MS,
+  });
   return t;
 }
 
