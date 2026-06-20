@@ -95,9 +95,10 @@ if command -v docker >/dev/null 2>&1; then
   # shellcheck disable=SC2086
   APP_DOMAIN=x OUTLINE_URL=https://x OUTLINE_DB_PASSWORD=x \
   OUTLINE_SECRET_KEY=x OUTLINE_UTILS_SECRET=x OIDC_CLIENT_ID=x OIDC_CLIENT_SECRET=x \
+  OUTLINE_S3_ACCESS_KEY=x OUTLINE_S3_SECRET_KEY=x OUTLINE_S3_PUBLIC_URL=https://x \
     docker compose -f "${WIKI_DIR}/docker-compose.yml" down ${DOWN_FLAGS} 2>/dev/null || true
   if [[ "${PURGE}" -eq 1 ]]; then
-    docker volume rm outline_outline-db outline_outline-data 2>/dev/null || true
+    docker volume rm outline_outline-db outline_outline-minio 2>/dev/null || true
   fi
 else
   note "Docker not installed; skipping the collaborative space and wiki."

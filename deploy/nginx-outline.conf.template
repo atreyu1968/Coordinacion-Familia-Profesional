@@ -28,3 +28,30 @@ server {
         proxy_read_timeout 600s;
     }
 }
+
+# S3-compatible object storage (MinIO) for Outline uploads, on its OWN SUBDOMAIN:
+#   https://__OUTLINE_S3_SERVER_NAME__  → dockerized MinIO S3 API (loopback :__OUTLINE_S3_PORT__)
+# Outline mints pre-signed URLs against this origin, so the browser fetches files
+# directly from here. The Host header must be forwarded unchanged so MinIO can
+# validate the request signature against the public host.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __OUTLINE_S3_SERVER_NAME__;
+
+    # Uploads stream through here; allow large objects.
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:__OUTLINE_S3_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # MinIO can stream large objects; relax buffering/timeouts.
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 600s;
+    }
+}

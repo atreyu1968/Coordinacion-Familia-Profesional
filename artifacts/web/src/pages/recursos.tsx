@@ -53,7 +53,10 @@ import {
   Trash2,
   FileText,
   User as UserIcon,
+  BookText,
+  ChevronRight,
 } from "lucide-react";
+import { Link } from "wouter";
 
 const ALL = "all";
 const NONE = "none";
@@ -257,6 +260,24 @@ export default function RecursosPage() {
         </div>
         <CreateResourceDialog />
       </div>
+
+      <Link href="/documentacion">
+        <Card className="hover:bg-accent transition-colors cursor-pointer">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
+              <BookText className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold leading-tight">Documentación</h2>
+              <p className="text-sm text-muted-foreground">
+                Wiki colaborativa por módulo. Todo el profesorado puede leerla;
+                solo las personas autorizadas pueden editarla.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">

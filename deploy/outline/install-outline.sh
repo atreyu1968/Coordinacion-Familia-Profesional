@@ -4,10 +4,11 @@
 #
 # Run AFTER the main deploy/install.sh (install.sh runs it automatically when a
 # real HTTPS domain is present and the wiki is enabled). It:
-#   - brings up the dockerized Outline + Postgres + Redis stack (compose),
-#   - configures a dedicated host nginx server block for the wiki SUBDOMAIN
-#     (Outline cannot be served from a subpath, so it needs its own subdomain),
-#   - obtains an HTTPS certificate for that subdomain (certbot),
+#   - brings up the dockerized Outline + Postgres + Redis + MinIO stack (compose),
+#   - configures dedicated host nginx server blocks for the wiki SUBDOMAIN
+#     (Outline cannot be served from a subpath, so it needs its own subdomain)
+#     and for the S3 storage SUBDOMAIN (MinIO, for browser-reachable file URLs),
+#   - obtains HTTPS certificates for both subdomains (certbot),
 #   - writes the connection details into the main app .env and restarts it, so
 #     the integration works automatically (no manual control-panel step).
 #
@@ -98,6 +99,18 @@ if [[ -z "${OUTLINE_DOMAIN}" || "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
   echo "A real wiki subdomain is required (e.g. docs.${APP_DOMAIN})." >&2
   exit 1
 fi
+
+# Storage (MinIO S3) subdomain. Outline mints pre-signed download URLs against
+# this origin, so it must be browser-reachable; like the wiki it needs its own
+# DNS record + certificate. Default to files.<main-domain>; allow override.
+OUTLINE_S3_DOMAIN="${OUTLINE_S3_DOMAIN:-$(env_get OUTLINE_S3_DOMAIN)}"
+if [[ -z "${OUTLINE_S3_DOMAIN}" ]]; then
+  prompt_default OUTLINE_S3_DOMAIN "Storage subdomain (its own DNS record, e.g. files.${APP_DOMAIN})" "files.${APP_DOMAIN}"
+fi
+if [[ -z "${OUTLINE_S3_DOMAIN}" || "${OUTLINE_S3_DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  echo "A real storage subdomain is required (e.g. files.${APP_DOMAIN})." >&2
+  exit 1
+fi
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 # Decide the public scheme up front so the URL Outline bakes in, FORCE_HTTPS, and
 # the nginx/certbot steps all agree. HTTPS only when we have an email to obtain a
@@ -109,8 +122,12 @@ else
   OUTLINE_SCHEME="http";  OUTLINE_FORCE_HTTPS="false"
 fi
 OUTLINE_URL_PUBLIC="${OUTLINE_SCHEME}://${OUTLINE_DOMAIN}"
+# The storage (MinIO) origin must use the SAME scheme as Outline: when Outline
+# forces https, pre-signed URLs are https and the browser would block mixed http.
+OUTLINE_S3_PUBLIC_URL="${OUTLINE_SCHEME}://${OUTLINE_S3_DOMAIN}"
 note "Main domain        : ${APP_DOMAIN}"
 note "Wiki (Outline)     : ${OUTLINE_URL_PUBLIC}"
+note "Storage (MinIO)    : ${OUTLINE_S3_PUBLIC_URL}"
 [[ "${OUTLINE_SCHEME}" == "http" ]] && note "  (no HTTPS: set LETSENCRYPT_EMAIL to enable TLS — required for SSO login)"
 
 OUTLINE_PORT="${OUTLINE_PORT:-$(env_get OUTLINE_PORT)}"; OUTLINE_PORT="${OUTLINE_PORT:-3500}"
@@ -124,6 +141,12 @@ OUTLINE_UTILS_SECRET="${OUTLINE_UTILS_SECRET:-$(env_get OUTLINE_UTILS_SECRET)}";
 # client id so the api-server can resolve them independently.
 OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-$(env_get OIDC_CLIENT_ID)}"; OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-coordina-outline}"
 OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(env_get OIDC_CLIENT_SECRET)}"; OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(openssl rand -hex 24)}"
+# S3 (MinIO) storage settings. Preserve the generated secret across reruns.
+OUTLINE_S3_PORT="${OUTLINE_S3_PORT:-$(env_get OUTLINE_S3_PORT)}"; OUTLINE_S3_PORT="${OUTLINE_S3_PORT:-3501}"
+OUTLINE_S3_BUCKET="${OUTLINE_S3_BUCKET:-$(env_get OUTLINE_S3_BUCKET)}"; OUTLINE_S3_BUCKET="${OUTLINE_S3_BUCKET:-outline}"
+OUTLINE_S3_REGION="${OUTLINE_S3_REGION:-$(env_get OUTLINE_S3_REGION)}"; OUTLINE_S3_REGION="${OUTLINE_S3_REGION:-us-east-1}"
+OUTLINE_S3_ACCESS_KEY="${OUTLINE_S3_ACCESS_KEY:-$(env_get OUTLINE_S3_ACCESS_KEY)}"; OUTLINE_S3_ACCESS_KEY="${OUTLINE_S3_ACCESS_KEY:-coordina-outline}"
+OUTLINE_S3_SECRET_KEY="${OUTLINE_S3_SECRET_KEY:-$(env_get OUTLINE_S3_SECRET_KEY)}"; OUTLINE_S3_SECRET_KEY="${OUTLINE_S3_SECRET_KEY:-$(openssl rand -hex 24)}"
 
 # --- Write the compose .env (idempotent) -----------------------------------
 log "Writing ${ENV_FILE}"
@@ -141,11 +164,18 @@ OUTLINE_SECRET_KEY=${OUTLINE_SECRET_KEY}
 OUTLINE_UTILS_SECRET=${OUTLINE_UTILS_SECRET}
 OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+OUTLINE_S3_DOMAIN=${OUTLINE_S3_DOMAIN}
+OUTLINE_S3_PUBLIC_URL=${OUTLINE_S3_PUBLIC_URL}
+OUTLINE_S3_PORT=${OUTLINE_S3_PORT}
+OUTLINE_S3_BUCKET=${OUTLINE_S3_BUCKET}
+OUTLINE_S3_REGION=${OUTLINE_S3_REGION}
+OUTLINE_S3_ACCESS_KEY=${OUTLINE_S3_ACCESS_KEY}
+OUTLINE_S3_SECRET_KEY=${OUTLINE_S3_SECRET_KEY}
 EOF
 umask 022
 
 # --- Host nginx subdomain (HTTP first, so certbot can complete the challenge) -
-log "Configuring nginx server block for ${OUTLINE_DOMAIN}"
+log "Configuring nginx server blocks for ${OUTLINE_DOMAIN} and ${OUTLINE_S3_DOMAIN}"
 # Reuse the upgrade map from the main install; define a local fallback if absent.
 if [[ ! -f /etc/nginx/conf.d/coordina-adg-upgrade.conf ]]; then
   cat > /etc/nginx/conf.d/coordina-adg-upgrade.conf <<'EOF'
@@ -154,13 +184,15 @@ EOF
 fi
 sed -e "s|__OUTLINE_SERVER_NAME__|${OUTLINE_DOMAIN}|g" \
     -e "s|__OUTLINE_PORT__|${OUTLINE_PORT}|g" \
+    -e "s|__OUTLINE_S3_SERVER_NAME__|${OUTLINE_S3_DOMAIN}|g" \
+    -e "s|__OUTLINE_S3_PORT__|${OUTLINE_S3_PORT}|g" \
     "${DEPLOY_DIR}/nginx-outline.conf.template" > /etc/nginx/sites-available/coordina-adg-outline
 ln -sf /etc/nginx/sites-available/coordina-adg-outline /etc/nginx/sites-enabled/coordina-adg-outline
 nginx -t
 systemctl reload nginx
 
 # --- Bring up the stack ----------------------------------------------------
-log "Starting Outline + Postgres + Redis (docker compose up -d)"
+log "Starting Outline + Postgres + Redis + MinIO (docker compose up -d)"
 ( cd "${SCRIPT_DIR}" && docker compose pull && docker compose up -d )
 
 # Wait for Outline to start serving (it runs DB migrations on first boot).
@@ -172,16 +204,16 @@ for _ in $(seq 1 60); do
 done
 [[ "${ready}" -eq 1 ]] || note "Outline did not answer on :${OUTLINE_PORT} yet; it may still be migrating. Check: docker compose -f ${SCRIPT_DIR}/docker-compose.yml logs -f outline"
 
-# --- HTTPS for the subdomain ----------------------------------------------
+# --- HTTPS for the subdomains ---------------------------------------------
 if [[ -n "${LETSENCRYPT_EMAIL}" && ! "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
-  log "Obtaining HTTPS certificate for ${OUTLINE_DOMAIN} (certbot)"
+  log "Obtaining HTTPS certificate for ${OUTLINE_DOMAIN} and ${OUTLINE_S3_DOMAIN} (certbot)"
   if ! command -v certbot >/dev/null 2>&1; then
     apt-get update -y && apt-get install -y certbot python3-certbot-nginx
   fi
-  certbot --nginx -d "${OUTLINE_DOMAIN}" --non-interactive --agree-tos -m "${LETSENCRYPT_EMAIL}" --redirect || \
-    note "certbot failed — Outline is configured for https (FORCE_HTTPS) so it is NOT usable until a cert is issued. Ensure DNS for ${OUTLINE_DOMAIN} points here, then re-run: sudo bash deploy/outline/install-outline.sh"
+  certbot --nginx -d "${OUTLINE_DOMAIN}" -d "${OUTLINE_S3_DOMAIN}" --non-interactive --agree-tos -m "${LETSENCRYPT_EMAIL}" --redirect || \
+    note "certbot failed — Outline is configured for https (FORCE_HTTPS) so it is NOT usable until certs are issued. Ensure DNS for ${OUTLINE_DOMAIN} and ${OUTLINE_S3_DOMAIN} point here, then re-run: sudo bash deploy/outline/install-outline.sh"
 else
-  note "No LETSENCRYPT_EMAIL — serving the wiki over plain HTTP (${OUTLINE_URL_PUBLIC})."
+  note "No LETSENCRYPT_EMAIL — serving the wiki and storage over plain HTTP."
   note "SSO login requires https; set LETSENCRYPT_EMAIL and re-run to enable TLS."
 fi
 

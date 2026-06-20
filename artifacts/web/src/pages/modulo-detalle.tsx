@@ -17,6 +17,7 @@ import { ModuleOutcomes } from "@/components/module-outcomes";
 import {
   ArrowLeft,
   BookOpen,
+  BookText,
   ClipboardList,
   Crown,
   FolderKanban,
@@ -101,6 +102,13 @@ export default function ModuloDetallePage() {
       href: `/espacio${q}`,
       icon: FolderKanban,
       accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      label: "Documentación",
+      description: "Wiki colaborativa del módulo. Todos leen; editan los autorizados.",
+      href: `/documentacion${q}`,
+      icon: BookText,
+      accent: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
     },
     {
       label: "Recursos",

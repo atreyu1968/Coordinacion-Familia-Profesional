@@ -146,10 +146,18 @@ router.get(
       caller,
       moduleId,
     );
-    const [editorIds, candidates] = await Promise.all([
+    const [rawEditorIds, candidates] = await Promise.all([
       currentEditorIds(moduleId),
       canManage ? loadCandidates(candidateIds) : Promise.resolve([]),
     ]);
+
+    // For managers, only surface editors still within their candidate set. A
+    // user granted edit but later removed from the module's collaborating
+    // teachers would otherwise seed the dialog with a checkbox the manager
+    // cannot uncheck, making every save fail the candidate-subset check in PUT.
+    const editorIds = canManage
+      ? rawEditorIds.filter((id) => candidateIds.includes(id))
+      : rawEditorIds;
 
     res.json(
       GetModuleWikiEditorsResponse.parse({ canManage, editorIds, candidates }),
