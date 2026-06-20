@@ -1,0 +1,102 @@
+root@Coordinacion:~/Coordinacion-Familia-Profesional/deploy/outline# curl -v -m 5 http://172.16.180.24:3500
+*   Trying 172.16.180.24:3500...
+* Connected to 172.16.180.24 (172.16.180.24) port 3500
+* using HTTP/1.x
+> GET / HTTP/1.1
+> Host: 172.16.180.24:3500
+> User-Agent: curl/8.12.1
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/1.1 200 OK
+< Content-Security-Policy: default-src 'self';style-src 'self' 'unsafe-inline';script-src 'self' www.googletagmanager.com 'nonce-040d3da2fc0b38447f62433b9187f1f9';media-src * data: blob:;img-src * data: blob:;frame-src * data:;connect-src *
+< X-DNS-Prefetch-Control: on
+< Expect-CT: max-age=0
+< X-Frame-Options: SAMEORIGIN
+< Strict-Transport-Security: max-age=15552000; includeSubDomains
+< X-Download-Options: noopen
+< X-Content-Type-Options: nosniff
+< X-Permitted-Cross-Domain-Policies: none
+< Referrer-Policy: no-referrer
+< X-XSS-Protection: 0
+< Vary: Accept-Encoding
+< Timing-Allow-Origin: http://docs.coordinacionfp.org
+< Content-Type: text/html; charset=utf-8
+< Content-Length: 4944
+< Date: Sat, 20 Jun 2026 23:25:41 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< 
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Outline</title>
+    <meta name="theme-color" content="#FFF" />
+    <meta name="slack-app-id" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="A modern team knowledge base for your internal documentation, product specs, support answers, meeting notes, onboarding, &amp;amp; more…" />
+    <meta name="darkreader-lock" />
+    
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <link rel="canonical" href="" data-react-helmet="true" />
+    <link rel="preconnect" href="http://files.coordinacionfp.org" data-reactroot=""/><link rel="prefetch" href="/static/assets/index.30dQFFTZ.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/index.tpghn-eY.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/index.30dQFFTZ.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/DocumentContext.gad-iZM4.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Styles.DGPhcYub.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/useBoolean.sCbsqwQ5.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Scene.XHJNaToS.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/PlaceholderText.OzJO2ZFH.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/LoadingIndicatorBar.RjtoLRLl.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Switch.oEPGPDX0.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/TeamLogo.puxtvPEX.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/useCurrentUser.M8DnwRjF.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Badge.LZwp-BDx.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Item.Mes0WwyA.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/Time.CFSzsgDA.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/index.esm.awCZJmHN.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/usePolicy.89xV8e_A.js" as="script" crossorigin="anonymous" data-reactroot=""/><link rel="prefetch" href="/static/assets/SharedLayoutContext.YN8I2jbS.js" as="script" crossorigin="anonymous" data-reactroot=""/>
+    <link rel="shortcut icon" type="image/png" href="/images/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" type="image/png" href="/static/images/apple-touch-icon.png" sizes="192x192" />
+    <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Outline" />
+    <style>
+      @font-face {
+        font-family: "Inter";
+        font-display: swap;
+        font-feature-settings: "ss03", "cv05";
+        src: url("/fonts/Inter.var.woff2") format("woff2");
+      }
+
+      @font-face {
+        font-family: "Inter";
+        font-display: swap;
+        font-feature-settings: "ss03", "cv05";
+        font-style: italic;
+        src: url("/fonts/Inter-italic.var.woff2") format("woff2");
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        display: flex;
+        width: 100%;
+        height: 100%;
+      }
+
+      #root {
+        flex: 1;
+        min-height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    
+    <script nonce="040d3da2fc0b38447f62433b9187f1f9">
+      window.env = {"analytics":[],"ENVIRONMENT":"production","URL":"http://docs.coordinacionfp.org","COLLABORATION_URL":"ws://docs.coordinacionfp.org","DEFAULT_LANGUAGE":"en_US","EMAIL_ENABLED":false,"AWS_S3_ACCELERATE_URL":"","AWS_S3_UPLOAD_BUCKET_URL":"http://files.coordinacionfp.org","FILE_STORAGE_IMPORT_MAX_SIZE":26214400,"APP_NAME":"Outline"};
+    </script>
+  
+    <script nonce="040d3da2fc0b38447f62433b9187f1f9">
+      if (window.localStorage && window.localStorage.getItem("theme") === "dark") {
+        var color = "#111319";
+        document.querySelector("#root").style.background = color;
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", color);
+      }
+    </script>
+    <script type="module" nonce="040d3da2fc0b38447f62433b9187f1f9" src="/static/assets/index.30dQFFTZ.js"></script>
+  </body>
+</html>
+* Connection #0 to host 172.16.180.24 left intact
+root@Coordinacion:~/Coordinacion-Familia-Profesional/deploy/outline# 
