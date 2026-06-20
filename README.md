@@ -379,6 +379,36 @@ certificado).
 > Con esos dos registros DNS apuntando al servidor, el instalador consigue los
 > certificados HTTPS automáticamente y deja la wiki conectada.
 
+#### Configuración en Cloudflare
+
+Si gestionas el DNS en **Cloudflare**, crea los registros en
+**DNS → Records → Add record**:
+
+| Type | Name   | IPv4 address (Content) | Proxy status        | TTL  |
+|------|--------|------------------------|---------------------|------|
+| A    | `docs`  | IP de tu servidor      | **DNS only** (gris) | Auto |
+| A    | `files` | IP de tu servidor      | **DNS only** (gris) | Auto |
+
+(En *Name* basta con `docs` y `files`; Cloudflare le añade tu dominio
+automáticamente. La IP es la misma que la del dominio principal.)
+
+> ⚠️ **Importante: deja la nube en GRIS («DNS only»), no naranja.** Con el proxy
+> de Cloudflare activado (nube naranja) suelen fallar tres cosas:
+> 1. **El certificado HTTPS**: `certbot` valida por HTTP en el puerto 80 y, si
+>    Cloudflare intercepta el tráfico, la validación falla y la wiki se queda
+>    sin certificado (y por tanto inaccesible, porque fuerza HTTPS).
+> 2. **La edición en tiempo real** de Outline, que usa WebSockets.
+> 3. **Las descargas de adjuntos** (MinIO), que se firman contra el host público
+>    `files.<dominio>`; el proxy/caché de Cloudflare puede invalidar esas firmas.
+>
+> Con **«DNS only»** Cloudflare solo resuelve el nombre a tu IP (igual que
+> cualquier DNS) y el propio `certbot`/nginx del servidor gestiona el HTTPS, que
+> es justo lo que espera el instalador. El dominio principal de la app puede ir
+> proxificado (naranja) o no, pero `docs.` y `files.` deben ir en gris.
+
+Tras crear los registros, espera a que propaguen (unos minutos) y ejecuta o
+vuelve a ejecutar `sudo bash deploy/outline/install-outline.sh`.
+
 **Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
 dominio HTTPS real y aceptas instalar la wiki, este componente se instala e
 integra **solo** (levanta Outline + Postgres + Redis + MinIO con Docker, configura
