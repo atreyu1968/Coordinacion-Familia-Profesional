@@ -2440,6 +2440,7 @@ export const UpdateIntegrationSettingsResponse = zod.object({
 export const GetBrandingResponse = zod.object({
   "appName": zod.string().nullish().describe('Custom app name; null means use the built-in default.'),
   "professionalFamily": zod.string().describe('Professional family the app is destined for (defaults to \"Administración y Gestión\").'),
+  "professionalFamilyLocked": zod.boolean().describe('True once the professional family has been explicitly set; it then becomes permanent and cannot be changed (the whole instance is locked to a single family so cycles\/modules never mix).'),
   "hasLogo": zod.boolean().describe('Whether a custom logo is set (served at \/settings\/branding\/logo).'),
   "hasFavicon": zod.boolean().describe('Whether a custom favicon is set (served at \/settings\/branding\/favicon).'),
   "version": zod.string().describe('Cache-busting token; changes when branding is updated.')
@@ -2459,6 +2460,7 @@ export const UpdateBrandingBody = zod.object({
 export const UpdateBrandingResponse = zod.object({
   "appName": zod.string().nullish().describe('Custom app name; null means use the built-in default.'),
   "professionalFamily": zod.string().describe('Professional family the app is destined for (defaults to \"Administración y Gestión\").'),
+  "professionalFamilyLocked": zod.boolean().describe('True once the professional family has been explicitly set; it then becomes permanent and cannot be changed (the whole instance is locked to a single family so cycles\/modules never mix).'),
   "hasLogo": zod.boolean().describe('Whether a custom logo is set (served at \/settings\/branding\/logo).'),
   "hasFavicon": zod.boolean().describe('Whether a custom favicon is set (served at \/settings\/branding\/favicon).'),
   "version": zod.string().describe('Cache-busting token; changes when branding is updated.')

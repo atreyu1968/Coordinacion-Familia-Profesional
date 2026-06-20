@@ -3122,6 +3122,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BrandingSettings"
+        "409":
+          description: >-
+            The professional family is already set and is permanent; it cannot
+            be changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # ---------------------------------------------------------------------------
   # Collaborative space (Nextcloud Drive + Collabora)
@@ -6034,6 +6042,12 @@ components:
         professionalFamily:
           type: string
           description: Professional family the app is destined for (defaults to "Administración y Gestión").
+        professionalFamilyLocked:
+          type: boolean
+          description: >-
+            True once the professional family has been explicitly set; it then
+            becomes permanent and cannot be changed (the whole instance is locked
+            to a single family so cycles/modules never mix).
         hasLogo:
           type: boolean
           description: Whether a custom logo is set (served at /settings/branding/logo).
@@ -6043,7 +6057,7 @@ components:
         version:
           type: string
           description: Cache-busting token; changes when branding is updated.
-      required: [hasLogo, hasFavicon, version, professionalFamily]
+      required: [hasLogo, hasFavicon, version, professionalFamily, professionalFamilyLocked]
     UpdateBrandingInput:
       type: object
       properties:

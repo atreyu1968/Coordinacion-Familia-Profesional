@@ -11,6 +11,8 @@ export interface BrandingSettings {
   appName?: string | null;
   /** Professional family the app is destined for (defaults to "Administración y Gestión"). */
   professionalFamily: string;
+  /** True once the professional family has been explicitly set; it then becomes permanent and cannot be changed (the whole instance is locked to a single family so cycles/modules never mix). */
+  professionalFamilyLocked: boolean;
   /** Whether a custom logo is set (served at /settings/branding/logo). */
   hasLogo: boolean;
   /** Whether a custom favicon is set (served at /settings/branding/favicon). */

@@ -10226,7 +10226,7 @@ export const updateBranding = async (updateBrandingInput: UpdateBrandingInput, o
 
 
 
-export const getUpdateBrandingMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateBrandingMutationOptions = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext> => {
 
@@ -10255,12 +10255,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateBrandingMutationResult = NonNullable<Awaited<ReturnType<typeof updateBranding>>>
     export type UpdateBrandingMutationBody = BodyType<UpdateBrandingInput>
-    export type UpdateBrandingMutationError = ErrorType<unknown>
+    export type UpdateBrandingMutationError = ErrorType<Error>
 
     /**
  * @summary Update app name, logo and favicon (superadmin only)
  */
-export const useUpdateBranding = <TError = ErrorType<unknown>,
+export const useUpdateBranding = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBranding>>, TError,{data: BodyType<UpdateBrandingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateBranding>>,

@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
-import { eq } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 import { db, integrationSettingsTable } from "@workspace/db";
 import type { IntegrationSettings } from "@workspace/db";
 import {
@@ -34,6 +34,9 @@ function brandingResponse(s: IntegrationSettings) {
   return GetBrandingResponse.parse({
     appName: s.appName ?? null,
     professionalFamily: professionalFamilyOf(s),
+    // Locked once an explicit family has been persisted: the whole instance is
+    // tied to a single family so cycles/modules never mix across families.
+    professionalFamilyLocked: !!(s.professionalFamily ?? "").trim(),
     hasLogo: !!s.logoPath,
     hasFavicon: !!s.faviconPath,
     version: String(s.updatedAt instanceof Date ? s.updatedAt.getTime() : Date.now()),
@@ -108,6 +111,11 @@ router.put(
 
     const current = await getSettings();
     const updates: Record<string, string | null> = {};
+    // Atomic backstop for the permanent-family lock (see below): when set, the
+    // UPDATE only writes while the persisted family is still empty or already
+    // equals the incoming value, so two concurrent first-set requests cannot
+    // race past the check-then-write.
+    let familyGuard: SQL | undefined;
 
     if (parsed.data.appName !== undefined) {
       const name = (parsed.data.appName ?? "").trim();
@@ -115,7 +123,19 @@ router.put(
     }
     if (parsed.data.professionalFamily !== undefined) {
       const fam = (parsed.data.professionalFamily ?? "").trim();
+      const currentFam = (current.professionalFamily ?? "").trim();
+      // The professional family is permanent once set: the whole instance is
+      // locked to a single family so cycles/modules never mix. Allow the first
+      // assignment and idempotent no-ops, but reject any later change.
+      if (currentFam && fam !== currentFam) {
+        res.status(409).json({
+          message:
+            "La familia profesional ya está definida y no se puede cambiar.",
+        });
+        return;
+      }
       updates["professionalFamily"] = fam || null;
+      familyGuard = sql`(${integrationSettingsTable.professionalFamily} IS NULL OR trim(${integrationSettingsTable.professionalFamily}) = '' OR trim(${integrationSettingsTable.professionalFamily}) = ${fam})`;
     }
     if (parsed.data.logoPath !== undefined) {
       const p = (parsed.data.logoPath ?? "").trim();
@@ -134,11 +154,24 @@ router.put(
       updates["faviconPath"] = p || null;
     }
 
+    const idClause = eq(integrationSettingsTable.id, current.id);
+    const whereClause = familyGuard ? and(idClause, familyGuard) : idClause;
+
     const [updated] = await db
       .update(integrationSettingsTable)
       .set(updates)
-      .where(eq(integrationSettingsTable.id, current.id))
+      .where(whereClause)
       .returning();
+
+    // No row updated while a family guard is active means a concurrent request
+    // persisted a (different) family first: the lock is permanent, so reject.
+    if (!updated) {
+      res.status(409).json({
+        message:
+          "La familia profesional ya está definida y no se puede cambiar.",
+      });
+      return;
+    }
 
     res.json(brandingResponse(updated));
   },

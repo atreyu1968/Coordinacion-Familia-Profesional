@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Image, Type, Trash2, AlertTriangle } from "lucide-react";
+import { Image, Type, Trash2, AlertTriangle, Lock } from "lucide-react";
 
 // Same-origin public branding image routes (served by the API under /api).
 function brandingAssetUrl(kind: "logo" | "favicon", version: string): string {
@@ -80,7 +80,12 @@ export default function AparienciaSettings() {
     return res.objectPath;
   };
 
+  // Once an explicit family has been persisted it is permanent and can never be
+  // changed: the whole instance is locked to a single family so cycles/modules
+  // never mix across families.
+  const familyLocked = branding?.professionalFamilyLocked === true;
   const familyChanged =
+    !familyLocked &&
     professionalFamily.trim() !== (branding?.professionalFamily ?? "");
 
   const onSubmit = (e: FormEvent) => {
@@ -245,7 +250,26 @@ export default function AparienciaSettings() {
                 value={professionalFamily}
                 onChange={(e) => setProfessionalFamily(e.target.value)}
                 maxLength={120}
+                disabled={familyLocked}
+                readOnly={familyLocked}
               />
+              {familyLocked ? (
+                <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    La familia profesional ya está definida y es{" "}
+                    <strong>permanente</strong>: no puede cambiarse bajo ningún
+                    concepto. Toda la aplicación —incluidos los espacios
+                    colaborativos y la documentación— queda restringida a los
+                    ciclos y módulos de esta familia.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Elige con cuidado: una vez guardada, la familia profesional
+                  queda fijada de forma permanente y no se podrá cambiar.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

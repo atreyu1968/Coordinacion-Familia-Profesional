@@ -30,4 +30,9 @@ the easy one to miss — it has no UI and only renders on email send).
   and the user can still switch to "Todas".
 - Contract: `professionalFamily` is part of BrandingSettings (GET) and
   UpdateBrandingInput (PUT) — changing its shape requires the orval/zod codegen
-  loop.
+  loop. BrandingSettings also carries `professionalFamilyLocked` (see
+  active-family-lock.md): the family is PERMANENT once persisted.
+- Collab spaces (Nextcloud) + documentation (Outline) module lists use the
+  GLOBAL module catalog (`useListModules`), which IS the single family's
+  curriculum — so locking the family is what guarantees they never mix
+  cycles/modules from another family.
