@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${APP_DIR}/.env"
 COLLAB_DIR="${SCRIPT_DIR}/nextcloud"
+WIKI_DIR="${SCRIPT_DIR}/outline"
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
@@ -89,16 +90,27 @@ if command -v docker >/dev/null 2>&1; then
     # Belt and braces: drop the named volumes in case the project name differed.
     docker volume rm nextcloud_nextcloud-db nextcloud_nextcloud-data 2>/dev/null || true
   fi
+
+  log "Removing the documentation wiki (Outline) containers"
+  # shellcheck disable=SC2086
+  APP_DOMAIN=x OUTLINE_URL=https://x OUTLINE_DB_PASSWORD=x \
+  OUTLINE_SECRET_KEY=x OUTLINE_UTILS_SECRET=x OIDC_CLIENT_ID=x OIDC_CLIENT_SECRET=x \
+    docker compose -f "${WIKI_DIR}/docker-compose.yml" down ${DOWN_FLAGS} 2>/dev/null || true
+  if [[ "${PURGE}" -eq 1 ]]; then
+    docker volume rm outline_outline-db outline_outline-data 2>/dev/null || true
+  fi
 else
-  note "Docker not installed; skipping the collaborative space."
+  note "Docker not installed; skipping the collaborative space and wiki."
 fi
 
 # --- 3. nginx --------------------------------------------------------------
 log "Removing nginx configuration"
 rm -f /etc/nginx/sites-enabled/coordina-adg \
       /etc/nginx/sites-enabled/coordina-adg-collab \
+      /etc/nginx/sites-enabled/coordina-adg-outline \
       /etc/nginx/sites-available/coordina-adg \
       /etc/nginx/sites-available/coordina-adg-collab \
+      /etc/nginx/sites-available/coordina-adg-outline \
       /etc/nginx/snippets/coordina-adg-collab-locations.conf \
       /etc/nginx/conf.d/coordina-adg-upgrade.conf
 if command -v nginx >/dev/null 2>&1; then
@@ -136,7 +148,7 @@ if [[ "${PURGE}" -eq 1 ]]; then
   rm -rf /var/lib/coordina-adg
 
   log "Removing environment files"
-  rm -f "${ENV_FILE}" "${COLLAB_DIR}/.env"
+  rm -f "${ENV_FILE}" "${COLLAB_DIR}/.env" "${WIKI_DIR}/.env"
 else
   note "Keeping the database, uploaded files and .env (PURGE_DATA=no)."
 fi

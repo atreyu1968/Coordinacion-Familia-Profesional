@@ -98,9 +98,20 @@ if [[ -z "${OUTLINE_DOMAIN}" || "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
   echo "A real wiki subdomain is required (e.g. docs.${APP_DOMAIN})." >&2
   exit 1
 fi
-OUTLINE_URL_PUBLIC="https://${OUTLINE_DOMAIN}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
+# Decide the public scheme up front so the URL Outline bakes in, FORCE_HTTPS, and
+# the nginx/certbot steps all agree. HTTPS only when we have an email to obtain a
+# certificate (and a real, non-IP subdomain); otherwise serve plain HTTP so the
+# wiki is still reachable (SSO needs https, so a certificate is recommended).
+if [[ -n "${LETSENCRYPT_EMAIL}" && ! "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  OUTLINE_SCHEME="https"; OUTLINE_FORCE_HTTPS="true"
+else
+  OUTLINE_SCHEME="http";  OUTLINE_FORCE_HTTPS="false"
+fi
+OUTLINE_URL_PUBLIC="${OUTLINE_SCHEME}://${OUTLINE_DOMAIN}"
 note "Main domain        : ${APP_DOMAIN}"
 note "Wiki (Outline)     : ${OUTLINE_URL_PUBLIC}"
+[[ "${OUTLINE_SCHEME}" == "http" ]] && note "  (no HTTPS: set LETSENCRYPT_EMAIL to enable TLS — required for SSO login)"
 
 OUTLINE_PORT="${OUTLINE_PORT:-$(env_get OUTLINE_PORT)}"; OUTLINE_PORT="${OUTLINE_PORT:-3500}"
 OUTLINE_DB_NAME="${OUTLINE_DB_NAME:-$(env_get OUTLINE_DB_NAME)}"; OUTLINE_DB_NAME="${OUTLINE_DB_NAME:-outline}"
@@ -113,7 +124,6 @@ OUTLINE_UTILS_SECRET="${OUTLINE_UTILS_SECRET:-$(env_get OUTLINE_UTILS_SECRET)}";
 # client id so the api-server can resolve them independently.
 OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-$(env_get OIDC_CLIENT_ID)}"; OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-coordina-outline}"
 OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(env_get OIDC_CLIENT_SECRET)}"; OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-$(openssl rand -hex 24)}"
-LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 
 # --- Write the compose .env (idempotent) -----------------------------------
 log "Writing ${ENV_FILE}"
@@ -122,6 +132,7 @@ cat > "${ENV_FILE}" <<EOF
 APP_DOMAIN=${APP_DOMAIN}
 OUTLINE_DOMAIN=${OUTLINE_DOMAIN}
 OUTLINE_URL=${OUTLINE_URL_PUBLIC}
+OUTLINE_FORCE_HTTPS=${OUTLINE_FORCE_HTTPS}
 OUTLINE_PORT=${OUTLINE_PORT}
 OUTLINE_DB_NAME=${OUTLINE_DB_NAME}
 OUTLINE_DB_USER=${OUTLINE_DB_USER}
@@ -168,9 +179,10 @@ if [[ -n "${LETSENCRYPT_EMAIL}" && ! "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
     apt-get update -y && apt-get install -y certbot python3-certbot-nginx
   fi
   certbot --nginx -d "${OUTLINE_DOMAIN}" --non-interactive --agree-tos -m "${LETSENCRYPT_EMAIL}" --redirect || \
-    note "certbot failed — the wiki still works over HTTP. Ensure DNS for ${OUTLINE_DOMAIN} points here, then re-run: certbot --nginx -d ${OUTLINE_DOMAIN}"
+    note "certbot failed — Outline is configured for https (FORCE_HTTPS) so it is NOT usable until a cert is issued. Ensure DNS for ${OUTLINE_DOMAIN} points here, then re-run: sudo bash deploy/outline/install-outline.sh"
 else
-  note "No LETSENCRYPT_EMAIL — skipping HTTPS. SSO requires https; set FORCE_HTTPS only once a cert is in place."
+  note "No LETSENCRYPT_EMAIL — serving the wiki over plain HTTP (${OUTLINE_URL_PUBLIC})."
+  note "SSO login requires https; set LETSENCRYPT_EMAIL and re-run to enable TLS."
 fi
 
 # --- Integrate with the main app automatically -----------------------------

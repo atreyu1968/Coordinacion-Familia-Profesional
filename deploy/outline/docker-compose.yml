@@ -72,7 +72,11 @@ services:
       # Public origin (its own subdomain). Outline bakes this into links/emails.
       URL: ${OUTLINE_URL:?set OUTLINE_URL in .env}
       PORT: "3000"
-      FORCE_HTTPS: "true"
+      # Outline redirects everything to https when this is true. The installer
+      # sets it to false (and writes an http:// URL) when no TLS certificate is
+      # available, so the wiki is still reachable over plain HTTP. SSO needs
+      # https, so a certificate is strongly recommended.
+      FORCE_HTTPS: ${OUTLINE_FORCE_HTTPS:-true}
       # Local disk storage instead of S3.
       FILE_STORAGE: local
       FILE_STORAGE_LOCAL_ROOT_DIR: /var/lib/outline/data

@@ -7,6 +7,7 @@
 - [Integration settings (control panel)](integration-settings.md) — how external credentials (DeepSeek, Resend, JaaS, Nextcloud) are configured in-app + rules for adding more.
 - [Active professional-family lock](active-family-lock.md) — whole app locked to one familia profesional; every center-read/by-id surface must filter centers.families @> [activeFamily]; facets families needs element-level filter.
 - [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.
+- [Outline documentation wiki](outline-wiki.md) — per-module edit authz, OIDC SSO multi-client, needs OWN subdomain (not subpath); FORCE_HTTPS/scheme must agree.
 - [Announcements audience + attachments](announcements-audience.md) — Tablón uses shared audience model (not legacy provinceId) + ACL-bound downloadable attachments; backfill or province rows leak.
 - [Module membership & meeting access authz](module-membership-authz.md) — module coordinator can manage roster but not designate; /meetings/token must gate by roomName (IDOR).
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500, not OCS 102; guard before re-provision.

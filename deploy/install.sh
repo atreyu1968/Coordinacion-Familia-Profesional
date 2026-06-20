@@ -145,6 +145,20 @@ if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="
 # would see a value and skip the question entirely (it returns when the var is set).
 INSTALL_COLLAB="${INSTALL_COLLAB:-}"
 prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${DEFAULT_COLLAB}"
+# Documentation wiki (Outline). Self-installs AND integrates automatically
+# (running deploy/outline/install-outline.sh, which also writes the connection
+# details into this app's .env). Unlike the collaborative space it needs its OWN
+# SUBDOMAIN (Outline can't be served from a subpath), so it defaults to "yes"
+# only when a real HTTPS domain is present, and requires a DNS record for the
+# wiki subdomain (docs.<domain> by default).
+DEFAULT_WIKI="no"
+if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_WIKI="yes"; fi
+INSTALL_WIKI="${INSTALL_WIKI:-}"
+prompt_default INSTALL_WIKI "Install the documentation wiki (Outline, needs its own subdomain)? [yes/no]" "${DEFAULT_WIKI}"
+OUTLINE_DOMAIN="${OUTLINE_DOMAIN:-$(env_get OUTLINE_DOMAIN)}"
+if [[ "${INSTALL_WIKI}" =~ ^[yY]([eE][sS])?$ && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  prompt_default OUTLINE_DOMAIN "Wiki subdomain (its own DNS record, e.g. docs.${DOMAIN})" "docs.${DOMAIN}"
+fi
 # Optional Cloudflare Tunnel (cloudflared). If you paste a tunnel token, the
 # installer installs cloudflared (when missing) and runs it as a service, so the
 # server is reachable through Cloudflare without opening firewall ports or
@@ -170,6 +184,11 @@ if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
     note "Collaborative : https://${DOMAIN}/nextcloud + https://${DOMAIN}/collabora"
     note "  → No extra DNS records or certificates needed: both are served as"
     note "    subpaths of ${DOMAIN}, covered by its HTTPS certificate."
+  fi
+  if [[ "${INSTALL_WIKI}" =~ ^[yY]([eE][sS])?$ ]]; then
+    note "Wiki (Outline): https://${OUTLINE_DOMAIN:-docs.${DOMAIN}}"
+    note "  → Needs its OWN DNS record (A/AAAA) pointing at this server and its"
+    note "    own HTTPS certificate (obtained automatically via certbot)."
   fi
 fi
 
@@ -398,6 +417,14 @@ if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
   APP_DOMAIN="${DOMAIN}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
     bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
     note "Collaborative space install failed — the main app still works. Re-run later: sudo bash deploy/nextcloud/install-collab.sh"
+fi
+
+# ---------------------------------------------------------------------------
+if [[ "${INSTALL_WIKI}" =~ ^[yY]([eE][sS])?$ ]]; then
+  log "Installing the documentation wiki (Outline)"
+  APP_DOMAIN="${DOMAIN}" OUTLINE_DOMAIN="${OUTLINE_DOMAIN}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
+    bash "${SCRIPT_DIR}/outline/install-outline.sh" || \
+    note "Documentation wiki install failed — the main app still works. Re-run later: sudo bash deploy/outline/install-outline.sh"
 fi
 
 # ---------------------------------------------------------------------------

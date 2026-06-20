@@ -257,4 +257,31 @@ else
   echo "==> Skipping the collaborative space (no public domain configured)."
 fi
 
+# Documentation wiki (Outline). install-outline.sh is idempotent.
+#  - If it was already installed (its .env exists), refresh it.
+#  - If it was never installed but we now have a real domain, offer to install it
+#    (default yes, matching install.sh). Opt out with INSTALL_WIKI=no. Unlike the
+#    collaborative space, the wiki needs its OWN subdomain (docs.<domain>).
+WIKI_DIR="${SCRIPT_DIR}/outline"
+WIKI_ENV="${WIKI_DIR}/.env"
+if [[ -f "${WIKI_ENV}" ]]; then
+  echo "==> Updating the documentation wiki (Outline)"
+  bash "${WIKI_DIR}/install-outline.sh" || \
+    echo "WARNING: documentation wiki update failed; re-run deploy/outline/install-outline.sh" >&2
+elif [[ -n "${MOBILE_HOST}" ]]; then
+  WANT_WIKI="${INSTALL_WIKI:-yes}"
+  if is_tty && [[ -z "${INSTALL_WIKI:-}" ]]; then
+    read -r -p "Install the documentation wiki (Outline, needs its own subdomain)? [yes/no] [yes]: " WANT_WIKI || true
+    WANT_WIKI="${WANT_WIKI:-yes}"
+  fi
+  if [[ "${WANT_WIKI}" =~ ^[yY]([eE][sS])?$ ]]; then
+    echo "==> Installing the documentation wiki (Outline)"
+    APP_DOMAIN="${MOBILE_HOST}" \
+      bash "${WIKI_DIR}/install-outline.sh" || \
+      echo "WARNING: documentation wiki install failed; re-run deploy/outline/install-outline.sh" >&2
+  fi
+else
+  echo "==> Skipping the documentation wiki (no public domain configured)."
+fi
+
 echo "==> Done. Logs: journalctl -u coordina-adg -f"
