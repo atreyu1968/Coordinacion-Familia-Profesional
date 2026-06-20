@@ -35,7 +35,7 @@ import { TeacherConfirmationBanner } from "./teacher-confirmation-banner";
 import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
-const APP_VERSION = "3.4";
+const APP_VERSION = "4.0";
 
 interface LayoutProps {
   children: React.ReactNode;

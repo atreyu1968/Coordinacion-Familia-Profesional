@@ -1,10 +1,29 @@
 # Coordina ADG
 
-**Versión 3.4**
+**Versión 4.0**
 
 Plataforma de coordinación de Familias Profesionales: gestión de centros,
 profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros,
-videollamadas y formularios documentales.
+videollamadas, formularios documentales y una **wiki de documentación**.
+
+### Novedades de la versión 4.0 — Documentación (wiki Outline)
+
+Se incorpora una **wiki de documentación** integrada (basada en
+[Outline](https://www.getoutline.com/), de código abierto) accesible desde
+**Recursos → Documentación** y también desde cada módulo. Características:
+
+- **Una colección por módulo**: cada módulo tiene su propio espacio de
+  documentación.
+- **Lectura para todos**: cualquier usuario autenticado puede leer toda la
+  documentación.
+- **Edición por permisos**: solo las personas seleccionadas pueden editar. El
+  *superadministrador* concede edición a cualquier persona; el *coordinador*
+  de un módulo concede edición al profesorado colaborador de ese módulo.
+- **Inicio de sesión único (SSO)**: el propio API actúa como proveedor de
+  identidad (OIDC), así que el profesorado entra en la wiki ya autenticado sin
+  ver una segunda pantalla de acceso.
+- **Instalación e integración automáticas** desde `deploy/install.sh` cuando hay
+  un dominio HTTPS real (ver §4.c). Outline necesita su **propio subdominio**.
 
 ### Novedades de la versión 3.4 — Mensajería estilo WhatsApp
 
@@ -201,6 +220,9 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
 | `NEXTCLOUD_URL` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` | no | Espacio colaborativo (provisión de carpetas) |
 | `NEXTCLOUD_OIDC_CLIENT_ID` / `NEXTCLOUD_OIDC_CLIENT_SECRET` | no | Cliente OIDC que usa Nextcloud para el inicio de sesión único |
+| `OUTLINE_URL` | no | URL pública de la wiki de documentación (su subdominio) |
+| `OUTLINE_OIDC_CLIENT_ID` / `OUTLINE_OIDC_CLIENT_SECRET` | no | Cliente OIDC que usa Outline para el inicio de sesión único |
+| `OUTLINE_API_TOKEN` | no | Token de API de Outline para aprovisionar colecciones y grupos |
 | `OIDC_SIGNING_KEY` | no | Clave RSA (PEM) para firmar los *id_token* (si no, se genera y guarda sola) |
 
 ### Funciones opcionales
@@ -254,6 +276,14 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   (nunca se muestran de nuevo) o por variables de entorno. Sin configurar, la
   página *Espacio colaborativo* avisa de que no está disponible y el resto de la
   app funciona con normalidad.
+- **Documentación (wiki Outline):** una wiki con una colección por módulo (lectura
+  para todos, edición por permisos). Si instalas con un dominio HTTPS real y aceptas
+  instalarla, el instalador la **monta e integra automáticamente** (Docker con
+  Outline + MinIO, nginx/HTTPS y SSO). Necesita su **propio subdominio**
+  (`docs.<dominio>`) más uno para los ficheros (`files.<dominio>`), cada uno con su
+  registro DNS. El token de API de Outline se pega a mano en el **Panel de Control →
+  Documentación**. Sin configurar, la página *Documentación* avisa de que no está
+  disponible y el resto de la app funciona con normalidad. Ver §4.c.
 
 ---
 
@@ -307,6 +337,55 @@ prefieres, también puedes introducir o cambiar estos valores en **Panel de Cont
 → Espacio colaborativo** (o como variables de entorno `NEXTCLOUD_*`). A partir de
 ahí, cada usuario abre el espacio de su módulo desde la página *Espacio
 colaborativo* de la web.
+
+---
+
+## 4.c Documentación (wiki Outline)
+
+Añade una **wiki de documentación** integrada (Outline, código abierto) con una
+**colección por módulo**, accesible desde **Recursos → Documentación** y desde
+cada página de módulo. Todos los usuarios autenticados pueden **leer** toda la
+documentación; solo las personas con permiso pueden **editar**: el
+*superadministrador* concede edición a cualquiera, y el *coordinador* de un
+módulo al profesorado colaborador de ese módulo. El inicio de sesión es único:
+el API es el proveedor de identidad (OIDC) y Outline el cliente, así que el
+profesorado entra ya autenticado.
+
+**Necesita su PROPIO subdominio:** a diferencia del espacio colaborativo, Outline
+**no puede servirse en una subruta**, así que requiere un subdominio propio
+(`docs.<tu-dominio>` por defecto) con su registro DNS (A/AAAA) apuntando al
+servidor y su propio certificado HTTPS (lo obtiene `certbot` automáticamente).
+Los ficheros adjuntos se guardan en un almacenamiento S3 (MinIO), que se sirve en
+un segundo subdominio (`files.<tu-dominio>` por defecto, también con su DNS y
+certificado).
+
+**Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
+dominio HTTPS real y aceptas instalar la wiki, este componente se instala e
+integra **solo** (levanta Outline + Postgres + Redis + MinIO con Docker, configura
+nginx/HTTPS de ambos subdominios, registra el SSO y escribe `OUTLINE_URL` y las
+credenciales OIDC en el `.env` de la app, reiniciando el servicio). Cada
+`deploy/update.sh` lo vuelve a actualizar.
+
+```bash
+# Levantar Outline (+ MinIO), configurar los subdominios de nginx/HTTPS, el SSO
+# y escribir las credenciales en el .env de la app. Ejecútalo DESPUÉS de
+# install.sh. Autodetecta el dominio del .env; pásalo con APP_DOMAIN si no lo
+# encuentra. Es idempotente (se puede repetir).
+sudo bash deploy/outline/install-outline.sh
+
+# Forzando los dominios explícitamente:
+sudo APP_DOMAIN=adg.tu-dominio.com OUTLINE_DOMAIN=docs.tu-dominio.com \
+     bash deploy/outline/install-outline.sh
+```
+
+**Último paso manual (token de API):** Outline no permite generar el token de API
+de forma automática. El instalador deja todo lo demás listo; el administrador solo
+debe crear el token en Outline (**Settings → API Tokens**) y pegarlo en **Panel de
+Control → Documentación** (o como variable `OUTLINE_API_TOKEN`). A partir de ahí,
+la app aprovisiona automáticamente una colección y un grupo de editores por módulo.
+
+Sin configurar, la página *Documentación* avisa de que no está disponible y el
+resto de la app funciona con normalidad.
 
 ---
 
