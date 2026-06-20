@@ -62,7 +62,7 @@ export default function LoginPage() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">
-          <img src={customLogoUrl ?? logo} alt={appName} className="h-14 w-auto" />
+          <img src={customLogoUrl ?? logo} alt={appName} className="h-14 w-auto mx-auto" />
 
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">
