@@ -359,6 +359,26 @@ Los ficheros adjuntos se guardan en un almacenamiento S3 (MinIO), que se sirve e
 un segundo subdominio (`files.<tu-dominio>` por defecto, también con su DNS y
 certificado).
 
+> **No es otro servidor ni otra IP.** Outline y su almacenamiento (MinIO) se
+> ejecutan como contenedores Docker **en el mismo servidor** que la app,
+> escuchando solo en `127.0.0.1` (Outline en el `3500`, MinIO en el `3501`); no
+> son accesibles desde fuera directamente. El propio nginx del servidor recibe
+> las visitas y las reenvía al contenedor correcto **según el nombre de
+> dominio** — igual que hace con `/nextcloud` y `/collabora`, pero distinguiendo
+> por host en vez de por ruta. Por eso los subdominios `docs.` y `files.` deben
+> apuntar a la **misma IP que tu dominio principal** (el mismo registro `A`/`AAAA`
+> que ya usas para la app); no hay que crear ninguna IP ni máquina nueva.
+>
+> Ejemplo, si tu dominio es `adg.ejemplo.org` con IP `203.0.113.10`:
+>
+> | Registro | Tipo | Valor |
+> |---|---|---|
+> | `docs.adg.ejemplo.org` | A | `203.0.113.10` |
+> | `files.adg.ejemplo.org` | A | `203.0.113.10` |
+>
+> Con esos dos registros DNS apuntando al servidor, el instalador consigue los
+> certificados HTTPS automáticamente y deja la wiki conectada.
+
 **Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
 dominio HTTPS real y aceptas instalar la wiki, este componente se instala e
 integra **solo** (levanta Outline + Postgres + Redis + MinIO con Docker, configura
