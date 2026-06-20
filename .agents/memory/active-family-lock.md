@@ -23,9 +23,12 @@ column (NOT the resolved value, which always falls back to the default).
 - Backend guard: `PUT /settings/branding` returns **409** if a non-empty family
   is already persisted and the incoming value differs (first-set and idempotent
   no-op are allowed).
-- Web: `apariencia-settings.tsx` reads `professionalFamilyLocked`; when true the
-  input is `disabled`/`readOnly` with a permanent-lock note and the change-confirm
-  dialog never fires.
+- Web: `apariencia-settings.tsx` reads `professionalFamilyLocked`; the family is a
+  `Select` dropdown (options from `lib/professional-families.ts`, the 26 canonical
+  INCUAL families + any current value not in the list); when locked it is
+  `disabled` with a permanent-lock note and the change-confirm dialog never fires.
+- Panel de Control shows an Outline status card (`outlineConfigured`) mirroring the
+  Nextcloud one, so its connection state is visible like Nextcloud's.
 **Why presence-based:** a fresh/self-hosted install must still be able to pick a
 non-default family ONCE; locking on the raw column (not the resolved fallback)
 allows that one selection, then freezes it.

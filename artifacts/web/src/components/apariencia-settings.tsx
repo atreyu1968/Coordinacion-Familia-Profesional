@@ -18,6 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PROFESSIONAL_FAMILIES } from "@/lib/professional-families";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -87,6 +95,13 @@ export default function AparienciaSettings() {
   const familyChanged =
     !familyLocked &&
     professionalFamily.trim() !== (branding?.professionalFamily ?? "");
+  // Canonical families plus the current value if it isn't in the list (e.g. a
+  // legacy/custom value), so the dropdown never silently drops what is saved.
+  const familyOptions = [...PROFESSIONAL_FAMILIES];
+  const currentFamily = professionalFamily.trim();
+  if (currentFamily && !familyOptions.includes(currentFamily)) {
+    familyOptions.unshift(currentFamily);
+  }
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -243,16 +258,22 @@ export default function AparienciaSettings() {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="professionalFamily">Familia profesional</Label>
-              <Input
-                id="professionalFamily"
-                type="text"
-                placeholder="Administración y Gestión"
-                value={professionalFamily}
-                onChange={(e) => setProfessionalFamily(e.target.value)}
-                maxLength={120}
+              <Select
+                value={professionalFamily || undefined}
+                onValueChange={setProfessionalFamily}
                 disabled={familyLocked}
-                readOnly={familyLocked}
-              />
+              >
+                <SelectTrigger id="professionalFamily">
+                  <SelectValue placeholder="Selecciona una familia profesional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {familyOptions.map((fam) => (
+                    <SelectItem key={fam} value={fam}>
+                      {fam}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {familyLocked ? (
                 <p className="flex items-start gap-2 text-sm text-muted-foreground">
                   <Lock className="mt-0.5 h-4 w-4 shrink-0" />

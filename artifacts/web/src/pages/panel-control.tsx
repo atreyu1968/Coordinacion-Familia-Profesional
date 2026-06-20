@@ -375,6 +375,25 @@ export default function PanelControlPage() {
             </CardDescription>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-2">
+              <BookText className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">
+                Documentación (Outline)
+              </CardTitle>
+            </div>
+            <StatusBadge active={!!settings?.outlineConfigured} />
+          </CardHeader>
+          <CardContent>
+            <CardDescription>
+              Wiki de documentación por módulo con inicio de sesión único.
+              Requiere su propio subdominio (no admite subcarpeta), la URL de
+              Outline, el cliente OIDC y un token de API.
+            </CardDescription>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
