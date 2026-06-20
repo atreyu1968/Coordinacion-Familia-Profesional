@@ -54,8 +54,11 @@ services:
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     ports:
-      # Loopback only; the host nginx terminates TLS and proxies the S3 API in.
-      - "127.0.0.1:${OUTLINE_S3_PORT:-3501}:9000"
+      # Loopback by default; the host nginx terminates TLS and proxies the S3 API
+      # in. Set OUTLINE_BIND_ADDR in .env (e.g. the LAN IP, or 0.0.0.0) when the
+      # reverse proxy / Cloudflare Tunnel runs on a DIFFERENT host and must reach
+      # this port across the network.
+      - "${OUTLINE_BIND_ADDR:-127.0.0.1}:${OUTLINE_S3_PORT:-3501}:9000"
     volumes:
       - outline-minio:/data
     environment:
@@ -96,8 +99,11 @@ services:
       outline-minio:
         condition: service_healthy
     ports:
-      # Bind to loopback only; the host nginx terminates TLS and proxies in.
-      - "127.0.0.1:${OUTLINE_PORT:-3500}:3000"
+      # Loopback by default; the host nginx terminates TLS and proxies in. Set
+      # OUTLINE_BIND_ADDR in .env (e.g. the LAN IP, or 0.0.0.0) when the reverse
+      # proxy / Cloudflare Tunnel runs on a DIFFERENT host and must reach this
+      # port across the network.
+      - "${OUTLINE_BIND_ADDR:-127.0.0.1}:${OUTLINE_PORT:-3500}:3000"
     environment:
       NODE_ENV: production
       # Two independent 32-byte secrets (see .env). Rotating SECRET_KEY logs

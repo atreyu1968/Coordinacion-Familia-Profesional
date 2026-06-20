@@ -63,6 +63,21 @@ header unchanged in nginx (signature is validated against the public host). The 
 subdomain must use the SAME scheme as Outline (https when FORCE_HTTPS) or the browser blocks
 mixed content. So an HTTPS install needs DNS + cert for BOTH docs.<domain> and files.<domain>.
 
+## Cross-host reverse proxy / Cloudflare Tunnel — bind address
+By default Outline (3500) and MinIO (3501) bind to `127.0.0.1` only, which assumes the
+reverse proxy lives on the SAME host. If the proxy / Cloudflare Tunnel (`cloudflared`)
+runs on a DIFFERENT machine (e.g. a central gateway), it cannot reach loopback ports →
+the tunnel logs `dial tcp <host>:3500: connect: connection refused` and the edge returns
+**502**. (`connection refused` = host reachable but port not listening on that interface;
+`i/o timeout` = wrong host/unreachable.)
+**Fix:** set `OUTLINE_BIND_ADDR` in `deploy/outline/.env` to the server's LAN IP (preferred,
+opens only that interface) or `0.0.0.0`, then `docker compose up -d`. Verify with
+`ss -ltnp | grep -E '3500|3501'`.
+**Tunnel notes:** Public Hostname service must be **HTTP** (cloudflared talks http to the
+container and injects `X-Forwarded-Proto: https`, so `FORCE_HTTPS=true` works without a
+loop). With a tunnel, certbot is unused (edge TLS); OUTLINE_URL/S3_PUBLIC_URL still must be
+**https** so links/pre-signed URLs match the public origin.
+
 ## Outline API token is manual
 The Outline API token (used by the api-server to provision collections/groups) cannot be
 generated headlessly. The installer wires URL + OIDC client id/secret into the main .env
