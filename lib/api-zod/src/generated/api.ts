@@ -2494,6 +2494,7 @@ export const OpenModuleSpaceResponse = zod.object({
  */
 export const GetWikiStatusResponse = zod.object({
   "configured": zod.boolean(),
+  "loginReady": zod.boolean().describe('URL and OIDC client are set, so SSO sign-in works even if the API token (needed to provision per-module collections) is not yet set.'),
   "outlineUrl": zod.string().nullish()
 })
 

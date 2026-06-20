@@ -83,3 +83,16 @@ The Outline API token (used by the api-server to provision collections/groups) c
 generated headlessly. The installer wires URL + OIDC client id/secret into the main .env
 automatically, but the admin must create the token in Outline (Settings → API Tokens) and
 paste it into the control panel → Documentación.
+
+## Token bootstrap catch-22 — login readiness vs full config
+**Rule:** SSO sign-in into Outline only needs URL + OIDC client. The API token is ONLY for
+provisioning per-module collections, so the open/login flow must NOT require it.
+**Why:** the only way to create the token is to log into Outline; if login itself is gated on
+the token, the admin can never reach Outline (open endpoint 503 + page shows "no configurada"
+→ dead end). This was a real bootstrap deadlock.
+**How to apply:** keep two checks distinct — `isOutlineConfigured` (URL+OIDC+token, "fully
+ready, can provision") vs `isOutlineLoginReady` (URL+OIDC, "SSO works"). `/wiki/status` returns
+both (`configured`, `loginReady`). The open endpoint gates on `loginReady` and only calls
+`ensureModuleWiki` when a token exists; with no token it still mints the SSO ticket and
+`/oidc/start` lands the user on Outline `/home` (moduleCollectionPath(null)). Frontend shows a
+"needs token" bootstrap banner when `loginReady && !configured` instead of blocking.

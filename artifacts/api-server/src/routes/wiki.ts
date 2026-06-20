@@ -19,6 +19,7 @@ import { requireAuth } from "../middlewares/auth";
 import { getSettings } from "../lib/settings";
 import {
   isOutlineConfigured,
+  isOutlineLoginReady,
   resolveOutlineConfig,
   resolveOutlineUrl,
   ensureModuleWiki,
@@ -38,6 +39,7 @@ router.get("/wiki/status", requireAuth, async (_req, res): Promise<void> => {
   res.json(
     GetWikiStatusResponse.parse({
       configured: isOutlineConfigured(settings),
+      loginReady: isOutlineLoginReady(settings),
       outlineUrl: resolveOutlineUrl(settings),
     }),
   );
@@ -296,11 +298,10 @@ router.post(
     const caller = req.user!;
 
     const settings = await getSettings();
-    if (!isOutlineConfigured(settings)) {
+    if (!isOutlineLoginReady(settings)) {
       res.status(503).json({ message: "La documentación no está configurada" });
       return;
     }
-    const config = resolveOutlineConfig(settings)!;
     const outlineUrl = resolveOutlineUrl(settings)!;
 
     const [module] = await db
@@ -312,16 +313,24 @@ router.post(
       return;
     }
 
-    try {
-      await ensureModuleWiki(config, {
-        id: module.id,
-        name: module.name,
-        code: module.code,
-      });
-    } catch (err) {
-      logger.error({ err, moduleId }, "Failed to provision module wiki");
-      res.status(502).json({ message: "No se pudo preparar la documentación" });
-      return;
+    // The API token is only needed to provision per-module collections. Without
+    // it, SSO sign-in still works (it lands on the Outline home), which lets an
+    // admin bootstrap the first login to create that token.
+    const config = resolveOutlineConfig(settings);
+    if (config) {
+      try {
+        await ensureModuleWiki(config, {
+          id: module.id,
+          name: module.name,
+          code: module.code,
+        });
+      } catch (err) {
+        logger.error({ err, moduleId }, "Failed to provision module wiki");
+        res
+          .status(502)
+          .json({ message: "No se pudo preparar la documentación" });
+        return;
+      }
     }
 
     const ticket = createTicket(caller.id, module.id, "outline");

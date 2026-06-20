@@ -6099,10 +6099,15 @@ components:
       properties:
         configured:
           type: boolean
+        loginReady:
+          type: boolean
+          description: >-
+            URL and OIDC client are set, so SSO sign-in works even if the API
+            token (needed to provision per-module collections) is not yet set.
         outlineUrl:
           type: string
           nullable: true
-      required: [configured]
+      required: [configured, loginReady]
     ModuleWikiAccess:
       type: object
       properties:

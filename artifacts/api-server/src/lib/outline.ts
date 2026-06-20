@@ -108,6 +108,16 @@ export function isOutlineConfigured(s?: OutlineSettings | null): boolean {
 }
 
 /**
+ * SSO sign-in works once the URL and OIDC client are present, even without the
+ * API token. The token is only needed to provision per-module collections, so
+ * this weaker check lets an admin bootstrap the first Outline login (to create
+ * that token) before the wiki is "fully" configured.
+ */
+export function isOutlineLoginReady(s?: OutlineSettings | null): boolean {
+  return resolveOutlineUrl(s) !== null && resolveOutlineOidcClient(s) !== null;
+}
+
+/**
  * Strict redirect_uri policy for the Outline OIDC client: the callback must live
  * on the same origin as the configured Outline base URL, under Outline's OIDC
  * callback path. Mirrors the Nextcloud check to avoid prefix-confusable hosts.

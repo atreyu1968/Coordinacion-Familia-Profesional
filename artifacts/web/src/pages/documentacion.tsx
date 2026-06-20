@@ -308,7 +308,9 @@ export default function DocumentacionPage() {
 
   const canManageEditors =
     user?.role === "superadmin" || user?.role === "coordinator";
-  const notConfigured = !statusLoading && status && !status.configured;
+  const notReady = !statusLoading && status && !status.loginReady;
+  const needsToken =
+    !statusLoading && status && status.loginReady && !status.configured;
 
   return (
     <div className="space-y-6">
@@ -326,7 +328,7 @@ export default function DocumentacionPage() {
         </div>
       </div>
 
-      {notConfigured ? (
+      {notReady ? (
         <Card>
           <CardContent className="p-6 space-y-3">
             <h2 className="font-semibold">Aún no está configurada</h2>
@@ -344,7 +346,27 @@ export default function DocumentacionPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <>
+          {needsToken && user?.role === "superadmin" && (
+            <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+              <CardContent className="p-5 space-y-2">
+                <h2 className="font-semibold">Falta el token de API</h2>
+                <p className="text-sm text-muted-foreground">
+                  Abre cualquier módulo para entrar en Outline (entrarás sin
+                  iniciar sesión). Una vez dentro, ve a{" "}
+                  <span className="font-medium">Settings → API Tokens</span>,
+                  crea un token y pégalo en el Panel de Control para activar las
+                  wikis por módulo.
+                </p>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/panel-control">
+                    <Settings className="w-4 h-4 mr-2" /> Ir al Panel de Control
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          <Card>
           <CardContent className="p-5 space-y-4">
             <div className="space-y-2 max-w-md">
               <Label htmlFor="module-search">Buscar módulo</Label>
@@ -409,7 +431,8 @@ export default function DocumentacionPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </>
       )}
 
       {active && (

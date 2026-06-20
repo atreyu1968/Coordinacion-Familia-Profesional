@@ -1445,6 +1445,8 @@ export interface ModuleSpaceAccess {
 
 export interface WikiStatus {
   configured: boolean;
+  /** URL and OIDC client are set, so SSO sign-in works even if the API token (needed to provision per-module collections) is not yet set. */
+  loginReady: boolean;
   outlineUrl?: string | null;
 }
 
