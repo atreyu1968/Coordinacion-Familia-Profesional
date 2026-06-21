@@ -131,6 +131,18 @@ note "Storage (MinIO)    : ${OUTLINE_S3_PUBLIC_URL}"
 [[ "${OUTLINE_SCHEME}" == "http" ]] && note "  (no HTTPS: set LETSENCRYPT_EMAIL to enable TLS — required for SSO login)"
 
 OUTLINE_PORT="${OUTLINE_PORT:-$(env_get OUTLINE_PORT)}"; OUTLINE_PORT="${OUTLINE_PORT:-3500}"
+# Interface the Outline/MinIO host ports bind to. Default loopback (reverse proxy
+# on this same host). Set to this server's LAN IP when the proxy / Cloudflare
+# Tunnel runs on a DIFFERENT machine and must reach the ports across the LAN.
+# Read from the existing .env first so a rerun/update never silently reverts a
+# manually-set LAN IP back to loopback (which re-breaks a cross-host tunnel).
+OUTLINE_BIND_ADDR="${OUTLINE_BIND_ADDR:-$(env_get OUTLINE_BIND_ADDR)}"
+if [[ -z "${OUTLINE_BIND_ADDR}" ]]; then
+  prompt_default OUTLINE_BIND_ADDR "Bind address for Outline/MinIO ports (use this server's LAN IP if the reverse proxy / Cloudflare Tunnel runs on another host)" "127.0.0.1"
+fi
+# Address the local nginx block and the readiness probe use to reach the
+# container. 0.0.0.0 binds all interfaces (incl. loopback), so target 127.0.0.1.
+UPSTREAM_ADDR="${OUTLINE_BIND_ADDR}"; [[ "${UPSTREAM_ADDR}" == "0.0.0.0" ]] && UPSTREAM_ADDR="127.0.0.1"
 OUTLINE_DB_NAME="${OUTLINE_DB_NAME:-$(env_get OUTLINE_DB_NAME)}"; OUTLINE_DB_NAME="${OUTLINE_DB_NAME:-outline}"
 OUTLINE_DB_USER="${OUTLINE_DB_USER:-$(env_get OUTLINE_DB_USER)}"; OUTLINE_DB_USER="${OUTLINE_DB_USER:-outline}"
 # Preserve generated secrets across reruns; generate on first install.
@@ -157,6 +169,7 @@ OUTLINE_DOMAIN=${OUTLINE_DOMAIN}
 OUTLINE_URL=${OUTLINE_URL_PUBLIC}
 OUTLINE_FORCE_HTTPS=${OUTLINE_FORCE_HTTPS}
 OUTLINE_PORT=${OUTLINE_PORT}
+OUTLINE_BIND_ADDR=${OUTLINE_BIND_ADDR}
 OUTLINE_DB_NAME=${OUTLINE_DB_NAME}
 OUTLINE_DB_USER=${OUTLINE_DB_USER}
 OUTLINE_DB_PASSWORD=${OUTLINE_DB_PASSWORD}
@@ -186,6 +199,7 @@ sed -e "s|__OUTLINE_SERVER_NAME__|${OUTLINE_DOMAIN}|g" \
     -e "s|__OUTLINE_PORT__|${OUTLINE_PORT}|g" \
     -e "s|__OUTLINE_S3_SERVER_NAME__|${OUTLINE_S3_DOMAIN}|g" \
     -e "s|__OUTLINE_S3_PORT__|${OUTLINE_S3_PORT}|g" \
+    -e "s|__OUTLINE_UPSTREAM_ADDR__|${UPSTREAM_ADDR}|g" \
     "${DEPLOY_DIR}/nginx-outline.conf.template" > /etc/nginx/sites-available/coordina-adg-outline
 ln -sf /etc/nginx/sites-available/coordina-adg-outline /etc/nginx/sites-enabled/coordina-adg-outline
 nginx -t
@@ -199,10 +213,10 @@ log "Starting Outline + Postgres + Redis + MinIO (docker compose up -d)"
 log "Waiting for Outline to become ready"
 ready=0
 for _ in $(seq 1 60); do
-  if curl -fsS -o /dev/null "http://127.0.0.1:${OUTLINE_PORT}/"; then ready=1; break; fi
+  if curl -fsS -o /dev/null "http://${UPSTREAM_ADDR}:${OUTLINE_PORT}/"; then ready=1; break; fi
   sleep 5
 done
-[[ "${ready}" -eq 1 ]] || note "Outline did not answer on :${OUTLINE_PORT} yet; it may still be migrating. Check: docker compose -f ${SCRIPT_DIR}/docker-compose.yml logs -f outline"
+[[ "${ready}" -eq 1 ]] || note "Outline did not answer on ${UPSTREAM_ADDR}:${OUTLINE_PORT} yet; it may still be migrating. Check: docker compose -f ${SCRIPT_DIR}/docker-compose.yml logs -f outline"
 
 # --- HTTPS for the subdomains ---------------------------------------------
 if [[ -n "${LETSENCRYPT_EMAIL}" && ! "${OUTLINE_DOMAIN}" =~ ^[0-9.]+$ ]]; then
@@ -220,9 +234,11 @@ fi
 # --- Integrate with the main app automatically -----------------------------
 # Write the connection details into the api-server's .env so the wiki works out
 # of the box. The api-server resolves the Outline OIDC client (id+secret) and
-# base URL from these env vars when no in-panel DB values are set. The Outline
-# API token cannot be generated headlessly — it is created once in the Outline
-# UI (Settings → API Tokens) and pasted into the control panel afterwards.
+# base URL from these env vars when no in-panel DB values are set. SSO login
+# already works with just these (URL + OIDC client). The Outline API token —
+# which enables the per-module collections — cannot be generated headlessly: log
+# into Outline once from the platform (Recursos → Documentación), create it under
+# Settings → API Tokens, and paste it into the control panel afterwards.
 MAIN_ENV="${APP_DIR}/.env"
 if [[ -f "${MAIN_ENV}" ]]; then
   log "Integrating with Coordina ADG (${MAIN_ENV})"
@@ -250,8 +266,11 @@ fi
 # ---------------------------------------------------------------------------
 if [[ "${INTEGRATED}" -eq 1 ]]; then
   log "Done! The documentation wiki is installed and integrated automatically."
-  note "One manual step remains: create an Outline API token and paste it in the"
-  note "control panel → Documentación (Settings → API Tokens in Outline)."
+  note "SSO login already works. To finish enabling the per-module wikis:"
+  note "  1) In Coordina ADG open Recursos → Documentación and click any module"
+  note "     (you are signed into Outline automatically — first user = admin)."
+  note "  2) In Outline: Settings → API Tokens → create a token."
+  note "  3) Paste it into the control panel → Documentación and save."
 else
   log "Done! Paste these into the control panel → Documentación:"
 fi

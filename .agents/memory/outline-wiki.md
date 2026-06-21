@@ -73,6 +73,14 @@ the tunnel logs `dial tcp <host>:3500: connect: connection refused` and the edge
 **Fix:** set `OUTLINE_BIND_ADDR` in `deploy/outline/.env` to the server's LAN IP (preferred,
 opens only that interface) or `0.0.0.0`, then `docker compose up -d`. Verify with
 `ss -ltnp | grep -E '3500|3501'`.
+**Installer must preserve it (durable rule):** `install-outline.sh` rewrites the whole
+`.env` via `cat >` on every run, and `update.sh` runs the installer on every update — so any
+key not read back via `env_get` is silently lost. `OUTLINE_BIND_ADDR` MUST be in the env_get
+preserve list + the heredoc, or an update reverts a manually-set LAN IP to loopback and the
+502 returns. Same trap for any future compose var. Also: when bound to a specific LAN IP
+(not loopback/0.0.0.0), the loopback `curl 127.0.0.1` readiness probe and nginx
+`proxy_pass http://127.0.0.1` both fail — both use a resolved `UPSTREAM_ADDR` (= bind addr,
+or 127.0.0.1 when bind is 0.0.0.0); the nginx template takes `__OUTLINE_UPSTREAM_ADDR__`.
 **Tunnel notes:** Public Hostname service must be **HTTP** (cloudflared talks http to the
 container and injects `X-Forwarded-Proto: https`, so `FORCE_HTTPS=true` works without a
 loop). With a tunnel, certbot is unused (edge TLS); OUTLINE_URL/S3_PUBLIC_URL still must be

@@ -16,7 +16,7 @@ server {
     client_max_body_size 50M;
 
     location / {
-        proxy_pass http://127.0.0.1:__OUTLINE_PORT__;
+        proxy_pass http://__OUTLINE_UPSTREAM_ADDR__:__OUTLINE_PORT__;
         proxy_http_version 1.1;
         # Outline uses WebSockets for realtime collaborative editing.
         proxy_set_header Upgrade $http_upgrade;
@@ -43,7 +43,7 @@ server {
     client_max_body_size 50M;
 
     location / {
-        proxy_pass http://127.0.0.1:__OUTLINE_S3_PORT__;
+        proxy_pass http://__OUTLINE_UPSTREAM_ADDR__:__OUTLINE_S3_PORT__;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
