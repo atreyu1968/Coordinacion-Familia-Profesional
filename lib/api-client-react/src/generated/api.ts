@@ -122,6 +122,7 @@ import type {
   ListSurveysParams,
   ListTeachingAssignmentsParams,
   ListUsersParams,
+  ListWikiPagesParams,
   ListYearConfirmationsParams,
   LoginInput,
   Meeting,
@@ -132,7 +133,6 @@ import type {
   Module,
   ModuleMember,
   ModuleSpaceAccess,
-  ModuleWikiAccess,
   ModuleWikiEditors,
   Municipality,
   MyYearConfirmation,
@@ -180,7 +180,13 @@ import type {
   UploadUrlResponse,
   User,
   VapidPublicKey,
-  WikiStatus
+  WikiAttachmentInput,
+  WikiPage,
+  WikiPageInput,
+  WikiPageList,
+  WikiPageUpdate,
+  WikiUploadRequest,
+  WikiUploadUrl
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -4549,7 +4555,7 @@ export const getCreateCycleUrl = () => {
 }
 
 /**
- * @summary Create a catalog cycle (superadmin only)
+ * @summary Create a catalog cycle and offer it at an active-family center
  */
 export const createCycle = async (createCycleInput: CreateCycleInput, options?: RequestInit): Promise<Cycle> => {
 
@@ -4598,7 +4604,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateCycleMutationError = ErrorType<Error>
 
     /**
- * @summary Create a catalog cycle (superadmin only)
+ * @summary Create a catalog cycle and offer it at an active-family center
  */
 export const useCreateCycle = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCycle>>, TError,{data: BodyType<CreateCycleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -10418,20 +10424,27 @@ export const useOpenModuleSpace = <TError = ErrorType<void>,
       return useMutation(getOpenModuleSpaceMutationOptions(options));
     }
 
-export const getGetWikiStatusUrl = () => {
+export const getListWikiPagesUrl = (params?: ListWikiPagesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/wiki/status`
+  return stringifiedParams.length > 0 ? `/api/wiki/pages?${stringifiedParams}` : `/api/wiki/pages`
 }
 
 /**
- * @summary Whether the documentation wiki (Outline) is configured
+ * @summary Search and filter authenticated wiki pages
  */
-export const getWikiStatus = async ( options?: RequestInit): Promise<WikiStatus> => {
+export const listWikiPages = async (params?: ListWikiPagesParams, options?: RequestInit): Promise<WikiPageList> => {
 
-  return customFetch<WikiStatus>(getGetWikiStatusUrl(),
+  return customFetch<WikiPageList>(getListWikiPagesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -10444,45 +10457,45 @@ export const getWikiStatus = async ( options?: RequestInit): Promise<WikiStatus>
 
 
 
-export const getGetWikiStatusQueryKey = () => {
+export const getListWikiPagesQueryKey = (params?: ListWikiPagesParams,) => {
     return [
-    `/api/wiki/status`
+    `/api/wiki/pages`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetWikiStatusQueryOptions = <TData = Awaited<ReturnType<typeof getWikiStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListWikiPagesQueryOptions = <TData = Awaited<ReturnType<typeof listWikiPages>>, TError = ErrorType<void>>(params?: ListWikiPagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWikiPages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetWikiStatusQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListWikiPagesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWikiStatus>>> = ({ signal }) => getWikiStatus({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWikiPages>>> = ({ signal }) => listWikiPages(params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWikiPages>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type GetWikiStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getWikiStatus>>>
-export type GetWikiStatusQueryError = ErrorType<unknown>
+export type ListWikiPagesQueryResult = NonNullable<Awaited<ReturnType<typeof listWikiPages>>>
+export type ListWikiPagesQueryError = ErrorType<void>
 
 
 /**
- * @summary Whether the documentation wiki (Outline) is configured
+ * @summary Search and filter authenticated wiki pages
  */
 
-export function useGetWikiStatus<TData = Awaited<ReturnType<typeof getWikiStatus>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListWikiPages<TData = Awaited<ReturnType<typeof listWikiPages>>, TError = ErrorType<void>>(
+ params?: ListWikiPagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWikiPages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetWikiStatusQueryOptions(options)
+  const queryOptions = getListWikiPagesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -10495,36 +10508,37 @@ export function useGetWikiStatus<TData = Awaited<ReturnType<typeof getWikiStatus
 
 
 
-export const getOpenModuleWikiUrl = (moduleId: number,) => {
+export const getCreateWikiPageUrl = () => {
 
 
 
 
-  return `/api/wiki/modules/${moduleId}/space`
+  return `/api/wiki/pages`
 }
 
 /**
- * @summary Provision and open the documentation wiki for a module (SSO)
+ * @summary Create a page in the general wiki or a module wiki
  */
-export const openModuleWiki = async (moduleId: number, options?: RequestInit): Promise<ModuleWikiAccess> => {
+export const createWikiPage = async (wikiPageInput: WikiPageInput, options?: RequestInit): Promise<WikiPage> => {
 
-  return customFetch<ModuleWikiAccess>(getOpenModuleWikiUrl(moduleId),
+  return customFetch<WikiPage>(getCreateWikiPageUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiPageInput,)
   }
 );}
 
 
 
 
-export const getOpenModuleWikiMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext> => {
+export const getCreateWikiPageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWikiPage>>, TError,{data: BodyType<WikiPageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWikiPage>>, TError,{data: BodyType<WikiPageInput>}, TContext> => {
 
-const mutationKey = ['openModuleWiki'];
+const mutationKey = ['createWikiPage'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -10534,10 +10548,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openModuleWiki>>, {moduleId: number}> = (props) => {
-          const {moduleId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWikiPage>>, {data: BodyType<WikiPageInput>}> = (props) => {
+          const {data} = props ?? {};
 
-          return  openModuleWiki(moduleId,requestOptions)
+          return  createWikiPage(data,requestOptions)
         }
 
 
@@ -10547,23 +10561,532 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type OpenModuleWikiMutationResult = NonNullable<Awaited<ReturnType<typeof openModuleWiki>>>
-
-    export type OpenModuleWikiMutationError = ErrorType<void>
+    export type CreateWikiPageMutationResult = NonNullable<Awaited<ReturnType<typeof createWikiPage>>>
+    export type CreateWikiPageMutationBody = BodyType<WikiPageInput>
+    export type CreateWikiPageMutationError = ErrorType<void>
 
     /**
- * @summary Provision and open the documentation wiki for a module (SSO)
+ * @summary Create a page in the general wiki or a module wiki
  */
-export const useOpenModuleWiki = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openModuleWiki>>, TError,{moduleId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreateWikiPage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWikiPage>>, TError,{data: BodyType<WikiPageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof openModuleWiki>>,
+        Awaited<ReturnType<typeof createWikiPage>>,
         TError,
-        {moduleId: number},
+        {data: BodyType<WikiPageInput>},
         TContext
       > => {
-      return useMutation(getOpenModuleWikiMutationOptions(options));
+      return useMutation(getCreateWikiPageMutationOptions(options));
     }
+
+export const getRequestWikiUploadUrlUrl = () => {
+
+
+
+
+  return `/api/wiki/uploads/request-url`
+}
+
+/**
+ * @summary Request a short-lived upload URL bound to the current user
+ */
+export const requestWikiUploadUrl = async (wikiUploadRequest: WikiUploadRequest, options?: RequestInit): Promise<WikiUploadUrl> => {
+
+  return customFetch<WikiUploadUrl>(getRequestWikiUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiUploadRequest,)
+  }
+);}
+
+
+
+
+export const getRequestWikiUploadUrlMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestWikiUploadUrl>>, TError,{data: BodyType<WikiUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestWikiUploadUrl>>, TError,{data: BodyType<WikiUploadRequest>}, TContext> => {
+
+const mutationKey = ['requestWikiUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestWikiUploadUrl>>, {data: BodyType<WikiUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestWikiUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestWikiUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestWikiUploadUrl>>>
+    export type RequestWikiUploadUrlMutationBody = BodyType<WikiUploadRequest>
+    export type RequestWikiUploadUrlMutationError = ErrorType<void>
+
+    /**
+ * @summary Request a short-lived upload URL bound to the current user
+ */
+export const useRequestWikiUploadUrl = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestWikiUploadUrl>>, TError,{data: BodyType<WikiUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestWikiUploadUrl>>,
+        TError,
+        {data: BodyType<WikiUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestWikiUploadUrlMutationOptions(options));
+    }
+
+export const getGetWikiPageUrl = (pageId: number,) => {
+
+
+
+
+  return `/api/wiki/pages/${pageId}`
+}
+
+/**
+ * @summary Get an authenticated wiki page and its attachments
+ */
+export const getWikiPage = async (pageId: number, options?: RequestInit): Promise<WikiPage> => {
+
+  return customFetch<WikiPage>(getGetWikiPageUrl(pageId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWikiPageQueryKey = (pageId: number,) => {
+    return [
+    `/api/wiki/pages/${pageId}`
+    ] as const;
+    }
+
+
+export const getGetWikiPageQueryOptions = <TData = Awaited<ReturnType<typeof getWikiPage>>, TError = ErrorType<void>>(pageId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWikiPageQueryKey(pageId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWikiPage>>> = ({ signal }) => getWikiPage(pageId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(pageId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWikiPage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWikiPageQueryResult = NonNullable<Awaited<ReturnType<typeof getWikiPage>>>
+export type GetWikiPageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get an authenticated wiki page and its attachments
+ */
+
+export function useGetWikiPage<TData = Awaited<ReturnType<typeof getWikiPage>>, TError = ErrorType<void>>(
+ pageId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWikiPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWikiPageQueryOptions(pageId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateWikiPageUrl = (pageId: number,) => {
+
+
+
+
+  return `/api/wiki/pages/${pageId}`
+}
+
+/**
+ * @summary Update a wiki page
+ */
+export const updateWikiPage = async (pageId: number,
+    wikiPageUpdate: WikiPageUpdate, options?: RequestInit): Promise<WikiPage> => {
+
+  return customFetch<WikiPage>(getUpdateWikiPageUrl(pageId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiPageUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateWikiPageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWikiPage>>, TError,{pageId: number;data: BodyType<WikiPageUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWikiPage>>, TError,{pageId: number;data: BodyType<WikiPageUpdate>}, TContext> => {
+
+const mutationKey = ['updateWikiPage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWikiPage>>, {pageId: number;data: BodyType<WikiPageUpdate>}> = (props) => {
+          const {pageId,data} = props ?? {};
+
+          return  updateWikiPage(pageId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWikiPageMutationResult = NonNullable<Awaited<ReturnType<typeof updateWikiPage>>>
+    export type UpdateWikiPageMutationBody = BodyType<WikiPageUpdate>
+    export type UpdateWikiPageMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a wiki page
+ */
+export const useUpdateWikiPage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWikiPage>>, TError,{pageId: number;data: BodyType<WikiPageUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWikiPage>>,
+        TError,
+        {pageId: number;data: BodyType<WikiPageUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateWikiPageMutationOptions(options));
+    }
+
+export const getDeleteWikiPageUrl = (pageId: number,) => {
+
+
+
+
+  return `/api/wiki/pages/${pageId}`
+}
+
+/**
+ * @summary Soft-delete a wiki page
+ */
+export const deleteWikiPage = async (pageId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteWikiPageUrl(pageId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWikiPageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPage>>, TError,{pageId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPage>>, TError,{pageId: number}, TContext> => {
+
+const mutationKey = ['deleteWikiPage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWikiPage>>, {pageId: number}> = (props) => {
+          const {pageId} = props ?? {};
+
+          return  deleteWikiPage(pageId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWikiPageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWikiPage>>>
+
+    export type DeleteWikiPageMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a wiki page
+ */
+export const useDeleteWikiPage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPage>>, TError,{pageId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWikiPage>>,
+        TError,
+        {pageId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteWikiPageMutationOptions(options));
+    }
+
+export const getAddWikiAttachmentUrl = (pageId: number,) => {
+
+
+
+
+  return `/api/wiki/pages/${pageId}/attachments`
+}
+
+/**
+ * @summary Add a privately stored file to a wiki page
+ */
+export const addWikiAttachment = async (pageId: number,
+    wikiAttachmentInput: WikiAttachmentInput, options?: RequestInit): Promise<WikiPage> => {
+
+  return customFetch<WikiPage>(getAddWikiAttachmentUrl(pageId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiAttachmentInput,)
+  }
+);}
+
+
+
+
+export const getAddWikiAttachmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addWikiAttachment>>, TError,{pageId: number;data: BodyType<WikiAttachmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addWikiAttachment>>, TError,{pageId: number;data: BodyType<WikiAttachmentInput>}, TContext> => {
+
+const mutationKey = ['addWikiAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addWikiAttachment>>, {pageId: number;data: BodyType<WikiAttachmentInput>}> = (props) => {
+          const {pageId,data} = props ?? {};
+
+          return  addWikiAttachment(pageId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddWikiAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof addWikiAttachment>>>
+    export type AddWikiAttachmentMutationBody = BodyType<WikiAttachmentInput>
+    export type AddWikiAttachmentMutationError = ErrorType<void>
+
+    /**
+ * @summary Add a privately stored file to a wiki page
+ */
+export const useAddWikiAttachment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addWikiAttachment>>, TError,{pageId: number;data: BodyType<WikiAttachmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addWikiAttachment>>,
+        TError,
+        {pageId: number;data: BodyType<WikiAttachmentInput>},
+        TContext
+      > => {
+      return useMutation(getAddWikiAttachmentMutationOptions(options));
+    }
+
+export const getDeleteWikiAttachmentUrl = (attachmentId: number,) => {
+
+
+
+
+  return `/api/wiki/attachments/${attachmentId}`
+}
+
+/**
+ * @summary Remove an attachment from a wiki page
+ */
+export const deleteWikiAttachment = async (attachmentId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteWikiAttachmentUrl(attachmentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWikiAttachmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiAttachment>>, TError,{attachmentId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWikiAttachment>>, TError,{attachmentId: number}, TContext> => {
+
+const mutationKey = ['deleteWikiAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWikiAttachment>>, {attachmentId: number}> = (props) => {
+          const {attachmentId} = props ?? {};
+
+          return  deleteWikiAttachment(attachmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWikiAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWikiAttachment>>>
+
+    export type DeleteWikiAttachmentMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove an attachment from a wiki page
+ */
+export const useDeleteWikiAttachment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiAttachment>>, TError,{attachmentId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWikiAttachment>>,
+        TError,
+        {attachmentId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteWikiAttachmentMutationOptions(options));
+    }
+
+export const getDownloadWikiAttachmentUrl = (attachmentId: number,) => {
+
+
+
+
+  return `/api/wiki/attachments/${attachmentId}/download`
+}
+
+/**
+ * @summary Download an authenticated wiki attachment
+ */
+export const downloadWikiAttachment = async (attachmentId: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadWikiAttachmentUrl(attachmentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadWikiAttachmentQueryKey = (attachmentId: number,) => {
+    return [
+    `/api/wiki/attachments/${attachmentId}/download`
+    ] as const;
+    }
+
+
+export const getDownloadWikiAttachmentQueryOptions = <TData = Awaited<ReturnType<typeof downloadWikiAttachment>>, TError = ErrorType<void>>(attachmentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadWikiAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadWikiAttachmentQueryKey(attachmentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadWikiAttachment>>> = ({ signal }) => downloadWikiAttachment(attachmentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(attachmentId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadWikiAttachment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadWikiAttachmentQueryResult = NonNullable<Awaited<ReturnType<typeof downloadWikiAttachment>>>
+export type DownloadWikiAttachmentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Download an authenticated wiki attachment
+ */
+
+export function useDownloadWikiAttachment<TData = Awaited<ReturnType<typeof downloadWikiAttachment>>, TError = ErrorType<void>>(
+ attachmentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadWikiAttachment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadWikiAttachmentQueryOptions(attachmentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetModuleWikiEditorsUrl = (moduleId: number,) => {
 

@@ -7,15 +7,9 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
-// Mapping between an academic module and its Outline (wiki) resources. Outline
-// identifies collections and groups by opaque UUIDs, so we cache them here to
-// keep provisioning idempotent (we never re-create a collection/group that
-// already exists for a module). One row per module.
-//
-// - collectionId: the Outline collection that holds the module's documents.
-//   Its workspace-wide default permission is "read" (everyone reads).
-// - editorGroupId: an Outline group granted "read_write" on the collection;
-//   its membership is the set of users allowed to edit (see wiki_module_editors).
+// Legacy mapping retained for existing Outline installations. The native wiki
+// does not read or write this table, and it is intentionally kept to preserve
+// the old collection/group references without deleting external data.
 export const wikiModuleCollectionsTable = pgTable(
   "wiki_module_collections",
   {

@@ -5,6 +5,7 @@ import { initRealtime } from "./lib/realtime";
 import { seedIntegrationSettingsFromEnv } from "./lib/settings";
 import { seedAcademicYears } from "./routes/academicYears";
 import { startConfirmationScheduler } from "./lib/scheduler";
+import { startWikiIndexing } from "./lib/wikiIndexing";
 
 const rawPort = process.env["PORT"];
 
@@ -43,6 +44,7 @@ async function start(): Promise<void> {
     logger.error({ err }, "Failed to seed academic years");
   }
   startConfirmationScheduler();
+  startWikiIndexing();
   server.listen(port, () => {
     logger.info({ port }, "Server listening");
   });

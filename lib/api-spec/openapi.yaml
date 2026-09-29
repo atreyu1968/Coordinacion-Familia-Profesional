@@ -3175,46 +3175,236 @@ paths:
         "503":
           description: Collaborative space not configured
 
-  /wiki/status:
+  /wiki/pages:
     get:
-      operationId: getWikiStatus
+      operationId: listWikiPages
       tags: [wiki]
-      summary: Whether the documentation wiki (Outline) is configured
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Wiki status
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WikiStatus"
-  /wiki/modules/{moduleId}/space:
-    post:
-      operationId: openModuleWiki
-      tags: [wiki]
-      summary: Provision and open the documentation wiki for a module (SSO)
+      summary: Search and filter authenticated wiki pages
       security:
         - bearerAuth: []
       parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
         - name: moduleId
+          in: query
+          schema:
+            type: integer
+        - name: globalOnly
+          in: query
+          schema:
+            type: boolean
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [all, files, zip]
+      responses:
+        "200":
+          description: Search results and create permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPageList"
+        "401":
+          description: Not authenticated
+    post:
+      operationId: createWikiPage
+      tags: [wiki]
+      summary: Create a page in the general wiki or a module wiki
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPageInput"
+      responses:
+        "201":
+          description: Page created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPage"
+        "400":
+          description: Invalid page
+        "403":
+          description: Not allowed to create pages in this section
+  /wiki/uploads/request-url:
+    post:
+      operationId: requestWikiUploadUrl
+      tags: [wiki]
+      summary: Request a short-lived upload URL bound to the current user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiUploadRequest"
+      responses:
+        "200":
+          description: Upload URL and private object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiUploadUrl"
+        "400":
+          description: Invalid file metadata
+        "401":
+          description: Not authenticated
+  /wiki/pages/{pageId}:
+    get:
+      operationId: getWikiPage
+      tags: [wiki]
+      summary: Get an authenticated wiki page and its attachments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageId
           in: path
           required: true
           schema:
             type: integer
       responses:
         "200":
-          description: Single-use SSO URL for the module wiki
+          description: Page details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ModuleWikiAccess"
-        "403":
-          description: No access to this module
+                $ref: "#/components/schemas/WikiPage"
         "404":
-          description: Module not found
-        "503":
-          description: Wiki not configured
+          description: Page not found
+    patch:
+      operationId: updateWikiPage
+      tags: [wiki]
+      summary: Update a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPageUpdate"
+      responses:
+        "200":
+          description: Updated page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPage"
+        "400":
+          description: Invalid page
+        "403":
+          description: Not allowed to edit this page
+        "404":
+          description: Page not found
+    delete:
+      operationId: deleteWikiPage
+      tags: [wiki]
+      summary: Soft-delete a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Page deleted
+        "403":
+          description: Not allowed to delete this page
+        "404":
+          description: Page not found
+  /wiki/pages/{pageId}/attachments:
+    post:
+      operationId: addWikiAttachment
+      tags: [wiki]
+      summary: Add a privately stored file to a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiAttachmentInput"
+      responses:
+        "201":
+          description: Attachment added; returns the updated page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPage"
+        "400":
+          description: Invalid file metadata or upload path
+        "403":
+          description: Not allowed to attach files to this page
+  /wiki/attachments/{attachmentId}:
+    delete:
+      operationId: deleteWikiAttachment
+      tags: [wiki]
+      summary: Remove an attachment from a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Attachment removed
+        "403":
+          description: Not allowed to remove this attachment
+        "404":
+          description: Attachment not found
+  /wiki/attachments/{attachmentId}/download:
+    get:
+      operationId: downloadWikiAttachment
+      tags: [wiki]
+      summary: Download an authenticated wiki attachment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Private attachment bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Attachment not found
   /wiki/modules/{moduleId}/editors:
     get:
       operationId: getModuleWikiEditors
@@ -5956,18 +6146,6 @@ components:
         nextcloudOidcClientId:
           type: string
           nullable: true
-        outlineConfigured:
-          type: boolean
-        outlineOidcClientSecretConfigured:
-          type: boolean
-        outlineApiTokenConfigured:
-          type: boolean
-        outlineUrl:
-          type: string
-          nullable: true
-        outlineOidcClientId:
-          type: string
-          nullable: true
       required:
         [
           deepseekConfigured,
@@ -5976,9 +6154,6 @@ components:
           nextcloudConfigured,
           nextcloudAdminPasswordConfigured,
           nextcloudOidcClientSecretConfigured,
-          outlineConfigured,
-          outlineOidcClientSecretConfigured,
-          outlineApiTokenConfigured,
         ]
     UpdateIntegrationSettingsInput:
       type: object
@@ -6020,18 +6195,6 @@ components:
           type: string
           nullable: true
         nextcloudOidcClientSecret:
-          type: string
-          nullable: true
-        outlineUrl:
-          type: string
-          nullable: true
-        outlineOidcClientId:
-          type: string
-          nullable: true
-        outlineOidcClientSecret:
-          type: string
-          nullable: true
-        outlineApiToken:
           type: string
           nullable: true
     BrandingSettings:
@@ -6096,29 +6259,6 @@ components:
         nextcloudUrl:
           type: string
       required: [url, nextcloudUrl]
-    WikiStatus:
-      type: object
-      properties:
-        configured:
-          type: boolean
-        loginReady:
-          type: boolean
-          description: >-
-            URL and OIDC client are set, so SSO sign-in works even if the API
-            token (needed to provision per-module collections) is not yet set.
-        outlineUrl:
-          type: string
-          nullable: true
-      required: [configured, loginReady]
-    ModuleWikiAccess:
-      type: object
-      properties:
-        url:
-          type: string
-          description: Single-use URL that establishes SSO and opens the module wiki.
-        outlineUrl:
-          type: string
-      required: [url, outlineUrl]
     WikiEditorUser:
       type: object
       properties:
@@ -6156,6 +6296,159 @@ components:
           items:
             type: integer
       required: [userIds]
+    WikiAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        fileName:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        indexStatus:
+          type: string
+          enum: [pending, processing, indexed, skipped, failed]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, fileName, contentType, size, indexStatus, createdAt]
+    WikiPageSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: [integer, "null"]
+        moduleName:
+          type: [string, "null"]
+        title:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        attachmentCount:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+        canEdit:
+          type: boolean
+      required: [id, moduleId, moduleName, title, tags, attachmentCount, updatedAt, canEdit]
+    WikiPageList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WikiPageSummary"
+        canCreate:
+          type: boolean
+      required: [items, canCreate]
+    WikiPage:
+      allOf:
+        - $ref: "#/components/schemas/WikiPageSummary"
+        - type: object
+          properties:
+            content:
+              type: string
+            parentId:
+              type: [integer, "null"]
+            createdAt:
+              type: string
+              format: date-time
+            attachments:
+              type: array
+              items:
+                $ref: "#/components/schemas/WikiAttachment"
+          required: [content, parentId, createdAt, attachments]
+    WikiPageInput:
+      type: object
+      properties:
+        moduleId:
+          type: [integer, "null"]
+        parentId:
+          type: [integer, "null"]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 100000
+        tags:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+      required: [moduleId, parentId, title, content, tags]
+    WikiPageUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 100000
+        tags:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+    WikiAttachmentInput:
+      type: object
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 240
+        objectPath:
+          type: string
+          minLength: 1
+          maxLength: 500
+        contentType:
+          type: string
+          maxLength: 200
+        size:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+      required: [fileName, objectPath, contentType, size]
+    WikiUploadRequest:
+      type: object
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 240
+        contentType:
+          type: string
+          maxLength: 200
+        size:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+      required: [fileName, contentType, size]
+    WikiUploadUrl:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required: [uploadURL, objectPath, expiresAt]
     AcademicYear:
       type: object
       properties:

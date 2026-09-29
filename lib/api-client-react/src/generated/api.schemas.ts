@@ -1381,11 +1381,6 @@ export interface IntegrationSettings {
   collaboraUrl?: string | null;
   nextcloudAdminUser?: string | null;
   nextcloudOidcClientId?: string | null;
-  outlineConfigured: boolean;
-  outlineOidcClientSecretConfigured: boolean;
-  outlineApiTokenConfigured: boolean;
-  outlineUrl?: string | null;
-  outlineOidcClientId?: string | null;
 }
 
 export interface UpdateIntegrationSettingsInput {
@@ -1402,10 +1397,6 @@ export interface UpdateIntegrationSettingsInput {
   nextcloudAdminPassword?: string | null;
   nextcloudOidcClientId?: string | null;
   nextcloudOidcClientSecret?: string | null;
-  outlineUrl?: string | null;
-  outlineOidcClientId?: string | null;
-  outlineOidcClientSecret?: string | null;
-  outlineApiToken?: string | null;
 }
 
 export interface BrandingSettings {
@@ -1444,19 +1435,6 @@ export interface ModuleSpaceAccess {
   nextcloudUrl: string;
 }
 
-export interface WikiStatus {
-  configured: boolean;
-  /** URL and OIDC client are set, so SSO sign-in works even if the API token (needed to provision per-module collections) is not yet set. */
-  loginReady: boolean;
-  outlineUrl?: string | null;
-}
-
-export interface ModuleWikiAccess {
-  /** Single-use URL that establishes SSO and opens the module wiki. */
-  url: string;
-  outlineUrl: string;
-}
-
 export interface WikiEditorUser {
   id: number;
   name: string;
@@ -1474,6 +1452,121 @@ export interface ModuleWikiEditors {
 
 export interface UpdateModuleWikiEditorsInput {
   userIds: number[];
+}
+
+export type WikiAttachmentIndexStatus = typeof WikiAttachmentIndexStatus[keyof typeof WikiAttachmentIndexStatus];
+
+
+export const WikiAttachmentIndexStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  indexed: 'indexed',
+  skipped: 'skipped',
+  failed: 'failed',
+} as const;
+
+export interface WikiAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+  indexStatus: WikiAttachmentIndexStatus;
+  createdAt: string;
+}
+
+export interface WikiPageSummary {
+  id: number;
+  /** @nullable */
+  moduleId: number | null;
+  /** @nullable */
+  moduleName: string | null;
+  title: string;
+  tags: string[];
+  attachmentCount: number;
+  updatedAt: string;
+  canEdit: boolean;
+}
+
+export interface WikiPageList {
+  items: WikiPageSummary[];
+  canCreate: boolean;
+}
+
+export type WikiPage = WikiPageSummary & ({
+  content: string;
+  /** @nullable */
+  parentId: number | null;
+  createdAt: string;
+  attachments: WikiAttachment[];
+});
+
+export interface WikiPageInput {
+  /** @nullable */
+  moduleId: number | null;
+  /** @nullable */
+  parentId: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 100000 */
+  content: string;
+  /** @maxItems 20 */
+  tags: string[];
+}
+
+export interface WikiPageUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /** @maxLength 100000 */
+  content?: string;
+  /** @maxItems 20 */
+  tags?: string[];
+}
+
+export interface WikiAttachmentInput {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  fileName: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  objectPath: string;
+  /** @maxLength 200 */
+  contentType: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  size: number;
+}
+
+export interface WikiUploadRequest {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  fileName: string;
+  /** @maxLength 200 */
+  contentType: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  size: number;
+}
+
+export interface WikiUploadUrl {
+  uploadURL: string;
+  objectPath: string;
+  expiresAt: string;
 }
 
 export interface AcademicYear {
@@ -1736,6 +1829,23 @@ provinceId?: ProvinceQueryParameter;
 export type GetDashboardStatisticsParams = {
 provinceId?: ProvinceQueryParameter;
 };
+
+export type ListWikiPagesParams = {
+q?: string;
+moduleId?: number;
+globalOnly?: boolean;
+tag?: string;
+kind?: ListWikiPagesKind;
+};
+
+export type ListWikiPagesKind = typeof ListWikiPagesKind[keyof typeof ListWikiPagesKind];
+
+
+export const ListWikiPagesKind = {
+  all: 'all',
+  files: 'files',
+  zip: 'zip',
+} as const;
 
 export type ListYearConfirmationsParams = {
 /**

@@ -1106,7 +1106,7 @@ export const ListCyclesResponse = zod.array(ListCyclesResponseItem)
 
 
 /**
- * @summary Create a catalog cycle (superadmin only)
+ * @summary Create a catalog cycle and offer it at an active-family center
  */
 export const CreateCycleBody = zod.object({
   "name": zod.string(),
@@ -2381,12 +2381,7 @@ export const GetIntegrationSettingsResponse = zod.object({
   "nextcloudUrl": zod.string().nullish(),
   "collaboraUrl": zod.string().nullish(),
   "nextcloudAdminUser": zod.string().nullish(),
-  "nextcloudOidcClientId": zod.string().nullish(),
-  "outlineConfigured": zod.boolean(),
-  "outlineOidcClientSecretConfigured": zod.boolean(),
-  "outlineApiTokenConfigured": zod.boolean(),
-  "outlineUrl": zod.string().nullish(),
-  "outlineOidcClientId": zod.string().nullish()
+  "nextcloudOidcClientId": zod.string().nullish()
 })
 
 
@@ -2406,11 +2401,7 @@ export const UpdateIntegrationSettingsBody = zod.object({
   "nextcloudAdminUser": zod.string().nullish(),
   "nextcloudAdminPassword": zod.string().nullish(),
   "nextcloudOidcClientId": zod.string().nullish(),
-  "nextcloudOidcClientSecret": zod.string().nullish(),
-  "outlineUrl": zod.string().nullish(),
-  "outlineOidcClientId": zod.string().nullish(),
-  "outlineOidcClientSecret": zod.string().nullish(),
-  "outlineApiToken": zod.string().nullish()
+  "nextcloudOidcClientSecret": zod.string().nullish()
 })
 
 export const UpdateIntegrationSettingsResponse = zod.object({
@@ -2426,12 +2417,7 @@ export const UpdateIntegrationSettingsResponse = zod.object({
   "nextcloudUrl": zod.string().nullish(),
   "collaboraUrl": zod.string().nullish(),
   "nextcloudAdminUser": zod.string().nullish(),
-  "nextcloudOidcClientId": zod.string().nullish(),
-  "outlineConfigured": zod.boolean(),
-  "outlineOidcClientSecretConfigured": zod.boolean(),
-  "outlineApiTokenConfigured": zod.boolean(),
-  "outlineUrl": zod.string().nullish(),
-  "outlineOidcClientId": zod.string().nullish()
+  "nextcloudOidcClientId": zod.string().nullish()
 })
 
 
@@ -2491,25 +2477,201 @@ export const OpenModuleSpaceResponse = zod.object({
 
 
 /**
- * @summary Whether the documentation wiki (Outline) is configured
+ * @summary Search and filter authenticated wiki pages
  */
-export const GetWikiStatusResponse = zod.object({
-  "configured": zod.boolean(),
-  "loginReady": zod.boolean().describe('URL and OIDC client are set, so SSO sign-in works even if the API token (needed to provision per-module collections) is not yet set.'),
-  "outlineUrl": zod.string().nullish()
+export const ListWikiPagesQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "moduleId": zod.coerce.number().optional(),
+  "globalOnly": zod.coerce.boolean().optional(),
+  "tag": zod.coerce.string().optional(),
+  "kind": zod.enum(['all', 'files', 'zip']).optional()
+})
+
+export const ListWikiPagesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number().nullable(),
+  "moduleName": zod.string().nullable(),
+  "title": zod.string(),
+  "tags": zod.array(zod.string()),
+  "attachmentCount": zod.number(),
+  "updatedAt": zod.coerce.date(),
+  "canEdit": zod.boolean()
+})),
+  "canCreate": zod.boolean()
 })
 
 
 /**
- * @summary Provision and open the documentation wiki for a module (SSO)
+ * @summary Create a page in the general wiki or a module wiki
  */
-export const OpenModuleWikiParams = zod.object({
-  "moduleId": zod.coerce.number()
+export const createWikiPageBodyTitleMax = 200;
+
+export const createWikiPageBodyContentMax = 100000;
+
+export const createWikiPageBodyTagsItemMax = 40;
+
+export const createWikiPageBodyTagsMax = 20;
+
+
+
+export const CreateWikiPageBody = zod.object({
+  "moduleId": zod.number().nullable(),
+  "parentId": zod.number().nullable(),
+  "title": zod.string().min(1).max(createWikiPageBodyTitleMax),
+  "content": zod.string().max(createWikiPageBodyContentMax),
+  "tags": zod.array(zod.string().min(1).max(createWikiPageBodyTagsItemMax)).max(createWikiPageBodyTagsMax)
 })
 
-export const OpenModuleWikiResponse = zod.object({
-  "url": zod.string().describe('Single-use URL that establishes SSO and opens the module wiki.'),
-  "outlineUrl": zod.string()
+
+/**
+ * @summary Request a short-lived upload URL bound to the current user
+ */
+export const requestWikiUploadUrlBodyFileNameMax = 240;
+
+export const requestWikiUploadUrlBodyContentTypeMax = 200;
+
+export const requestWikiUploadUrlBodySizeMax = 52428800;
+
+
+
+export const RequestWikiUploadUrlBody = zod.object({
+  "fileName": zod.string().min(1).max(requestWikiUploadUrlBodyFileNameMax),
+  "contentType": zod.string().max(requestWikiUploadUrlBodyContentTypeMax),
+  "size": zod.number().min(1).max(requestWikiUploadUrlBodySizeMax)
+})
+
+export const RequestWikiUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string(),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get an authenticated wiki page and its attachments
+ */
+export const GetWikiPageParams = zod.object({
+  "pageId": zod.coerce.number()
+})
+
+export const GetWikiPageResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number().nullable(),
+  "moduleName": zod.string().nullable(),
+  "title": zod.string(),
+  "tags": zod.array(zod.string()),
+  "attachmentCount": zod.number(),
+  "updatedAt": zod.coerce.date(),
+  "canEdit": zod.boolean()
+}).and(zod.object({
+  "content": zod.string(),
+  "parentId": zod.number().nullable(),
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number(),
+  "indexStatus": zod.enum(['pending', 'processing', 'indexed', 'skipped', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Update a wiki page
+ */
+export const UpdateWikiPageParams = zod.object({
+  "pageId": zod.coerce.number()
+})
+
+export const updateWikiPageBodyTitleMax = 200;
+
+export const updateWikiPageBodyContentMax = 100000;
+
+export const updateWikiPageBodyTagsItemMax = 40;
+
+export const updateWikiPageBodyTagsMax = 20;
+
+
+
+export const UpdateWikiPageBody = zod.object({
+  "title": zod.string().min(1).max(updateWikiPageBodyTitleMax).optional(),
+  "content": zod.string().max(updateWikiPageBodyContentMax).optional(),
+  "tags": zod.array(zod.string().min(1).max(updateWikiPageBodyTagsItemMax)).max(updateWikiPageBodyTagsMax).optional()
+})
+
+export const UpdateWikiPageResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number().nullable(),
+  "moduleName": zod.string().nullable(),
+  "title": zod.string(),
+  "tags": zod.array(zod.string()),
+  "attachmentCount": zod.number(),
+  "updatedAt": zod.coerce.date(),
+  "canEdit": zod.boolean()
+}).and(zod.object({
+  "content": zod.string(),
+  "parentId": zod.number().nullable(),
+  "createdAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number(),
+  "indexStatus": zod.enum(['pending', 'processing', 'indexed', 'skipped', 'failed']),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Soft-delete a wiki page
+ */
+export const DeleteWikiPageParams = zod.object({
+  "pageId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Add a privately stored file to a wiki page
+ */
+export const AddWikiAttachmentParams = zod.object({
+  "pageId": zod.coerce.number()
+})
+
+export const addWikiAttachmentBodyFileNameMax = 240;
+
+export const addWikiAttachmentBodyObjectPathMax = 500;
+
+export const addWikiAttachmentBodyContentTypeMax = 200;
+
+export const addWikiAttachmentBodySizeMax = 52428800;
+
+
+
+export const AddWikiAttachmentBody = zod.object({
+  "fileName": zod.string().min(1).max(addWikiAttachmentBodyFileNameMax),
+  "objectPath": zod.string().min(1).max(addWikiAttachmentBodyObjectPathMax),
+  "contentType": zod.string().max(addWikiAttachmentBodyContentTypeMax),
+  "size": zod.number().min(1).max(addWikiAttachmentBodySizeMax)
+})
+
+
+/**
+ * @summary Remove an attachment from a wiki page
+ */
+export const DeleteWikiAttachmentParams = zod.object({
+  "attachmentId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Download an authenticated wiki attachment
+ */
+export const DownloadWikiAttachmentParams = zod.object({
+  "attachmentId": zod.coerce.number()
 })
 
 

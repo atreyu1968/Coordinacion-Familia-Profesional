@@ -222,7 +222,7 @@ export function getAccessTokenUser(t: string): number | null {
 
 // Which client a login ticket targets, so /start knows where to bounce the
 // browser after establishing the SSO session.
-export type OidcTarget = "nextcloud" | "outline";
+export type OidcTarget = "nextcloud";
 
 interface TicketRecord extends Expiring {
   userId: number;

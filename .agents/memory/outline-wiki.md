@@ -1,9 +1,25 @@
 ---
-name: Outline documentation wiki (Recursos → Documentación)
-description: How the self-hosted Outline wiki is integrated — SSO, per-module edit authz, and the subdomain deploy constraint.
+name: Native wiki; Outline retired
+description: The application uses its own wiki; prior Outline data and infrastructure are intentionally left intact.
 ---
 
-# Outline documentation wiki
+# Native wiki; Outline retired
+
+## Current state
+Coordina ADG now serves its documentation wiki natively. The app no longer signs
+users into Outline, provisions collections/groups, or synchronizes editor grants.
+The wiki starts empty; no Outline pages or files are imported.
+
+Existing Outline services, files, database contents, credentials, and module
+mapping rows are intentionally preserved. Legacy settings and mappings are inert
+and must not be removed as part of routine native-wiki work.
+
+**Why:** the user requested a native wiki without migrating or deleting the old
+Outline data or external service.
+
+**How to apply:** treat the sections below as historical operational notes only.
+Do not run legacy installers, modify the existing Outline service, or remove its
+data unless the user explicitly requests that work.
 
 Self-hosted Outline integrated as the "Documentación" entry under Recursos, mirroring
 the Nextcloud collaborative-space pattern. One Outline collection per module; everyone

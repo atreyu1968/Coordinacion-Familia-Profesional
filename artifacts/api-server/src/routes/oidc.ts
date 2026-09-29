@@ -24,13 +24,6 @@ import {
   nextcloudUid,
   moduleFolderName,
 } from "../lib/nextcloud";
-import {
-  resolveOutlineOidcClient,
-  resolveOutlineUrl,
-  isOutlineRedirectUri,
-  getModuleWikiMapping,
-  moduleCollectionPath,
-} from "../lib/outline";
 import type { OidcTarget } from "../lib/oidc";
 import { getAppBaseUrl, readCookie } from "../lib/appUrl";
 import { logger } from "../lib/logger";
@@ -38,9 +31,9 @@ import { logger } from "../lib/logger";
 // ---------------------------------------------------------------------------
 // OIDC provider endpoints (mounted under /api). This app is the source of truth
 // for identities; external apps log in here so users never see a second login.
-// Two clients are supported: Nextcloud's `user_oidc` (collaborative space) and
-// Outline (documentation wiki). Each is resolved by its client_id and validated
-// against its own callback origin/path. The issuer is `${appBaseUrl}/api/oidc`.
+// Nextcloud's `user_oidc` is the external client. The native documentation wiki
+// uses the app's own authenticated API and does not use this OIDC provider.
+// The issuer is `${appBaseUrl}/api/oidc`.
 // ---------------------------------------------------------------------------
 
 const router: IRouter = Router();
@@ -88,7 +81,7 @@ export function isAllowedRedirectUri(redirectUri: string, nextcloudUrl: string):
   return /^\/(index\.php\/)?apps\/user_oidc\//.test(rest);
 }
 
-// A configured OIDC client (Nextcloud or Outline), with its own redirect policy.
+// A configured Nextcloud OIDC client with its own redirect policy.
 interface ResolvedOidcClient {
   target: OidcTarget;
   clientId: string;
@@ -109,17 +102,6 @@ function resolveClients(settings: IntegrationSettings): ResolvedOidcClient[] {
       clientSecret: nc.clientSecret,
       baseUrl: ncUrl,
       isAllowedRedirect: (uri) => isAllowedRedirectUri(uri, ncUrl),
-    });
-  }
-  const ol = resolveOutlineOidcClient(settings);
-  const olUrl = resolveOutlineUrl(settings);
-  if (ol && olUrl) {
-    clients.push({
-      target: "outline",
-      clientId: ol.clientId,
-      clientSecret: ol.clientSecret,
-      baseUrl: olUrl,
-      isAllowedRedirect: (uri) => isOutlineRedirectUri(uri, olUrl),
     });
   }
   return clients;
@@ -191,21 +173,6 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
       maxAge: 30 * 60 * 1000,
     });
   };
-
-  if (rec.target === "outline") {
-    const outlineUrl = resolveOutlineUrl(settings);
-    if (!outlineUrl) {
-      res.status(503).send("La documentación no está configurada");
-      return;
-    }
-    setSsoCookie();
-    // Deep-link to the module's collection. Outline (with OIDC as the sole
-    // sign-in method) auto-redirects an unauthenticated visit through our
-    // provider; the SSO cookie above makes that handshake silent.
-    const mapping = await getModuleWikiMapping(rec.moduleId);
-    res.redirect(`${outlineUrl}${moduleCollectionPath(mapping)}`);
-    return;
-  }
 
   const nextcloudUrl = resolveNextcloudUrl(settings);
   if (!nextcloudUrl) {

@@ -6,24 +6,16 @@ Plataforma de coordinación de Familias Profesionales: gestión de centros,
 profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros,
 videollamadas, formularios documentales y una **wiki de documentación**.
 
-### Novedades de la versión 4.0 — Documentación (wiki Outline)
+### Novedades de la versión 4.0 — Wiki de documentación nativa
 
-Se incorpora una **wiki de documentación** integrada (basada en
-[Outline](https://www.getoutline.com/), de código abierto) accesible desde
-**Recursos → Documentación** y también desde cada módulo. Características:
+La aplicación incluye una wiki propia accesible desde **Recursos →
+Documentación** y desde cada módulo. Sus páginas se guardan en Coordina ADG;
+la lectura requiere iniciar sesión y la edición se concede por sección. Los
+adjuntos son privados y la búsqueda también indexa texto de documentos Office y
+archivos ZIP. La wiki ya no depende de Outline ni de un segundo subdominio.
 
-- **Una colección por módulo**: cada módulo tiene su propio espacio de
-  documentación.
-- **Lectura para todos**: cualquier usuario autenticado puede leer toda la
-  documentación.
-- **Edición por permisos**: solo las personas seleccionadas pueden editar. El
-  *superadministrador* concede edición a cualquier persona; el *coordinador*
-  de un módulo concede edición al profesorado colaborador de ese módulo.
-- **Inicio de sesión único (SSO)**: el propio API actúa como proveedor de
-  identidad (OIDC), así que el profesorado entra en la wiki ya autenticado sin
-  ver una segunda pantalla de acceso.
-- **Instalación e integración automáticas** desde `deploy/install.sh` cuando hay
-  un dominio HTTPS real (ver §4.c). Outline necesita su **propio subdominio**.
+Las instalaciones, datos y credenciales existentes de Outline no se modifican
+ni se eliminan; la aplicación actual ya no se conecta a ese servicio.
 
 ### Novedades de la versión 3.4 — Mensajería estilo WhatsApp
 
@@ -220,9 +212,9 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
 | `NEXTCLOUD_URL` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` | no | Espacio colaborativo (provisión de carpetas) |
 | `NEXTCLOUD_OIDC_CLIENT_ID` / `NEXTCLOUD_OIDC_CLIENT_SECRET` | no | Cliente OIDC que usa Nextcloud para el inicio de sesión único |
-| `OUTLINE_URL` | no | URL pública de la wiki de documentación (su subdominio) |
-| `OUTLINE_OIDC_CLIENT_ID` / `OUTLINE_OIDC_CLIENT_SECRET` | no | Cliente OIDC que usa Outline para el inicio de sesión único |
-| `OUTLINE_API_TOKEN` | no | Token de API de Outline para aprovisionar colecciones y grupos |
+| `OUTLINE_URL` | no | Variable heredada; la wiki nativa no la usa |
+| `OUTLINE_OIDC_CLIENT_ID` / `OUTLINE_OIDC_CLIENT_SECRET` | no | Credenciales heredadas; la wiki nativa no las usa |
+| `OUTLINE_API_TOKEN` | no | Token heredado; la wiki nativa no lo usa |
 | `OIDC_SIGNING_KEY` | no | Clave RSA (PEM) para firmar los *id_token* (si no, se genera y guarda sola) |
 
 ### Funciones opcionales
@@ -276,14 +268,9 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   (nunca se muestran de nuevo) o por variables de entorno. Sin configurar, la
   página *Espacio colaborativo* avisa de que no está disponible y el resto de la
   app funciona con normalidad.
-- **Documentación (wiki Outline):** una wiki con una colección por módulo (lectura
-  para todos, edición por permisos). Si instalas con un dominio HTTPS real y aceptas
-  instalarla, el instalador la **monta e integra automáticamente** (Docker con
-  Outline + MinIO, nginx/HTTPS y SSO). Necesita su **propio subdominio**
-  (`docs.<dominio>`) más uno para los ficheros (`files.<dominio>`), cada uno con su
-  registro DNS. El token de API de Outline se pega a mano en el **Panel de Control →
-  Documentación**. Sin configurar, la página *Documentación* avisa de que no está
-  disponible y el resto de la app funciona con normalidad. Ver §4.c.
+- **Documentación:** la wiki nativa se incluye en la aplicación y no necesita un
+  servicio ni credenciales externas. La sección §4.c conserva información
+  histórica sobre la antigua integración con Outline.
 
 ---
 
@@ -340,7 +327,13 @@ colaborativo* de la web.
 
 ---
 
-## 4.c Documentación (wiki Outline)
+## 4.c Histórico: Outline (integración retirada)
+
+> **No seguir estas instrucciones para instalar la versión actual.** Coordina ADG
+> ahora incluye una wiki nativa y no instala, autentica ni sincroniza contenido con
+> Outline. Esta retirada no borró los datos, contenedores ni archivos externos
+> existentes; los scripts de `deploy/outline/` se conservan para instalaciones
+> antiguas, pero la aplicación actual ya no los integra.
 
 Añade una **wiki de documentación** integrada (Outline, código abierto) con una
 **colección por módulo**, accesible desde **Recursos → Documentación** y desde

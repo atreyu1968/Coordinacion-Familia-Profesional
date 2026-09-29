@@ -23,7 +23,7 @@ import meetingsRouter from "./meetings";
 import forumsRouter from "./forums";
 import oidcRouter from "./oidc";
 import collabRouter from "./collab";
-import wikiRouter from "./wiki";
+import wikiRouter from "./nativeWiki";
 
 const router: IRouter = Router();
 
