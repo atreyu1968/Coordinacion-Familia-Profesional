@@ -10,10 +10,76 @@ const MAX_ENTRY_BYTES = 1 * 1024 * 1024;
 const MAX_INDEXED_BYTES = 2 * 1024 * 1024;
 const MAX_ZIP_ENTRIES = 1000;
 const INDEX_INTERVAL_MS = 5_000;
+const MAX_STORAGE_DOWNLOAD_ATTEMPTS = 3;
+const STORAGE_RETRY_BASE_DELAY_MS = 200;
+const RETRYABLE_STORAGE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const RETRYABLE_STORAGE_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ESOCKETTIMEDOUT",
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "EPIPE",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+  "ERR_STREAM_PREMATURE_CLOSE",
+]);
 
 const objectStorage = new ObjectStorageService();
 let workerTimer: ReturnType<typeof setInterval> | undefined;
 let workerBusy = false;
+
+class IncompleteObjectStreamError extends Error {
+  constructor() {
+    super("El flujo del archivo se cerró antes de tiempo");
+    this.name = "IncompleteObjectStreamError";
+  }
+}
+
+class RetryableStorageError extends Error {
+  constructor(readonly originalError: unknown) {
+    super("Temporary object storage failure");
+    this.name = "RetryableStorageError";
+  }
+}
+
+function isRetryableStorageFailure(error: unknown): boolean {
+  const seen = new Set<object>();
+  let current = error;
+
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const shaped = current as {
+      name?: unknown;
+      code?: unknown;
+      status?: unknown;
+      statusCode?: unknown;
+      cause?: unknown;
+    };
+
+    if (shaped.name === "ObjectNotFoundError") return false;
+    if (current instanceof IncompleteObjectStreamError) return true;
+
+    for (const status of [shaped.statusCode, shaped.status, shaped.code]) {
+      const numericStatus =
+        typeof status === "number" || typeof status === "string"
+          ? Number(status)
+          : Number.NaN;
+      if (Number.isInteger(numericStatus)) {
+        return RETRYABLE_STORAGE_HTTP_STATUSES.has(numericStatus);
+      }
+      if (
+        typeof status === "string" &&
+        RETRYABLE_STORAGE_ERROR_CODES.has(status.toUpperCase())
+      ) {
+        return true;
+      }
+    }
+
+    current = shaped.cause;
+  }
+  return false;
+}
 
 function decodeXmlEntities(text: string): string {
   return text
@@ -83,7 +149,7 @@ async function readBoundedStream(
     });
     stream.on("close", () => {
       if (!settled)
-        fail(new Error("El flujo del archivo se cerró antes de tiempo"));
+        fail(new IncompleteObjectStreamError());
     });
   });
 }
@@ -199,18 +265,67 @@ export async function extractText(
 }
 
 async function downloadBoundedObject(objectPath: string): Promise<Buffer> {
-  const storedObject = await objectStorage.getObjectEntityFile(objectPath);
-  const response = await objectStorage.downloadObject(storedObject, 0);
-  const declaredLength = Number(response.headers.get("content-length") ?? 0);
-  if (declaredLength > MAX_ATTACHMENT_BYTES) {
-    await response.body?.cancel();
-    throw new Error("El archivo supera el límite permitido");
+  try {
+    const storedObject = await objectStorage.getObjectEntityFile(objectPath);
+    const response = await objectStorage.downloadObject(storedObject, 0);
+    if (!response.ok) {
+      if (response.body) await response.body.cancel().catch(() => undefined);
+      const error = new Error(
+        `Object storage download failed with status ${response.status}`,
+      ) as Error & { status: number };
+      error.status = response.status;
+      throw error;
+    }
+    const declaredLength = Number(response.headers.get("content-length") ?? 0);
+    if (declaredLength > MAX_ATTACHMENT_BYTES) {
+      await response.body?.cancel();
+      throw new Error("El archivo supera el límite permitido");
+    }
+    if (!response.body) return Buffer.alloc(0);
+    return await readBoundedStream(
+      readableFromWeb(response.body),
+      MAX_ATTACHMENT_BYTES,
+    );
+  } catch (error) {
+    if (isRetryableStorageFailure(error)) {
+      throw new RetryableStorageError(error);
+    }
+    throw error;
   }
-  if (!response.body) return Buffer.alloc(0);
-  return readBoundedStream(
-    readableFromWeb(response.body),
-    MAX_ATTACHMENT_BYTES,
-  );
+}
+
+async function downloadBoundedObjectWithRetry(
+  objectPath: string,
+  attachmentId: number,
+): Promise<Buffer> {
+  for (let attempt = 1; attempt <= MAX_STORAGE_DOWNLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      return await downloadBoundedObject(objectPath);
+    } catch (error) {
+      if (
+        !(error instanceof RetryableStorageError) ||
+        attempt >= MAX_STORAGE_DOWNLOAD_ATTEMPTS
+      ) {
+        throw error instanceof RetryableStorageError
+          ? error.originalError
+          : error;
+      }
+
+      const delayMs = STORAGE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      logger.warn(
+        {
+          err: error.originalError,
+          attachmentId,
+          attempt,
+          maxAttempts: MAX_STORAGE_DOWNLOAD_ATTEMPTS,
+          retryDelayMs: delayMs,
+        },
+        "Retrying wiki attachment download after a temporary storage failure",
+      );
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw new Error("Wiki attachment download attempts exhausted");
 }
 
 function readableFromWeb(
@@ -249,7 +364,10 @@ export async function indexWikiAttachment(attachmentId: number): Promise<void> {
     if (attachment.size > MAX_ATTACHMENT_BYTES) {
       throw new Error("El archivo supera el límite permitido");
     }
-    const bytes = await downloadBoundedObject(attachment.objectPath);
+    const bytes = await downloadBoundedObjectWithRetry(
+      attachment.objectPath,
+      attachmentId,
+    );
     const indexedText = await extractText(attachment.fileName, bytes);
     await db
       .update(wikiAttachmentsTable)

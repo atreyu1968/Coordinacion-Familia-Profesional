@@ -121,6 +121,14 @@ async function makeAttachment(options: {
   return attachment!.id;
 }
 
+function temporaryStorageError(): Error & { code: number } {
+  const error = new Error("Temporary object storage outage") as Error & {
+    code: number;
+  };
+  error.code = 503;
+  return error;
+}
+
 describe("native wiki authenticated reads and search", () => {
   it("allows authenticated users to read global and module pages, and rejects anonymous requests", async () => {
     const reader = await makeUser();
@@ -660,6 +668,104 @@ describe("native wiki Office and ZIP indexing", () => {
     );
   });
 
+  it("retries a temporary storage failure and makes recovered text searchable", async () => {
+    const uploader = await makeUser();
+    const pageId = await makePage({
+      userId: uploader.user.id,
+      title: `${UNIQUE} recovered attachment`,
+    });
+    const objectPath = `/objects/uploads/${UNIQUE}recoveredfile123456`;
+    const indexedText = `storageRecovery${UNIQUE}`;
+    const bytes = Buffer.from(indexedText);
+    const attachmentId = await makeAttachment({
+      pageId,
+      userId: uploader.user.id,
+      fileName: "recovered.txt",
+      objectPath,
+      indexStatus: "pending",
+      size: bytes.length,
+    });
+    vi.spyOn(
+      ObjectStorageService.prototype,
+      "getObjectEntityFile",
+    ).mockResolvedValue({ kind: "local", absPath: objectPath });
+
+    let downloadAttempts = 0;
+    vi.spyOn(
+      ObjectStorageService.prototype,
+      "downloadObject",
+    ).mockImplementation(async () => {
+      downloadAttempts += 1;
+      if (downloadAttempts === 1) throw temporaryStorageError();
+      return new Response(bytes, {
+        headers: { "content-length": String(bytes.length) },
+      });
+    });
+
+    await indexWikiAttachment(attachmentId);
+    expect(downloadAttempts).toBe(2);
+
+    const [indexedAttachment] = await db
+      .select({
+        indexStatus: wikiAttachmentsTable.indexStatus,
+        indexedText: wikiAttachmentsTable.indexedText,
+      })
+      .from(wikiAttachmentsTable)
+      .where(eq(wikiAttachmentsTable.id, attachmentId));
+    expect(indexedAttachment!.indexStatus).toBe("indexed");
+    expect(indexedAttachment!.indexedText).toContain(indexedText);
+
+    const search = await request(app)
+      .get(`/api/wiki/pages?q=${indexedText}`)
+      .set(authHeader(uploader.token));
+    expect(search.body.items.map((item: { id: number }) => item.id)).toContain(
+      pageId,
+    );
+  });
+
+  it("stops after the bounded number of transient storage download attempts", async () => {
+    const uploader = await makeUser();
+    const pageId = await makePage({
+      userId: uploader.user.id,
+      title: `${UNIQUE} unavailable attachment`,
+    });
+    const objectPath = `/objects/uploads/${UNIQUE}unavailablefile123456`;
+    const attachmentId = await makeAttachment({
+      pageId,
+      userId: uploader.user.id,
+      fileName: "unavailable.txt",
+      objectPath,
+      indexStatus: "pending",
+      size: 20,
+    });
+    vi.spyOn(
+      ObjectStorageService.prototype,
+      "getObjectEntityFile",
+    ).mockResolvedValue({ kind: "local", absPath: objectPath });
+
+    let downloadAttempts = 0;
+    vi.spyOn(
+      ObjectStorageService.prototype,
+      "downloadObject",
+    ).mockImplementation(async () => {
+      downloadAttempts += 1;
+      throw temporaryStorageError();
+    });
+
+    await indexWikiAttachment(attachmentId);
+    expect(downloadAttempts).toBe(3);
+
+    const [indexedAttachment] = await db
+      .select({
+        indexStatus: wikiAttachmentsTable.indexStatus,
+        indexedText: wikiAttachmentsTable.indexedText,
+      })
+      .from(wikiAttachmentsTable)
+      .where(eq(wikiAttachmentsTable.id, attachmentId));
+    expect(indexedAttachment!.indexStatus).toBe("failed");
+    expect(indexedAttachment!.indexedText).toBe("");
+  });
+
   it("marks malformed Office packages as failed without interrupting page access", async () => {
     const uploader = await makeUser();
     const pageId = await makePage({
@@ -680,7 +786,7 @@ describe("native wiki Office and ZIP indexing", () => {
       ObjectStorageService.prototype,
       "getObjectEntityFile",
     ).mockResolvedValue({ kind: "local", absPath: objectPath });
-    vi.spyOn(
+    const downloadSpy = vi.spyOn(
       ObjectStorageService.prototype,
       "downloadObject",
     ).mockResolvedValue(
@@ -690,6 +796,7 @@ describe("native wiki Office and ZIP indexing", () => {
     );
 
     await indexWikiAttachment(attachmentId);
+    expect(downloadSpy).toHaveBeenCalledTimes(1);
     const [indexedAttachment] = await db
       .select({
         indexStatus: wikiAttachmentsTable.indexStatus,
