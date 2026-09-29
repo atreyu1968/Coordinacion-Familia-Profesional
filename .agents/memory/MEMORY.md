@@ -8,6 +8,7 @@
 - [Active professional-family lock](active-family-lock.md) — whole app locked to one familia profesional; every center-read/by-id surface must filter centers.families @> [activeFamily]; facets families needs element-level filter.
 - [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.
 - [Native wiki; Outline retired](outline-wiki.md) — the app no longer integrates Outline; keep any existing external service/data and legacy settings untouched unless asked.
+- [JSZip stream compatibility](wiki-jszip-streams.md) — JSZip entry streams may lack async iteration; test event-based extraction and size limits with real archives.
 - [Announcements audience + attachments](announcements-audience.md) — Tablón uses shared audience model (not legacy provinceId) + ACL-bound downloadable attachments; backfill or province rows leak.
 - [Module membership & meeting access authz](module-membership-authz.md) — module coordinator can manage roster but not designate; /meetings/token must gate by roomName (IDOR).
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500, not OCS 102; guard before re-provision.

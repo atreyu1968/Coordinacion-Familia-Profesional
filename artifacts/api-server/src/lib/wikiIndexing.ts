@@ -31,7 +31,9 @@ function decodeXmlEntities(text: string): string {
 }
 
 function cleanXmlText(xml: string): string {
-  return decodeXmlEntities(xml.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeXmlEntities(xml.replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function isPlainTextFile(fileName: string): boolean {
@@ -48,18 +50,42 @@ async function readBoundedStream(
   stream: NodeJS.ReadableStream,
   maxBytes: number,
 ): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const rawChunk of stream as AsyncIterable<Buffer | Uint8Array>) {
-    const chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
-    total += chunk.length;
-    if (total > maxBytes) {
-      (stream as NodeJS.ReadableStream & { destroy?: () => void }).destroy?.();
-      throw new Error("El archivo supera el límite de indexación");
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks, total);
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
+    stream.on("data", (rawChunk: Buffer | Uint8Array) => {
+      if (settled) return;
+      const chunk = Buffer.isBuffer(rawChunk)
+        ? rawChunk
+        : Buffer.from(rawChunk);
+      total += chunk.length;
+      if (total > maxBytes) {
+        (
+          stream as NodeJS.ReadableStream & { destroy?: () => void }
+        ).destroy?.();
+        fail(new Error("El archivo supera el límite de indexación"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    stream.on("error", fail);
+    stream.on("end", () => {
+      if (settled) return;
+      settled = true;
+      resolve(Buffer.concat(chunks, total));
+    });
+    stream.on("close", () => {
+      if (!settled)
+        fail(new Error("El flujo del archivo se cerró antes de tiempo"));
+    });
+  });
 }
 
 async function readZipEntry(
@@ -69,9 +95,14 @@ async function readZipEntry(
   return readBoundedStream(entry.nodeStream(), maxBytes);
 }
 
-async function extractOfficeText(fileName: string, bytes: Buffer): Promise<string> {
+async function extractOfficeText(
+  fileName: string,
+  bytes: Buffer,
+): Promise<string> {
   const archive = await JSZip.loadAsync(bytes, { checkCRC32: false });
-  const names = Object.keys(archive.files).filter((name) => !archive.files[name]?.dir);
+  const names = Object.keys(archive.files).filter(
+    (name) => !archive.files[name]?.dir,
+  );
   let candidates: string[];
 
   if (/\.docx$/i.test(fileName)) {
@@ -81,7 +112,9 @@ async function extractOfficeText(fileName: string, bytes: Buffer): Promise<strin
         /^word\/(header|footer)\d*\.xml$/i.test(name),
     );
   } else if (/\.pptx$/i.test(fileName)) {
-    candidates = names.filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name));
+    candidates = names.filter((name) =>
+      /^ppt\/slides\/slide\d+\.xml$/i.test(name),
+    );
   } else if (/\.xlsx$/i.test(fileName)) {
     candidates = names.filter(
       (name) =>
@@ -98,7 +131,10 @@ async function extractOfficeText(fileName: string, bytes: Buffer): Promise<strin
     const entry = archive.files[name];
     if (!entry) continue;
     try {
-      const remaining = Math.min(MAX_ENTRY_BYTES, MAX_INDEXED_BYTES - totalBytes);
+      const remaining = Math.min(
+        MAX_ENTRY_BYTES,
+        MAX_INDEXED_BYTES - totalBytes,
+      );
       if (remaining <= 0) break;
       const contents = await readZipEntry(entry, remaining);
       totalBytes += contents.length;
@@ -146,7 +182,10 @@ async function extractZipText(bytes: Buffer): Promise<string> {
   return parts.join(" ").slice(0, MAX_INDEXED_BYTES);
 }
 
-async function extractText(fileName: string, bytes: Buffer): Promise<string> {
+export async function extractText(
+  fileName: string,
+  bytes: Buffer,
+): Promise<string> {
   const extension = fileName.toLowerCase();
   if (extension.endsWith(".zip")) return extractZipText(bytes);
   if (isOfficePackage(extension)) return extractOfficeText(fileName, bytes);
@@ -180,7 +219,7 @@ function readableFromWeb(
   return Readable.fromWeb(stream as import("node:stream/web").ReadableStream);
 }
 
-async function indexAttachment(attachmentId: number): Promise<void> {
+export async function indexWikiAttachment(attachmentId: number): Promise<void> {
   const [attachment] = await db
     .select()
     .from(wikiAttachmentsTable)
@@ -247,7 +286,7 @@ async function processPendingAttachments(): Promise<void> {
       .orderBy(asc(wikiAttachmentsTable.createdAt))
       .limit(3);
     for (const item of pending) {
-      await indexAttachment(item.id);
+      await indexWikiAttachment(item.id);
     }
   } catch (error) {
     logger.error({ err: error }, "Wiki attachment indexing pass failed");

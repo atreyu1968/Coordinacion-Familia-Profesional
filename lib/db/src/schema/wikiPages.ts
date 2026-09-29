@@ -71,7 +71,7 @@ export const wikiAttachmentsTable = pgTable(
     pageIndex: index("wiki_attachments_page_id_idx").on(table.pageId),
     searchIndex: index("wiki_attachments_search_gin_idx").using(
       "gin",
-      sql`to_tsvector('simple', coalesce(${table.fileName}, '') || ' ' || coalesce(${table.indexedText}, ''))`,
+      sql`to_tsvector('simple', regexp_replace(coalesce(${table.fileName}, ''), '[^[:alnum:]]+', ' ', 'g') || ' ' || coalesce(${table.indexedText}, ''))`,
     ),
   }),
 );

@@ -1,14 +1,5 @@
 import { Readable } from "node:stream";
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNull,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   AddWikiExternalLinkBody,
@@ -82,7 +73,10 @@ function parsePositiveId(raw: string | string[] | undefined): number | null {
 
 function sanitizeFileName(value: string): string {
   const name = value.replace(/\\/g, "/").split("/").pop() ?? "";
-  return name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 240);
+  return name
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim()
+    .slice(0, 240);
 }
 
 function normalizeExternalFileUrl(value: string): string | null {
@@ -103,7 +97,11 @@ function normalizeExternalFileUrl(value: string): string | null {
 }
 
 function normalizeTags(tags: string[]): string[] {
-  return [...new Set(tags.map((tag) => tag.trim().toLocaleLowerCase()).filter(Boolean))].slice(0, 20);
+  return [
+    ...new Set(
+      tags.map((tag) => tag.trim().toLocaleLowerCase()).filter(Boolean),
+    ),
+  ].slice(0, 20);
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -112,8 +110,8 @@ function isUniqueViolation(error: unknown): boolean {
   if (candidate.code === "23505") return true;
   return Boolean(
     candidate.cause &&
-      typeof candidate.cause === "object" &&
-      (candidate.cause as { code?: unknown }).code === "23505",
+    typeof candidate.cause === "object" &&
+    (candidate.cause as { code?: unknown }).code === "23505",
   );
 }
 
@@ -297,7 +295,10 @@ router.get(
     const tag = parsedQuery.data.tag?.trim().toLocaleLowerCase();
     const kind = parsedQuery.data.kind ?? "all";
 
-    if ((moduleId !== undefined && globalOnly) || !["all", "files", "zip"].includes(kind)) {
+    if (
+      (moduleId !== undefined && globalOnly) ||
+      !["all", "files", "zip"].includes(kind)
+    ) {
       res.status(400).json({ message: "Filtros incompatibles" });
       return;
     }
@@ -309,12 +310,11 @@ router.get(
         (${modulesTable.id} IS NOT NULL AND ${modulesTable.deletedAt} IS NULL)
       )`,
     ];
-    if (moduleId !== undefined) filters.push(eq(wikiPagesTable.moduleId, moduleId));
+    if (moduleId !== undefined)
+      filters.push(eq(wikiPagesTable.moduleId, moduleId));
     if (globalOnly) filters.push(isNull(wikiPagesTable.moduleId));
     if (tag) {
-      filters.push(
-        sql`${wikiPagesTable.tags} @> ARRAY[${tag}]::text[]`,
-      );
+      filters.push(sql`${wikiPagesTable.tags} @> ARRAY[${tag}]::text[]`);
     }
     if (query) {
       filters.push(sql`(
@@ -331,7 +331,8 @@ router.get(
             AND wa.deleted_at IS NULL
             AND to_tsvector(
               'simple',
-              coalesce(wa.file_name, '') || ' ' || coalesce(wa.indexed_text, '')
+              regexp_replace(coalesce(wa.file_name, ''), '[^[:alnum:]]+', ' ', 'g')
+              || ' ' || coalesce(wa.indexed_text, '')
             ) @@ websearch_to_tsquery('simple', ${query})
         )
         OR EXISTS (
@@ -426,7 +427,7 @@ router.get(
         ? caller.role === "superadmin"
           ? ALL_WIKI_PERMISSIONS
           : NO_WIKI_PERMISSIONS
-        : modulePermissions.get(row.moduleId) ?? NO_WIKI_PERMISSIONS),
+        : (modulePermissions.get(row.moduleId) ?? NO_WIKI_PERMISSIONS)),
     }));
     const canCreate =
       moduleId !== undefined
@@ -466,7 +467,9 @@ router.post(
     }
     const input = parsed.data;
     if (!(await getSectionPermissions(req.user!, input.moduleId)).canEdit) {
-      res.status(403).json({ message: "No tienes permiso para crear páginas aquí" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para crear páginas aquí" });
       return;
     }
 
@@ -498,7 +501,9 @@ router.post(
         )
         .limit(1);
       if (!parent || parent.moduleId !== input.moduleId) {
-        res.status(400).json({ message: "La página superior no pertenece a esta sección" });
+        res
+          .status(400)
+          .json({ message: "La página superior no pertenece a esta sección" });
         return;
       }
     }
@@ -517,7 +522,9 @@ router.post(
       .onConflictDoNothing()
       .returning({ id: wikiPagesTable.id });
     if (!created) {
-      res.status(409).json({ message: "Ya existe una página con ese título en esta ubicación" });
+      res.status(409).json({
+        message: "Ya existe una página con ese título en esta ubicación",
+      });
       return;
     }
     const page = await loadPage(created.id, req.user!);
@@ -541,7 +548,9 @@ router.patch(
       return;
     }
     if (!existing.canEdit) {
-      res.status(403).json({ message: "No tienes permiso para editar esta página" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para editar esta página" });
       return;
     }
 
@@ -558,16 +567,24 @@ router.patch(
       await db
         .update(wikiPagesTable)
         .set({
-          ...(changes.title !== undefined ? { title: changes.title.trim() } : {}),
-          ...(changes.content !== undefined ? { content: changes.content } : {}),
-          ...(changes.tags !== undefined ? { tags: normalizeTags(changes.tags) } : {}),
+          ...(changes.title !== undefined
+            ? { title: changes.title.trim() }
+            : {}),
+          ...(changes.content !== undefined
+            ? { content: changes.content }
+            : {}),
+          ...(changes.tags !== undefined
+            ? { tags: normalizeTags(changes.tags) }
+            : {}),
           updatedBy: req.user!.id,
           updatedAt: new Date(),
         })
         .where(eq(wikiPagesTable.id, params.data.pageId));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        res.status(409).json({ message: "Ya existe una página con ese título en esta ubicación" });
+        res.status(409).json({
+          message: "Ya existe una página con ese título en esta ubicación",
+        });
         return;
       }
       throw error;
@@ -592,7 +609,9 @@ router.delete(
       return;
     }
     if (!page.canDelete) {
-      res.status(403).json({ message: "No tienes permiso para eliminar esta página" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para eliminar esta página" });
       return;
     }
     const deletedAt = new Date();
@@ -630,12 +649,16 @@ router.post(
       return;
     }
     if (!page.canUpload) {
-      res.status(403).json({ message: "No tienes permiso para subir archivos aquí" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para subir archivos aquí" });
       return;
     }
     const fileName = sanitizeFileName(parsed.data.fileName);
     if (!fileName || parsed.data.size > MAX_UPLOAD_BYTES) {
-      res.status(400).json({ message: "El nombre o tamaño del archivo no es válido" });
+      res
+        .status(400)
+        .json({ message: "El nombre o tamaño del archivo no es válido" });
       return;
     }
 
@@ -643,7 +666,10 @@ router.post(
       const uploadURL = await objectStorage.getObjectEntityUploadURL();
       const objectPath = objectStorage.normalizeObjectEntityPath(uploadURL);
       if (!OBJECT_PATH_PATTERN.test(objectPath)) {
-        req.log.error({ objectPath }, "Storage produced an unexpected wiki upload path");
+        req.log.error(
+          { objectPath },
+          "Storage produced an unexpected wiki upload path",
+        );
         res.status(500).json({ message: "No se pudo preparar la subida" });
         return;
       }
@@ -688,7 +714,9 @@ router.post(
       return;
     }
     if (!page.canUpload) {
-      res.status(403).json({ message: "No tienes permiso para adjuntar archivos" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para adjuntar archivos" });
       return;
     }
 
@@ -722,17 +750,26 @@ router.post(
       intent.size !== parsed.data.size ||
       intent.contentType !== parsed.data.contentType
     ) {
-      res.status(400).json({ message: "La subida no pertenece a esta sesión o ha caducado" });
+      res.status(400).json({
+        message: "La subida no pertenece a esta sesión o ha caducado",
+      });
       return;
     }
 
     try {
       const storedObject = await objectStorage.getObjectEntityFile(objectPath);
       const fileResponse = await objectStorage.downloadObject(storedObject, 0);
-      const actualSize = Number(fileResponse.headers.get("content-length") ?? 0);
+      const actualSize = Number(
+        fileResponse.headers.get("content-length") ?? 0,
+      );
       await fileResponse.body?.cancel();
-      if (actualSize > MAX_UPLOAD_BYTES || (actualSize > 0 && actualSize !== intent.size)) {
-        res.status(400).json({ message: "El tamaño real del archivo no coincide" });
+      if (
+        actualSize > MAX_UPLOAD_BYTES ||
+        (actualSize > 0 && actualSize !== intent.size)
+      ) {
+        res
+          .status(400)
+          .json({ message: "El tamaño real del archivo no coincide" });
         return;
       }
 
@@ -775,8 +812,13 @@ router.post(
       const updatedPage = await loadPage(params.data.pageId, req.user!);
       res.status(201).json(GetWikiPageResponse.parse(updatedPage));
     } catch (error) {
-      req.log.warn({ err: error, pageId: params.data.pageId }, "Could not attach wiki file");
-      res.status(400).json({ message: "No se pudo comprobar el archivo subido" });
+      req.log.warn(
+        { err: error, pageId: params.data.pageId },
+        "Could not attach wiki file",
+      );
+      res
+        .status(400)
+        .json({ message: "No se pudo comprobar el archivo subido" });
     }
   },
 );
@@ -798,7 +840,9 @@ router.post(
       return;
     }
     if (!page.canUpload) {
-      res.status(403).json({ message: "No tienes permiso para añadir enlaces" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para añadir enlaces" });
       return;
     }
 
@@ -850,7 +894,9 @@ router.delete(
     }
     const page = await loadPage(externalLink.pageId, req.user!);
     if (!page || !page.canDelete) {
-      res.status(403).json({ message: "No tienes permiso para retirar este enlace" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para retirar este enlace" });
       return;
     }
     await db
@@ -889,7 +935,9 @@ router.delete(
     }
     const page = await loadPage(attachment.pageId, req.user!);
     if (!page || !page.canDelete) {
-      res.status(403).json({ message: "No tienes permiso para retirar este archivo" });
+      res
+        .status(403)
+        .json({ message: "No tienes permiso para retirar este archivo" });
       return;
     }
     await db
@@ -917,7 +965,10 @@ router.get(
         objectPath: wikiAttachmentsTable.objectPath,
       })
       .from(wikiAttachmentsTable)
-      .innerJoin(wikiPagesTable, eq(wikiPagesTable.id, wikiAttachmentsTable.pageId))
+      .innerJoin(
+        wikiPagesTable,
+        eq(wikiPagesTable.id, wikiAttachmentsTable.pageId),
+      )
       .leftJoin(modulesTable, eq(modulesTable.id, wikiPagesTable.moduleId))
       .where(
         and(
@@ -941,7 +992,9 @@ router.get(
     }
 
     try {
-      const storedObject = await objectStorage.getObjectEntityFile(attachment.objectPath);
+      const storedObject = await objectStorage.getObjectEntityFile(
+        attachment.objectPath,
+      );
       const download = await objectStorage.downloadObject(storedObject, 0);
       res.setHeader("Content-Type", "application/octet-stream");
       res.setHeader("X-Content-Type-Options", "nosniff");
@@ -959,7 +1012,10 @@ router.get(
         res.end();
       }
     } catch (error) {
-      req.log.error({ err: error, attachmentId: attachment.id }, "Wiki attachment download failed");
+      req.log.error(
+        { err: error, attachmentId: attachment.id },
+        "Wiki attachment download failed",
+      );
       res.status(404).json({ message: "Archivo no encontrado" });
     }
   },
@@ -975,7 +1031,9 @@ async function resolveEditorManagement(
     const rows = await db
       .select({ id: usersTable.id })
       .from(usersTable)
-      .where(and(eq(usersTable.status, "active"), isNull(usersTable.deletedAt)));
+      .where(
+        and(eq(usersTable.status, "active"), isNull(usersTable.deletedAt)),
+      );
     return { canManage: true, candidateIds: rows.map((row) => row.id) };
   }
 
@@ -1056,12 +1114,7 @@ async function loadModuleEditorSettings(
       groups: [],
     };
   }
-  const [
-    users,
-    directRows,
-    groupRows,
-    rawGroups,
-  ] = await Promise.all([
+  const [users, directRows, groupRows, rawGroups] = await Promise.all([
     loadCandidates(candidateIds),
     db
       .select({
@@ -1134,8 +1187,9 @@ async function loadModuleEditorSettings(
     canManageGroups,
     candidates: users.map((user) => ({
       ...user,
-      directPermissions:
-        directByUser.get(user.id) ?? { ...NO_WIKI_PERMISSIONS },
+      directPermissions: directByUser.get(user.id) ?? {
+        ...NO_WIKI_PERMISSIONS,
+      },
       groupIds: groupsByUser.get(user.id) ?? [],
     })),
     groups: rawGroups.map(permissionGroupResponse),
@@ -1211,7 +1265,8 @@ router.put(
       candidateIds.some((candidateId) => !requestedSet.has(candidateId))
     ) {
       res.status(400).json({
-        message: "La lista de usuarios ha cambiado. Recarga los permisos e inténtalo de nuevo.",
+        message:
+          "La lista de usuarios ha cambiado. Recarga los permisos e inténtalo de nuevo.",
       });
       return;
     }
@@ -1291,7 +1346,10 @@ router.put(
           .where(
             and(
               eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
-              inArray(wikiModulePermissionGroupMembersTable.userId, staleMemberIds),
+              inArray(
+                wikiModulePermissionGroupMembersTable.userId,
+                staleMemberIds,
+              ),
               isNull(wikiModulePermissionGroupMembersTable.deletedAt),
             ),
           );
@@ -1315,7 +1373,10 @@ router.put(
               deletedAt: null,
             })
             .onConflictDoUpdate({
-              target: [wikiModuleEditorsTable.moduleId, wikiModuleEditorsTable.userId],
+              target: [
+                wikiModuleEditorsTable.moduleId,
+                wikiModuleEditorsTable.userId,
+              ],
               set: {
                 canUpload: directPermissions.canUpload,
                 canEdit: directPermissions.canEdit,
@@ -1353,7 +1414,10 @@ router.put(
               and(
                 eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
                 eq(wikiModulePermissionGroupMembersTable.userId, userId),
-                inArray(wikiModulePermissionGroupMembersTable.groupId, toRemove),
+                inArray(
+                  wikiModulePermissionGroupMembersTable.groupId,
+                  toRemove,
+                ),
                 isNull(wikiModulePermissionGroupMembersTable.deletedAt),
               ),
             );
@@ -1379,7 +1443,6 @@ router.put(
             });
         }
       }
-
     });
     const settings = await loadModuleEditorSettings(
       moduleId,
@@ -1396,7 +1459,9 @@ router.post(
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
     if (req.user!.role !== "superadmin") {
-      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      res
+        .status(403)
+        .json({ message: "Solo un superadministrador puede gestionar grupos" });
       return;
     }
     const parsed = CreateWikiPermissionGroupBody.safeParse(req.body);
@@ -1408,13 +1473,11 @@ router.post(
     const permissions = parsed.data.permissions;
     if (
       name.length < 2 ||
-      !(
-        permissions.canUpload ||
-        permissions.canEdit ||
-        permissions.canDelete
-      )
+      !(permissions.canUpload || permissions.canEdit || permissions.canDelete)
     ) {
-      res.status(400).json({ message: "El grupo debe tener nombre y al menos un permiso" });
+      res
+        .status(400)
+        .json({ message: "El grupo debe tener nombre y al menos un permiso" });
       return;
     }
     try {
@@ -1434,7 +1497,11 @@ router.post(
         });
       res
         .status(201)
-        .json(UpdateWikiPermissionGroupResponse.parse(permissionGroupResponse(created)));
+        .json(
+          UpdateWikiPermissionGroupResponse.parse(
+            permissionGroupResponse(created),
+          ),
+        );
     } catch (error) {
       if (isUniqueViolation(error)) {
         res.status(409).json({ message: "Ya existe un grupo con ese nombre" });
@@ -1450,7 +1517,9 @@ router.put(
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
     if (req.user!.role !== "superadmin") {
-      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      res
+        .status(403)
+        .json({ message: "Solo un superadministrador puede gestionar grupos" });
       return;
     }
     const params = UpdateWikiPermissionGroupParams.safeParse(req.params);
@@ -1463,13 +1532,11 @@ router.put(
     const permissions = parsed.data.permissions;
     if (
       name.length < 2 ||
-      !(
-        permissions.canUpload ||
-        permissions.canEdit ||
-        permissions.canDelete
-      )
+      !(permissions.canUpload || permissions.canEdit || permissions.canDelete)
     ) {
-      res.status(400).json({ message: "El grupo debe tener nombre y al menos un permiso" });
+      res
+        .status(400)
+        .json({ message: "El grupo debe tener nombre y al menos un permiso" });
       return;
     }
     try {
@@ -1494,7 +1561,9 @@ router.put(
         return;
       }
       res.json(
-        UpdateWikiPermissionGroupResponse.parse(permissionGroupResponse(updated)),
+        UpdateWikiPermissionGroupResponse.parse(
+          permissionGroupResponse(updated),
+        ),
       );
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -1511,7 +1580,9 @@ router.delete(
   requireAuth,
   async (req: Request, res: Response): Promise<void> => {
     if (req.user!.role !== "superadmin") {
-      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      res
+        .status(403)
+        .json({ message: "Solo un superadministrador puede gestionar grupos" });
       return;
     }
     const params = DeleteWikiPermissionGroupParams.safeParse(req.params);
