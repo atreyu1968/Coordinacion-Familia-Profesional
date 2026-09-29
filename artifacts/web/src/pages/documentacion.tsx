@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   getGetModuleWikiEditorsQueryKey,
   getGetWikiPageQueryKey,
   getListWikiPagesQueryKey,
   useAddWikiAttachment,
+  useAddWikiExternalLink,
   useCreateWikiPage,
   useDeleteWikiAttachment,
+  useDeleteWikiExternalLink,
   useDeleteWikiPage,
   useGetModuleWikiEditors,
   useGetWikiPage,
@@ -48,8 +50,10 @@ import { toast } from "@/hooks/use-toast";
 import {
   BookText,
   Download,
+  ExternalLink,
   FileArchive,
   FileText,
+  Link2,
   Pencil,
   Plus,
   Search,
@@ -60,6 +64,47 @@ import {
 
 const TOKEN_KEY = "coordina_adg_token";
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const WIKI_ATTACHMENT_ACCEPT = [
+  ".zip", "application/zip", "application/x-zip-compressed",
+  ".rar", "application/vnd.rar", "application/x-rar-compressed",
+  ".pdf", "application/pdf",
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif",
+  "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif",
+  // Microsoft Word
+  ".doc", ".docx", ".docm", ".dot", ".dotx", ".dotm", ".docb",
+  // Microsoft Excel
+  ".xls", ".xlsx", ".xlsm", ".xlsb", ".xlt", ".xltx", ".xltm", ".xla", ".xlam", ".xlw",
+  // Microsoft PowerPoint
+  ".ppt", ".pptx", ".pptm", ".pps", ".ppsx", ".ppsm", ".pot", ".potx", ".potm", ".ppa", ".ppam",
+  // Other common Microsoft formats
+  ".vsd", ".vsdx", ".vsdm", ".vss", ".vssx", ".vssm", ".vst", ".vstx", ".vstm",
+  ".one", ".onepkg", ".onetoc2", ".pub", ".accdb", ".accde", ".mdb", ".mde",
+  ".mpp", ".mpt", ".msg", ".pst", ".ost", ".xps",
+  ".odt", ".ods", ".odp", ".txt", ".md", ".csv", ".tsv", ".json", ".xml",
+  ".html", ".htm", ".yml", ".yaml", ".log",
+].join(",");
+
+function isAllowedExternalFileUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      Boolean(url.hostname) &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+}
+
+function externalLinkHost(value: string): string {
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
+}
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -472,6 +517,9 @@ export default function DocumentacionPage() {
   const [editorPage, setEditorPage] = useState<WikiPage | null>(null);
   const [editorsModule, setEditorsModule] = useState<Module | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [externalLinkDialogOpen, setExternalLinkDialogOpen] = useState(false);
+  const [externalLinkTitle, setExternalLinkTitle] = useState("");
+  const [externalLinkUrl, setExternalLinkUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -512,6 +560,8 @@ export default function DocumentacionPage() {
   const requestUploadMutation = useRequestWikiUploadUrl();
   const addAttachmentMutation = useAddWikiAttachment();
   const deleteAttachmentMutation = useDeleteWikiAttachment();
+  const addExternalLinkMutation = useAddWikiExternalLink();
+  const deleteExternalLinkMutation = useDeleteWikiExternalLink();
   const deletePageMutation = useDeleteWikiPage();
 
   useEffect(() => {
@@ -635,6 +685,52 @@ export default function DocumentacionPage() {
     }
   };
 
+  const addExternalLink = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!page) return;
+    const title = externalLinkTitle.trim();
+    const url = externalLinkUrl.trim();
+    if (!title || title.length > 240 || !isAllowedExternalFileUrl(url)) {
+      toast({
+        title: "Revisa los datos del enlace",
+        description: "Usa un nombre y una dirección HTTP o HTTPS válida.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await addExternalLinkMutation.mutateAsync({
+        pageId: page.id,
+        data: { title, url },
+      });
+      setExternalLinkDialogOpen(false);
+      setExternalLinkTitle("");
+      setExternalLinkUrl("");
+      await invalidateWiki(page.id);
+      toast({ title: "Enlace añadido" });
+    } catch {
+      toast({
+        title: "No se pudo añadir el enlace",
+        description: "Comprueba tu conexión e inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeExternalLink = async (externalLinkId: number, title: string) => {
+    if (!page || !window.confirm(`¿Retirar el enlace «${title}»?`)) return;
+    try {
+      await deleteExternalLinkMutation.mutateAsync({ externalLinkId });
+      await invalidateWiki(page.id);
+      toast({ title: "Enlace retirado" });
+    } catch {
+      toast({
+        title: "No se pudo retirar el enlace",
+        variant: "destructive",
+      });
+    }
+  };
+
   const removePage = async () => {
     if (!page || !window.confirm(`¿Eliminar la página «${page.title}»?`)) return;
     try {
@@ -674,7 +770,7 @@ export default function DocumentacionPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Documentación</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Wiki interna con páginas por módulo, archivos privados, búsqueda de texto y filtros.
+            Wiki interna con páginas por módulo, archivos privados, enlaces externos, búsqueda de texto y filtros.
           </p>
         </div>
         <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">
@@ -739,7 +835,7 @@ export default function DocumentacionPage() {
               >
                 <option value="all">Todo</option>
                 <option value="files">Con archivos</option>
-                <option value="zip">Con ZIP</option>
+                <option value="zip">Con ZIP/RAR</option>
               </select>
             </div>
             <div className="flex items-end gap-2">
@@ -829,7 +925,7 @@ export default function DocumentacionPage() {
                               {scope === "all" && (
                                 <span className="truncate">{item.moduleName ?? "General"}</span>
                               )}
-                              {item.attachmentCount > 0 && (
+              {item.attachmentCount > 0 && (
                                 <span className="inline-flex items-center gap-1">
                                   <Upload className="h-3 w-3" /> {item.attachmentCount}
                                 </span>
@@ -920,19 +1016,19 @@ export default function DocumentacionPage() {
                   <section className="border-t pt-5">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h3 className="font-semibold">Archivos adjuntos</h3>
+                        <h3 className="font-semibold">Archivos y enlaces adjuntos</h3>
                         <p className="text-xs text-muted-foreground">
-                          Se admiten PDF e imágenes PNG, JPEG, GIF, WebP y AVIF. Los PDF e imágenes se buscan por nombre; los ZIP también indexan textos compatibles.
+                          Se admiten PDF, imágenes, formatos Microsoft, ZIP y RAR. Los enlaces externos deben usar HTTP o HTTPS. El texto de los formatos compatibles se indexa; PDF, imágenes y RAR se buscan por nombre.
                         </p>
                       </div>
                       {page.canEdit && (
-                        <>
+                        <div className="flex flex-wrap gap-2">
                           <input
                             ref={fileInputRef}
                             data-testid="input-wiki-attachments"
                             type="file"
                             multiple
-                            accept=".zip,.pdf,application/pdf,.png,.jpg,.jpeg,.gif,.webp,.avif,image/png,image/jpeg,image/gif,image/webp,image/avif,.docx,.pptx,.xlsx,.odt,.txt,.md,.csv,.tsv,.json,.xml,.html,.htm,.yml,.yaml,.log"
+                            accept={WIKI_ATTACHMENT_ACCEPT}
                             className="hidden"
                             onChange={(event) => void uploadFiles(event.target.files)}
                           />
@@ -946,22 +1042,66 @@ export default function DocumentacionPage() {
                             <Upload className="mr-1.5 h-4 w-4" />
                             {uploading ? "Subiendo..." : "Añadir archivos"}
                           </Button>
-                        </>
+                          <Button
+                            data-testid="button-add-wiki-external-link"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setExternalLinkDialogOpen(true)}
+                          >
+                            <Link2 className="mr-1.5 h-4 w-4" />
+                            Añadir enlace
+                          </Button>
+                        </div>
                       )}
                     </div>
-                    {page.attachments.length === 0 ? (
+                    {page.attachments.length === 0 && page.externalLinks.length === 0 ? (
                       <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                        No hay archivos adjuntos.
+                        No hay archivos ni enlaces adjuntos.
                       </p>
                     ) : (
                       <div className="space-y-2">
+                        {page.externalLinks.map((externalLink) => (
+                          <div
+                            key={`external-${externalLink.id}`}
+                            data-testid={`row-wiki-external-link-${externalLink.id}`}
+                            className="flex flex-wrap items-center gap-3 rounded-md border p-3"
+                          >
+                            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <a
+                                data-testid={`link-wiki-external-${externalLink.id}`}
+                                href={externalLink.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                              >
+                                {externalLink.title}
+                              </a>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {externalLinkHost(externalLink.url)}
+                              </div>
+                            </div>
+                            {page.canEdit && (
+                              <Button
+                                data-testid={`button-delete-wiki-external-link-${externalLink.id}`}
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => void removeExternalLink(externalLink.id, externalLink.title)}
+                                disabled={deleteExternalLinkMutation.isPending}
+                                aria-label={`Retirar enlace ${externalLink.title}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
                         {page.attachments.map((attachment) => (
                           <div
                             key={attachment.id}
                             data-testid={`row-wiki-attachment-${attachment.id}`}
                             className="flex flex-wrap items-center gap-3 rounded-md border p-3"
                           >
-                            {attachment.fileName.toLowerCase().endsWith(".zip") ? (
+                            {/\.(zip|rar)$/i.test(attachment.fileName) ? (
                               <FileArchive className="h-4 w-4 shrink-0 text-muted-foreground" />
                             ) : (
                               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1028,6 +1168,67 @@ export default function DocumentacionPage() {
         page={editorPage}
         onSaved={(pageId) => void handlePageSaved(pageId)}
       />
+      <Dialog
+        open={externalLinkDialogOpen}
+        onOpenChange={(open) => {
+          setExternalLinkDialogOpen(open);
+          if (!open) {
+            setExternalLinkTitle("");
+            setExternalLinkUrl("");
+          }
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={(event) => void addExternalLink(event)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Añadir enlace externo</DialogTitle>
+              <DialogDescription>
+                El enlace será visible para las personas autenticadas que pueden leer esta wiki. El acceso al archivo depende del servicio externo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="wiki-external-link-title">Nombre del enlace</Label>
+              <Input
+                id="wiki-external-link-title"
+                data-testid="input-wiki-external-link-title"
+                value={externalLinkTitle}
+                onChange={(event) => setExternalLinkTitle(event.target.value)}
+                maxLength={240}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wiki-external-link-url">Dirección del archivo</Label>
+              <Input
+                id="wiki-external-link-url"
+                data-testid="input-wiki-external-link-url"
+                type="url"
+                value={externalLinkUrl}
+                onChange={(event) => setExternalLinkUrl(event.target.value)}
+                maxLength={2048}
+                placeholder="https://ejemplo.org/archivo"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setExternalLinkDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                data-testid="button-submit-wiki-external-link"
+                type="submit"
+                disabled={addExternalLinkMutation.isPending}
+              >
+                {addExternalLinkMutation.isPending ? "Guardando..." : "Guardar enlace"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       {editorsModule && (
         <EditorsDialog
           module={editorsModule}

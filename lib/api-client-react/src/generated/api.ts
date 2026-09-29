@@ -181,6 +181,7 @@ import type {
   User,
   VapidPublicKey,
   WikiAttachmentInput,
+  WikiExternalLinkInput,
   WikiPage,
   WikiPageInput,
   WikiPageList,
@@ -10939,6 +10940,148 @@ export const useAddWikiAttachment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getAddWikiAttachmentMutationOptions(options));
+    }
+
+export const getAddWikiExternalLinkUrl = (pageId: number,) => {
+
+
+
+
+  return `/api/wiki/pages/${pageId}/external-links`
+}
+
+/**
+ * @summary Add a link to an external file to a wiki page
+ */
+export const addWikiExternalLink = async (pageId: number,
+    wikiExternalLinkInput: WikiExternalLinkInput, options?: RequestInit): Promise<WikiPage> => {
+
+  return customFetch<WikiPage>(getAddWikiExternalLinkUrl(pageId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiExternalLinkInput,)
+  }
+);}
+
+
+
+
+export const getAddWikiExternalLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addWikiExternalLink>>, TError,{pageId: number;data: BodyType<WikiExternalLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addWikiExternalLink>>, TError,{pageId: number;data: BodyType<WikiExternalLinkInput>}, TContext> => {
+
+const mutationKey = ['addWikiExternalLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addWikiExternalLink>>, {pageId: number;data: BodyType<WikiExternalLinkInput>}> = (props) => {
+          const {pageId,data} = props ?? {};
+
+          return  addWikiExternalLink(pageId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddWikiExternalLinkMutationResult = NonNullable<Awaited<ReturnType<typeof addWikiExternalLink>>>
+    export type AddWikiExternalLinkMutationBody = BodyType<WikiExternalLinkInput>
+    export type AddWikiExternalLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Add a link to an external file to a wiki page
+ */
+export const useAddWikiExternalLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addWikiExternalLink>>, TError,{pageId: number;data: BodyType<WikiExternalLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addWikiExternalLink>>,
+        TError,
+        {pageId: number;data: BodyType<WikiExternalLinkInput>},
+        TContext
+      > => {
+      return useMutation(getAddWikiExternalLinkMutationOptions(options));
+    }
+
+export const getDeleteWikiExternalLinkUrl = (externalLinkId: number,) => {
+
+
+
+
+  return `/api/wiki/external-links/${externalLinkId}`
+}
+
+/**
+ * @summary Remove an external link from a wiki page
+ */
+export const deleteWikiExternalLink = async (externalLinkId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteWikiExternalLinkUrl(externalLinkId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWikiExternalLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiExternalLink>>, TError,{externalLinkId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWikiExternalLink>>, TError,{externalLinkId: number}, TContext> => {
+
+const mutationKey = ['deleteWikiExternalLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWikiExternalLink>>, {externalLinkId: number}> = (props) => {
+          const {externalLinkId} = props ?? {};
+
+          return  deleteWikiExternalLink(externalLinkId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWikiExternalLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWikiExternalLink>>>
+
+    export type DeleteWikiExternalLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove an external link from a wiki page
+ */
+export const useDeleteWikiExternalLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiExternalLink>>, TError,{externalLinkId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWikiExternalLink>>,
+        TError,
+        {externalLinkId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteWikiExternalLinkMutationOptions(options));
     }
 
 export const getDeleteWikiAttachmentUrl = (attachmentId: number,) => {

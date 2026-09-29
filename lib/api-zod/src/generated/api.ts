@@ -2575,6 +2575,12 @@ export const GetWikiPageResponse = zod.object({
   "size": zod.number(),
   "indexStatus": zod.enum(['pending', 'processing', 'indexed', 'skipped', 'failed']),
   "createdAt": zod.coerce.date()
+})),
+  "externalLinks": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "url": zod.string().url(),
+  "createdAt": zod.coerce.date()
 }))
 }))
 
@@ -2622,6 +2628,12 @@ export const UpdateWikiPageResponse = zod.object({
   "size": zod.number(),
   "indexStatus": zod.enum(['pending', 'processing', 'indexed', 'skipped', 'failed']),
   "createdAt": zod.coerce.date()
+})),
+  "externalLinks": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "url": zod.string().url(),
+  "createdAt": zod.coerce.date()
 }))
 }))
 
@@ -2656,6 +2668,33 @@ export const AddWikiAttachmentBody = zod.object({
   "objectPath": zod.string().min(1).max(addWikiAttachmentBodyObjectPathMax),
   "contentType": zod.string().max(addWikiAttachmentBodyContentTypeMax),
   "size": zod.number().min(1).max(addWikiAttachmentBodySizeMax)
+})
+
+
+/**
+ * @summary Add a link to an external file to a wiki page
+ */
+export const AddWikiExternalLinkParams = zod.object({
+  "pageId": zod.coerce.number()
+})
+
+export const addWikiExternalLinkBodyTitleMax = 240;
+
+export const addWikiExternalLinkBodyUrlMax = 2048;
+
+
+
+export const AddWikiExternalLinkBody = zod.object({
+  "title": zod.string().min(1).max(addWikiExternalLinkBodyTitleMax),
+  "url": zod.string().url().min(1).max(addWikiExternalLinkBodyUrlMax)
+})
+
+
+/**
+ * @summary Remove an external link from a wiki page
+ */
+export const DeleteWikiExternalLinkParams = zod.object({
+  "externalLinkId": zod.coerce.number()
 })
 
 

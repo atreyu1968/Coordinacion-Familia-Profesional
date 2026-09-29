@@ -1474,6 +1474,13 @@ export interface WikiAttachment {
   createdAt: string;
 }
 
+export interface WikiExternalLink {
+  id: number;
+  title: string;
+  url: string;
+  createdAt: string;
+}
+
 export interface WikiPageSummary {
   id: number;
   /** @nullable */
@@ -1498,6 +1505,7 @@ export type WikiPage = WikiPageSummary & ({
   parentId: number | null;
   createdAt: string;
   attachments: WikiAttachment[];
+  externalLinks: WikiExternalLink[];
 });
 
 export interface WikiPageInput {
@@ -1546,6 +1554,19 @@ export interface WikiAttachmentInput {
      * @maximum 52428800
      */
   size: number;
+}
+
+export interface WikiExternalLinkInput {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  url: string;
 }
 
 export interface WikiUploadRequest {

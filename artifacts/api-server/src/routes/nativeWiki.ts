@@ -11,9 +11,11 @@ import {
 } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
+  AddWikiExternalLinkBody,
   AddWikiAttachmentBody,
   CreateWikiPageBody,
   DeleteWikiAttachmentParams,
+  DeleteWikiExternalLinkParams,
   DeleteWikiPageParams,
   GetModuleWikiEditorsResponse,
   GetWikiPageParams,
@@ -34,6 +36,7 @@ import {
   moduleMembershipsTable,
   usersTable,
   wikiAttachmentsTable,
+  wikiExternalLinksTable,
   wikiModuleEditorsTable,
   wikiPagesTable,
   wikiUploadIntentsTable,
@@ -57,6 +60,23 @@ function parsePositiveId(raw: string | string[] | undefined): number | null {
 function sanitizeFileName(value: string): string {
   const name = value.replace(/\\/g, "/").split("/").pop() ?? "";
   return name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 240);
+}
+
+function normalizeExternalFileUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      !url.hostname ||
+      url.username ||
+      url.password
+    ) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function normalizeTags(tags: string[]): string[] {
@@ -138,14 +158,36 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
       ),
     )
     .orderBy(asc(wikiAttachmentsTable.createdAt));
+  const externalLinks = await db
+    .select({
+      id: wikiExternalLinksTable.id,
+      title: wikiExternalLinksTable.title,
+      url: wikiExternalLinksTable.url,
+      createdAt: wikiExternalLinksTable.createdAt,
+    })
+    .from(wikiExternalLinksTable)
+    .where(
+      and(
+        eq(wikiExternalLinksTable.pageId, pageId),
+        isNull(wikiExternalLinksTable.deletedAt),
+      ),
+    )
+    .orderBy(asc(wikiExternalLinksTable.createdAt));
 
   const canEdit = await canEditSection(user, page.moduleId);
-  return { ...page, tags: page.tags ?? [], attachments, attachmentCount: attachments.length, canEdit };
+  return {
+    ...page,
+    tags: page.tags ?? [],
+    attachments,
+    externalLinks,
+    attachmentCount: attachments.length,
+    canEdit,
+  };
 }
 
 // All search and read routes require authentication. The full-text query covers
-// page text, exact tags, attachment names, and text extracted from ZIP/Office
-// files by the asynchronous indexer.
+// page text, exact tags, attachment names, external-link names/URLs, and text
+// extracted from supported ZIP/Office files by the asynchronous indexer.
 router.get(
   "/wiki/pages",
   requireAuth,
@@ -199,19 +241,35 @@ router.get(
               coalesce(wa.file_name, '') || ' ' || coalesce(wa.indexed_text, '')
             ) @@ websearch_to_tsquery('simple', ${query})
         )
+        OR EXISTS (
+          SELECT 1
+          FROM wiki_external_links wel
+          WHERE wel.page_id = ${wikiPagesTable.id}
+            AND wel.deleted_at IS NULL
+            AND to_tsvector(
+              'simple',
+              coalesce(wel.title, '') || ' ' || coalesce(wel.url, '')
+            ) @@ websearch_to_tsquery('simple', ${query})
+        )
       )`);
     }
     if (kind === "files") {
-      filters.push(sql`EXISTS (
+      filters.push(sql`(EXISTS (
         SELECT 1 FROM wiki_attachments wa
         WHERE wa.page_id = ${wikiPagesTable.id} AND wa.deleted_at IS NULL
-      )`);
+      ) OR EXISTS (
+        SELECT 1 FROM wiki_external_links wel
+        WHERE wel.page_id = ${wikiPagesTable.id} AND wel.deleted_at IS NULL
+      ))`);
     } else if (kind === "zip") {
       filters.push(sql`EXISTS (
         SELECT 1 FROM wiki_attachments wa
         WHERE wa.page_id = ${wikiPagesTable.id}
           AND wa.deleted_at IS NULL
-          AND lower(wa.file_name) LIKE '%.zip'
+          AND (
+            lower(wa.file_name) LIKE '%.zip' OR
+            lower(wa.file_name) LIKE '%.rar'
+          )
       )`);
     }
 
@@ -625,6 +683,86 @@ router.post(
       req.log.warn({ err: error, pageId: params.data.pageId }, "Could not attach wiki file");
       res.status(400).json({ message: "No se pudo comprobar el archivo subido" });
     }
+  },
+);
+
+router.post(
+  "/wiki/pages/:pageId/external-links",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const params = GetWikiPageParams.safeParse(req.params);
+    const parsed = AddWikiExternalLinkBody.safeParse(req.body);
+    if (!params.success || !parsed.success) {
+      res.status(400).json({ message: "Datos del enlace no válidos" });
+      return;
+    }
+
+    const page = await loadPage(params.data.pageId, req.user!);
+    if (!page) {
+      res.status(404).json({ message: "Página no encontrada" });
+      return;
+    }
+    if (!page.canEdit) {
+      res.status(403).json({ message: "No tienes permiso para añadir enlaces" });
+      return;
+    }
+
+    const title = parsed.data.title.trim();
+    const url = normalizeExternalFileUrl(parsed.data.url);
+    if (!title || title.length > 240 || !url) {
+      res.status(400).json({
+        message: "Indica un nombre y una dirección HTTP o HTTPS válida",
+      });
+      return;
+    }
+
+    await db.insert(wikiExternalLinksTable).values({
+      pageId: params.data.pageId,
+      title,
+      url,
+      createdBy: req.user!.id,
+    });
+    const updatedPage = await loadPage(params.data.pageId, req.user!);
+    res.status(201).json(GetWikiPageResponse.parse(updatedPage));
+  },
+);
+
+router.delete(
+  "/wiki/external-links/:externalLinkId",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const params = DeleteWikiExternalLinkParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: "Enlace no válido" });
+      return;
+    }
+    const [externalLink] = await db
+      .select({
+        id: wikiExternalLinksTable.id,
+        pageId: wikiExternalLinksTable.pageId,
+      })
+      .from(wikiExternalLinksTable)
+      .where(
+        and(
+          eq(wikiExternalLinksTable.id, params.data.externalLinkId),
+          isNull(wikiExternalLinksTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!externalLink) {
+      res.status(404).json({ message: "Enlace no encontrado" });
+      return;
+    }
+    const page = await loadPage(externalLink.pageId, req.user!);
+    if (!page || !page.canEdit) {
+      res.status(403).json({ message: "No tienes permiso para retirar este enlace" });
+      return;
+    }
+    await db
+      .update(wikiExternalLinksTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(wikiExternalLinksTable.id, externalLink.id));
+    res.sendStatus(204);
   },
 );
 

@@ -36,3 +36,4 @@ export * from "./forums";
 export * from "./wikiModuleCollections";
 export * from "./wikiModuleEditors";
 export * from "./wikiPages";
+export * from "./wikiExternalLinks";

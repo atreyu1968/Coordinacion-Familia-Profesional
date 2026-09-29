@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { WikiAttachment } from './wikiAttachment';
+import type { WikiExternalLink } from './wikiExternalLink';
 import type { WikiPageSummary } from './wikiPageSummary';
 
 export type WikiPage = WikiPageSummary & ({
@@ -14,4 +15,5 @@ export type WikiPage = WikiPageSummary & ({
   parentId: number | null;
   createdAt: Date;
   attachments: WikiAttachment[];
+  externalLinks: WikiExternalLink[];
 });

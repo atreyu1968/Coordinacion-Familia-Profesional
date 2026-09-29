@@ -229,6 +229,8 @@ export * from './wikiAttachment';
 export * from './wikiAttachmentIndexStatus';
 export * from './wikiAttachmentInput';
 export * from './wikiEditorUser';
+export * from './wikiExternalLink';
+export * from './wikiExternalLinkInput';
 export * from './wikiPage';
 export * from './wikiPageInput';
 export * from './wikiPageList';

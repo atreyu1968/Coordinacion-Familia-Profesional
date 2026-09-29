@@ -3362,6 +3362,58 @@ paths:
           description: Invalid file metadata or upload path
         "403":
           description: Not allowed to attach files to this page
+  /wiki/pages/{pageId}/external-links:
+    post:
+      operationId: addWikiExternalLink
+      tags: [wiki]
+      summary: Add a link to an external file to a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiExternalLinkInput"
+      responses:
+        "201":
+          description: External link added; returns the updated page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPage"
+        "400":
+          description: Invalid title or URL
+        "403":
+          description: Not allowed to add links to this page
+        "404":
+          description: Page not found
+  /wiki/external-links/{externalLinkId}:
+    delete:
+      operationId: deleteWikiExternalLink
+      tags: [wiki]
+      summary: Remove an external link from a wiki page
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: externalLinkId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: External link removed
+        "403":
+          description: Not allowed to remove this link
+        "404":
+          description: External link not found
   /wiki/attachments/{attachmentId}:
     delete:
       operationId: deleteWikiAttachment
@@ -6314,6 +6366,20 @@ components:
           type: string
           format: date-time
       required: [id, fileName, contentType, size, indexStatus, createdAt]
+    WikiExternalLink:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, url, createdAt]
     WikiPageSummary:
       type: object
       properties:
@@ -6363,7 +6429,11 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/WikiAttachment"
-          required: [content, parentId, createdAt, attachments]
+            externalLinks:
+              type: array
+              items:
+                $ref: "#/components/schemas/WikiExternalLink"
+          required: [content, parentId, createdAt, attachments, externalLinks]
     WikiPageInput:
       type: object
       properties:
@@ -6422,6 +6492,19 @@ components:
           minimum: 1
           maximum: 52428800
       required: [fileName, objectPath, contentType, size]
+    WikiExternalLinkInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 240
+        url:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 2048
+      required: [title, url]
     WikiUploadRequest:
       type: object
       properties:
