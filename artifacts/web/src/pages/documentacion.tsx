@@ -922,7 +922,7 @@ export default function DocumentacionPage() {
                       <div>
                         <h3 className="font-semibold">Archivos adjuntos</h3>
                         <p className="text-xs text-muted-foreground">
-                          Los ZIP se conservan originales y se indexan sus nombres y textos compatibles.
+                          Se admiten PDF e imágenes PNG, JPEG, GIF, WebP y AVIF. Los PDF e imágenes se buscan por nombre; los ZIP también indexan textos compatibles.
                         </p>
                       </div>
                       {page.canEdit && (
@@ -932,7 +932,7 @@ export default function DocumentacionPage() {
                             data-testid="input-wiki-attachments"
                             type="file"
                             multiple
-                            accept=".zip,.pdf,.docx,.pptx,.xlsx,.odt,.txt,.md,.csv,.tsv,.json,.xml,.html,.htm,.yml,.yaml,.log"
+                            accept=".zip,.pdf,application/pdf,.png,.jpg,.jpeg,.gif,.webp,.avif,image/png,image/jpeg,image/gif,image/webp,image/avif,.docx,.pptx,.xlsx,.odt,.txt,.md,.csv,.tsv,.json,.xml,.html,.htm,.yml,.yaml,.log"
                             className="hidden"
                             onChange={(event) => void uploadFiles(event.target.files)}
                           />

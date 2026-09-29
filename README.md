@@ -10,9 +10,10 @@ videollamadas, formularios documentales y una **wiki de documentación**.
 
 La aplicación incluye una wiki propia accesible desde **Recursos →
 Documentación** y desde cada módulo. Sus páginas se guardan en Coordina ADG;
-la lectura requiere iniciar sesión y la edición se concede por sección. Los
-adjuntos son privados y la búsqueda también indexa texto de documentos Office y
-archivos ZIP. La wiki ya no depende de Outline ni de un segundo subdominio.
+la lectura requiere iniciar sesión y la edición se concede por sección. Admite
+PDF, imágenes, documentos Office y archivos ZIP como adjuntos privados; la
+búsqueda incluye sus nombres y texto compatible de Office/ZIP. La wiki ya no
+depende de Outline ni de un segundo subdominio.
 
 Las instalaciones, datos y credenciales existentes de Outline no se modifican
 ni se eliminan; la aplicación actual ya no se conecta a ese servicio.
