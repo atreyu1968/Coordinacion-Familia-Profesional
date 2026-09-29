@@ -21,6 +21,8 @@ import {
 } from "./helpers";
 import { extractText, indexWikiAttachment } from "../src/lib/wikiIndexing";
 import { ObjectStorageService } from "../src/lib/objectStorage";
+import type { StoredObject } from "../src/lib/objectAcl";
+import type { File } from "@google-cloud/storage";
 
 const UNIQUE = `wikiregress${Date.now()}${Math.random().toString(36).slice(2, 9)}`;
 const fixture = {
@@ -377,12 +379,28 @@ describe("native wiki private attachments", () => {
     const pageId = await makePage({ userId: uploader.user.id });
     const uploadId = `${UNIQUE}uploadidentifier123456`;
     const uploadURL = `http://localhost/api/storage/local-upload/uploads/${uploadId}?exp=9999999999999&sig=mock`;
+    let aclMetadata: string | undefined;
+    const gcsFile = {
+      exists: vi.fn().mockResolvedValue([true]),
+      setMetadata: vi.fn(
+        async (metadata: { metadata: Record<string, string> }) => {
+          aclMetadata = metadata.metadata["custom:aclPolicy"];
+        },
+      ),
+      getMetadata: vi.fn(async () => [
+        { metadata: aclMetadata ? { "custom:aclPolicy": aclMetadata } : {} },
+      ]),
+    };
+    const storedObject: StoredObject = {
+      kind: "gcs",
+      file: gcsFile as unknown as File,
+    };
     const uploadUrlSpy = vi
       .spyOn(ObjectStorageService.prototype, "getObjectEntityUploadURL")
       .mockResolvedValue(uploadURL);
     const objectLookupSpy = vi
       .spyOn(ObjectStorageService.prototype, "getObjectEntityFile")
-      .mockResolvedValue({ kind: "local", absPath: "/tmp/wiki-test-object" });
+      .mockResolvedValue(storedObject);
     let storedBody = "size-mismatch";
     vi.spyOn(
       ObjectStorageService.prototype,
@@ -393,10 +411,6 @@ describe("native wiki private attachments", () => {
         headers: { "content-length": String(Buffer.byteLength(body)) },
       });
     });
-    const aclSpy = vi
-      .spyOn(ObjectStorageService.prototype, "trySetObjectEntityAclPolicy")
-      .mockResolvedValue(`/objects/uploads/${uploadId}`);
-
     const intent = await request(app)
       .post("/api/wiki/uploads/request-url")
       .set(authHeader(uploader.token))
@@ -448,7 +462,7 @@ describe("native wiki private attachments", () => {
       .where(eq(wikiAttachmentsTable.pageId, pageId));
     fixture.attachmentIds.push(savedAttachment!.id);
     expect(savedAttachment!.uploadedBy).toBe(uploader.user.id);
-    expect(aclSpy).toHaveBeenCalledWith(intent.body.objectPath, {
+    expect(JSON.parse(aclMetadata!)).toEqual({
       owner: String(uploader.user.id),
       visibility: "private",
     });
@@ -465,6 +479,33 @@ describe("native wiki private attachments", () => {
       .where(eq(wikiUploadIntentsTable.objectPath, intent.body.objectPath));
     expect(savedIntent!.userId).toBe(uploader.user.id);
     expect(savedIntent!.consumedAt).not.toBeNull();
+
+    vi.spyOn(ObjectStorageService.prototype, "searchPublicObject").mockResolvedValue(
+      storedObject,
+    );
+    const rawObjectPath = `/api/storage/public-objects/uploads/${uploadId}`;
+    const anonymousRawDownload = await request(app).get(rawObjectPath);
+    expect(anonymousRawDownload.status).toBe(404);
+
+    const otherUserRawDownload = await request(app)
+      .get(rawObjectPath)
+      .set(authHeader(otherAdmin.token));
+    expect(otherUserRawDownload.status).toBe(404);
+
+    const ownerRawDownload = await request(app)
+      .get(rawObjectPath)
+      .set(authHeader(uploader.token));
+    expect(ownerRawDownload.status).toBe(200);
+    expect(ownerRawDownload.text).toBe("hello");
+
+    aclMetadata = JSON.stringify({
+      owner: String(uploader.user.id),
+      visibility: "public",
+    });
+    expect((await request(app).get(rawObjectPath)).status).toBe(200);
+
+    aclMetadata = undefined;
+    expect((await request(app).get(rawObjectPath)).status).toBe(200);
 
     expect(
       (

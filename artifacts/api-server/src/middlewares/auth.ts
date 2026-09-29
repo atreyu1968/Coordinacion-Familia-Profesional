@@ -45,6 +45,34 @@ export async function requireAuth(
   next();
 }
 
+export async function optionalAuth(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    next();
+    return;
+  }
+
+  const payload = verifyToken(header.slice("Bearer ".length).trim());
+  if (!payload) {
+    next();
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
+
+  if (user?.status === "active") {
+    req.user = user;
+  }
+  next();
+}
+
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {

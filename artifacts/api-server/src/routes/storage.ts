@@ -8,8 +8,13 @@ import {
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { writeLocalMeta } from "../lib/objectAcl";
-import { requireAuth } from "../middlewares/auth";
+import {
+  canAccessObject,
+  getObjectAclPolicy,
+  ObjectPermission,
+  writeLocalMeta,
+} from "../lib/objectAcl";
+import { optionalAuth, requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -116,12 +121,26 @@ router.put(
  */
 router.get(
   "/storage/public-objects/*filePath",
+  optionalAuth,
   async (req: Request, res: Response) => {
     try {
       const raw = req.params.filePath;
       const filePath = Array.isArray(raw) ? raw.join("/") : raw;
       const file = await objectStorageService.searchPublicObject(filePath);
       if (!file) {
+        res.status(404).json({ message: "Archivo no encontrado" });
+        return;
+      }
+
+      const aclPolicy = await getObjectAclPolicy(file);
+      if (
+        aclPolicy &&
+        !(await canAccessObject({
+          userId: req.user ? String(req.user.id) : undefined,
+          objectFile: file,
+          requestedPermission: ObjectPermission.READ,
+        }))
+      ) {
         res.status(404).json({ message: "Archivo no encontrado" });
         return;
       }

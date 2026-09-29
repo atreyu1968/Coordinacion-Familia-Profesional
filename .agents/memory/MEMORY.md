@@ -35,6 +35,7 @@
 - [Dashboard, statistics & annual reports](dashboard-reports-module.md) — scoping rules + gotchas for /dashboard/* and /reports.
 - [Document-submission forms module](document-forms-module.md) — frontend wiring, upload/download contract, field-type model.
 - [Document/file upload security](document-uploads.md) — rules for accepting client-supplied object-storage paths.
+- [Raw object access policy](raw-object-access.md) — explicit ACL metadata constrains public-path reads; no-ACL legacy public assets remain reachable.
 - [Events module contract & calendar mirror](events-module.md) — field-naming gotchas + calendar-mirror lifecycle.
 - [Survey/vote anonymity model](surveys-anonymity.md) — how anonymous surveys guarantee unlinkability at the DB level.
 - [Module group chats (auto)](module-chat-groups.md) — one auto-managed group per module; members = teachers ∪ scoped managers (GET /chat/groups is member-only); scope from teaching_assignments.centerId not modules.centerId (NULL); bulk sync needs every center in scope.
