@@ -421,6 +421,7 @@ export interface Cycle {
 
 export interface CreateCycleInput {
   name: string;
+  centerId: number;
   code?: string | null;
   level?: string | null;
 }

@@ -1,5 +1,14 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, isNull, inArray, ilike, type SQL } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  isNull,
+  inArray,
+  ilike,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import {
   db,
   modulesTable,
@@ -236,14 +245,56 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
 // Resolve a catalog cycle to its display name (or null if unset/not found).
 async function resolveCycleName(
   cycleId: number | null | undefined,
+  activeFamily: string,
 ): Promise<{ ok: true; name: string | null } | { ok: false }> {
   if (cycleId == null) return { ok: true, name: null };
   const [cycle] = await db
-    .select()
+    .select({ name: cyclesTable.name })
     .from(cyclesTable)
-    .where(and(eq(cyclesTable.id, cycleId), isNull(cyclesTable.deletedAt)));
+    .where(
+      and(
+        eq(cyclesTable.id, cycleId),
+        isNull(cyclesTable.deletedAt),
+        cycleFamilyFilter(activeFamily),
+      ),
+    );
   if (!cycle) return { ok: false };
   return { ok: true, name: cycle.name };
+}
+
+async function cycleNameBelongsToFamily(
+  cycleName: string,
+  activeFamily: string,
+): Promise<boolean> {
+  const [cycle] = await db
+    .select({ id: cyclesTable.id })
+    .from(cyclesTable)
+    .where(
+      and(
+        eq(cyclesTable.name, cycleName),
+        isNull(cyclesTable.deletedAt),
+        cycleFamilyFilter(activeFamily),
+      ),
+    )
+    .limit(1);
+  return !!cycle;
+}
+
+async function centerBelongsToFamily(
+  centerId: number,
+  activeFamily: string,
+): Promise<boolean> {
+  const [center] = await db
+    .select({ id: centersTable.id })
+    .from(centersTable)
+    .where(
+      and(
+        eq(centersTable.id, centerId),
+        isNull(centersTable.deletedAt),
+        sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ),
+    );
+  return !!center;
 }
 
 router.post(
@@ -257,16 +308,42 @@ router.post(
       return;
     }
 
-    // When a catalog cycle is referenced, derive the (back-compat) cycleName
-    // from it; otherwise fall back to any free-text cycleName provided.
+    const activeFamily = await getActiveFamily();
+    const centerId = parsed.data.centerId ?? null;
+    if (
+      centerId != null &&
+      !(await centerBelongsToFamily(centerId, activeFamily))
+    ) {
+      res.status(404).json({
+        message: "El centro no pertenece a la familia profesional activa",
+      });
+      return;
+    }
+
+    // A global module belongs to the active family through its cycle. A
+    // center-scoped module may instead inherit its family directly from the
+    // selected center.
     let cycleName = parsed.data.cycleName ?? null;
     if (parsed.data.cycleId != null) {
-      const resolved = await resolveCycleName(parsed.data.cycleId);
+      const resolved = await resolveCycleName(
+        parsed.data.cycleId,
+        activeFamily,
+      );
       if (!resolved.ok) {
-        res.status(404).json({ message: "Ciclo no encontrado" });
+        res.status(400).json({
+          message: "El ciclo no pertenece a la familia profesional activa",
+        });
         return;
       }
       cycleName = resolved.name;
+    } else if (
+      centerId == null &&
+      (!cycleName || !(await cycleNameBelongsToFamily(cycleName, activeFamily)))
+    ) {
+      res.status(400).json({
+        message: "El módulo debe asociarse a un ciclo de la familia activa",
+      });
+      return;
     }
 
     const [created] = await db
@@ -299,7 +376,17 @@ router.patch(
       return;
     }
 
-    const existing = await loadModule(params.data.moduleId);
+    const activeFamily = await getActiveFamily();
+    const [existing] = await db
+      .select()
+      .from(modulesTable)
+      .where(
+        and(
+          eq(modulesTable.id, params.data.moduleId),
+          isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(activeFamily),
+        ),
+      );
     if (!existing) {
       res.status(404).json({ message: "Módulo no encontrado" });
       return;
@@ -310,14 +397,60 @@ router.patch(
     if (parsed.data.code !== undefined) updates.code = parsed.data.code ?? null;
     if (parsed.data.centerId !== undefined)
       updates.centerId = parsed.data.centerId ?? null;
+    const targetCenterId =
+      parsed.data.centerId !== undefined
+        ? (parsed.data.centerId ?? null)
+        : existing.centerId;
+    const targetCycleId =
+      parsed.data.cycleId !== undefined
+        ? (parsed.data.cycleId ?? null)
+        : existing.cycleId;
+    let targetCycleName = existing.cycleName;
     if (parsed.data.cycleId !== undefined) {
-      const resolved = await resolveCycleName(parsed.data.cycleId);
+      const resolved = await resolveCycleName(
+        parsed.data.cycleId,
+        activeFamily,
+      );
       if (!resolved.ok) {
-        res.status(404).json({ message: "Ciclo no encontrado" });
+        res.status(400).json({
+          message: "El ciclo no pertenece a la familia profesional activa",
+        });
         return;
       }
-      updates.cycleId = parsed.data.cycleId ?? null;
-      updates.cycleName = resolved.name;
+      targetCycleName = resolved.name;
+      updates.cycleId = targetCycleId;
+      updates.cycleName = targetCycleName;
+    }
+
+    if (
+      targetCenterId != null &&
+      !(await centerBelongsToFamily(targetCenterId, activeFamily))
+    ) {
+      res.status(400).json({
+        message: "El centro no pertenece a la familia profesional activa",
+      });
+      return;
+    }
+    if (
+      targetCycleId != null &&
+      (parsed.data.cycleId !== undefined || targetCenterId == null)
+    ) {
+      const resolved = await resolveCycleName(targetCycleId, activeFamily);
+      if (!resolved.ok) {
+        res.status(400).json({
+          message: "El ciclo no pertenece a la familia profesional activa",
+        });
+        return;
+      }
+    } else if (
+      targetCenterId == null &&
+      (!targetCycleName ||
+        !(await cycleNameBelongsToFamily(targetCycleName, activeFamily)))
+    ) {
+      res.status(400).json({
+        message: "El módulo debe seguir asociado a la familia activa",
+      });
+      return;
     }
 
     const [updated] = await db
@@ -418,15 +551,45 @@ router.post(
       res.status(400).json({ message: parsed.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
+    const centerId = parsed.data.centerId;
+    const [center] = await db
+      .select({ id: centersTable.id })
+      .from(centersTable)
+      .where(
+        and(
+          eq(centersTable.id, centerId),
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ),
+      );
+    if (!center) {
+      res.status(404).json({
+        message: "El ciclo debe asociarse a un centro de la familia activa",
+      });
+      return;
+    }
+    const schoolYear = (await getActiveAcademicYear()) || null;
     const [created] = await db
-      .insert(cyclesTable)
-      .values({
-        name: parsed.data.name,
-        code: parsed.data.code ?? null,
-        level: parsed.data.level ?? null,
-        createdBy: req.user!.id,
+      .transaction(async (tx) => {
+        const [cycle] = await tx
+          .insert(cyclesTable)
+          .values({
+            name: parsed.data.name,
+            code: parsed.data.code ?? null,
+            level: parsed.data.level ?? null,
+            createdBy: req.user!.id,
+          })
+          .returning();
+        await tx.insert(trainingOfferTable).values({
+          centerId,
+          cycleId: cycle!.id,
+          cycleName: cycle!.name,
+          level: cycle!.level,
+          schoolYear,
+        });
+        return [cycle!];
       })
-      .returning();
     res.status(201).json(toCycle(created));
   },
 );
@@ -446,11 +609,16 @@ router.patch(
       res.status(400).json({ message: parsed.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
     const [existing] = await db
       .select()
       .from(cyclesTable)
       .where(
-        and(eq(cyclesTable.id, params.data.id), isNull(cyclesTable.deletedAt)),
+        and(
+          eq(cyclesTable.id, params.data.id),
+          isNull(cyclesTable.deletedAt),
+          cycleFamilyFilter(activeFamily),
+        ),
       );
     if (!existing) {
       res.status(404).json({ message: "Ciclo no encontrado" });

@@ -122,5 +122,62 @@ describe("professional-family catalog filters", () => {
     expect(activeCycleModules.body.map((module: { id: number }) => module.id)).toContain(activeModule!.id);
     expect(otherCycleModules.status).toBe(200);
     expect(otherCycleModules.body).toEqual([]);
+
+    const createOutsideCycle = await request(app)
+      .post("/api/cycles")
+      .set(authHeader(admin.token))
+      .send({ name: `Ciclo fuera de familia ${suffix}`, centerId: otherCenterId });
+    expect(createOutsideCycle.status).toBe(404);
+
+    const updateOutsideCycle = await request(app)
+      .patch(`/api/cycles/${otherCycle!.id}`)
+      .set(authHeader(admin.token))
+      .send({ name: `Ciclo cambiado ${suffix}` });
+    expect(updateOutsideCycle.status).toBe(404);
+
+    const createOutsideModule = await request(app)
+      .post("/api/modules")
+      .set(authHeader(admin.token))
+      .send({
+        name: `Módulo fuera de familia ${suffix}`,
+        cycleId: otherCycle!.id,
+        centerId: null,
+      });
+    expect(createOutsideModule.status).toBe(400);
+
+    const updateOutsideModule = await request(app)
+      .patch(`/api/modules/${otherModule!.id}`)
+      .set(authHeader(admin.token))
+      .send({ name: `Módulo cambiado ${suffix}` });
+    expect(updateOutsideModule.status).toBe(404);
+
+    const addOutsideOffer = await request(app)
+      .post(`/api/centers/${activeCenterId}/training-offer`)
+      .set(authHeader(admin.token))
+      .send({ cycleId: otherCycle!.id });
+    expect(addOutsideOffer.status).toBe(404);
+
+    const createActiveCycle = await request(app)
+      .post("/api/cycles")
+      .set(authHeader(admin.token))
+      .send({
+        name: `Nuevo ciclo activo ${suffix}`,
+        level: "Grado Superior",
+        centerId: activeCenterId,
+      });
+    expect(createActiveCycle.status).toBe(201);
+    const createdCycleId = createActiveCycle.body.id as number;
+    cycleIds.push(createdCycleId);
+
+    const createActiveModule = await request(app)
+      .post("/api/modules")
+      .set(authHeader(admin.token))
+      .send({
+        name: `Nuevo módulo activo ${suffix}`,
+        cycleId: createdCycleId,
+        centerId: null,
+      });
+    expect(createActiveModule.status).toBe(201);
+    moduleIds.push(createActiveModule.body.id as number);
   });
 });

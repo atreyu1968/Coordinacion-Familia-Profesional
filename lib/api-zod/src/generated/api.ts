@@ -1110,6 +1110,7 @@ export const ListCyclesResponse = zod.array(ListCyclesResponseItem)
  */
 export const CreateCycleBody = zod.object({
   "name": zod.string(),
+  "centerId": zod.number(),
   "code": zod.string().nullish(),
   "level": zod.string().nullish()
 })

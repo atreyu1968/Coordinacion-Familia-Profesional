@@ -8,6 +8,9 @@ description: How the global cycle catalog relates to modules, training-offer, an
 `cyclesTable` is a GLOBAL catalog (not center-scoped). CRUD is superadmin-only.
 `modules.cycleId` and `trainingOffer.cycleId` reference it; both also keep a
 denormalized `cycleName` for compat/display, populated FROM the catalog on write.
+New cycle creation must choose an active-family center and add the initial offer
+in the same transaction; otherwise the family-filtered list hides it before a
+center can select it.
 
 **Why:** centers should pick which catalog cycles they offer (via training-offer
 in the Centros tab) rather than retyping free-text cycle names — previously cycle

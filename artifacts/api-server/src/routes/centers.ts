@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, sql, type SQL } from "drizzle-orm";
+import { eq, and, or, isNull, ilike, sql, type SQL } from "drizzle-orm";
 import {
   db,
   centersTable,
@@ -25,6 +25,7 @@ import {
 import { requireAuth, requireRole, hasScopeOver } from "../middlewares/auth";
 import { toCenter, toTrainingOffer } from "../lib/mappers";
 import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
+import { cycleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
 
@@ -121,9 +122,67 @@ router.post(
       res.status(403).json({ message: "Sin provincia asignada" });
       return;
     }
+    const sameName = sql`lower(trim(${centersTable.name})) = ${parsed.data.name.trim().toLowerCase()}`;
+    let sameLocation: SQL = sql`true`;
+    if (parsed.data.municipalityId != null) {
+      const matches: SQL[] = [
+        eq(centersTable.municipalityId, parsed.data.municipalityId),
+      ];
+      if (provinceId != null) {
+        const missingMunicipalityMatch = and(
+          isNull(centersTable.municipalityId),
+          eq(centersTable.provinceId, provinceId),
+        );
+        if (missingMunicipalityMatch)
+          matches.push(missingMunicipalityMatch);
+      }
+      sameLocation = or(...matches) ?? sql`false`;
+    } else if (parsed.data.islandId != null) {
+      const matches: SQL[] = [eq(centersTable.islandId, parsed.data.islandId)];
+      if (provinceId != null) {
+        const missingIslandMatch = and(
+          isNull(centersTable.islandId),
+          eq(centersTable.provinceId, provinceId),
+        );
+        if (missingIslandMatch) matches.push(missingIslandMatch);
+      }
+      sameLocation = or(...matches) ?? sql`false`;
+    } else if (provinceId != null) {
+      sameLocation = eq(centersTable.provinceId, provinceId);
+    }
+
+    const identityChecks: SQL[] = [];
+    const sameNameAndLocation = and(sameName, sameLocation);
+    if (sameNameAndLocation) identityChecks.push(sameNameAndLocation);
+    const code = parsed.data.code?.trim();
+    if (code) {
+      identityChecks.push(
+        sql`lower(trim(${centersTable.code})) = ${code.toLowerCase()}`,
+      );
+    }
+    const duplicateIdentity = or(...identityChecks);
+    if (duplicateIdentity) {
+      const [duplicate] = await db
+        .select({ id: centersTable.id })
+        .from(centersTable)
+        .where(and(isNull(centersTable.deletedAt), duplicateIdentity));
+      if (duplicate) {
+        res.status(409).json({
+          message: "Ya existe un centro con el mismo código o nombre y ubicación.",
+        });
+        return;
+      }
+    }
+
+    const activeFamily = await getActiveFamily();
     const [center] = await db
       .insert(centersTable)
-      .values({ ...parsed.data, provinceId, createdBy: caller.id })
+      .values({
+        ...parsed.data,
+        provinceId,
+        families: [activeFamily],
+        createdBy: caller.id,
+      })
       .returning();
     res.status(201).json(toCenter(center));
   },
@@ -364,15 +423,51 @@ router.post(
           and(
             eq(cyclesTable.id, parsed.data.cycleId),
             isNull(cyclesTable.deletedAt),
+            cycleFamilyFilter(activeFamily),
           ),
         );
       if (!cycle) {
-        res.status(404).json({ message: "Ciclo no encontrado" });
+        res.status(404).json({
+          message: "El ciclo no pertenece a la familia profesional activa",
+        });
         return;
       }
       cycleId = cycle.id;
       cycleName = cycle.name;
       if (parsed.data.level == null) level = cycle.level ?? null;
+    } else if (cycleName) {
+      const [activeCycle] = await db
+        .select({ id: cyclesTable.id, name: cyclesTable.name })
+        .from(cyclesTable)
+        .where(
+          and(
+            eq(cyclesTable.name, cycleName),
+            isNull(cyclesTable.deletedAt),
+            cycleFamilyFilter(activeFamily),
+          ),
+        )
+        .limit(1);
+      if (activeCycle) {
+        cycleId = activeCycle.id;
+        cycleName = activeCycle.name;
+      } else {
+        const [catalogCycle] = await db
+          .select({ id: cyclesTable.id })
+          .from(cyclesTable)
+          .where(
+            and(
+              eq(cyclesTable.name, cycleName),
+              isNull(cyclesTable.deletedAt),
+            ),
+          )
+          .limit(1);
+        if (catalogCycle) {
+          res.status(404).json({
+            message: "El ciclo no pertenece a la familia profesional activa",
+          });
+          return;
+        }
+      }
     }
     if (!cycleName) {
       res

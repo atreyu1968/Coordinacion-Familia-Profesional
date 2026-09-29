@@ -78,6 +78,10 @@ export function ModuleDialog({ trigger }: { trigger: ReactNode }) {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (cycleId == null && centerId == null) {
+      setError("Selecciona un centro o un ciclo de la familia activa.");
+      return;
+    }
     if (!name.trim()) {
       setError("El nombre del módulo es obligatorio.");
       return;

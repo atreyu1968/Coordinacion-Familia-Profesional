@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListCycles,
+  useListCenters,
   useCreateCycle,
   useUpdateCycle,
   useDeleteCycle,
@@ -9,11 +10,11 @@ import {
   useCreateModule,
   useUpdateModule,
   useDeleteModule,
+  getGetCenterQueryKey,
   getListCyclesQueryKey,
   getListModulesQueryKey,
   type Cycle,
   type Module,
-  type CreateCycleInput,
   type CreateModuleInput,
 } from "@workspace/api-client-react";
 import {
@@ -26,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +75,7 @@ function CycleDialog({
   cycle?: Cycle;
 }) {
   const qc = useQueryClient();
+  const { data: centers = [] } = useListCenters({});
   const createMut = useCreateCycle();
   const updateMut = useUpdateCycle();
   const isEdit = !!cycle;
@@ -75,6 +84,7 @@ function CycleDialog({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [level, setLevel] = useState("");
+  const [centerId, setCenterId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,6 +92,7 @@ function CycleDialog({
       setName(cycle?.name ?? "");
       setCode(cycle?.code ?? "");
       setLevel(cycle?.level ?? "");
+      setCenterId(null);
       setError(null);
     }
   }, [open, cycle]);
@@ -93,7 +104,7 @@ function CycleDialog({
       setError("El nombre del ciclo es obligatorio.");
       return;
     }
-    const payload: CreateCycleInput = {
+    const payload = {
       name: name.trim(),
       code: code.trim() || null,
       level: level.trim() || null,
@@ -102,7 +113,14 @@ function CycleDialog({
       if (isEdit) {
         await updateMut.mutateAsync({ id: cycle!.id, data: payload });
       } else {
-        await createMut.mutateAsync({ data: payload });
+        if (centerId == null) {
+          setError("Selecciona un centro de la familia profesional activa.");
+          return;
+        }
+        await createMut.mutateAsync({ data: { ...payload, centerId } });
+        await qc.invalidateQueries({
+          queryKey: getGetCenterQueryKey(centerId),
+        });
       }
       await qc.invalidateQueries({ queryKey: getListCyclesQueryKey() });
       await qc.invalidateQueries({ queryKey: getListModulesQueryKey() });
@@ -123,10 +141,38 @@ function CycleDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar ciclo" : "Nuevo ciclo"}</DialogTitle>
           <DialogDescription>
-            Catálogo global de ciclos formativos.
+            {isEdit
+              ? "Actualiza un ciclo de la familia profesional activa."
+              : "El nuevo ciclo quedará asociado a un centro de la familia profesional activa."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
+          {!isEdit && (
+            <div className="space-y-2">
+              <Label>Centro de referencia *</Label>
+              <Select
+                value={centerId != null ? String(centerId) : ""}
+                onValueChange={(value) => setCenterId(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un centro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {centers.map((center) => (
+                    <SelectItem key={center.id} value={String(center.id)}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {centers.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No hay centros de la familia activa. Añade uno antes de crear
+                  un ciclo.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="c-name">Nombre *</Label>
             <Input
@@ -162,7 +208,11 @@ function CycleDialog({
           <DialogFooter>
             <Button
               type="submit"
-              disabled={createMut.isPending || updateMut.isPending}
+              disabled={
+                createMut.isPending ||
+                updateMut.isPending ||
+                (!isEdit && centers.length === 0)
+              }
             >
               {isEdit ? "Guardar" : "Crear ciclo"}
             </Button>

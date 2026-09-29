@@ -1322,7 +1322,7 @@ paths:
     post:
       operationId: createCycle
       tags: [academics]
-      summary: Create a catalog cycle (superadmin only)
+      summary: Create a catalog cycle and offer it at an active-family center
       security:
         - bearerAuth: []
       requestBody:
@@ -4324,13 +4324,15 @@ components:
       properties:
         name:
           type: string
+        centerId:
+          type: integer
         code:
           type: string
           nullable: true
         level:
           type: string
           nullable: true
-      required: [name]
+      required: [name, centerId]
     UpdateCycleInput:
       type: object
       properties:

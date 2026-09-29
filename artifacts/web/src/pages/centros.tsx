@@ -31,7 +31,9 @@ import {
   ChevronRight,
   Map as MapIcon,
   List,
+  FileSpreadsheet,
 } from "lucide-react";
+import { exportSheetsXlsx } from "@/lib/export";
 
 const ALL = "all";
 
@@ -70,6 +72,10 @@ export default function CentrosPage() {
     () => new Map(municipalities.map((m) => [m.id, m.name])),
     [municipalities],
   );
+  const provinceName = useMemo(
+    () => new Map(provinces.map((p) => [p.id, p.name])),
+    [provinces],
+  );
 
   const params: ListCentersParams = {};
   if (provinceId != null) params.provinceId = provinceId;
@@ -80,6 +86,48 @@ export default function CentrosPage() {
   if (centerType) params.centerType = centerType;
 
   const { data: centers = [], isLoading } = useListCenters(params);
+  const exportCenters = () => {
+    exportSheetsXlsx(
+      [
+        {
+          name: "Centros",
+          columns: [
+            "Centro",
+            "Código",
+            "Naturaleza",
+            "Tipo",
+            "Provincia",
+            "Isla",
+            "Municipio",
+            "Dirección",
+            "Teléfono",
+            "Correo electrónico",
+            "Web",
+            "Latitud",
+            "Longitud",
+          ],
+          rows: centers.map((center) => [
+            center.name,
+            center.code ?? "",
+            center.nature ?? "",
+            center.centerType ?? "",
+            center.provinceId ? provinceName.get(center.provinceId) ?? "" : "",
+            center.islandId ? islandName.get(center.islandId) ?? "" : "",
+            center.municipalityId
+              ? municipalityName.get(center.municipalityId) ?? ""
+              : "",
+            center.address ?? "",
+            center.phone ?? "",
+            center.email ?? "",
+            center.website ?? "",
+            center.latitude ?? "",
+            center.longitude ?? "",
+          ]),
+        },
+      ],
+      `centros-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
 
   const mapCenters: MapCenter[] = centers
     .filter((c) => c.latitude != null && c.longitude != null)
@@ -115,16 +163,27 @@ export default function CentrosPage() {
             {professionalFamily} en Canarias.
           </p>
         </div>
-        {canManage && (
-          <CenterFormDialog
-            trigger={
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nuevo centro
-              </Button>
-            }
-          />
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={exportCenters}
+            disabled={isLoading || centers.length === 0}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
+          {canManage && (
+            <CenterFormDialog
+              trigger={
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nuevo centro
+                </Button>
+              }
+            />
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
