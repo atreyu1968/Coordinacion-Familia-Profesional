@@ -249,6 +249,7 @@ router.post("/meetings", requireAuth, async (req, res): Promise<void> => {
         ? `Se ha programado una videoconferencia en el módulo ${moduleName}.`
         : "Se ha programado una nueva videoconferencia.",
       type: "meeting",
+      data: { meetingId: row!.id },
     });
   }
 

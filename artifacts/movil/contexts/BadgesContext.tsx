@@ -94,13 +94,15 @@ export function BadgesProvider({ children }: { children: React.ReactNode }) {
       title?: string;
       body?: string | null;
       type?: string | null;
+      data?: Record<string, unknown>;
     }) => {
       void queryClient.invalidateQueries({
         queryKey: getListNotificationsQueryKey(),
       });
       if (payload?.title) {
         void showLocalNotification(payload.title, payload.body, {
-          type: payload.type ?? "general",
+          ...(payload.data ?? {}),
+          type: payload.type ?? payload.data?.type ?? "general",
         });
       }
     };

@@ -173,6 +173,7 @@ router.post(
         ? `${created.location}${created.sector ? " · " + created.sector : ""}`
         : (created.sector ?? "Nueva oferta de empresa"),
       type: "company_alert",
+      data: { companyAlertId: created.id },
     });
 
     res.status(201).json({

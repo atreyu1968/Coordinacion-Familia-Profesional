@@ -7,38 +7,55 @@ import { useRouter, type Href } from "expo-router";
 
 import { registerPushToken } from "@workspace/api-client-react";
 
+export type PushRegistrationResult =
+  | "registered"
+  | "permission-required"
+  | "permission-blocked"
+  | "unsupported"
+  | "failed";
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: true,
   }),
 });
 
 /**
- * Best-effort push registration. Follows the graceful-degradation pattern of
- * the rest of the platform: any failure (web, simulator, denied permission,
- * missing projectId) is swallowed so the app keeps working without push.
+ * Register this physical device with the API. Login may register silently when
+ * permission was already granted; the first permission prompt is initiated by
+ * the user's action in the Avisos screen.
  */
-export async function registerForPushNotifications(): Promise<void> {
+export async function registerForPushNotifications(
+  requestPermission = false,
+): Promise<PushRegistrationResult> {
   try {
-    if (Platform.OS === "web") return;
-    if (!Device.isDevice) return;
-
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let finalStatus = existing;
-    if (existing !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== "granted") return;
+    if (Platform.OS === "web" || !Device.isDevice) return "unsupported";
 
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
-        name: "General",
+        name: "Avisos",
         importance: Notifications.AndroidImportance.DEFAULT,
+        sound: "default",
       });
+    }
+
+    let permission = await Notifications.getPermissionsAsync();
+    if (!permission.granted) {
+      if (!requestPermission) {
+        return permission.canAskAgain
+          ? "permission-required"
+          : "permission-blocked";
+      }
+      if (!permission.canAskAgain) return "permission-blocked";
+      permission = await Notifications.requestPermissionsAsync();
+    }
+    if (!permission.granted) {
+      return permission.canAskAgain
+        ? "permission-required"
+        : "permission-blocked";
     }
 
     const projectId =
@@ -49,14 +66,15 @@ export async function registerForPushNotifications(): Promise<void> {
       projectId ? { projectId } : undefined,
     );
     const token = tokenResponse.data;
-    if (!token) return;
+    if (!token) return "failed";
 
     await registerPushToken({
       token,
       platform: Platform.OS === "ios" ? "ios" : "android",
     });
+    return "registered";
   } catch {
-    // Graceful: push is optional. In-app notifications still work.
+    return "failed";
   }
 }
 
@@ -75,9 +93,35 @@ function deepLinkFromData(data: unknown): Href | null {
       return { pathname: "/chat/[id]", params: { id: String(groupId) } };
     }
     case "announcement":
-      return "/(tabs)";
+      return "/(tabs)/notifications";
     case "company_alert":
       return "/alerts";
+    case "survey": {
+      const surveyId = payload.surveyId;
+      if (surveyId == null) return "/surveys";
+      return { pathname: "/survey/[id]", params: { id: String(surveyId) } };
+    }
+    case "document_form": {
+      const formId = payload.documentFormId;
+      if (formId == null) return "/forms";
+      return { pathname: "/form/[id]", params: { id: String(formId) } };
+    }
+    case "meeting":
+      return "/videoconferencias";
+    case "year_confirmation":
+      return "/confirmar-curso";
+    case "forum_thread":
+    case "forum_reply": {
+      const threadId = payload.threadId;
+      if (threadId == null) return "/foros";
+      return {
+        pathname: "/foros/tema/[id]",
+        params: { id: String(threadId) },
+      };
+    }
+    case "event":
+    case "calendar":
+      return "/(tabs)";
     default:
       return "/(tabs)/notifications";
   }

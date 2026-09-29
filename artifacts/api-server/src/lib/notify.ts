@@ -6,7 +6,7 @@ import {
   notificationsTable,
 } from "@workspace/db";
 import { emitToUser } from "./realtime";
-import { sendPushToUsers } from "./push";
+import { sendPushToUsers, withPushPath } from "./push";
 import { toNotification } from "./mappers";
 import { logger } from "./logger";
 
@@ -94,14 +94,20 @@ export async function resolveRoleAudienceInProvince(
  */
 export async function notifyUsers(
   userIds: number[],
-  notification: { title: string; body?: string | null; type?: string | null },
+  notification: {
+    title: string;
+    body?: string | null;
+    type?: string | null;
+    data?: Record<string, unknown>;
+  },
 ): Promise<number> {
   if (userIds.length === 0) return 0;
   try {
+    const recipients = Array.from(new Set(userIds));
     const rows = await db
       .insert(notificationsTable)
       .values(
-        userIds.map((uid) => ({
+        recipients.map((uid) => ({
           userId: uid,
           title: notification.title,
           body: notification.body ?? null,
@@ -110,14 +116,24 @@ export async function notifyUsers(
       )
       .returning();
 
-    for (const row of rows) {
-      emitToUser(row.userId, "notification", toNotification(row));
-    }
-
-    void sendPushToUsers(userIds, {
+    const pushPayload = withPushPath({
       title: notification.title,
       body: notification.body ?? null,
-      data: { type: notification.type ?? "general" },
+      data: {
+        ...(notification.data ?? {}),
+        type: notification.type ?? "general",
+      },
+    });
+
+    for (const row of rows) {
+      emitToUser(row.userId, "notification", {
+        ...toNotification(row),
+        data: pushPayload.data,
+      });
+    }
+
+    void sendPushToUsers(userIds, pushPayload).catch((err) => {
+      logger.warn({ err }, "notifyUsers push delivery failed");
     });
 
     return rows.length;

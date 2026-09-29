@@ -34,8 +34,10 @@ import {
   getViewerContext,
   isInAudience,
   canManageAudience,
+  resolveAudienceUserIds,
 } from "../lib/audience";
 import { toSurvey } from "../lib/mappers";
+import { notifyUsers } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -179,6 +181,18 @@ router.post(
 
       return survey!;
     });
+
+    const recipientIds = (await resolveAudienceUserIds(
+      audience.audienceType,
+      audience.audienceIds,
+    )).filter((id) => id !== caller.id);
+    if (recipientIds.length > 0) {
+      await notifyUsers(recipientIds, {
+        title: `Nueva encuesta: ${created.title}`,
+        type: "survey",
+        data: { surveyId: created.id },
+      });
+    }
 
     res.status(201).json(toSurvey(created));
   },

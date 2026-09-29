@@ -28,10 +28,20 @@ Chat messages are pushed directly (not persisted as in-app notifications) so the
 real-time socket owns the foreground case and push owns the closed-app case.
 
 # Standalone delivery requires EAS credentials (manual)
-Expo Go uses Expo's shared push creds (no config). For installed/standalone
+Expo Go uses Expo's shared push creds (no config). Replit's mobile docs confirm
+Android push can be tested immediately in Expo Go; iOS push requires an app
+build uploaded to TestFlight or the App Store first. For installed/standalone
 builds, `getExpoPushTokenAsync` needs `extra.eas.projectId` (populated by
 `eas init`) and real APNs/FCM credentials provisioned via `eas credentials` /
 `eas build`. These steps require interactive Expo-account login and cannot be
 done from the agent environment — leave to the user. `app.json` already has the
 `expo-notifications` plugin + iOS `bundleIdentifier` / Android `package`, and
 `eas.json` has the build profiles.
+
+**Why:** Expo token registration in source is not sufficient for production
+native delivery; iOS requires the app registration and Apple push credentials,
+and standalone builds need the EAS project identity.
+
+**How to apply:** test Android push with Expo Go; test iOS push only from a
+registered TestFlight/App Store build. Do not claim native production push is
+ready until the project ID and platform credentials are configured.

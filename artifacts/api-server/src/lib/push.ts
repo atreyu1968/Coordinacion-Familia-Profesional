@@ -6,10 +6,17 @@ import { getSettings } from "./settings";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
-interface PushPayload {
+export interface PushPayload {
   title: string;
   body?: string | null;
   data?: Record<string, unknown>;
+}
+
+interface ExpoTicket {
+  status?: string;
+  id?: string;
+  message?: string;
+  details?: { error?: string };
 }
 
 function isExpoPushToken(token: string): boolean {
@@ -17,6 +24,53 @@ function isExpoPushToken(token: string): boolean {
     token.startsWith("ExponentPushToken[") ||
     token.startsWith("ExpoPushToken[")
   );
+}
+
+function positiveId(value: unknown): number | null {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value > 0
+    ? value
+    : null;
+}
+
+function pushPath(data: Record<string, unknown>): string {
+  const groupId = positiveId(data.groupId);
+  const surveyId = positiveId(data.surveyId);
+  const formId = positiveId(data.documentFormId);
+  const threadId = positiveId(data.threadId);
+
+  switch (data.type) {
+    case "message":
+      return groupId == null ? "/chat" : `/chat/${groupId}`;
+    case "survey":
+      return surveyId == null ? "/surveys" : `/survey/${surveyId}`;
+    case "document_form":
+      return formId == null ? "/forms" : `/form/${formId}`;
+    case "meeting":
+      return "/videoconferencias";
+    case "year_confirmation":
+      return "/confirmar-curso";
+    case "company_alert":
+      return "/alerts";
+    case "forum_thread":
+    case "forum_reply":
+      return threadId == null ? "/foros" : `/foros/tema/${threadId}`;
+    case "announcement":
+      return "/notifications";
+    case "event":
+    case "calendar":
+    default:
+      return "/";
+  }
+}
+
+export function withPushPath(payload: PushPayload): PushPayload {
+  const data = { ...(payload.data ?? {}) };
+  if (typeof data.path !== "string" || !data.path.startsWith("/")) {
+    data.path = pushPath(data);
+  }
+  return { ...payload, data };
 }
 
 /**
@@ -145,6 +199,82 @@ async function sendWebPush(
   );
 }
 
+async function removeInvalidExpoToken(id: number): Promise<void> {
+  try {
+    await db.delete(pushTokensTable).where(eq(pushTokensTable.id, id));
+  } catch (err) {
+    logger.warn({ err, pushTokenId: id }, "push: failed to remove invalid Expo token");
+  }
+}
+
+async function sendExpoPush(
+  tokens: { id: number; token: string }[],
+  payload: PushPayload,
+): Promise<void> {
+  // Expo accepts at most 100 messages in one request.
+  for (let offset = 0; offset < tokens.length; offset += 100) {
+    const batch = tokens.slice(offset, offset + 100);
+    const messages = batch.map(({ token }) => ({
+      to: token,
+      sound: "default" as const,
+      title: payload.title,
+      body: payload.body ?? "",
+      data: payload.data ?? {},
+    }));
+
+    try {
+      const res = await fetch(EXPO_PUSH_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      });
+      if (!res.ok) {
+        logger.warn(
+          { status: res.status, batchSize: batch.length },
+          "push: Expo service returned non-OK status",
+        );
+        continue;
+      }
+
+      const response = (await res.json()) as { data?: ExpoTicket[] };
+      if (!Array.isArray(response.data)) {
+        logger.warn(
+          { batchSize: batch.length },
+          "push: Expo returned an invalid ticket response",
+        );
+        continue;
+      }
+
+      await Promise.all(
+        response.data.map(async (ticket, index) => {
+          if (ticket.status === "ok") return;
+          const target = batch[index];
+          const errorCode = ticket.details?.error ?? "UnknownError";
+          logger.warn(
+            {
+              pushTokenId: target?.id,
+              errorCode,
+              message: ticket.message,
+            },
+            "push: Expo rejected a notification",
+          );
+          if (target && errorCode === "DeviceNotRegistered") {
+            await removeInvalidExpoToken(target.id);
+          }
+        }),
+      );
+    } catch (err) {
+      logger.warn(
+        { err, batchSize: batch.length },
+        "push: Expo send failed",
+      );
+    }
+  }
+}
+
 /**
  * Send a push notification to every registered device of the given users.
  *
@@ -157,9 +287,11 @@ async function sendWebPush(
  */
 export async function sendPushToUsers(
   userIds: number[],
-  payload: PushPayload,
+  rawPayload: PushPayload,
 ): Promise<void> {
   if (userIds.length === 0) return;
+  const recipients = Array.from(new Set(userIds));
+  const payload = withPushPath(rawPayload);
 
   let rows: { id: number; token: string; platform: string | null }[] = [];
   try {
@@ -170,15 +302,13 @@ export async function sendPushToUsers(
         platform: pushTokensTable.platform,
       })
       .from(pushTokensTable)
-      .where(inArray(pushTokensTable.userId, userIds));
+      .where(inArray(pushTokensTable.userId, recipients));
   } catch (err) {
     logger.warn({ err }, "push: failed to load device tokens");
     return;
   }
 
-  const expoTokens = rows
-    .map((t) => t.token)
-    .filter((t) => isExpoPushToken(t));
+  const expoTokens = rows.filter((t) => isExpoPushToken(t.token));
 
   const webSubscriptions = rows.filter(
     (t) => t.platform === "web" && !isExpoPushToken(t.token),
@@ -190,33 +320,5 @@ export async function sendPushToUsers(
     logger.warn({ err }, "push: web push batch failed");
   });
 
-  if (expoTokens.length === 0) return;
-
-  const messages = expoTokens.map((to) => ({
-    to,
-    sound: "default" as const,
-    title: payload.title,
-    body: payload.body ?? "",
-    data: payload.data ?? {},
-  }));
-
-  try {
-    const res = await fetch(EXPO_PUSH_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(messages),
-    });
-    if (!res.ok) {
-      logger.warn(
-        { status: res.status },
-        "push: Expo service returned non-OK status",
-      );
-    }
-  } catch (err) {
-    // Best-effort: never surface push failures to the caller.
-    logger.warn({ err }, "push: Expo send failed");
-  }
+  await sendExpoPush(expoTokens, payload);
 }

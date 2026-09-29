@@ -70,6 +70,7 @@ import {
 import { sendEmail, buildAccreditationEmail } from "../lib/email";
 import { generateQrDataUrl, generateCertificatePdfBase64 } from "../lib/documents";
 import { getSettings, professionalFamilyOf } from "../lib/settings";
+import { notifyUsers, resolveProvinceAudience } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -228,6 +229,18 @@ router.post(
         description: event!.description,
         eventId: event!.id,
         createdById: caller.id,
+      });
+    }
+
+    const recipientIds = await resolveProvinceAudience(
+      event!.provinceId,
+      caller.id,
+    );
+    if (recipientIds.length > 0) {
+      await notifyUsers(recipientIds, {
+        title: `Nuevo evento: ${event!.name}`,
+        type: "event",
+        data: { eventId: event!.id },
       });
     }
 
@@ -968,6 +981,18 @@ router.post(
         createdById: caller.id,
       })
       .returning();
+
+    const recipientIds = await resolveProvinceAudience(
+      entry!.provinceId,
+      caller.id,
+    );
+    if (recipientIds.length > 0) {
+      await notifyUsers(recipientIds, {
+        title: `Nuevo evento en el calendario: ${entry!.title}`,
+        type: "calendar",
+        data: { calendarEntryId: entry!.id },
+      });
+    }
 
     res.status(201).json(toCalendarEntry(entry!));
   },

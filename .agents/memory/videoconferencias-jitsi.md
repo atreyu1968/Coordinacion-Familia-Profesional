@@ -10,6 +10,10 @@ Videoconferencing lives on the **web app only**. The mobile app has **no call fe
 - **Everyone else** joins as a **guest**: `https://8x8.vc/{appId}/{room}#config...` with **no jwt**. Guests don't count as billable monthly active users, so usage stays in the free tier.
 - **Fallback**: if JaaS env is absent (or signing fails), returns `provider: "public"` with `https://meet.jit.si/{room}#config...`.
 
+**Entry policy — keep join links inside the app.** Participants should open meetings from the application's videoconference flow; do not publish, display as copyable text, or distribute JaaS room URLs separately. The user's no-reuse approach depends on old room links not being known outside that flow.
+
+**Security boundary:** link secrecy reduces casual reuse but is not strong access control. A JaaS guest URL can still be used by anyone who obtains it. Preserve authenticated access to the app's meeting flow and server-side meeting checks; do not describe an undisclosed URL as uncopyable or guaranteed to expire.
+
 **Why coordinator-only moderators:** explicit user decision — only coordinator/admin "log in" (are authenticated moderators) to keep the JaaS free tier's ~25 MAU cap from being exceeded. Requires "allow guests" enabled in the 8x8 JaaS console so non-token participants can join.
 
 **Config hash** always sets `disableDeepLinking=true` + `prejoinPageEnabled=false` (auto-join, stay in-app); audio-only is a per-join mode appending `startAudioOnly=true`.

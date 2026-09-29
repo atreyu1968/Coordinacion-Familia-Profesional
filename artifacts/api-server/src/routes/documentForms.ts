@@ -27,9 +27,11 @@ import {
   getViewerContext,
   isInAudience,
   canManageAudience,
+  resolveAudienceUserIds,
 } from "../lib/audience";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
+import { notifyUsers } from "../lib/notify";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -212,6 +214,18 @@ router.post(
 
       return { form: form!, fields: insertedFields };
     });
+
+    const recipientIds = (await resolveAudienceUserIds(
+      audience.audienceType,
+      audience.audienceIds,
+    )).filter((id) => id !== caller.id);
+    if (recipientIds.length > 0) {
+      await notifyUsers(recipientIds, {
+        title: `Nuevo formulario: ${created.form.title}`,
+        type: "document_form",
+        data: { documentFormId: created.form.id },
+      });
+    }
 
     res.status(201).json({
       id: created.form.id,

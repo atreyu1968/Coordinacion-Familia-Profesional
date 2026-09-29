@@ -42,6 +42,7 @@ import {
   toAcademicYear,
   toTeacherYearConfirmation,
 } from "../lib/mappers";
+import { notifyUsers } from "../lib/notify";
 import { getSettings, getActiveAcademicYear } from "../lib/settings";
 import { sendEmail, buildYearConfirmationEmail } from "../lib/email";
 import { getAppBaseUrl } from "../lib/appUrl";
@@ -421,6 +422,7 @@ router.post(
     let created = 0;
     let emailed = 0;
     let emailPending = false;
+    const newlyPendingTeacherIds: number[] = [];
 
     for (const teacher of teachers) {
       if (alreadyOpen.has(teacher.id)) continue;
@@ -431,6 +433,7 @@ router.post(
         deadline,
       });
       created += 1;
+      newlyPendingTeacherIds.push(teacher.id);
 
       const email = buildYearConfirmationEmail({
         teacherName: teacher.name,
@@ -445,6 +448,15 @@ router.post(
       });
       if (result.sent) emailed += 1;
       if (result.pending) emailPending = true;
+    }
+
+    if (newlyPendingTeacherIds.length > 0) {
+      await notifyUsers(newlyPendingTeacherIds, {
+        title: `Confirma tu curso ${year}`,
+        body: `Revisa tu centro y módulos antes del ${deadline.toLocaleDateString("es-ES")}.`,
+        type: "year_confirmation",
+        data: { schoolYear: year },
+      });
     }
 
     res.json({ created, emailed, emailPending, deadline });

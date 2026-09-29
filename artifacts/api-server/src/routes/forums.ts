@@ -49,6 +49,7 @@ import {
 } from "../middlewares/auth";
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
+import { resolveAudienceUserIds } from "../lib/audience";
 import { getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 
@@ -346,6 +347,17 @@ router.post("/forum/threads", requireAuth, async (req, res): Promise<void> => {
     });
     return created!;
   });
+
+  const recipientIds = (await resolveAudienceUserIds("module", [module.id]))
+    .filter((id) => id !== caller.id);
+  if (recipientIds.length > 0) {
+    await notifyUsers(recipientIds, {
+      title: `Nuevo tema en el foro: ${thread.title}`,
+      body: `Nuevo tema en el módulo ${module.name}.`,
+      type: "forum_thread",
+      data: { threadId: thread.id },
+    });
+  }
 
   res.status(201).json(
     toForumThread({
@@ -819,6 +831,7 @@ async function notifyThreadParticipants(
     title: `Nueva respuesta en «${thread.title}»`,
     body: `${poster.name}: ${snippet}`,
     type: "forum_reply",
+    data: { threadId: thread.id },
   });
 }
 

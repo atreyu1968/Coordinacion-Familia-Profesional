@@ -13,6 +13,7 @@
 import { Platform } from "react-native";
 
 import { getAuthToken } from "@/contexts/AuthContext";
+import type { PushRegistrationResult } from "@/lib/push";
 
 const THEME_COLOR = "#0050b3";
 const DEFAULT_APP_NAME = "Coordina ADG";
@@ -195,28 +196,49 @@ async function fetchVapidPublicKey(token: string): Promise<string | null> {
 
 /**
  * Subscribe the current browser to Web Push and register the subscription with
- * the API (stored as a `web` push token). Best-effort: any failure is swallowed.
+ * the API (stored as a `web` push token). Permission prompts only happen after
+ * an explicit user action; background startup silently restores granted pushes.
  */
-export async function registerWebPush(): Promise<void> {
-  if (!isWeb()) return;
+export async function registerWebPush(
+  requestPermission = false,
+): Promise<PushRegistrationResult> {
+  if (!isWeb()) return "unsupported";
   if (
     !("serviceWorker" in navigator) ||
     typeof window === "undefined" ||
     !("PushManager" in window) ||
     typeof Notification === "undefined"
   ) {
-    return;
+    return "unsupported";
   }
 
-  const token = await getAuthToken();
-  if (!token) return;
+  // Start the browser permission prompt synchronously from the user's click;
+  // awaiting the API before this point can consume the browser's user gesture.
+  const permissionRequest =
+    requestPermission && Notification.permission === "default"
+      ? Notification.requestPermission().catch(
+          () => "denied" as NotificationPermission,
+        )
+      : null;
 
   try {
-    const vapidKey = await fetchVapidPublicKey(token);
-    if (!vapidKey) return; // web push disabled server-side
+    const token = await getAuthToken();
+    if (!token) return "failed";
 
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+    const vapidKey = await fetchVapidPublicKey(token);
+    if (!vapidKey) return "failed";
+
+    let permission = Notification.permission;
+    if (permission !== "granted") {
+      if (permission === "denied") return "permission-blocked";
+      if (!permissionRequest) return "permission-required";
+      permission = await permissionRequest;
+    }
+    if (permission !== "granted") {
+      return permission === "denied"
+        ? "permission-blocked"
+        : "permission-required";
+    }
 
     const reg = await navigator.serviceWorker.ready;
     let subscription = await reg.pushManager.getSubscription();
@@ -227,7 +249,7 @@ export async function registerWebPush(): Promise<void> {
       });
     }
 
-    await fetch(`${apiBase()}/push-tokens`, {
+    const response = await fetch(`${apiBase()}/push-tokens`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -238,8 +260,11 @@ export async function registerWebPush(): Promise<void> {
         platform: "web",
       }),
     });
+    if (!response.ok) return "failed";
+    return "registered";
   } catch (err) {
     console.warn("registerWebPush failed", err);
+    return "failed";
   }
 }
 

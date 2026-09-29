@@ -1299,6 +1299,7 @@ router.post(
         title: created.title,
         body: created.body,
         type: "announcement",
+        data: { announcementId: created.id },
       });
     }
 
