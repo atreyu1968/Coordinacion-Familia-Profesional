@@ -18,6 +18,7 @@ import {
   forumThreadReadsTable,
   modulesTable,
   centersTable,
+  trainingOfferTable,
   usersTable,
   type User,
 } from "@workspace/db";
@@ -49,6 +50,7 @@ import {
 } from "../middlewares/auth";
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
+import { getActiveFamily } from "../lib/settings";
 
 const router: IRouter = Router();
 
@@ -105,11 +107,77 @@ function moduleScopeFilter(scope: ReadScope): SQL | undefined {
   return undefined;
 }
 
+// Forum modules are scoped to the one professional family configured for this
+// app. Center-bound modules use their center's family list. Global catalog
+// modules are eligible only when a center in that family offers their cycle.
+// Match legacy rows without cycleId by cycle name, and do not tie this to one
+// academic year: the professional-family assignment is not year-specific.
+function moduleFamilyFilter(activeFamily: string): SQL {
+  const familyJson = JSON.stringify([activeFamily]);
+  return sql`(
+    (
+      ${modulesTable.centerId} is not null
+      and exists (
+        select 1
+        from centers forum_family_center
+        where forum_family_center.id = ${modulesTable.centerId}
+          and forum_family_center.deleted_at is null
+          and forum_family_center.families @> ${familyJson}::jsonb
+      )
+    )
+    or
+    (
+      ${modulesTable.centerId} is null
+      and exists (
+        select 1
+        from training_offer forum_family_offer
+        inner join centers forum_offer_center
+          on forum_offer_center.id = forum_family_offer.center_id
+        where forum_family_offer.deleted_at is null
+          and forum_offer_center.deleted_at is null
+          and forum_offer_center.families @> ${familyJson}::jsonb
+          and (
+            (
+              ${modulesTable.cycleId} is not null
+              and (
+                forum_family_offer.cycle_id = ${modulesTable.cycleId}
+                or (
+                  forum_family_offer.cycle_id is null
+                  and forum_family_offer.cycle_name = ${modulesTable.cycleName}
+                )
+              )
+            )
+            or (
+              ${modulesTable.cycleId} is null
+              and forum_family_offer.cycle_name = ${modulesTable.cycleName}
+            )
+          )
+      )
+    )
+  )`;
+}
+
+async function moduleBelongsToActiveFamily(moduleId: number): Promise<boolean> {
+  const [matchingModule] = await db
+    .select({ id: modulesTable.id })
+    .from(modulesTable)
+    .where(
+      and(
+        eq(modulesTable.id, moduleId),
+        isNull(modulesTable.deletedAt),
+        moduleFamilyFilter(await getActiveFamily()),
+      ),
+    )
+    .limit(1);
+  return matchingModule != null;
+}
+
 // Whether the caller may read/post within a specific module's forum.
 async function moduleVisibleTo(
   caller: User,
-  module: { centerId: number | null },
+  module: { id: number; centerId: number | null },
 ): Promise<boolean> {
+  if (!(await moduleBelongsToActiveFamily(module.id))) return false;
   if (module.centerId == null) return true; // global module
   const scope = resolveReadScope(caller);
   if (scope.kind === "global") return true;
@@ -122,6 +190,22 @@ async function moduleVisibleTo(
     return center?.provinceId === scope.provinceId;
   }
   return false;
+}
+
+async function moduleVisibleById(
+  caller: User,
+  moduleId: number,
+): Promise<boolean> {
+  const [module] = await db
+    .select({ id: modulesTable.id, centerId: modulesTable.centerId })
+    .from(modulesTable)
+    .where(
+      and(
+        eq(modulesTable.id, moduleId),
+        isNull(modulesTable.deletedAt),
+      ),
+    );
+  return module ? moduleVisibleTo(caller, module) : false;
 }
 
 // Resolve the province a center belongs to (for manager scope checks).
@@ -141,7 +225,10 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
   const caller = req.user!;
   const scope = resolveReadScope(caller);
 
-  const filters: SQL[] = [isNull(modulesTable.deletedAt)];
+  const filters: SQL[] = [
+    isNull(modulesTable.deletedAt),
+    moduleFamilyFilter(await getActiveFamily()),
+  ];
   const scopeMatch = moduleScopeFilter(scope);
   if (scopeMatch) filters.push(scopeMatch);
 
@@ -349,6 +436,10 @@ router.delete(
       res.status(404).json({ message: "Tema no encontrado" });
       return;
     }
+    if (!(await moduleVisibleById(caller, thread.moduleId))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
+      return;
+    }
 
     const isAuthor = thread.authorId === caller.id;
     const canManage =
@@ -494,6 +585,10 @@ router.delete(
       .select()
       .from(forumThreadsTable)
       .where(eq(forumThreadsTable.id, post.threadId));
+    if (!thread || !(await moduleVisibleById(caller, thread.moduleId))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
+      return;
+    }
 
     const isAuthor = post.authorId === caller.id;
     const canManage =
@@ -549,6 +644,10 @@ router.patch(
       res.status(404).json({ message: "Tema no encontrado" });
       return;
     }
+    if (!(await moduleVisibleById(caller, thread.moduleId))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
+      return;
+    }
     if (thread.authorId !== caller.id) {
       res.status(403).json({ message: "Solo el autor puede editar" });
       return;
@@ -594,6 +693,10 @@ router.put(
       );
     if (!thread) {
       res.status(404).json({ message: "Tema no encontrado" });
+      return;
+    }
+    if (!(await moduleVisibleById(caller, thread.moduleId))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
       return;
     }
 
@@ -686,6 +789,14 @@ router.patch(
       res.status(404).json({ message: "Mensaje no encontrado" });
       return;
     }
+    const [thread] = await db
+      .select()
+      .from(forumThreadsTable)
+      .where(eq(forumThreadsTable.id, post.threadId));
+    if (!thread || !(await moduleVisibleById(caller, thread.moduleId))) {
+      res.status(403).json({ message: "Módulo fuera de tu ámbito" });
+      return;
+    }
     if (post.authorId !== caller.id) {
       res.status(403).json({ message: "Solo el autor puede editar" });
       return;
@@ -776,7 +887,7 @@ async function loadVisibleThread(
       and(eq(forumThreadsTable.id, id), isNull(forumThreadsTable.deletedAt)),
     );
   if (!thread) return { ok: false, status: 404, message: "Tema no encontrado" };
-  if (!(await moduleVisibleTo(caller, { centerId: thread.centerId }))) {
+  if (!(await moduleVisibleById(caller, thread.moduleId))) {
     return { ok: false, status: 403, message: "Permiso denegado" };
   }
   return { ok: true, thread };

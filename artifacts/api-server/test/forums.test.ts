@@ -1,19 +1,87 @@
 import { describe, it, expect, afterAll } from "vitest";
 import request from "supertest";
+import { eq } from "drizzle-orm";
+import {
+  db,
+  centersTable,
+  integrationSettingsTable,
+  trainingOfferTable,
+} from "@workspace/db";
 import app from "../src/app";
 import {
   createUser,
   createProvince,
   createCenter,
-  createModule,
+  createModule as createBaseModule,
   cleanup,
   authHeader,
   trackThread,
 } from "./helpers";
 
+const familyCenterIds = new Map<string, Promise<number>>();
+
 afterAll(async () => {
   await cleanup();
 });
+
+async function activeFamily(): Promise<string> {
+  const [settings] = await db
+    .select({ professionalFamily: integrationSettingsTable.professionalFamily })
+    .from(integrationSettingsTable)
+    .limit(1);
+  return settings?.professionalFamily?.trim() || "Administración y Gestión";
+}
+
+async function centerForFamily(family: string): Promise<number> {
+  let pendingCenter = familyCenterIds.get(family);
+  if (!pendingCenter) {
+    pendingCenter = (async () => {
+      const provinceId = await createProvince("Foros");
+      const centerId = await createCenter(provinceId);
+      await db
+        .update(centersTable)
+        .set({ families: [family] })
+        .where(eq(centersTable.id, centerId));
+      return centerId;
+    })();
+    familyCenterIds.set(family, pendingCenter);
+  }
+  return pendingCenter;
+}
+
+// Give each test module a cycle offered by a center in the active family so
+// forum tests exercise their intended ACL behavior instead of unrelated data.
+async function createModule(opts: {
+  centerId?: number | null;
+  cycleName?: string | null;
+  code?: string | null;
+  name?: string;
+  family?: string;
+} = {}): Promise<number> {
+  const family = opts.family ?? (await activeFamily());
+  const cycleName = opts.cycleName ?? `Ciclo foro ${Date.now()}-${Math.random()}`;
+  const moduleId = await createBaseModule({
+    centerId: opts.centerId ?? null,
+    cycleName,
+    code: opts.code,
+    name: opts.name,
+  });
+  const offerCenterId =
+    opts.centerId == null ? await centerForFamily(family) : opts.centerId;
+
+  if (opts.centerId != null) {
+    await db
+      .update(centersTable)
+      .set({ families: [family] })
+      .where(eq(centersTable.id, opts.centerId));
+  }
+  await db.insert(trainingOfferTable).values({
+    centerId: offerCenterId,
+    cycleName,
+    schoolYear: null,
+  });
+  return moduleId;
+}
 
 // Open a thread via the API and track it for cleanup.
 async function openThread(
@@ -60,6 +128,48 @@ describe("forum thread creation", () => {
 });
 
 describe("forum module scope", () => {
+  it("lists and allows threads only for modules in the configured family", async () => {
+    const family = await activeFamily();
+    const allowedModuleId = await createModule();
+    const otherFamilyModuleId = await createModule({
+      family: `${family} (otra familia)`,
+    });
+    const teacher = await createUser({ role: "teacher" });
+
+    const allowedThread = await openThread(
+      teacher.token,
+      allowedModuleId,
+      "Módulo de la familia activa",
+    );
+    expect(allowedThread.status).toBe(201);
+
+    const blockedThread = await openThread(
+      teacher.token,
+      otherFamilyModuleId,
+      "Módulo de otra familia",
+    );
+    expect(blockedThread.status).toBe(403);
+
+    const modules = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(teacher.token));
+    expect(modules.status).toBe(200);
+    expect(
+      modules.body.some((module: { id: number }) => module.id === allowedModuleId),
+    ).toBe(true);
+    expect(
+      modules.body.some(
+        (module: { id: number }) => module.id === otherFamilyModuleId,
+      ),
+    ).toBe(false);
+
+    const hiddenThreads = await request(app)
+      .get("/api/forum/threads")
+      .query({ moduleId: otherFamilyModuleId })
+      .set(authHeader(teacher.token));
+    expect(hiddenThreads.status).toBe(403);
+  });
+
   it("hides center-scoped modules from users in other provinces", async () => {
     const provinceA = await createProvince("A");
     const provinceB = await createProvince("B");
