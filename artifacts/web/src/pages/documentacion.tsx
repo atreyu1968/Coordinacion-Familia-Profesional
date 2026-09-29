@@ -1,6 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  getGetModuleWikiEditorsQueryKey,
   getGetWikiPageQueryKey,
   getListWikiPagesQueryKey,
   useAddWikiAttachment,
@@ -9,12 +8,10 @@ import {
   useDeleteWikiAttachment,
   useDeleteWikiExternalLink,
   useDeleteWikiPage,
-  useGetModuleWikiEditors,
   useGetWikiPage,
   useListModules,
   useListWikiPages,
   useRequestWikiUploadUrl,
-  useUpdateModuleWikiEditors,
   useUpdateWikiPage,
   type Module,
   type WikiPage,
@@ -47,6 +44,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { WikiPermissionEditorDialog } from "@/components/WikiPermissionEditorDialog";
 import {
   BookText,
   Download,
@@ -202,138 +200,13 @@ function EditorsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data, isLoading } = useGetModuleWikiEditors(module.id, {
-    query: {
-      enabled: open,
-      queryKey: getGetModuleWikiEditorsQueryKey(module.id),
-    },
-  });
-  const updateMutation = useUpdateModuleWikiEditors();
-  const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [filter, setFilter] = useState("");
-
-  useEffect(() => {
-    if (open && data) setSelected(new Set(data.editorIds));
-    if (!open) setFilter("");
-  }, [open, data]);
-
-  const candidates = data?.candidates ?? [];
-  const canManage = data?.canManage ?? false;
-  const filtered = useMemo(() => {
-    const term = filter.trim().toLocaleLowerCase();
-    if (!term) return candidates;
-    return candidates.filter(
-      (candidate) =>
-        candidate.name.toLocaleLowerCase().includes(term) ||
-        (candidate.email ?? "").toLocaleLowerCase().includes(term),
-    );
-  }, [candidates, filter]);
-
-  const toggle = (id: number) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const save = async () => {
-    try {
-      await updateMutation.mutateAsync({
-        moduleId: module.id,
-        data: { userIds: [...selected] },
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getGetModuleWikiEditorsQueryKey(module.id),
-      });
-      toast({
-        title: "Editores actualizados",
-        description: moduleLabel(module),
-      });
-      onOpenChange(false);
-    } catch {
-      toast({
-        title: "No se pudieron guardar los editores",
-        description: "Comprueba tus permisos e inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Editores de la documentación</DialogTitle>
-          <DialogDescription>
-            Todas las personas autenticadas pueden leer «{moduleLabel(module)}».
-            Marca quién puede crear y editar páginas.
-          </DialogDescription>
-        </DialogHeader>
-        {isLoading ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Cargando...</p>
-        ) : !canManage ? (
-          <p className="py-4 text-sm text-muted-foreground">
-            Solo un administrador o el coordinador del módulo puede gestionar los editores.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                data-testid="input-editor-search"
-                className="pl-8"
-                placeholder="Buscar persona"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-              />
-            </div>
-            <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-              {filtered.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No hay personas disponibles.
-                </p>
-              ) : (
-                filtered.map((candidate) => (
-                  <label
-                    key={candidate.id}
-                    data-testid={`row-wiki-editor-${candidate.id}`}
-                    className="flex cursor-pointer items-center gap-3 rounded-md border p-2.5 hover:bg-accent"
-                  >
-                    <Checkbox
-                      data-testid={`checkbox-wiki-editor-${candidate.id}`}
-                      checked={selected.has(candidate.id)}
-                      onCheckedChange={() => toggle(candidate.id)}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{candidate.name}</div>
-                      {candidate.email && (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {candidate.email}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-        {canManage && (
-          <DialogFooter>
-            <Button
-              data-testid="button-save-wiki-editors"
-              onClick={save}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
+    <WikiPermissionEditorDialog
+      moduleId={module.id}
+      sectionName={moduleLabel(module)}
+      open={open}
+      onOpenChange={onOpenChange}
+    />
   );
 }
 
@@ -627,7 +500,7 @@ export default function DocumentacionPage() {
         }
         const contentType = file.type || "application/octet-stream";
         const upload = await requestUploadMutation.mutateAsync({
-          data: { fileName: file.name, size: file.size, contentType },
+          data: { pageId: page.id, fileName: file.name, size: file.size, contentType },
         });
         const uploadResponse = await fetch(upload.uploadURL, {
           method: "PUT",
@@ -981,30 +854,34 @@ export default function DocumentacionPage() {
                         </div>
                       )}
                     </div>
-                    {page.canEdit && (
+                    {(page.canEdit || page.canDelete) && (
                       <div className="flex shrink-0 gap-2">
-                        <Button
-                          data-testid="button-edit-wiki-page"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditorPage(page);
-                            setEditorOpen(true);
-                          }}
-                        >
-                          <Pencil className="mr-1.5 h-4 w-4" /> Editar
-                        </Button>
-                        <Button
-                          data-testid="button-delete-wiki-page"
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => void removePage()}
-                          disabled={deletePageMutation.isPending}
-                          aria-label="Eliminar página"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {page.canEdit && (
+                          <Button
+                            data-testid="button-edit-wiki-page"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditorPage(page);
+                              setEditorOpen(true);
+                            }}
+                          >
+                            <Pencil className="mr-1.5 h-4 w-4" /> Editar
+                          </Button>
+                        )}
+                        {page.canDelete && (
+                          <Button
+                            data-testid="button-delete-wiki-page"
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => void removePage()}
+                            disabled={deletePageMutation.isPending}
+                            aria-label="Eliminar página"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1021,7 +898,7 @@ export default function DocumentacionPage() {
                           Se admiten PDF, imágenes, formatos Microsoft, ZIP y RAR. Los enlaces externos deben usar HTTP o HTTPS. El texto de los formatos compatibles se indexa; PDF, imágenes y RAR se buscan por nombre.
                         </p>
                       </div>
-                      {page.canEdit && (
+                      {page.canUpload && (
                         <div className="flex flex-wrap gap-2">
                           <input
                             ref={fileInputRef}
@@ -1081,7 +958,7 @@ export default function DocumentacionPage() {
                                 {externalLinkHost(externalLink.url)}
                               </div>
                             </div>
-                            {page.canEdit && (
+                            {page.canDelete && (
                               <Button
                                 data-testid={`button-delete-wiki-external-link-${externalLink.id}`}
                                 size="icon"
@@ -1121,7 +998,7 @@ export default function DocumentacionPage() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
-                            {page.canEdit && (
+                            {page.canDelete && (
                               <Button
                                 data-testid={`button-delete-wiki-attachment-${attachment.id}`}
                                 size="icon"

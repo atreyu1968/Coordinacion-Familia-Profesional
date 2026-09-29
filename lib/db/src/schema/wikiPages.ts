@@ -81,6 +81,7 @@ export const wikiUploadIntentsTable = pgTable(
   {
     id: serial("id").primaryKey(),
     objectPath: text("object_path").notNull().unique(),
+    pageId: integer("page_id"),
     userId: integer("user_id").notNull(),
     fileName: text("file_name").notNull(),
     contentType: text("content_type").notNull(),

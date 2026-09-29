@@ -90,6 +90,8 @@ function RootLayoutNav() {
         <Stack.Screen name="foros" />
         <Stack.Screen name="foros/modulo/[id]" />
         <Stack.Screen name="foros/tema/[id]" />
+        <Stack.Screen name="wiki/index" />
+        <Stack.Screen name="wiki/[id]" />
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
         <Stack.Screen name="confirmar-curso" />

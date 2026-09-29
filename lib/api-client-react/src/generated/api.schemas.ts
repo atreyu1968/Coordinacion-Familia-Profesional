@@ -1442,16 +1442,50 @@ export interface WikiEditorUser {
   role: string;
 }
 
+export interface WikiActionPermissions {
+  canUpload: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+export interface WikiPermissionGroup {
+  id: number;
+  name: string;
+  permissions: WikiActionPermissions;
+}
+
+export interface WikiPermissionGroupInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  name: string;
+  permissions: WikiActionPermissions;
+}
+
+export type WikiModuleEditorCandidate = WikiEditorUser & {
+  directPermissions: WikiActionPermissions;
+  groupIds: number[];
+};
+
+export interface WikiModuleEditorInput {
+  userId: number;
+  directPermissions: WikiActionPermissions;
+  groupIds: number[];
+}
+
 export interface ModuleWikiEditors {
-  /** Whether the caller may change the editor set for this module. */
+  /** Whether the caller may manage user permissions for this module. */
   canManage: boolean;
-  editorIds: number[];
-  /** Users the caller is allowed to grant edit access to. */
-  candidates: WikiEditorUser[];
+  /** Whether the caller may create, edit, or retire reusable groups. */
+  canManageGroups: boolean;
+  /** Users the caller is allowed to manage in this module. */
+  candidates: WikiModuleEditorCandidate[];
+  groups: WikiPermissionGroup[];
 }
 
 export interface UpdateModuleWikiEditorsInput {
-  userIds: number[];
+  users: WikiModuleEditorInput[];
 }
 
 export type WikiAttachmentIndexStatus = typeof WikiAttachmentIndexStatus[keyof typeof WikiAttachmentIndexStatus];
@@ -1492,6 +1526,8 @@ export interface WikiPageSummary {
   attachmentCount: number;
   updatedAt: string;
   canEdit: boolean;
+  canUpload: boolean;
+  canDelete: boolean;
 }
 
 export interface WikiPageList {
@@ -1570,6 +1606,8 @@ export interface WikiExternalLinkInput {
 }
 
 export interface WikiUploadRequest {
+  /** @minimum 1 */
+  pageId: number;
   /**
      * @minLength 1
      * @maxLength 240

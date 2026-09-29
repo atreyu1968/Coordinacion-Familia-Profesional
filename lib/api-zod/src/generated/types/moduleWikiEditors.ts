@@ -5,12 +5,15 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { WikiEditorUser } from './wikiEditorUser';
+import type { WikiModuleEditorCandidate } from './wikiModuleEditorCandidate';
+import type { WikiPermissionGroup } from './wikiPermissionGroup';
 
 export interface ModuleWikiEditors {
-  /** Whether the caller may change the editor set for this module. */
+  /** Whether the caller may manage user permissions for this module. */
   canManage: boolean;
-  editorIds: number[];
-  /** Users the caller is allowed to grant edit access to. */
-  candidates: WikiEditorUser[];
+  /** Whether the caller may create, edit, or retire reusable groups. */
+  canManageGroups: boolean;
+  /** Users the caller is allowed to manage in this module. */
+  candidates: WikiModuleEditorCandidate[];
+  groups: WikiPermissionGroup[];
 }

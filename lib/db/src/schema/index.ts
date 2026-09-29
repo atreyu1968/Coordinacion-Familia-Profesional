@@ -35,5 +35,7 @@ export * from "./meetings";
 export * from "./forums";
 export * from "./wikiModuleCollections";
 export * from "./wikiModuleEditors";
+export * from "./wikiPermissionGroups";
+export * from "./wikiModulePermissionGroupMembers";
 export * from "./wikiPages";
 export * from "./wikiExternalLinks";

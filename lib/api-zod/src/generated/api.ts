@@ -2496,7 +2496,9 @@ export const ListWikiPagesResponse = zod.object({
   "tags": zod.array(zod.string()),
   "attachmentCount": zod.number(),
   "updatedAt": zod.coerce.date(),
-  "canEdit": zod.boolean()
+  "canEdit": zod.boolean(),
+  "canUpload": zod.boolean(),
+  "canDelete": zod.boolean()
 })),
   "canCreate": zod.boolean()
 })
@@ -2527,6 +2529,7 @@ export const CreateWikiPageBody = zod.object({
 /**
  * @summary Request a short-lived upload URL bound to the current user
  */
+
 export const requestWikiUploadUrlBodyFileNameMax = 240;
 
 export const requestWikiUploadUrlBodyContentTypeMax = 200;
@@ -2536,6 +2539,7 @@ export const requestWikiUploadUrlBodySizeMax = 52428800;
 
 
 export const RequestWikiUploadUrlBody = zod.object({
+  "pageId": zod.number().min(1),
   "fileName": zod.string().min(1).max(requestWikiUploadUrlBodyFileNameMax),
   "contentType": zod.string().max(requestWikiUploadUrlBodyContentTypeMax),
   "size": zod.number().min(1).max(requestWikiUploadUrlBodySizeMax)
@@ -2563,7 +2567,9 @@ export const GetWikiPageResponse = zod.object({
   "tags": zod.array(zod.string()),
   "attachmentCount": zod.number(),
   "updatedAt": zod.coerce.date(),
-  "canEdit": zod.boolean()
+  "canEdit": zod.boolean(),
+  "canUpload": zod.boolean(),
+  "canDelete": zod.boolean()
 }).and(zod.object({
   "content": zod.string(),
   "parentId": zod.number().nullable(),
@@ -2616,7 +2622,9 @@ export const UpdateWikiPageResponse = zod.object({
   "tags": zod.array(zod.string()),
   "attachmentCount": zod.number(),
   "updatedAt": zod.coerce.date(),
-  "canEdit": zod.boolean()
+  "canEdit": zod.boolean(),
+  "canUpload": zod.boolean(),
+  "canDelete": zod.boolean()
 }).and(zod.object({
   "content": zod.string(),
   "parentId": zod.number().nullable(),
@@ -2715,44 +2723,142 @@ export const DownloadWikiAttachmentParams = zod.object({
 
 
 /**
- * @summary List a module's wiki editors and the users that can be granted edit
+ * @summary List a module's wiki candidates and reusable permission groups
  */
 export const GetModuleWikiEditorsParams = zod.object({
   "moduleId": zod.coerce.number()
 })
 
 export const GetModuleWikiEditorsResponse = zod.object({
-  "canManage": zod.boolean().describe('Whether the caller may change the editor set for this module.'),
-  "editorIds": zod.array(zod.number()),
+  "canManage": zod.boolean().describe('Whether the caller may manage user permissions for this module.'),
+  "canManageGroups": zod.boolean().describe('Whether the caller may create, edit, or retire reusable groups.'),
   "candidates": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "role": zod.string()
-})).describe('Users the caller is allowed to grant edit access to.')
+}).and(zod.object({
+  "directPermissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+}),
+  "groupIds": zod.array(zod.number())
+}))).describe('Users the caller is allowed to manage in this module.'),
+  "groups": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "permissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+})
+}))
 })
 
 
 /**
- * @summary Set the users allowed to edit a module's wiki
+ * @summary Set direct wiki permissions and module group assignments
  */
 export const UpdateModuleWikiEditorsParams = zod.object({
   "moduleId": zod.coerce.number()
 })
 
 export const UpdateModuleWikiEditorsBody = zod.object({
-  "userIds": zod.array(zod.number())
+  "users": zod.array(zod.object({
+  "userId": zod.number(),
+  "directPermissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+}),
+  "groupIds": zod.array(zod.number())
+}))
 })
 
 export const UpdateModuleWikiEditorsResponse = zod.object({
-  "canManage": zod.boolean().describe('Whether the caller may change the editor set for this module.'),
-  "editorIds": zod.array(zod.number()),
+  "canManage": zod.boolean().describe('Whether the caller may manage user permissions for this module.'),
+  "canManageGroups": zod.boolean().describe('Whether the caller may create, edit, or retire reusable groups.'),
   "candidates": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "role": zod.string()
-})).describe('Users the caller is allowed to grant edit access to.')
+}).and(zod.object({
+  "directPermissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+}),
+  "groupIds": zod.array(zod.number())
+}))).describe('Users the caller is allowed to manage in this module.'),
+  "groups": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "permissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+})
+}))
+})
+
+
+/**
+ * @summary Create a reusable wiki permission group
+ */
+export const createWikiPermissionGroupBodyNameMin = 2;
+export const createWikiPermissionGroupBodyNameMax = 80;
+
+
+
+export const CreateWikiPermissionGroupBody = zod.object({
+  "name": zod.string().min(createWikiPermissionGroupBodyNameMin).max(createWikiPermissionGroupBodyNameMax),
+  "permissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Update a reusable wiki permission group
+ */
+export const UpdateWikiPermissionGroupParams = zod.object({
+  "groupId": zod.coerce.number()
+})
+
+export const updateWikiPermissionGroupBodyNameMin = 2;
+export const updateWikiPermissionGroupBodyNameMax = 80;
+
+
+
+export const UpdateWikiPermissionGroupBody = zod.object({
+  "name": zod.string().min(updateWikiPermissionGroupBodyNameMin).max(updateWikiPermissionGroupBodyNameMax),
+  "permissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+})
+})
+
+export const UpdateWikiPermissionGroupResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "permissions": zod.object({
+  "canUpload": zod.boolean(),
+  "canEdit": zod.boolean(),
+  "canDelete": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Retire a reusable wiki permission group
+ */
+export const DeleteWikiPermissionGroupParams = zod.object({
+  "groupId": zod.coerce.number()
 })
 
 

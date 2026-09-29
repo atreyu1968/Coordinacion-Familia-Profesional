@@ -13,10 +13,12 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import {
   AddWikiExternalLinkBody,
   AddWikiAttachmentBody,
+  CreateWikiPermissionGroupBody,
   CreateWikiPageBody,
   DeleteWikiAttachmentParams,
   DeleteWikiExternalLinkParams,
   DeleteWikiPageParams,
+  DeleteWikiPermissionGroupParams,
   GetModuleWikiEditorsResponse,
   GetWikiPageParams,
   GetWikiPageResponse,
@@ -26,6 +28,9 @@ import {
   RequestWikiUploadUrlResponse,
   UpdateModuleWikiEditorsBody,
   UpdateModuleWikiEditorsResponse,
+  UpdateWikiPermissionGroupBody,
+  UpdateWikiPermissionGroupParams,
+  UpdateWikiPermissionGroupResponse,
   UpdateWikiPageBody,
   UpdateWikiPageParams,
   UpdateWikiPageResponse,
@@ -37,8 +42,10 @@ import {
   usersTable,
   wikiAttachmentsTable,
   wikiExternalLinksTable,
+  wikiModulePermissionGroupMembersTable,
   wikiModuleEditorsTable,
   wikiPagesTable,
+  wikiPermissionGroupsTable,
   wikiUploadIntentsTable,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -50,6 +57,22 @@ const objectStorage = new ObjectStorageService();
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const UPLOAD_URL_TTL_MS = 15 * 60 * 1000;
 const OBJECT_PATH_PATTERN = /^\/objects\/uploads\/[a-zA-Z0-9-]{20,80}$/;
+type WikiActionPermissions = {
+  canUpload: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
+const NO_WIKI_PERMISSIONS: WikiActionPermissions = {
+  canUpload: false,
+  canEdit: false,
+  canDelete: false,
+};
+const ALL_WIKI_PERMISSIONS: WikiActionPermissions = {
+  canUpload: true,
+  canEdit: true,
+  canDelete: true,
+};
 
 function parsePositiveId(raw: string | string[] | undefined): number | null {
   if (typeof raw !== "string" || !/^\d+$/.test(raw)) return null;
@@ -94,23 +117,93 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-async function canEditSection(
+function mergePermissions(
+  target: WikiActionPermissions,
+  source: WikiActionPermissions,
+): void {
+  target.canUpload ||= source.canUpload;
+  target.canEdit ||= source.canEdit;
+  target.canDelete ||= source.canDelete;
+}
+
+async function getModulePermissionsForUser(
+  user: { id: number; role: string },
+  moduleIds: number[],
+): Promise<Map<number, WikiActionPermissions>> {
+  const permissions = new Map<number, WikiActionPermissions>();
+  for (const moduleId of moduleIds) {
+    permissions.set(
+      moduleId,
+      user.role === "superadmin"
+        ? { ...ALL_WIKI_PERMISSIONS }
+        : { ...NO_WIKI_PERMISSIONS },
+    );
+  }
+  if (user.role === "superadmin" || moduleIds.length === 0) return permissions;
+
+  const [directGrants, groupGrants] = await Promise.all([
+    db
+      .select({
+        moduleId: wikiModuleEditorsTable.moduleId,
+        canUpload: wikiModuleEditorsTable.canUpload,
+        canEdit: wikiModuleEditorsTable.canEdit,
+        canDelete: wikiModuleEditorsTable.canDelete,
+      })
+      .from(wikiModuleEditorsTable)
+      .where(
+        and(
+          inArray(wikiModuleEditorsTable.moduleId, moduleIds),
+          eq(wikiModuleEditorsTable.userId, user.id),
+          isNull(wikiModuleEditorsTable.deletedAt),
+        ),
+      ),
+    db
+      .select({
+        moduleId: wikiModulePermissionGroupMembersTable.moduleId,
+        canUpload: wikiPermissionGroupsTable.canUpload,
+        canEdit: wikiPermissionGroupsTable.canEdit,
+        canDelete: wikiPermissionGroupsTable.canDelete,
+      })
+      .from(wikiModulePermissionGroupMembersTable)
+      .innerJoin(
+        wikiPermissionGroupsTable,
+        eq(
+          wikiPermissionGroupsTable.id,
+          wikiModulePermissionGroupMembersTable.groupId,
+        ),
+      )
+      .where(
+        and(
+          inArray(wikiModulePermissionGroupMembersTable.moduleId, moduleIds),
+          eq(wikiModulePermissionGroupMembersTable.userId, user.id),
+          isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+          isNull(wikiPermissionGroupsTable.deletedAt),
+        ),
+      ),
+  ]);
+
+  for (const grant of directGrants) {
+    const target = permissions.get(grant.moduleId);
+    if (target) mergePermissions(target, grant);
+  }
+  for (const grant of groupGrants) {
+    const target = permissions.get(grant.moduleId);
+    if (target) mergePermissions(target, grant);
+  }
+  return permissions;
+}
+
+async function getSectionPermissions(
   user: { id: number; role: string },
   moduleId: number | null,
-): Promise<boolean> {
-  if (moduleId === null) return user.role === "superadmin";
-  const [grant] = await db
-    .select({ id: wikiModuleEditorsTable.id })
-    .from(wikiModuleEditorsTable)
-    .where(
-      and(
-        eq(wikiModuleEditorsTable.moduleId, moduleId),
-        eq(wikiModuleEditorsTable.userId, user.id),
-        isNull(wikiModuleEditorsTable.deletedAt),
-      ),
-    )
-    .limit(1);
-  return Boolean(grant);
+): Promise<WikiActionPermissions> {
+  if (moduleId === null) {
+    return user.role === "superadmin"
+      ? { ...ALL_WIKI_PERMISSIONS }
+      : { ...NO_WIKI_PERMISSIONS };
+  }
+  const permissions = await getModulePermissionsForUser(user, [moduleId]);
+  return permissions.get(moduleId) ?? { ...NO_WIKI_PERMISSIONS };
 }
 
 async function loadPage(pageId: number, user: { id: number; role: string }) {
@@ -174,14 +267,14 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
     )
     .orderBy(asc(wikiExternalLinksTable.createdAt));
 
-  const canEdit = await canEditSection(user, page.moduleId);
+  const permissions = await getSectionPermissions(user, page.moduleId);
   return {
     ...page,
     tags: page.tags ?? [],
     attachments,
     externalLinks,
     attachmentCount: attachments.length,
-    canEdit,
+    ...permissions,
   };
 }
 
@@ -320,33 +413,24 @@ router.get(
       ),
     ];
     const caller = req.user!;
-    const editorGrants =
-      editorModuleIds.length > 0
-        ? await db
-            .select({ moduleId: wikiModuleEditorsTable.moduleId })
-            .from(wikiModuleEditorsTable)
-            .where(
-              and(
-                inArray(wikiModuleEditorsTable.moduleId, editorModuleIds),
-                eq(wikiModuleEditorsTable.userId, caller.id),
-                isNull(wikiModuleEditorsTable.deletedAt),
-              ),
-            )
-        : [];
-    const editableModuleIds = new Set(editorGrants.map((grant) => grant.moduleId));
+    const modulePermissions = await getModulePermissionsForUser(
+      caller,
+      editorModuleIds,
+    );
 
     const items = rows.map((row) => ({
       ...row,
       tags: row.tags ?? [],
       attachmentCount: attachmentCounts.get(row.id) ?? 0,
-      canEdit:
-        row.moduleId === null
-          ? caller.role === "superadmin"
-          : editableModuleIds.has(row.moduleId),
+      ...(row.moduleId === null
+        ? caller.role === "superadmin"
+          ? ALL_WIKI_PERMISSIONS
+          : NO_WIKI_PERMISSIONS
+        : modulePermissions.get(row.moduleId) ?? NO_WIKI_PERMISSIONS),
     }));
     const canCreate =
       moduleId !== undefined
-        ? await canEditSection(caller, moduleId)
+        ? (await getSectionPermissions(caller, moduleId)).canEdit
         : globalOnly && caller.role === "superadmin";
 
     res.json(ListWikiPagesResponse.parse({ items, canCreate }));
@@ -381,7 +465,7 @@ router.post(
       return;
     }
     const input = parsed.data;
-    if (!(await canEditSection(req.user!, input.moduleId))) {
+    if (!(await getSectionPermissions(req.user!, input.moduleId)).canEdit) {
       res.status(403).json({ message: "No tienes permiso para crear páginas aquí" });
       return;
     }
@@ -507,7 +591,7 @@ router.delete(
       res.status(404).json({ message: "Página no encontrada" });
       return;
     }
-    if (!page.canEdit) {
+    if (!page.canDelete) {
       res.status(403).json({ message: "No tienes permiso para eliminar esta página" });
       return;
     }
@@ -540,6 +624,15 @@ router.post(
       res.status(400).json({ message: "Datos del archivo no válidos" });
       return;
     }
+    const page = await loadPage(parsed.data.pageId, req.user!);
+    if (!page) {
+      res.status(404).json({ message: "Página no encontrada" });
+      return;
+    }
+    if (!page.canUpload) {
+      res.status(403).json({ message: "No tienes permiso para subir archivos aquí" });
+      return;
+    }
     const fileName = sanitizeFileName(parsed.data.fileName);
     if (!fileName || parsed.data.size > MAX_UPLOAD_BYTES) {
       res.status(400).json({ message: "El nombre o tamaño del archivo no es válido" });
@@ -558,6 +651,7 @@ router.post(
       const expiresAt = new Date(Date.now() + UPLOAD_URL_TTL_MS);
       await db.insert(wikiUploadIntentsTable).values({
         objectPath,
+        pageId: parsed.data.pageId,
         userId: req.user!.id,
         fileName,
         contentType: parsed.data.contentType,
@@ -593,7 +687,7 @@ router.post(
       res.status(404).json({ message: "Página no encontrada" });
       return;
     }
-    if (!page.canEdit) {
+    if (!page.canUpload) {
       res.status(403).json({ message: "No tienes permiso para adjuntar archivos" });
       return;
     }
@@ -615,6 +709,7 @@ router.post(
       .where(
         and(
           eq(wikiUploadIntentsTable.objectPath, objectPath),
+          eq(wikiUploadIntentsTable.pageId, params.data.pageId),
           eq(wikiUploadIntentsTable.userId, req.user!.id),
           isNull(wikiUploadIntentsTable.consumedAt),
           gte(wikiUploadIntentsTable.expiresAt, new Date()),
@@ -702,7 +797,7 @@ router.post(
       res.status(404).json({ message: "Página no encontrada" });
       return;
     }
-    if (!page.canEdit) {
+    if (!page.canUpload) {
       res.status(403).json({ message: "No tienes permiso para añadir enlaces" });
       return;
     }
@@ -754,7 +849,7 @@ router.delete(
       return;
     }
     const page = await loadPage(externalLink.pageId, req.user!);
-    if (!page || !page.canEdit) {
+    if (!page || !page.canDelete) {
       res.status(403).json({ message: "No tienes permiso para retirar este enlace" });
       return;
     }
@@ -793,7 +888,7 @@ router.delete(
       return;
     }
     const page = await loadPage(attachment.pageId, req.user!);
-    if (!page || !page.canEdit) {
+    if (!page || !page.canDelete) {
       res.status(403).json({ message: "No tienes permiso para retirar este archivo" });
       return;
     }
@@ -916,19 +1011,6 @@ async function resolveEditorManagement(
   };
 }
 
-async function currentEditorIds(moduleId: number): Promise<number[]> {
-  const rows = await db
-    .select({ userId: wikiModuleEditorsTable.userId })
-    .from(wikiModuleEditorsTable)
-    .where(
-      and(
-        eq(wikiModuleEditorsTable.moduleId, moduleId),
-        isNull(wikiModuleEditorsTable.deletedAt),
-      ),
-    );
-  return rows.map((row) => row.userId);
-}
-
 async function loadCandidates(ids: number[]) {
   if (ids.length === 0) return [];
   return db
@@ -940,6 +1022,124 @@ async function loadCandidates(ids: number[]) {
     })
     .from(usersTable)
     .where(and(inArray(usersTable.id, ids), isNull(usersTable.deletedAt)));
+}
+
+function permissionGroupResponse(group: {
+  id: number;
+  name: string;
+  canUpload: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) {
+  return {
+    id: group.id,
+    name: group.name,
+    permissions: {
+      canUpload: group.canUpload,
+      canEdit: group.canEdit,
+      canDelete: group.canDelete,
+    },
+  };
+}
+
+async function loadModuleEditorSettings(
+  moduleId: number,
+  candidateIds: number[],
+  canManage: boolean,
+  canManageGroups: boolean,
+) {
+  if (!canManage) {
+    return {
+      canManage: false,
+      canManageGroups: false,
+      candidates: [],
+      groups: [],
+    };
+  }
+  const [
+    users,
+    directRows,
+    groupRows,
+    rawGroups,
+  ] = await Promise.all([
+    loadCandidates(candidateIds),
+    db
+      .select({
+        userId: wikiModuleEditorsTable.userId,
+        canUpload: wikiModuleEditorsTable.canUpload,
+        canEdit: wikiModuleEditorsTable.canEdit,
+        canDelete: wikiModuleEditorsTable.canDelete,
+      })
+      .from(wikiModuleEditorsTable)
+      .where(
+        and(
+          eq(wikiModuleEditorsTable.moduleId, moduleId),
+          isNull(wikiModuleEditorsTable.deletedAt),
+        ),
+      ),
+    db
+      .select({
+        userId: wikiModulePermissionGroupMembersTable.userId,
+        groupId: wikiModulePermissionGroupMembersTable.groupId,
+      })
+      .from(wikiModulePermissionGroupMembersTable)
+      .innerJoin(
+        wikiPermissionGroupsTable,
+        eq(
+          wikiPermissionGroupsTable.id,
+          wikiModulePermissionGroupMembersTable.groupId,
+        ),
+      )
+      .where(
+        and(
+          eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
+          isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+          isNull(wikiPermissionGroupsTable.deletedAt),
+        ),
+      ),
+    db
+      .select({
+        id: wikiPermissionGroupsTable.id,
+        name: wikiPermissionGroupsTable.name,
+        canUpload: wikiPermissionGroupsTable.canUpload,
+        canEdit: wikiPermissionGroupsTable.canEdit,
+        canDelete: wikiPermissionGroupsTable.canDelete,
+      })
+      .from(wikiPermissionGroupsTable)
+      .where(isNull(wikiPermissionGroupsTable.deletedAt))
+      .orderBy(asc(wikiPermissionGroupsTable.name)),
+  ]);
+
+  const candidateSet = new Set(candidateIds);
+  const directByUser = new Map<number, WikiActionPermissions>();
+  for (const row of directRows) {
+    if (candidateSet.has(row.userId)) {
+      directByUser.set(row.userId, {
+        canUpload: row.canUpload,
+        canEdit: row.canEdit,
+        canDelete: row.canDelete,
+      });
+    }
+  }
+  const groupsByUser = new Map<number, number[]>();
+  for (const row of groupRows) {
+    if (!candidateSet.has(row.userId)) continue;
+    const assigned = groupsByUser.get(row.userId) ?? [];
+    assigned.push(row.groupId);
+    groupsByUser.set(row.userId, assigned);
+  }
+
+  return {
+    canManage,
+    canManageGroups,
+    candidates: users.map((user) => ({
+      ...user,
+      directPermissions:
+        directByUser.get(user.id) ?? { ...NO_WIKI_PERMISSIONS },
+      groupIds: groupsByUser.get(user.id) ?? [],
+    })),
+    groups: rawGroups.map(permissionGroupResponse),
+  };
 }
 
 router.get(
@@ -964,16 +1164,13 @@ router.get(
       req.user!,
       moduleId,
     );
-    const [rawEditorIds, candidates] = await Promise.all([
-      currentEditorIds(moduleId),
-      canManage ? loadCandidates(candidateIds) : Promise.resolve([]),
-    ]);
-    const editorIds = canManage
-      ? rawEditorIds.filter((id) => candidateIds.includes(id))
-      : rawEditorIds;
-    res.json(
-      GetModuleWikiEditorsResponse.parse({ canManage, editorIds, candidates }),
+    const settings = await loadModuleEditorSettings(
+      moduleId,
+      candidateIds,
+      canManage,
+      req.user!.role === "superadmin",
     );
+    res.json(GetModuleWikiEditorsResponse.parse(settings));
   },
 );
 
@@ -996,7 +1193,6 @@ router.put(
       res.status(404).json({ message: "Módulo no encontrado" });
       return;
     }
-    const desired = [...new Set(parsed.data.userIds)];
     const { canManage, candidateIds } = await resolveEditorManagement(
       req.user!,
       moduleId,
@@ -1006,43 +1202,352 @@ router.put(
       return;
     }
     const candidateSet = new Set(candidateIds);
-    if (desired.some((id) => !candidateSet.has(id))) {
-      res.status(400).json({ message: "Algún usuario no es un editor permitido" });
+    const requestedUsers = parsed.data.users;
+    const requestedIds = requestedUsers.map((entry) => entry.userId);
+    const requestedSet = new Set(requestedIds);
+    if (
+      new Set(requestedIds).size !== requestedIds.length ||
+      requestedUsers.some((entry) => !candidateSet.has(entry.userId)) ||
+      candidateIds.some((candidateId) => !requestedSet.has(candidateId))
+    ) {
+      res.status(400).json({
+        message: "La lista de usuarios ha cambiado. Recarga los permisos e inténtalo de nuevo.",
+      });
       return;
     }
-    const existing = await currentEditorIds(moduleId);
-    const existingSet = new Set(existing);
-    const desiredSet = new Set(desired);
-    const toRemove = existing.filter((id) => !desiredSet.has(id));
-    const toAdd = desired.filter((id) => !existingSet.has(id));
-    if (toRemove.length > 0) {
-      await db
-        .update(wikiModuleEditorsTable)
-        .set({ deletedAt: new Date() })
+    const requestedGroupIds = [
+      ...new Set(requestedUsers.flatMap((entry) => entry.groupIds)),
+    ];
+    const activeGroups =
+      requestedGroupIds.length > 0
+        ? await db
+            .select({ id: wikiPermissionGroupsTable.id })
+            .from(wikiPermissionGroupsTable)
+            .where(
+              and(
+                inArray(wikiPermissionGroupsTable.id, requestedGroupIds),
+                isNull(wikiPermissionGroupsTable.deletedAt),
+              ),
+            )
+        : [];
+    const activeGroupIds = new Set(activeGroups.map((group) => group.id));
+    if (requestedGroupIds.some((groupId) => !activeGroupIds.has(groupId))) {
+      res.status(400).json({ message: "Algún grupo de permisos no existe" });
+      return;
+    }
+
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      const existingDirectRows = await tx
+        .select({ userId: wikiModuleEditorsTable.userId })
+        .from(wikiModuleEditorsTable)
         .where(
           and(
             eq(wikiModuleEditorsTable.moduleId, moduleId),
-            inArray(wikiModuleEditorsTable.userId, toRemove),
+            isNull(wikiModuleEditorsTable.deletedAt),
           ),
         );
-    }
-    for (const userId of toAdd) {
-      await db
-        .insert(wikiModuleEditorsTable)
-        .values({ moduleId, userId })
-        .onConflictDoUpdate({
-          target: [wikiModuleEditorsTable.moduleId, wikiModuleEditorsTable.userId],
-          set: { deletedAt: null },
-        });
-    }
-    const candidates = await loadCandidates(candidateIds);
-    res.json(
-      UpdateModuleWikiEditorsResponse.parse({
-        canManage: true,
-        editorIds: desired,
-        candidates,
-      }),
+      const existingMembershipRows = await tx
+        .select({
+          userId: wikiModulePermissionGroupMembersTable.userId,
+          groupId: wikiModulePermissionGroupMembersTable.groupId,
+        })
+        .from(wikiModulePermissionGroupMembersTable)
+        .where(
+          and(
+            eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
+            isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+          ),
+        );
+
+      // A coordinator's candidate set can shrink when a teacher leaves a
+      // module. Revoke such stale direct grants and group memberships on save.
+      const staleDirectIds = existingDirectRows
+        .map((row) => row.userId)
+        .filter((userId) => !candidateSet.has(userId));
+      if (staleDirectIds.length > 0) {
+        await tx
+          .update(wikiModuleEditorsTable)
+          .set({ deletedAt: now })
+          .where(
+            and(
+              eq(wikiModuleEditorsTable.moduleId, moduleId),
+              inArray(wikiModuleEditorsTable.userId, staleDirectIds),
+              isNull(wikiModuleEditorsTable.deletedAt),
+            ),
+          );
+      }
+      const staleMemberIds = [
+        ...new Set(
+          existingMembershipRows
+            .map((row) => row.userId)
+            .filter((userId) => !candidateSet.has(userId)),
+        ),
+      ];
+      if (staleMemberIds.length > 0) {
+        await tx
+          .update(wikiModulePermissionGroupMembersTable)
+          .set({ deletedAt: now })
+          .where(
+            and(
+              eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
+              inArray(wikiModulePermissionGroupMembersTable.userId, staleMemberIds),
+              isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+            ),
+          );
+      }
+
+      for (const entry of requestedUsers) {
+        const { userId, directPermissions } = entry;
+        if (
+          directPermissions.canUpload ||
+          directPermissions.canEdit ||
+          directPermissions.canDelete
+        ) {
+          await tx
+            .insert(wikiModuleEditorsTable)
+            .values({
+              moduleId,
+              userId,
+              canUpload: directPermissions.canUpload,
+              canEdit: directPermissions.canEdit,
+              canDelete: directPermissions.canDelete,
+              deletedAt: null,
+            })
+            .onConflictDoUpdate({
+              target: [wikiModuleEditorsTable.moduleId, wikiModuleEditorsTable.userId],
+              set: {
+                canUpload: directPermissions.canUpload,
+                canEdit: directPermissions.canEdit,
+                canDelete: directPermissions.canDelete,
+                deletedAt: null,
+              },
+            });
+        } else {
+          await tx
+            .update(wikiModuleEditorsTable)
+            .set({ deletedAt: now })
+            .where(
+              and(
+                eq(wikiModuleEditorsTable.moduleId, moduleId),
+                eq(wikiModuleEditorsTable.userId, userId),
+                isNull(wikiModuleEditorsTable.deletedAt),
+              ),
+            );
+        }
+
+        const desiredGroups = new Set(entry.groupIds);
+        const currentGroups = new Set(
+          existingMembershipRows
+            .filter((row) => row.userId === userId)
+            .map((row) => row.groupId),
+        );
+        const toRemove = [...currentGroups].filter(
+          (groupId) => !desiredGroups.has(groupId),
+        );
+        if (toRemove.length > 0) {
+          await tx
+            .update(wikiModulePermissionGroupMembersTable)
+            .set({ deletedAt: now })
+            .where(
+              and(
+                eq(wikiModulePermissionGroupMembersTable.moduleId, moduleId),
+                eq(wikiModulePermissionGroupMembersTable.userId, userId),
+                inArray(wikiModulePermissionGroupMembersTable.groupId, toRemove),
+                isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+              ),
+            );
+        }
+        for (const groupId of desiredGroups) {
+          if (currentGroups.has(groupId)) continue;
+          await tx
+            .insert(wikiModulePermissionGroupMembersTable)
+            .values({
+              moduleId,
+              userId,
+              groupId,
+              createdBy: req.user!.id,
+              deletedAt: null,
+            })
+            .onConflictDoUpdate({
+              target: [
+                wikiModulePermissionGroupMembersTable.moduleId,
+                wikiModulePermissionGroupMembersTable.groupId,
+                wikiModulePermissionGroupMembersTable.userId,
+              ],
+              set: { deletedAt: null, createdBy: req.user!.id },
+            });
+        }
+      }
+
+    });
+    const settings = await loadModuleEditorSettings(
+      moduleId,
+      candidateIds,
+      true,
+      req.user!.role === "superadmin",
     );
+    res.json(UpdateModuleWikiEditorsResponse.parse(settings));
+  },
+);
+
+router.post(
+  "/wiki/permission-groups",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    if (req.user!.role !== "superadmin") {
+      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      return;
+    }
+    const parsed = CreateWikiPermissionGroupBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Datos de grupo no válidos" });
+      return;
+    }
+    const name = parsed.data.name.trim();
+    const permissions = parsed.data.permissions;
+    if (
+      name.length < 2 ||
+      !(
+        permissions.canUpload ||
+        permissions.canEdit ||
+        permissions.canDelete
+      )
+    ) {
+      res.status(400).json({ message: "El grupo debe tener nombre y al menos un permiso" });
+      return;
+    }
+    try {
+      const [created] = await db
+        .insert(wikiPermissionGroupsTable)
+        .values({
+          name,
+          ...permissions,
+          createdBy: req.user!.id,
+        })
+        .returning({
+          id: wikiPermissionGroupsTable.id,
+          name: wikiPermissionGroupsTable.name,
+          canUpload: wikiPermissionGroupsTable.canUpload,
+          canEdit: wikiPermissionGroupsTable.canEdit,
+          canDelete: wikiPermissionGroupsTable.canDelete,
+        });
+      res
+        .status(201)
+        .json(UpdateWikiPermissionGroupResponse.parse(permissionGroupResponse(created)));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ message: "Ya existe un grupo con ese nombre" });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.put(
+  "/wiki/permission-groups/:groupId",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    if (req.user!.role !== "superadmin") {
+      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      return;
+    }
+    const params = UpdateWikiPermissionGroupParams.safeParse(req.params);
+    const parsed = UpdateWikiPermissionGroupBody.safeParse(req.body);
+    if (!params.success || !parsed.success) {
+      res.status(400).json({ message: "Datos de grupo no válidos" });
+      return;
+    }
+    const name = parsed.data.name.trim();
+    const permissions = parsed.data.permissions;
+    if (
+      name.length < 2 ||
+      !(
+        permissions.canUpload ||
+        permissions.canEdit ||
+        permissions.canDelete
+      )
+    ) {
+      res.status(400).json({ message: "El grupo debe tener nombre y al menos un permiso" });
+      return;
+    }
+    try {
+      const [updated] = await db
+        .update(wikiPermissionGroupsTable)
+        .set({ name, ...permissions, updatedAt: new Date() })
+        .where(
+          and(
+            eq(wikiPermissionGroupsTable.id, params.data.groupId),
+            isNull(wikiPermissionGroupsTable.deletedAt),
+          ),
+        )
+        .returning({
+          id: wikiPermissionGroupsTable.id,
+          name: wikiPermissionGroupsTable.name,
+          canUpload: wikiPermissionGroupsTable.canUpload,
+          canEdit: wikiPermissionGroupsTable.canEdit,
+          canDelete: wikiPermissionGroupsTable.canDelete,
+        });
+      if (!updated) {
+        res.status(404).json({ message: "Grupo no encontrado" });
+        return;
+      }
+      res.json(
+        UpdateWikiPermissionGroupResponse.parse(permissionGroupResponse(updated)),
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ message: "Ya existe un grupo con ese nombre" });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.delete(
+  "/wiki/permission-groups/:groupId",
+  requireAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    if (req.user!.role !== "superadmin") {
+      res.status(403).json({ message: "Solo un superadministrador puede gestionar grupos" });
+      return;
+    }
+    const params = DeleteWikiPermissionGroupParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: "Grupo no válido" });
+      return;
+    }
+    const deletedAt = new Date();
+    const deleted = await db.transaction(async (tx) => {
+      const [group] = await tx
+        .update(wikiPermissionGroupsTable)
+        .set({ deletedAt, updatedAt: deletedAt })
+        .where(
+          and(
+            eq(wikiPermissionGroupsTable.id, params.data.groupId),
+            isNull(wikiPermissionGroupsTable.deletedAt),
+          ),
+        )
+        .returning({ id: wikiPermissionGroupsTable.id });
+      if (!group) return null;
+      await tx
+        .update(wikiModulePermissionGroupMembersTable)
+        .set({ deletedAt })
+        .where(
+          and(
+            eq(wikiModulePermissionGroupMembersTable.groupId, group.id),
+            isNull(wikiModulePermissionGroupMembersTable.deletedAt),
+          ),
+        );
+      return group;
+    });
+    if (!deleted) {
+      res.status(404).json({ message: "Grupo no encontrado" });
+      return;
+    }
+    res.sendStatus(204);
   },
 );
 

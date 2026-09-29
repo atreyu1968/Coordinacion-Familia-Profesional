@@ -7,6 +7,8 @@
  */
 
 export interface WikiUploadRequest {
+  /** @minimum 1 */
+  pageId: number;
   /**
      * @minLength 1
      * @maxLength 240

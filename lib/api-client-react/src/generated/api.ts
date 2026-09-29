@@ -186,6 +186,8 @@ import type {
   WikiPageInput,
   WikiPageList,
   WikiPageUpdate,
+  WikiPermissionGroup,
+  WikiPermissionGroupInput,
   WikiUploadRequest,
   WikiUploadUrl
 } from './api.schemas';
@@ -11240,7 +11242,7 @@ export const getGetModuleWikiEditorsUrl = (moduleId: number,) => {
 }
 
 /**
- * @summary List a module's wiki editors and the users that can be granted edit
+ * @summary List a module's wiki candidates and reusable permission groups
  */
 export const getModuleWikiEditors = async (moduleId: number, options?: RequestInit): Promise<ModuleWikiEditors> => {
 
@@ -11287,7 +11289,7 @@ export type GetModuleWikiEditorsQueryError = ErrorType<void>
 
 
 /**
- * @summary List a module's wiki editors and the users that can be granted edit
+ * @summary List a module's wiki candidates and reusable permission groups
  */
 
 export function useGetModuleWikiEditors<TData = Awaited<ReturnType<typeof getModuleWikiEditors>>, TError = ErrorType<void>>(
@@ -11317,7 +11319,7 @@ export const getUpdateModuleWikiEditorsUrl = (moduleId: number,) => {
 }
 
 /**
- * @summary Set the users allowed to edit a module's wiki
+ * @summary Set direct wiki permissions and module group assignments
  */
 export const updateModuleWikiEditors = async (moduleId: number,
     updateModuleWikiEditorsInput: UpdateModuleWikiEditorsInput, options?: RequestInit): Promise<ModuleWikiEditors> => {
@@ -11367,7 +11369,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateModuleWikiEditorsMutationError = ErrorType<void>
 
     /**
- * @summary Set the users allowed to edit a module's wiki
+ * @summary Set direct wiki permissions and module group assignments
  */
 export const useUpdateModuleWikiEditors = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleWikiEditors>>, TError,{moduleId: number;data: BodyType<UpdateModuleWikiEditorsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -11378,6 +11380,219 @@ export const useUpdateModuleWikiEditors = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateModuleWikiEditorsMutationOptions(options));
+    }
+
+export const getCreateWikiPermissionGroupUrl = () => {
+
+
+
+
+  return `/api/wiki/permission-groups`
+}
+
+/**
+ * @summary Create a reusable wiki permission group
+ */
+export const createWikiPermissionGroup = async (wikiPermissionGroupInput: WikiPermissionGroupInput, options?: RequestInit): Promise<WikiPermissionGroup> => {
+
+  return customFetch<WikiPermissionGroup>(getCreateWikiPermissionGroupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiPermissionGroupInput,)
+  }
+);}
+
+
+
+
+export const getCreateWikiPermissionGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWikiPermissionGroup>>, TError,{data: BodyType<WikiPermissionGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWikiPermissionGroup>>, TError,{data: BodyType<WikiPermissionGroupInput>}, TContext> => {
+
+const mutationKey = ['createWikiPermissionGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWikiPermissionGroup>>, {data: BodyType<WikiPermissionGroupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createWikiPermissionGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateWikiPermissionGroupMutationResult = NonNullable<Awaited<ReturnType<typeof createWikiPermissionGroup>>>
+    export type CreateWikiPermissionGroupMutationBody = BodyType<WikiPermissionGroupInput>
+    export type CreateWikiPermissionGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a reusable wiki permission group
+ */
+export const useCreateWikiPermissionGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWikiPermissionGroup>>, TError,{data: BodyType<WikiPermissionGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createWikiPermissionGroup>>,
+        TError,
+        {data: BodyType<WikiPermissionGroupInput>},
+        TContext
+      > => {
+      return useMutation(getCreateWikiPermissionGroupMutationOptions(options));
+    }
+
+export const getUpdateWikiPermissionGroupUrl = (groupId: number,) => {
+
+
+
+
+  return `/api/wiki/permission-groups/${groupId}`
+}
+
+/**
+ * @summary Update a reusable wiki permission group
+ */
+export const updateWikiPermissionGroup = async (groupId: number,
+    wikiPermissionGroupInput: WikiPermissionGroupInput, options?: RequestInit): Promise<WikiPermissionGroup> => {
+
+  return customFetch<WikiPermissionGroup>(getUpdateWikiPermissionGroupUrl(groupId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      wikiPermissionGroupInput,)
+  }
+);}
+
+
+
+
+export const getUpdateWikiPermissionGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWikiPermissionGroup>>, TError,{groupId: number;data: BodyType<WikiPermissionGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWikiPermissionGroup>>, TError,{groupId: number;data: BodyType<WikiPermissionGroupInput>}, TContext> => {
+
+const mutationKey = ['updateWikiPermissionGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWikiPermissionGroup>>, {groupId: number;data: BodyType<WikiPermissionGroupInput>}> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  updateWikiPermissionGroup(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWikiPermissionGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateWikiPermissionGroup>>>
+    export type UpdateWikiPermissionGroupMutationBody = BodyType<WikiPermissionGroupInput>
+    export type UpdateWikiPermissionGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a reusable wiki permission group
+ */
+export const useUpdateWikiPermissionGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWikiPermissionGroup>>, TError,{groupId: number;data: BodyType<WikiPermissionGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWikiPermissionGroup>>,
+        TError,
+        {groupId: number;data: BodyType<WikiPermissionGroupInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateWikiPermissionGroupMutationOptions(options));
+    }
+
+export const getDeleteWikiPermissionGroupUrl = (groupId: number,) => {
+
+
+
+
+  return `/api/wiki/permission-groups/${groupId}`
+}
+
+/**
+ * @summary Retire a reusable wiki permission group
+ */
+export const deleteWikiPermissionGroup = async (groupId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteWikiPermissionGroupUrl(groupId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWikiPermissionGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPermissionGroup>>, TError,{groupId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPermissionGroup>>, TError,{groupId: number}, TContext> => {
+
+const mutationKey = ['deleteWikiPermissionGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWikiPermissionGroup>>, {groupId: number}> = (props) => {
+          const {groupId} = props ?? {};
+
+          return  deleteWikiPermissionGroup(groupId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWikiPermissionGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWikiPermissionGroup>>>
+
+    export type DeleteWikiPermissionGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Retire a reusable wiki permission group
+ */
+export const useDeleteWikiPermissionGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWikiPermissionGroup>>, TError,{groupId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWikiPermissionGroup>>,
+        TError,
+        {groupId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteWikiPermissionGroupMutationOptions(options));
     }
 
 export const getGetMobileAppUrl = () => {

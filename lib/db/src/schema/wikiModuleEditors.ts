@@ -2,24 +2,22 @@ import {
   pgTable,
   serial,
   integer,
+  boolean,
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
 
-// Explicit edit grants for module pages. All authenticated users can read;
-// module coordinators and superadmins manage these grants, and only users with
-// an active row can edit. General pages remain superadmin-only.
-// Removing access soft-deletes the row; re-granting reuses the (module_id,
-// user_id) slot, so updates must upsert.
-//
-// Grants are made by a superadmin (to anyone) or by the module's coordinator
-// (to that module's collaborating teachers) — enforced in the route layer.
+// Direct per-action permissions for a user's module wiki access. Existing rows
+// default to all permissions so adding granular controls preserves current access.
 export const wikiModuleEditorsTable = pgTable(
   "wiki_module_editors",
   {
     id: serial("id").primaryKey(),
     moduleId: integer("module_id").notNull(),
     userId: integer("user_id").notNull(),
+    canUpload: boolean("can_upload").notNull().default(true),
+    canEdit: boolean("can_edit").notNull().default(true),
+    canDelete: boolean("can_delete").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -5,7 +5,8 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { WikiModuleEditorInput } from './wikiModuleEditorInput';
 
 export interface UpdateModuleWikiEditorsInput {
-  userIds: number[];
+  users: WikiModuleEditorInput[];
 }

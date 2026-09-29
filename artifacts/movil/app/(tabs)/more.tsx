@@ -51,10 +51,17 @@ export default function MoreScreen() {
   const items: {
     icon: React.ComponentProps<typeof Feather>["name"];
     label: string;
+    description?: string;
     onPress: () => void;
   }[] = [
     { icon: "video", label: "Videoconferencias", onPress: () => router.push("/videoconferencias") },
     { icon: "book-open", label: "Mis módulos", onPress: () => router.push("/modulos") },
+    {
+      icon: "file-text",
+      label: "Documentación",
+      description: "Páginas, archivos y enlaces",
+      onPress: () => router.push("/wiki"),
+    },
     { icon: "maximize", label: "Escanear acreditación (QR)", onPress: () => router.push("/scan") },
     { icon: "bar-chart-2", label: "Encuestas y votaciones", onPress: () => router.push("/surveys") },
     { icon: "message-square", label: "Foros por módulos", onPress: () => router.push("/foros") },
@@ -89,6 +96,10 @@ export default function MoreScreen() {
           {items.map((item, idx) => (
             <Pressable
               key={item.label}
+              testID={`more-item-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              accessibilityHint={item.description ?? `Abre ${item.label.toLowerCase()}`}
               onPress={item.onPress}
               style={({ pressed }) => [
                 styles.item,
@@ -103,7 +114,14 @@ export default function MoreScreen() {
               <View style={[styles.iconWrap, { backgroundColor: colors.accent }]}>
                 <Feather name={item.icon} size={18} color={colors.accentForeground} />
               </View>
-              <Text style={[styles.itemLabel, { color: colors.foreground }]}>{item.label}</Text>
+              <View style={styles.itemCopy}>
+                <Text style={[styles.itemLabel, { color: colors.foreground }]}>{item.label}</Text>
+                {item.description ? (
+                  <Text style={[styles.itemDescription, { color: colors.mutedForeground }]}>
+                    {item.description}
+                  </Text>
+                ) : null}
+              </View>
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </Pressable>
           ))}
@@ -178,7 +196,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  itemLabel: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  itemCopy: { flex: 1, gap: 3 },
+  itemLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  itemDescription: { fontSize: 12, lineHeight: 16, fontFamily: "Inter_400Regular" },
   bioLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
   bioRow: {
     flexDirection: "row",

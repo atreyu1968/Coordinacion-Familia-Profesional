@@ -3461,7 +3461,7 @@ paths:
     get:
       operationId: getModuleWikiEditors
       tags: [wiki]
-      summary: List a module's wiki editors and the users that can be granted edit
+      summary: List a module's wiki candidates and reusable permission groups
       security:
         - bearerAuth: []
       parameters:
@@ -3477,14 +3477,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ModuleWikiEditors"
-        "403":
-          description: Not allowed to manage this module's editors
         "404":
           description: Module not found
     put:
       operationId: updateModuleWikiEditors
       tags: [wiki]
-      summary: Set the users allowed to edit a module's wiki
+      summary: Set direct wiki permissions and module group assignments
       security:
         - bearerAuth: []
       parameters:
@@ -3512,8 +3510,85 @@ paths:
           description: Not allowed to manage this module's editors
         "404":
           description: Module not found
-        "503":
-          description: Wiki not configured
+  /wiki/permission-groups:
+    post:
+      operationId: createWikiPermissionGroup
+      tags: [wiki]
+      summary: Create a reusable wiki permission group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPermissionGroupInput"
+      responses:
+        "201":
+          description: Permission group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPermissionGroup"
+        "400":
+          description: Invalid group
+        "403":
+          description: Superadmin required
+        "409":
+          description: A group with this name already exists
+  /wiki/permission-groups/{groupId}:
+    put:
+      operationId: updateWikiPermissionGroup
+      tags: [wiki]
+      summary: Update a reusable wiki permission group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiPermissionGroupInput"
+      responses:
+        "200":
+          description: Permission group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WikiPermissionGroup"
+        "400":
+          description: Invalid group
+        "403":
+          description: Superadmin required
+        "404":
+          description: Group not found
+        "409":
+          description: A group with this name already exists
+    delete:
+      operationId: deleteWikiPermissionGroup
+      tags: [wiki]
+      summary: Retire a reusable wiki permission group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Permission group retired
+        "403":
+          description: Superadmin required
+        "404":
+          description: Group not found
 
   /mobile-app:
     get:
@@ -6324,30 +6399,87 @@ components:
         role:
           type: string
       required: [id, name, role]
+    WikiActionPermissions:
+      type: object
+      properties:
+        canUpload:
+          type: boolean
+        canEdit:
+          type: boolean
+        canDelete:
+          type: boolean
+      required: [canUpload, canEdit, canDelete]
+    WikiPermissionGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        permissions:
+          $ref: "#/components/schemas/WikiActionPermissions"
+      required: [id, name, permissions]
+    WikiPermissionGroupInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        permissions:
+          $ref: "#/components/schemas/WikiActionPermissions"
+      required: [name, permissions]
+    WikiModuleEditorCandidate:
+      allOf:
+        - $ref: "#/components/schemas/WikiEditorUser"
+        - type: object
+          properties:
+            directPermissions:
+              $ref: "#/components/schemas/WikiActionPermissions"
+            groupIds:
+              type: array
+              items:
+                type: integer
+          required: [directPermissions, groupIds]
+    WikiModuleEditorInput:
+      type: object
+      properties:
+        userId:
+          type: integer
+        directPermissions:
+          $ref: "#/components/schemas/WikiActionPermissions"
+        groupIds:
+          type: array
+          items:
+            type: integer
+      required: [userId, directPermissions, groupIds]
     ModuleWikiEditors:
       type: object
       properties:
         canManage:
           type: boolean
-          description: Whether the caller may change the editor set for this module.
-        editorIds:
-          type: array
-          items:
-            type: integer
+          description: Whether the caller may manage user permissions for this module.
+        canManageGroups:
+          type: boolean
+          description: Whether the caller may create, edit, or retire reusable groups.
         candidates:
           type: array
-          description: Users the caller is allowed to grant edit access to.
+          description: Users the caller is allowed to manage in this module.
           items:
-            $ref: "#/components/schemas/WikiEditorUser"
-      required: [canManage, editorIds, candidates]
+            $ref: "#/components/schemas/WikiModuleEditorCandidate"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/WikiPermissionGroup"
+      required: [canManage, canManageGroups, candidates, groups]
     UpdateModuleWikiEditorsInput:
       type: object
       properties:
-        userIds:
+        users:
           type: array
           items:
-            type: integer
-      required: [userIds]
+            $ref: "#/components/schemas/WikiModuleEditorInput"
+      required: [users]
     WikiAttachment:
       type: object
       properties:
@@ -6402,7 +6534,11 @@ components:
           format: date-time
         canEdit:
           type: boolean
-      required: [id, moduleId, moduleName, title, tags, attachmentCount, updatedAt, canEdit]
+        canUpload:
+          type: boolean
+        canDelete:
+          type: boolean
+      required: [id, moduleId, moduleName, title, tags, attachmentCount, updatedAt, canEdit, canUpload, canDelete]
     WikiPageList:
       type: object
       properties:
@@ -6508,6 +6644,9 @@ components:
     WikiUploadRequest:
       type: object
       properties:
+        pageId:
+          type: integer
+          minimum: 1
         fileName:
           type: string
           minLength: 1
@@ -6519,7 +6658,7 @@ components:
           type: integer
           minimum: 1
           maximum: 52428800
-      required: [fileName, contentType, size]
+      required: [pageId, fileName, contentType, size]
     WikiUploadUrl:
       type: object
       properties:

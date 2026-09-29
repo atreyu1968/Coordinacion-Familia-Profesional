@@ -17,4 +17,6 @@ export interface WikiPageSummary {
   attachmentCount: number;
   updatedAt: Date;
   canEdit: boolean;
+  canUpload: boolean;
+  canDelete: boolean;
 }
