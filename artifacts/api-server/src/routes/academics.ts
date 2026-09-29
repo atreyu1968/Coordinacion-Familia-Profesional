@@ -80,7 +80,8 @@ import {
   toResource,
 } from "../lib/mappers";
 import { syncModuleChatGroup } from "@workspace/db";
-import { getActiveAcademicYear } from "../lib/settings";
+import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
+import { cycleFamilyFilter, moduleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
 
@@ -111,7 +112,8 @@ function centerIdsInProvince(provinceId: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Modules (shared curriculum: centerId null = global, otherwise center-scoped)
+// Modules are globally stored or center-scoped. Listing is additionally limited
+// to the configured family, derived from center family tags and cycle offers.
 // ---------------------------------------------------------------------------
 router.get("/modules", requireAuth, async (req, res): Promise<void> => {
   const query = ListModulesQueryParams.safeParse(req.query);
@@ -120,8 +122,12 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const scope = resolveReadScope(req.user!);
+  const activeFamily = await getActiveFamily();
 
-  const filters: SQL[] = [isNull(modulesTable.deletedAt)];
+  const filters: SQL[] = [
+    isNull(modulesTable.deletedAt),
+    moduleFamilyFilter(activeFamily),
+  ];
   if (query.data.centerId != null) {
     filters.push(eq(modulesTable.centerId, query.data.centerId));
   }
@@ -138,7 +144,8 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
   }
 
   // Global modules (centerId IS NULL) are visible to everyone; scoped modules
-  // are visible only within the caller's province/center.
+  // are visible only within the caller's province/center. The family filter
+  // above applies to both kinds.
   if (scope.kind === "province") {
     const scopeMatch = or(
       isNull(modulesTable.centerId),
@@ -346,8 +353,8 @@ router.delete(
 );
 
 // ---------------------------------------------------------------------------
-// Cycles (global catalog of training cycles). Read is broad (for dropdowns);
-// create/update/delete are superadmin-only.
+// Cycles remain a global catalog, but only cycles offered by an active-family
+// center are listed. Create/update/delete are superadmin-only.
 // ---------------------------------------------------------------------------
 router.get("/cycles", requireAuth, async (req, res): Promise<void> => {
   const query = ListCyclesQueryParams.safeParse(req.query);
@@ -355,7 +362,11 @@ router.get("/cycles", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ message: query.error.message });
     return;
   }
-  const filters: SQL[] = [isNull(cyclesTable.deletedAt)];
+  const activeFamily = await getActiveFamily();
+  const filters: SQL[] = [
+    isNull(cyclesTable.deletedAt),
+    cycleFamilyFilter(activeFamily),
+  ];
   if (query.data.search) {
     const term = `%${query.data.search}%`;
     const match = or(
@@ -381,6 +392,7 @@ router.get("/cycles", requireAuth, async (req, res): Promise<void> => {
         and(
           inArray(modulesTable.cycleId, cycleIds),
           isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(activeFamily),
         ),
       );
     for (const m of modRows) {
@@ -512,6 +524,7 @@ router.get(
       res.status(400).json({ message: params.error.message });
       return;
     }
+    const activeFamily = await getActiveFamily();
     const rows = await db
       .select()
       .from(modulesTable)
@@ -519,6 +532,8 @@ router.get(
         and(
           eq(modulesTable.cycleId, params.data.id),
           isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(activeFamily),
+          cycleFamilyFilter(activeFamily),
         ),
       )
       .orderBy(modulesTable.name);

@@ -34,10 +34,9 @@ non-default family ONCE; locking on the raw column (not the resolved fallback)
 allows that one selection, then freezes it.
 
 **Why:** family is a CENTER-level concept — it lives ONLY on `centers.families`
-(jsonb array). The general modules and cycles catalogs stay global, so filtering
-those catalogs would break pickers or hide unassigned items. The forum is a
-family-facing surface, however, and must derive eligible global modules from
-cycles offered by active-family centers.
+(jsonb array); cycles and modules remain global catalog rows without a family
+column. Family-facing lists must derive membership through active-family centers'
+training offers rather than inventing a family attribute on the catalog rows.
 
 **How to apply — every center-read and center-by-id surface must add the
 predicate** `families @> '["<activeFamily>"]'::jsonb`:
@@ -58,6 +57,9 @@ predicate** `families @> '["<activeFamily>"]'::jsonb`:
   qualify only when an active-family center offers their cycle (match cycle ID,
   with a cycle-name fallback for legacy rows). Existing out-of-family forum data
   remains stored but is hidden and inaccessible, not deleted.
+- `GET /modules`, `GET /cycles`, and `GET /cycles/:id/modules` use the same
+  family membership rules as the forum. Cycles are listed only when offered by
+  an active-family center; module totals count only active-family modules.
 
 **Deliberately left scope-based (NOT family-filtered):** events, surveys,
 alerts, usersByRole — these are province/regional scoped, not center-bound, so

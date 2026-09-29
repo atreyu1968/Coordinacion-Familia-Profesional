@@ -18,7 +18,6 @@ import {
   forumThreadReadsTable,
   modulesTable,
   centersTable,
-  trainingOfferTable,
   usersTable,
   type User,
 } from "@workspace/db";
@@ -51,6 +50,7 @@ import {
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
 import { getActiveFamily } from "../lib/settings";
+import { moduleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
 
@@ -105,56 +105,6 @@ function moduleScopeFilter(scope: ReadScope): SQL | undefined {
     return isNull(modulesTable.centerId);
   }
   return undefined;
-}
-
-// Forum modules are scoped to the one professional family configured for this
-// app. Center-bound modules use their center's family list. Global catalog
-// modules are eligible only when a center in that family offers their cycle.
-// Match legacy rows without cycleId by cycle name, and do not tie this to one
-// academic year: the professional-family assignment is not year-specific.
-function moduleFamilyFilter(activeFamily: string): SQL {
-  const familyJson = JSON.stringify([activeFamily]);
-  return sql`(
-    (
-      ${modulesTable.centerId} is not null
-      and exists (
-        select 1
-        from centers forum_family_center
-        where forum_family_center.id = ${modulesTable.centerId}
-          and forum_family_center.deleted_at is null
-          and forum_family_center.families @> ${familyJson}::jsonb
-      )
-    )
-    or
-    (
-      ${modulesTable.centerId} is null
-      and exists (
-        select 1
-        from training_offer forum_family_offer
-        inner join centers forum_offer_center
-          on forum_offer_center.id = forum_family_offer.center_id
-        where forum_family_offer.deleted_at is null
-          and forum_offer_center.deleted_at is null
-          and forum_offer_center.families @> ${familyJson}::jsonb
-          and (
-            (
-              ${modulesTable.cycleId} is not null
-              and (
-                forum_family_offer.cycle_id = ${modulesTable.cycleId}
-                or (
-                  forum_family_offer.cycle_id is null
-                  and forum_family_offer.cycle_name = ${modulesTable.cycleName}
-                )
-              )
-            )
-            or (
-              ${modulesTable.cycleId} is null
-              and forum_family_offer.cycle_name = ${modulesTable.cycleName}
-            )
-          )
-      )
-    )
-  )`;
 }
 
 async function moduleBelongsToActiveFamily(moduleId: number): Promise<boolean> {
