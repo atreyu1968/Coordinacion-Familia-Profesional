@@ -16,6 +16,8 @@ export const invitationsTable = pgTable("invitations", {
   provinceId: integer("province_id"),
   centerId: integer("center_id"),
   status: text("status").notNull().default("pending"),
+  maxUses: integer("max_uses").default(1),
+  usedCount: integer("used_count").notNull().default(0),
   invitedBy: integer("invited_by"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),

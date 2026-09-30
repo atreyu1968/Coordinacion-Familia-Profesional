@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, desc, or, lt } from "drizzle-orm";
 import {
   db,
   invitationsTable,
@@ -107,6 +107,7 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
       provinceId,
       centerId,
       status: "pending",
+      maxUses: parsed.data.maxUses === undefined ? 1 : parsed.data.maxUses,
       invitedBy: inviter.id,
       expiresAt,
     })
@@ -200,7 +201,7 @@ router.post("/invitations/:id/resend", requireAuth, async (req, res): Promise<vo
     return;
   }
 
-  if (invitation.status === "used") {
+  if (invitation.status === "used" || (invitation.maxUses !== null && invitation.usedCount >= invitation.maxUses)) {
     res.status(409).json({ message: "La invitación ya ha sido utilizada" });
     return;
   }
@@ -213,9 +214,18 @@ router.post("/invitations/:id/resend", requireAuth, async (req, res): Promise<vo
   const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
   const [renewed] = await db
     .update(invitationsTable)
-    .set({ status: "pending", expiresAt })
-    .where(eq(invitationsTable.id, invitation.id))
+    .set({ expiresAt })
+    .where(and(
+      eq(invitationsTable.id, invitation.id),
+      eq(invitationsTable.status, "pending"),
+      isNull(invitationsTable.deletedAt),
+      or(isNull(invitationsTable.maxUses), lt(invitationsTable.usedCount, invitationsTable.maxUses)),
+    ))
     .returning();
+  if (!renewed) {
+    res.status(409).json({ message: "La invitación ya no está disponible" });
+    return;
+  }
 
   const inviteUrl = `${getAppBaseUrl()}/register?token=${renewed.code}`;
 

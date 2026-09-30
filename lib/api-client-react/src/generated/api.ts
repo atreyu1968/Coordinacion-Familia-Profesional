@@ -2460,7 +2460,7 @@ export const getGetInvitationByTokenUrl = (token: string,) => {
 }
 
 /**
- * Returns invitation details so the registration form can be prefilled. Fails if expired or used.
+ * Returns invitation details so the registration form can be prefilled. Fails if expired or the registration limit has been reached.
  * @summary Resolve a magic invitation token
  */
 export const getInvitationByToken = async (token: string, options?: RequestInit): Promise<InvitationPublic> => {
@@ -2836,7 +2836,7 @@ export const getCreateInvitationUrl = () => {
 }
 
 /**
- * Generates a shareable invitation code scoped to a role (and optional province/center). The email is unknown at creation time; the recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
+ * Generates a shareable invitation code scoped to a role (and optional province/center), with a configurable registration limit. The email is unknown at creation time; each recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
  * @summary Generate a role-based invitation code
  */
 export const createInvitation = async (createInvitationInput: CreateInvitationInput, options?: RequestInit): Promise<InvitationCreated> => {

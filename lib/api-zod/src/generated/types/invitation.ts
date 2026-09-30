@@ -16,6 +16,13 @@ export interface Invitation {
   provinceId?: number | null;
   centerId?: number | null;
   status: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  maxUses: number | null;
+  /** @minimum 0 */
+  usedCount: number;
   expiresAt: Date;
   usedAt?: Date | null;
   createdAt?: Date;

@@ -12,4 +12,11 @@ export interface CreateInvitationInput {
   provinceId?: number | null;
   centerId?: number | null;
   expiresInHours?: number;
+  /**
+     * Null means unlimited registrations until expiry or revocation.
+     * @minimum 1
+     * @maximum 1000
+     * @nullable
+     */
+  maxUses?: number | null;
 }

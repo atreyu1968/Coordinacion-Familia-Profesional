@@ -59,7 +59,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
-  accepted: "Aceptada",
+  used: "Agotada",
   revoked: "Revocada",
   expired: "Caducada",
 };
@@ -84,6 +84,8 @@ interface FormState {
   provinceId: number | null;
   centerId: number | null;
   expiresInHours: string;
+  maxUses: string;
+  unlimited: boolean;
 }
 
 function CreateInvitationDialog() {
@@ -98,6 +100,8 @@ function CreateInvitationDialog() {
     provinceId: user?.provinceId ?? null,
     centerId: null,
     expiresInHours: "168",
+    maxUses: "1",
+    unlimited: true,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -114,11 +118,18 @@ function CreateInvitationDialog() {
       provinceId: user?.provinceId ?? null,
       centerId: null,
       expiresInHours: "168",
+      maxUses: "1",
+      unlimited: true,
     });
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const maxUses = Number(form.maxUses);
+    if (!form.unlimited && (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 1000)) {
+      setError("Indica un número de registros entre 1 y 1000.");
+      return;
+    }
     const payload: CreateInvitationInput = {
       role: form.role,
       provinceId: form.provinceId,
@@ -126,6 +137,7 @@ function CreateInvitationDialog() {
       expiresInHours: form.expiresInHours.trim()
         ? Number(form.expiresInHours)
         : undefined,
+      maxUses: form.unlimited ? null : maxUses,
     };
     try {
       const result = await createMut.mutateAsync({ data: payload });
@@ -140,8 +152,8 @@ function CreateInvitationDialog() {
       toast({
         title: "Invitación creada",
         description: copied
-          ? "El enlace de invitación se ha copiado al portapapeles. Compártelo con la persona invitada."
-          : "Comparte el enlace de invitación con la persona invitada.",
+          ? "El enlace de invitación se ha copiado al portapapeles. Puedes compartirlo con las personas destinatarias."
+          : "Comparte el enlace de invitación con las personas destinatarias.",
       });
       reset();
       setOpen(false);
@@ -168,9 +180,9 @@ function CreateInvitationDialog() {
         <DialogHeader>
           <DialogTitle>Nueva invitación</DialogTitle>
           <DialogDescription>
-            Genera un código de invitación para un rol. Comparte el enlace
-            resultante con la persona invitada; ella indicará su correo al
-            crear la cuenta.
+            Genera un enlace para un rol. Puedes compartirlo con tantas
+            personas como registros permitas; cada una indicará su correo
+            al crear su cuenta.
           </DialogDescription>
         </DialogHeader>
 
@@ -204,6 +216,37 @@ function CreateInvitationDialog() {
                 placeholder="168"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="unlimited-invite" className="flex items-center gap-2 text-sm font-medium">
+              <input
+                id="unlimited-invite"
+                type="checkbox"
+                checked={form.unlimited}
+                onChange={(e) => set({ unlimited: e.target.checked })}
+              />
+              Sin límite de registros
+            </label>
+            {!form.unlimited && (
+              <>
+                <Label htmlFor="max-uses">Número de personas que pueden registrarse</Label>
+                <Input
+                  id="max-uses"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  step={1}
+                  required
+                  value={form.maxUses}
+                  onChange={(e) => set({ maxUses: e.target.value })}
+                />
+              </>
+            )}
+            <p className="text-xs text-muted-foreground">
+              El enlace dejará de funcionar al caducar, al revocarlo o al alcanzar el límite elegido.
+              Cualquier persona que lo reciba o se lo reenvíen podrá registrarse con este rol.
+            </p>
           </div>
 
           {isSuperadmin && (
@@ -270,7 +313,7 @@ function CreateInvitationDialog() {
   );
 }
 
-const STATUS_OPTIONS = ["pending", "accepted", "revoked", "expired"];
+const STATUS_OPTIONS = ["pending", "used", "revoked", "expired"];
 
 export default function InvitacionesPage() {
   const { user } = useAuth();
@@ -406,6 +449,7 @@ export default function InvitacionesPage() {
                 <TableHead>Código</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Registros</TableHead>
                 <TableHead>Caduca</TableHead>
                 {canManage && (
                   <TableHead className="text-right">Acciones</TableHead>
@@ -416,7 +460,7 @@ export default function InvitacionesPage() {
               {!isLoading && invitations.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={canManage ? 5 : 4}
+                    colSpan={canManage ? 6 : 5}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     No hay invitaciones con los filtros aplicados.
@@ -448,6 +492,7 @@ export default function InvitacionesPage() {
                         {STATUS_LABELS[inv.status] ?? inv.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>{inv.usedCount} / {inv.maxUses ?? "sin límite"}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {fmtDate(inv.expiresAt)}
                     </TableCell>

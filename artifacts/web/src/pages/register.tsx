@@ -95,6 +95,11 @@ export default function RegisterPage() {
           <p className="text-muted-foreground">
             Completa tus datos para crear la cuenta.
           </p>
+          <p className="text-muted-foreground">
+            {invitation.remainingUses === null
+              ? "Enlace compartido sin límite de registros."
+              : `Plazas disponibles con este enlace: ${invitation.remainingUses}`}
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="name">Nombre completo</Label>

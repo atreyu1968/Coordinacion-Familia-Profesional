@@ -37,9 +37,11 @@ vacía y bloquea el `push`. En una base existente, primero se valida el catálog
 esperado completo:
 columnas, tipos, nulabilidad y defaults, claves primarias, únicas y foráneas, y
 etiquetas de enums. Luego habilita/verifica `pgcrypto` (necesario para UUID en
-PostgreSQL 12) y, en una transacción, añade solo `users.token_version` y
-`users.session_nonce` si faltan. Revisa definiciones y filas existentes de esas
-columnas, y vuelve a verificar el esquema tras la migración. No intenta reconciliar
+PostgreSQL 12) y, en una transacción, añade `users.token_version` y
+`users.session_nonce` si faltan. También añade `invitations.max_uses` y
+`invitations.used_count` mediante una migración aditiva: las invitaciones antiguas
+siguen siendo de un uso y las ya utilizadas permanecen agotadas. Revisa definiciones
+y filas existentes, y vuelve a verificar el esquema tras la migración. No intenta reconciliar
 el resto con Drizzle ni cambia tablas personalizadas.
 
 En la instalación, después de preparar/migrar el esquema se cargan datos de

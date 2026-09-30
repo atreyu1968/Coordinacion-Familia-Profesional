@@ -169,9 +169,8 @@ verify_catalog() {
 }
 
 migrate_existing_session_columns() {
-  # Only the two reviewed 4.1.0 additions are allowed on an existing database.
-  # Validate any partial/pre-existing columns and their data before adding either
-  # field, then add both in one transaction. No unrelated table is touched.
+  # Validate partial/pre-existing session columns before adding either field
+  # in one transaction. No unrelated table is touched.
   run_psql --command="
     BEGIN;
     DO \$migration\$
@@ -268,6 +267,7 @@ verify_schema() {
   check_connection
   verify_catalog
   verify_user_session_rows
+  verify_invitation_rows
   printf 'Full application columns, defaults, keys, and enums verified.\n'
 }
 
@@ -305,6 +305,97 @@ verify_user_session_rows() {
   uuid_function="$(run_psql --tuples-only --no-align --command="SELECT to_regprocedure('gen_random_uuid()') IS NOT NULL" | tr -d '[:space:]')"
   [[ "${uuid_function}" == "t" ]] || fail "Database schema check failed: pgcrypto/gen_random_uuid() is unavailable."
   printf 'UUID generation and existing user session rows verified.\n'
+}
+
+migrate_existing_invitation_columns() {
+  run_psql --command="
+    BEGIN;
+    DO \$migration\$
+    DECLARE
+      has_max boolean;
+      has_count boolean;
+    BEGIN
+      LOCK TABLE public.invitations IN ACCESS EXCLUSIVE MODE;
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'invitations'
+          AND column_name = 'max_uses'
+      ) INTO has_max;
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'invitations'
+          AND column_name = 'used_count'
+      ) INTO has_count;
+
+      IF has_max AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'invitations'
+          AND column_name = 'max_uses'
+          AND data_type = 'integer' AND is_nullable = 'YES'
+          AND column_default ~ '^1(::integer)?$'
+      ) THEN
+        RAISE EXCEPTION 'Existing invitations.max_uses has an incompatible definition';
+      END IF;
+      IF has_count AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'invitations'
+          AND column_name = 'used_count'
+          AND data_type = 'integer' AND is_nullable = 'NO'
+          AND column_default ~ '^0(::integer)?$'
+      ) THEN
+        RAISE EXCEPTION 'Existing invitations.used_count has an incompatible definition';
+      END IF;
+
+      IF NOT has_max THEN
+        ALTER TABLE public.invitations
+          ADD COLUMN max_uses integer DEFAULT 1;
+      END IF;
+      IF NOT has_count THEN
+        ALTER TABLE public.invitations
+          ADD COLUMN used_count integer NOT NULL DEFAULT 0;
+        -- Legacy used links stay exhausted. A partially upgraded link with
+        -- a custom max is also kept exhausted, never reactivated.
+        UPDATE public.invitations
+          SET used_count = max_uses WHERE status = 'used' AND max_uses IS NOT NULL;
+      END IF;
+      IF EXISTS (
+        SELECT 1 FROM public.invitations
+        WHERE max_uses < 1 OR max_uses > 1000 OR used_count < 0
+           OR used_count > max_uses
+           OR (status = 'pending' AND used_count = max_uses)
+           OR (status = 'used' AND (max_uses IS NULL OR used_count <> max_uses))
+      ) THEN
+        RAISE EXCEPTION 'Existing invitations have invalid registration limits or counts';
+      END IF;
+    END;
+    \$migration\$;
+    COMMIT;
+  " || fail "The additive invitation migration failed; PostgreSQL rolled it back."
+}
+
+verify_invitation_rows() {
+  local definitions invalid_rows
+  definitions="$(run_psql --tuples-only --no-align --command="
+    SELECT COALESCE(bool_and(
+      (column_name = 'max_uses' AND data_type = 'integer'
+        AND is_nullable = 'YES' AND column_default ~ '^1(::integer)?$')
+      OR (column_name = 'used_count' AND data_type = 'integer'
+        AND is_nullable = 'NO' AND column_default ~ '^0(::integer)?$')
+    ), false) AND COUNT(*) = 2
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'invitations'
+      AND column_name IN ('max_uses', 'used_count')
+  " | tr -d '[:space:]')"
+  [[ "${definitions}" == "t" ]] || fail "Invitation registration limit columns have invalid definitions."
+  invalid_rows="$(run_psql --tuples-only --no-align --command="
+    SELECT COUNT(*) FROM public.invitations
+    WHERE max_uses < 1 OR max_uses > 1000 OR used_count < 0
+       OR used_count > max_uses
+       OR (status = 'pending' AND used_count = max_uses)
+       OR (status = 'used' AND (max_uses IS NULL OR used_count <> max_uses))
+  " | tr -d '[:space:]')"
+  [[ "${invalid_rows}" == "0" ]] || fail "Invalid invitation registration limits or counts: ${invalid_rows} row(s)."
+  printf 'Invitation registration limits and existing rows verified.\n'
 }
 
 apply_schema() {
@@ -362,15 +453,17 @@ apply_schema() {
   elif [[ "${has_public_objects}" == "t" ]]; then
     # Existing deployments never go through Drizzle's reconciliation engine.
     # Require every current application table/column to match before applying
-    # the one reviewed additive migration; unrelated custom tables are ignored.
-    verify_catalog --allow-missing-session-columns
+    # reviewed additive migrations; unrelated custom tables are ignored.
+    verify_catalog --allow-missing-upgrade-columns
     ensure_uuid_function
     migrate_existing_session_columns
+    migrate_existing_invitation_columns
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."
   fi
   verify_user_session_rows
+  verify_invitation_rows
 }
 
 read_mobile_url() {

@@ -465,6 +465,11 @@ export interface InvitationPublic {
   role: Role;
   inviterName?: string;
   expiresAt: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  remainingUses: number | null;
 }
 
 export interface Invitation {
@@ -476,6 +481,13 @@ export interface Invitation {
   provinceId?: number | null;
   centerId?: number | null;
   status: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  maxUses: number | null;
+  /** @minimum 0 */
+  usedCount: number;
   expiresAt: string;
   usedAt?: string | null;
   createdAt?: string;
@@ -486,6 +498,13 @@ export interface CreateInvitationInput {
   provinceId?: number | null;
   centerId?: number | null;
   expiresInHours?: number;
+  /**
+     * Null means unlimited registrations until expiry or revocation.
+     * @minimum 1
+     * @maximum 1000
+     * @nullable
+     */
+  maxUses?: number | null;
 }
 
 export interface InvitationCreated {

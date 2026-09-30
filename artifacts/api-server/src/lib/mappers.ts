@@ -526,6 +526,8 @@ export function toInvitation(row: Invitation) {
     provinceId: row.provinceId,
     centerId: row.centerId,
     status: row.status,
+    maxUses: row.maxUses,
+    usedCount: row.usedCount,
     expiresAt: row.expiresAt,
     usedAt: row.usedAt,
     createdAt: row.createdAt,

@@ -212,6 +212,7 @@ router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
   if (
     !invitation ||
     invitation.status !== "pending" ||
+    (invitation.maxUses !== null && invitation.usedCount >= invitation.maxUses) ||
     invitation.expiresAt.getTime() < Date.now()
   ) {
     res.status(404).json({ message: "Invitación no válida o caducada" });
@@ -232,6 +233,7 @@ router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
       role: invitation.role,
       inviterName,
       expiresAt: invitation.expiresAt,
+      remainingUses: invitation.maxUses === null ? null : invitation.maxUses - invitation.usedCount,
     }),
   );
 });
@@ -249,8 +251,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   let user;
   try {
     user = await db.transaction(async (tx) => {
-      // Lock the invitation row so concurrent registrations cannot consume the
-      // same single-use token (TOCTOU on status/email).
+      // Serialize registrations for this code; the final place cannot be
+      // consumed twice by concurrent requests.
       const [invitation] = await tx
         .select()
         .from(invitationsTable)
@@ -265,6 +267,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       if (
         !invitation ||
         invitation.status !== "pending" ||
+        (invitation.maxUses !== null && invitation.usedCount >= invitation.maxUses) ||
         invitation.expiresAt.getTime() < Date.now()
       ) {
         throw new RegisterError(400, "Invitación no válida o caducada");
@@ -296,7 +299,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
       await tx
         .update(invitationsTable)
-        .set({ status: "used", usedAt: new Date(), email })
+        .set({
+          usedCount: invitation.usedCount + 1,
+          status: invitation.maxUses !== null && invitation.usedCount + 1 >= invitation.maxUses ? "used" : "pending",
+          usedAt: new Date(),
+          // A multi-person invitation must not display one registrant as its recipient.
+          email: invitation.maxUses === 1 ? email : null,
+        })
         .where(eq(invitationsTable.id, invitation.id));
 
       return created;

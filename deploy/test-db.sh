@@ -113,9 +113,21 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="CREATE TABLE public.custom_preserve (id integer PRIMARY KEY, payload text NOT NULL); INSERT INTO public.custom_preserve VALUES (7, 'keep-exactly'); INSERT INTO public.users (name, email, password_hash, role) VALUES ('Preserved migration user', 'upgrade-preserve@example.test', 'test-only-hash', 'teacher'); ALTER TABLE public.users DROP COLUMN token_version, DROP COLUMN session_nonce"
+DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="INSERT INTO public.invitations (code, role, status, expires_at) VALUES ('legacy-consumed-link', 'teacher', 'used', now() + interval '1 day'); ALTER TABLE public.invitations DROP COLUMN max_uses, DROP COLUMN used_count"
 
 echo "==> Applying the upgrade to the existing database"
 migrate_database coordina_upgrade
+DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT max_uses = 1 AND used_count = 1 AND status = 'used' FROM public.invitations WHERE code = 'legacy-consumed-link'" \
+  | grep -qx t
+echo "==> Testing bounded and unlimited invitations on the isolated database"
+DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  pnpm --filter @workspace/api-server exec vitest run test/invitations.test.ts
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

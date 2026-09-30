@@ -11,4 +11,9 @@ export interface InvitationPublic {
   role: Role;
   inviterName?: string;
   expiresAt: Date;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  remainingUses: number | null;
 }

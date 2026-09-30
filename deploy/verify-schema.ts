@@ -45,8 +45,8 @@ type Catalog = {
   enums: Array<{ name: string; labels: string[] }>;
 };
 
-const allowMissingSessionColumns =
-  process.argv.includes("--allow-missing-session-columns");
+const allowMissingUpgradeColumns =
+  process.argv.includes("--allow-missing-upgrade-columns");
 const tableNameSymbol = Symbol.for("drizzle:Name");
 const tableColumnsSymbol = Symbol.for("drizzle:Columns");
 const isDrizzleTableSymbol = Symbol.for("drizzle:IsDrizzleTable");
@@ -412,9 +412,11 @@ for (const column of expected.columns) {
   const found = actualByKey.get(key);
   if (!found) {
     if (
-      allowMissingSessionColumns &&
-      column.table === "users" &&
-      ["token_version", "session_nonce"].includes(column.column)
+      allowMissingUpgradeColumns &&
+      ((column.table === "users" &&
+        ["token_version", "session_nonce"].includes(column.column)) ||
+       (column.table === "invitations" &&
+        ["max_uses", "used_count"].includes(column.column)))
     ) {
       continue;
     }

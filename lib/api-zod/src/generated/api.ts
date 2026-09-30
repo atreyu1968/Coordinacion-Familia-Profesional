@@ -596,17 +596,21 @@ export const UpdateProfileResponse = zod.object({
 
 
 /**
- * Returns invitation details so the registration form can be prefilled. Fails if expired or used.
+ * Returns invitation details so the registration form can be prefilled. Fails if expired or the registration limit has been reached.
  * @summary Resolve a magic invitation token
  */
 export const GetInvitationByTokenParams = zod.object({
   "token": zod.coerce.string()
 })
 
+
+
+
 export const GetInvitationByTokenResponse = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "inviterName": zod.string().optional(),
-  "expiresAt": zod.coerce.date()
+  "expiresAt": zod.coerce.date(),
+  "remainingUses": zod.number().min(1).nullable()
 })
 
 
@@ -676,6 +680,11 @@ export const ListInvitationsQueryParams = zod.object({
   "status": zod.coerce.string().optional()
 })
 
+
+export const listInvitationsResponseUsedCountMin = 0;
+
+
+
 export const ListInvitationsResponseItem = zod.object({
   "id": zod.number(),
   "code": zod.string(),
@@ -684,6 +693,8 @@ export const ListInvitationsResponseItem = zod.object({
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "status": zod.string(),
+  "maxUses": zod.number().min(1).nullable(),
+  "usedCount": zod.number().min(listInvitationsResponseUsedCountMin),
   "expiresAt": zod.coerce.date(),
   "usedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()
@@ -692,16 +703,21 @@ export const ListInvitationsResponse = zod.array(ListInvitationsResponseItem)
 
 
 /**
- * Generates a shareable invitation code scoped to a role (and optional province/center). The email is unknown at creation time; the recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
+ * Generates a shareable invitation code scoped to a role (and optional province/center), with a configurable registration limit. The email is unknown at creation time; each recipient provides it when registering. Coordinators generate codes for department heads and prospectors; department heads for teachers.
  * @summary Generate a role-based invitation code
  */
 export const createInvitationBodyExpiresInHoursDefault = 72;
+export const createInvitationBodyMaxUsesDefault = 1;
+export const createInvitationBodyMaxUsesMax = 1000;
+
+
 
 export const CreateInvitationBody = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
-  "expiresInHours": zod.number().default(createInvitationBodyExpiresInHoursDefault)
+  "expiresInHours": zod.number().default(createInvitationBodyExpiresInHoursDefault),
+  "maxUses": zod.number().min(1).max(createInvitationBodyMaxUsesMax).nullish().default(createInvitationBodyMaxUsesDefault).describe('Null means unlimited registrations until expiry or revocation.')
 })
 
 
@@ -720,6 +736,11 @@ export const ResendInvitationParams = zod.object({
   "id": zod.coerce.number()
 })
 
+
+export const resendInvitationResponseInvitationUsedCountMin = 0;
+
+
+
 export const ResendInvitationResponse = zod.object({
   "invitation": zod.object({
   "id": zod.number(),
@@ -729,6 +750,8 @@ export const ResendInvitationResponse = zod.object({
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "status": zod.string(),
+  "maxUses": zod.number().min(1).nullable(),
+  "usedCount": zod.number().min(resendInvitationResponseInvitationUsedCountMin),
   "expiresAt": zod.coerce.date(),
   "usedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()
