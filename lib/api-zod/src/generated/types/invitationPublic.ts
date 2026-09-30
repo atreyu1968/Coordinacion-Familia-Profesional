@@ -16,4 +16,6 @@ export interface InvitationPublic {
      * @nullable
      */
   remainingUses: number | null;
+  /** Version of the terms and privacy notice currently offered at registration. */
+  legalVersion: string;
 }

@@ -70,22 +70,39 @@ es opcional y el instalador puede ofrecerlo con dominio real.
 
 ## Actualización
 
-Con `.env` existente, actualiza desde el repositorio clonado:
+Con `.env` existente, descarga el código **antes de iniciar un nuevo proceso**
+del actualizador. Si `git status --short` muestra cambios, `git pull` falla o
+no aparece la migración esperada, detente y revisa la instalación:
 
 ```bash
 cd /ruta/al/Coordinacion-Familia-Profesional
-sudo bash deploy/update.sh
+git status --short
+git pull --ff-only
+grep -n 'migrate_existing_legal_acceptance_columns' deploy/db.sh
+sudo env SEED_TEST_TEACHERS=no INSTALL_WIKI=no bash deploy/update.sh
 ```
 
-El script hace `git pull --ff-only` e instala dependencias bloqueadas. Antes de
+El script también hace `git pull --ff-only`, pero descargar previamente evita
+que un proceso Bash ya iniciado siga ejecutando lógica antigua tras el pull.
+Instala dependencias bloqueadas. Antes de
 construir la API, ejecuta este orden: backup cuando corresponde, comprobación de
 conexión, clasificación y migración/verificación del esquema, carga de datos de
 referencia (y de docentes de prueba, si se solicita) y verificación final. En una
 base existente verifica el catálogo esperado completo y aplica solo las adiciones
-de sesión aprobadas dentro de una transacción; nunca ejecuta Drizzle `push` sobre
+de sesión, invitaciones y aceptación legal aprobadas en transacciones; nunca ejecuta Drizzle `push` sobre
 esa base. Solo una base cuyo catálogo `public` no contiene objetos preexistentes
 sigue la ruta vacía de Drizzle `push`. Los esquemas incompatibles —incluidas claves
 o etiquetas de enums que no coincidan— abortan y requieren migración manual.
+
+**Antes de actualizar un servidor público**, completar y revisar los borradores
+de términos, privacidad y cookies de la web. Se ha indicado un responsable y
+una sede, pero falta confirmar la dirección postal completa, el correo de
+privacidad, los proveedores reales, las bases jurídicas y los plazos de conservación.
+El formulario registra la versión que cada nuevo usuario aceptó, pero aceptar
+un borrador no acredita cumplimiento legal. Al publicar una versión definitiva,
+cambiar la versión legal en API y web de forma coordinada. Si Nextcloud ya está
+instalado, el actualizador intentará refrescarlo también: `INSTALL_COLLAB=no`
+solo evita la instalación inicial, no ese refresco.
 
 ```bash
 sudo SEED_TEST_TEACHERS=yes bash deploy/update.sh

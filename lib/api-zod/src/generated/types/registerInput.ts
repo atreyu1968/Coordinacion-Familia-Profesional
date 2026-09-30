@@ -11,4 +11,10 @@ export interface RegisterInput {
   name?: string;
   email: string;
   password: string;
+  /** Explicit agreement to the terms of use; must be true. */
+  termsAccepted: boolean;
+  /** Confirmation that the privacy notice was read; must be true. */
+  privacyAcknowledged: boolean;
+  /** @minLength 1 */
+  legalVersion: string;
 }

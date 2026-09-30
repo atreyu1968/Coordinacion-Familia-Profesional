@@ -414,7 +414,7 @@ for (const column of expected.columns) {
     if (
       allowMissingUpgradeColumns &&
       ((column.table === "users" &&
-        ["token_version", "session_nonce"].includes(column.column)) ||
+        ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version"].includes(column.column)) ||
        (column.table === "invitations" &&
         ["max_uses", "used_count"].includes(column.column)))
     ) {

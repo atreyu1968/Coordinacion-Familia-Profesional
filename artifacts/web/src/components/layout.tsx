@@ -274,12 +274,16 @@ export function AppLayout({ children }: LayoutProps) {
           </div>
 
           {/* Compact footer */}
-          <footer className="shrink-0 h-8 border-t border-border bg-background px-4 flex items-center justify-center gap-1.5 text-[11px] leading-none text-muted-foreground">
+          <footer className="shrink-0 min-h-8 border-t border-border bg-background px-4 py-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[11px] leading-none text-muted-foreground">
             <span>Desarrollado por</span>
             <img src={asdLogo} alt="Atreyu Servicios Digitales" className="h-4 w-auto" />
             <span className="font-medium text-foreground/80">Atreyu Servicios Digitales</span>
             <span className="text-muted-foreground/50">·</span>
             <span>v{APP_VERSION}</span>
+            <span className="text-muted-foreground/50">·</span>
+            <Link href="/terminos" className="hover:underline">Términos</Link>
+            <Link href="/privacidad" className="hover:underline">Privacidad</Link>
+            <Link href="/cookies" className="hover:underline">Cookies</Link>
           </footer>
         </main>
       </div>

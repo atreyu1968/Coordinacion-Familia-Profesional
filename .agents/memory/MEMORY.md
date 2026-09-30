@@ -28,6 +28,7 @@
 - [Express per-route auth guards](express-auth-guards.md) — why router.use(requireAuth) in path-less sub-routers breaks siblings.
 - [Self-service profile editing](self-service-profile.md) — profile edits use /auth/me, not the admin user-update route.
 - [Invitation token lifecycle](invitation-token-lifecycle.md) — single-use tokens; creation by role, renew guards, atomic consumption.
+- [Legal acceptance and cookie policy](legal-acceptance.md) — separate terms/privacy from optional cookies; version each acceptance; do not publish drafts as compliance.
 - [Password reset OTP flow](password-reset-otp.md) — email-based recovery and the single-use atomicity constraint.
 - [Jefe de Departamento model](jefe-departamento-model.md) — modeled as a role, not an entity.
 - [Learning outcomes (RA) & criteria (CE)](learning-outcomes-module.md) — per-module RA/CE tables w/ FK cascade; write=superadmin||module coordinator, read=anyone who sees module.

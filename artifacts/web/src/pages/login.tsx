@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
@@ -143,6 +143,11 @@ export default function LoginPage() {
             ¿Tienes un código de invitación? Usa el enlace recibido por correo
             para registrarte.
           </p>
+          <nav aria-label="Información legal" className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs">
+            <Link href="/terminos" className="text-primary underline">Términos</Link>
+            <Link href="/privacidad" className="text-primary underline">Privacidad</Link>
+            <Link href="/cookies" className="text-primary underline">Cookies</Link>
+          </nav>
 
           <div className="pt-2 text-center">
             <a

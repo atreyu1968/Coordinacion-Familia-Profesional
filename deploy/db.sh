@@ -268,6 +268,7 @@ verify_schema() {
   verify_catalog
   verify_user_session_rows
   verify_invitation_rows
+  verify_legal_acceptance_rows
   printf 'Full application columns, defaults, keys, and enums verified.\n'
 }
 
@@ -398,6 +399,59 @@ verify_invitation_rows() {
   printf 'Invitation registration limits and existing rows verified.\n'
 }
 
+migrate_existing_legal_acceptance_columns() {
+  run_psql --command="
+    BEGIN;
+    DO \$migration\$
+    DECLARE
+      field_name text;
+      expected_type text;
+    BEGIN
+      FOREACH field_name IN ARRAY ARRAY['legal_accepted_at', 'legal_terms_version', 'legal_privacy_version'] LOOP
+        expected_type := CASE WHEN field_name = 'legal_accepted_at' THEN 'timestamp with time zone' ELSE 'text' END;
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'users'
+            AND column_name = field_name
+        ) THEN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'users'
+              AND column_name = field_name
+              AND data_type = expected_type AND is_nullable = 'YES' AND column_default IS NULL
+          ) THEN
+            RAISE EXCEPTION 'Existing users.% has an incompatible definition', field_name;
+          END IF;
+        ELSE
+          IF field_name = 'legal_accepted_at' THEN
+            ALTER TABLE public.users ADD COLUMN legal_accepted_at timestamptz;
+          ELSIF field_name = 'legal_terms_version' THEN
+            ALTER TABLE public.users ADD COLUMN legal_terms_version text;
+          ELSE
+            ALTER TABLE public.users ADD COLUMN legal_privacy_version text;
+          END IF;
+        END IF;
+      END LOOP;
+    END;
+    \$migration\$;
+    COMMIT;
+  " || fail "The additive legal acceptance migration failed; PostgreSQL rolled it back."
+}
+
+verify_legal_acceptance_rows() {
+  local invalid_rows
+  invalid_rows="$(run_psql --tuples-only --no-align --command="
+    SELECT COUNT(*) FROM public.users
+    WHERE NOT (
+      (legal_accepted_at IS NULL AND legal_terms_version IS NULL AND legal_privacy_version IS NULL)
+      OR (legal_accepted_at IS NOT NULL AND NULLIF(legal_terms_version, '') IS NOT NULL
+          AND NULLIF(legal_privacy_version, '') IS NOT NULL)
+    )
+  " | tr -d '[:space:]')"
+  [[ "${invalid_rows}" == "0" ]] || fail "Invalid legal acceptance metadata: ${invalid_rows} user row(s)."
+  printf 'User legal acceptance metadata verified.\n'
+}
+
 apply_schema() {
   local has_public_objects
   has_public_objects="$(run_psql --tuples-only --no-align --command="
@@ -458,12 +512,14 @@ apply_schema() {
     ensure_uuid_function
     migrate_existing_session_columns
     migrate_existing_invitation_columns
+    migrate_existing_legal_acceptance_columns
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."
   fi
   verify_user_session_rows
   verify_invitation_rows
+  verify_legal_acceptance_rows
 }
 
 read_mobile_url() {

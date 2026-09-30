@@ -10,6 +10,9 @@ import { AppLayout } from "@/components/layout";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const LoginPage = lazy(() => import("@/pages/login"));
 const RegisterPage = lazy(() => import("@/pages/register"));
+const TermsPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.TermsPage })));
+const PrivacyPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.PrivacyPage })));
+const CookiesPage = lazy(() => import("@/pages/legal").then((m) => ({ default: m.CookiesPage })));
 const RecuperarPage = lazy(() => import("@/pages/recuperar"));
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const ConfiguracionPage = lazy(() => import("@/pages/configuracion"));
@@ -95,6 +98,9 @@ function Router() {
       <Switch>
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
+        <Route path="/terminos" component={TermsPage} />
+        <Route path="/privacidad" component={PrivacyPage} />
+        <Route path="/cookies" component={CookiesPage} />
         <Route path="/recuperar" component={RecuperarPage} />
         <Route path="/scorm-player" component={ScormPlayerPage} />
         <Route component={AuthedRoutes} />

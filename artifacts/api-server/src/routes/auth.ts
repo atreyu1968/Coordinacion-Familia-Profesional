@@ -31,6 +31,8 @@ import { disconnectUserSessions } from "../lib/realtime";
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
+// Keep in sync with the published documents in artifacts/web/src/lib/legal-content.ts.
+const CURRENT_LEGAL_VERSION = "borrador-2026-09-30-2";
 
 class RegisterError extends Error {
   constructor(
@@ -234,6 +236,7 @@ router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
       inviterName,
       expiresAt: invitation.expiresAt,
       remainingUses: invitation.maxUses === null ? null : invitation.maxUses - invitation.usedCount,
+      legalVersion: CURRENT_LEGAL_VERSION,
     }),
   );
 });
@@ -242,6 +245,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterWithTokenBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ message: parsed.error.message });
+    return;
+  }
+  if (
+    parsed.data.termsAccepted !== true ||
+    parsed.data.privacyAcknowledged !== true ||
+    parsed.data.legalVersion !== CURRENT_LEGAL_VERSION
+  ) {
+    res.status(400).json({ message: "Debes leer y aceptar la versión actual de los textos legales" });
     return;
   }
 
@@ -294,6 +305,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
           provinceId: invitation.provinceId,
           centerId: invitation.centerId,
           createdBy: invitation.invitedBy,
+          legalAcceptedAt: new Date(),
+          legalTermsVersion: CURRENT_LEGAL_VERSION,
+          legalPrivacyVersion: CURRENT_LEGAL_VERSION,
         })
         .returning();
 

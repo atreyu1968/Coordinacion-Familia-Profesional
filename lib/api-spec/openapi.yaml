@@ -4731,7 +4731,10 @@ components:
         remainingUses:
           type: ["integer", "null"]
           minimum: 1
-      required: [role, expiresAt, remainingUses]
+        legalVersion:
+          type: string
+          description: Version of the terms and privacy notice currently offered at registration.
+      required: [role, expiresAt, remainingUses, legalVersion]
     Invitation:
       type: object
       properties:
@@ -4810,7 +4813,16 @@ components:
           type: string
         password:
           type: string
-      required: [token, email, password]
+        termsAccepted:
+          type: boolean
+          description: Explicit agreement to the terms of use; must be true.
+        privacyAcknowledged:
+          type: boolean
+          description: Confirmation that the privacy notice was read; must be true.
+        legalVersion:
+          type: string
+          minLength: 1
+      required: [token, email, password, termsAccepted, privacyAcknowledged, legalVersion]
     ForgotPasswordInput:
       type: object
       properties:

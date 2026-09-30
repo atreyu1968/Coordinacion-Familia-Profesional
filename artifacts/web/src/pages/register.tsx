@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useLocation, useSearchParams } from "wouter";
+import { Link, useLocation, useSearchParams } from "wouter";
 import {
   useGetInvitationByToken,
   getGetInvitationByTokenQueryKey,
@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
+import { LEGAL_VERSION } from "@/lib/legal-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function RegisterPage() {
   const { login } = useAuth();
-  const { professionalFamily } = useBranding();
+  const { professionalFamily, appName } = useBranding();
   const [, setLocation] = useLocation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -33,6 +34,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -52,9 +55,13 @@ export default function RegisterPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!invitation || invitation.legalVersion !== LEGAL_VERSION) {
+      setError("La información legal ha cambiado. Recarga la página antes de registrarte.");
+      return;
+    }
     try {
       const result = await registerMutation.mutateAsync({
-        data: { token, name: name || undefined, email, password },
+        data: { token, name: name || undefined, email, password, termsAccepted, privacyAcknowledged, legalVersion: LEGAL_VERSION },
       });
       login(result.token, result.user);
       setLocation("/");
@@ -152,6 +159,19 @@ export default function RegisterPage() {
             </button>
           </div>
         </div>
+        <fieldset className="space-y-3 rounded-md border p-4 text-sm">
+          <legend className="px-1 font-medium">Información legal</legend>
+          <p className="text-amber-800">Estos textos son un borrador pendiente de completar por la entidad responsable.</p>
+          <label className="flex items-start gap-3">
+            <input type="checkbox" required checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1 size-4" />
+            <span>He leído y acepto los <Link href="/terminos" target="_blank" className="text-primary underline">términos de uso</Link>.</span>
+          </label>
+          <label className="flex items-start gap-3">
+            <input type="checkbox" required checked={privacyAcknowledged} onChange={(e) => setPrivacyAcknowledged(e.target.checked)} className="mt-1 size-4" />
+            <span>He leído la <Link href="/privacidad" target="_blank" className="text-primary underline">información sobre protección de datos</Link>.</span>
+          </label>
+          <p className="text-muted-foreground">Consulta también la <Link href="/cookies" target="_blank" className="text-primary underline">política de cookies</Link>. No se exige aceptar cookies de publicidad o analítica.</p>
+        </fieldset>
         {error && (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -203,7 +223,7 @@ export default function RegisterPage() {
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">Crear cuenta</h1>
             <p className="text-muted-foreground">
-              Completa tu registro en Coordina ADG.
+              Completa tu registro en {appName}.
             </p>
           </div>
 

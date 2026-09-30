@@ -17,6 +17,9 @@ export const usersTable = pgTable("users", {
   sessionNonce: text("session_nonce")
     .notNull()
     .default(sql`gen_random_uuid()::text`),
+  legalAcceptedAt: timestamp("legal_accepted_at", { withTimezone: true }),
+  legalTermsVersion: text("legal_terms_version"),
+  legalPrivacyVersion: text("legal_privacy_version"),
   role: roleEnum("role").notNull(),
   status: text("status").notNull().default("active"),
   provinceId: integer("province_id"),

@@ -610,18 +610,25 @@ export const GetInvitationByTokenResponse = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "inviterName": zod.string().optional(),
   "expiresAt": zod.coerce.date(),
-  "remainingUses": zod.number().min(1).nullable()
+  "remainingUses": zod.number().min(1).nullable(),
+  "legalVersion": zod.string().describe('Version of the terms and privacy notice currently offered at registration.')
 })
 
 
 /**
  * @summary Complete registration using an invitation token
  */
+
+
+
 export const RegisterWithTokenBody = zod.object({
   "token": zod.string(),
   "name": zod.string().optional(),
   "email": zod.string(),
-  "password": zod.string()
+  "password": zod.string(),
+  "termsAccepted": zod.boolean().describe('Explicit agreement to the terms of use; must be true.'),
+  "privacyAcknowledged": zod.boolean().describe('Confirmation that the privacy notice was read; must be true.'),
+  "legalVersion": zod.string().min(1)
 })
 
 export const RegisterWithTokenResponse = zod.object({
