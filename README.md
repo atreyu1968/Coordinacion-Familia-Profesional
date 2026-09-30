@@ -175,7 +175,7 @@ sudo systemctl restart nginx
 ### Actualizar a la última versión
 
 ```bash
-cd /ruta/al/proyecto
+cd Coordinacion-Familia-Profesional
 sudo bash deploy/update.sh
 ```
 
