@@ -1,10 +1,32 @@
 # Coordina ADG
 
-**Versión 4.0**
+**Versión 4.1.0**
 
 Plataforma de coordinación de Familias Profesionales: gestión de centros,
 profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros,
 videollamadas, formularios documentales y una **wiki de documentación**.
+
+### Novedades operativas de la versión 4.1.0
+
+Los scripts respaldan bases con tablas públicas antes de migrarlas. Drizzle `push`
+solo se usa si el catálogo no detecta objetos preexistentes en `public`; tablas o
+enums públicos ajenos bloquean esa ruta. En bases existentes se valida el catálogo
+esperado (columnas, defaults, PK/UNIQUE/FK y etiquetas de enums) y se añaden
+transaccionalmente solo las columnas de sesión aprobadas; los esquemas incompatibles
+se detienen para migración manual y las tablas personalizadas se conservan.
+La actualización aplica y verifica el esquema, carga datos de referencia y vuelve
+a verificar todo antes de construir la API. Si falla la compilación o readiness,
+restaura la distribución API anterior si existía; dependencias y migraciones DB no
+se revierten. Si falla la publicación posterior, restaura web/nginx pero conserva
+la API que ya superó readiness. Los docentes de prueba son opt-in. Las sesiones
+anteriores requieren iniciar sesión una vez con la versión nueva. Las copias ZIP
+usan formato v5, no aceptan versiones anteriores y contienen referencias a objetos,
+no sus bytes.
+Procedimientos, restauración y límites: [`docs/instalacion-actualizacion.md`](docs/instalacion-actualizacion.md).
+`bash deploy/test-db.sh` prueba base vacía, rechazo de tabla/enum público ajeno y
+de `users.email UNIQUE` ausente, conservación de una tabla personalizada y rechazo
+de un `session_nonce` incompatible; usa un clúster aislado como usuario sin
+privilegios.
 
 ### Novedades de la versión 4.0 — Wiki de documentación nativa
 
@@ -52,6 +74,9 @@ Es un monorepo **pnpm** con tres aplicaciones y dos librerías compartidas:
 | `lib/db` | Esquema y cliente de PostgreSQL (Drizzle) |
 | `lib/api-spec` / `api-zod` | Especificación de la API y tipos compartidos |
 
+La versión de producto es **4.1.0**. La versión del contrato OpenAPI (`0.1.0`)
+y las versiones técnicas de paquetes privados (`0.0.0`) son independientes.
+
 ---
 
 ## 1. Instalación automática en un servidor Ubuntu
@@ -83,8 +108,13 @@ El instalador te preguntará:
   con un aviso claro si detecta caracteres no válidos, en lugar de fallar más
   tarde con un error confuso de nginx o de certbot.
 - **Correo y contraseña** del primer administrador (rol *superadmin*).
+- **URL pública móvil** y opciones de integraciones. Nextcloud + Collabora se
+  ofrece con un dominio real; Outline tiene respuesta predeterminada **no**.
 
 Al terminar, abre `http://TU_DOMINIO_O_IP/` e inicia sesión con esas credenciales.
+En dominios HTTPS el instalador ofrece el espacio colaborativo; puedes omitirlo.
+Outline no se instala automáticamente: es una integración heredada y solo se
+instala por solicitud explícita.
 
 ### Instalación sin preguntas (desatendida)
 
@@ -104,7 +134,11 @@ El DNS del dominio debe apuntar ya al servidor.
 
 > El instalador es **idempotente**: puedes volver a ejecutarlo sin miedo. No
 > regenera el `JWT_SECRET` ni la contraseña de la base de datos si ya existen, y
-> no toca el usuario administrador si ya está creado.
+> no toca el usuario administrador si ya está creado. Si indicas un `DB_PASSWORD`
+> distinto del guardado en `DATABASE_URL`, se detiene sin rotar el rol; la rotación
+> debe hacerse por separado y con su propio respaldo.
+> Los docentes de prueba se omiten por defecto; para sembrarlos, define
+> `SEED_TEST_TEACHERS=yes`.
 
 ---
 
@@ -145,8 +179,22 @@ cd /ruta/al/proyecto
 sudo bash deploy/update.sh
 ```
 
-Descarga el último código, reinstala dependencias, recompila, aplica los
-cambios de esquema de la base de datos y reinicia el servicio.
+Descarga el último código con `git pull --ff-only` e instala dependencias. Antes de
+construir la API respalda la base cuando corresponde, prepara y migra/verifica el
+esquema, carga datos de referencia y realiza una verificación final. Las bases
+existentes requieren que coincidan columnas, defaults, PK/UNIQUE/FK y etiquetas de
+enums; solo se añaden transaccionalmente las columnas de sesión aprobadas.
+Incompatibilidades abortan para revisión manual. Si falla la compilación de la API
+o readiness, restaura la distribución API anterior si existía; las dependencias
+instaladas y las migraciones DB no se revierten. Si falla la publicación posterior,
+restaura web/nginx, no la API que ya superó readiness. Para volver completamente
+atrás hacen falta el backup y el código/dependencias compatibles con su esquema.
+La copia queda por defecto en `/var/backups/coordina-adg/`. El procedimiento se describe en
+[`docs/instalacion-actualizacion.md`](docs/instalacion-actualizacion.md).
+
+Outline queda intacto durante una actualización normal; solo se instala o actualiza
+si se solicita expresamente con `INSTALL_WIKI=yes`. Nextcloud + Collabora siguen
+siendo opcionales.
 
 ### Desinstalar o reinstalar desde cero
 
@@ -187,11 +235,17 @@ sudo DOMAIN=adg.example.org \
 
 ### Copias de seguridad
 
-- **Base de datos:**
+- **Base de datos:** antes de migrar una base que contiene tablas públicas, `install.sh` y
+  `update.sh` crean y validan una copia `pg_dump` en formato custom en
+  `/var/backups/coordina-adg/` (permisos 700 para el directorio y 600 para el
+  archivo). Se puede cambiar el directorio con `DB_BACKUP_DIR`. Para una copia
+  manual adicional:
   ```bash
   sudo -u postgres pg_dump coordina_adg > coordina_adg_$(date +%F).sql
   ```
-- **Ficheros subidos:** copia el directorio `/var/lib/coordina-adg/storage`.
+- **Ficheros subidos:** copia por separado `/var/lib/coordina-adg/storage` (o el
+  directorio definido por `LOCAL_STORAGE_DIR`). Las copias ZIP de la aplicación
+  guardan referencias e inventario de los objetos, no sus bytes.
 
 ---
 
@@ -272,8 +326,8 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
   página *Espacio colaborativo* avisa de que no está disponible y el resto de la
   app funciona con normalidad.
 - **Documentación:** la wiki nativa se incluye en la aplicación y no necesita un
-  servicio ni credenciales externas. La sección §4.c conserva información
-  histórica sobre la antigua integración con Outline.
+  servicio ni credenciales externas. Outline es una integración heredada; consulta
+  §4.c antes de solicitar manualmente su instalación.
 
 ---
 
@@ -333,10 +387,10 @@ colaborativo* de la web.
 ## 4.c Histórico: Outline (integración retirada)
 
 > **No seguir estas instrucciones para instalar la versión actual.** Coordina ADG
-> ahora incluye una wiki nativa y no instala, autentica ni sincroniza contenido con
-> Outline. Esta retirada no borró los datos, contenedores ni archivos externos
-> existentes; los scripts de `deploy/outline/` se conservan para instalaciones
-> antiguas, pero la aplicación actual ya no los integra.
+> ahora incluye una wiki nativa y no usa Outline por defecto. Esta retirada no
+> borró los datos, contenedores ni archivos externos existentes; los scripts de
+> `deploy/outline/` se conservan para instalaciones antiguas, pero la aplicación
+> actual no los integra salvo solicitud explícita.
 
 Añade una **wiki de documentación** integrada (Outline, código abierto) con una
 **colección por módulo**, accesible desde **Recursos → Documentación** y desde
@@ -439,12 +493,12 @@ En ese caso `docs.` y `files.` también tienen que ir en **naranja**, y entonces
 En resumen: si solo quieres que funcione, deja `docs.` y `files.` en **gris** y tu
 dominio principal sigue por Cloudflare igual que siempre.
 
-**Instalación e integración automáticas:** si ejecutas `deploy/install.sh` con un
-dominio HTTPS real y aceptas instalar la wiki, este componente se instala e
-integra **solo** (levanta Outline + Postgres + Redis + MinIO con Docker, configura
-nginx/HTTPS de ambos subdominios, registra el SSO y escribe `OUTLINE_URL` y las
-credenciales OIDC en el `.env` de la app, reiniciando el servicio). Cada
-`deploy/update.sh` lo vuelve a actualizar.
+**Instalación/actualización solo por solicitud explícita:** en una instalación
+nueva, `deploy/install.sh` pregunta si se desea Outline con respuesta
+predeterminada **no** (o se puede definir `INSTALL_WIKI=yes`). En una actualización
+no se toca salvo que se ejecute `sudo INSTALL_WIKI=yes bash deploy/update.sh`.
+Necesita su propio subdominio. La wiki nativa de Coordina ADG sigue siendo la
+opción predeterminada y no depende de Outline.
 
 ```bash
 # Levantar Outline (+ MinIO), configurar los subdominios de nginx/HTTPS, el SSO
@@ -536,4 +590,3 @@ Cada aplicación se ejecuta con su propio comando `dev` (`pnpm --filter
 - **Las subidas de ficheros fallan:** comprueba que `LOCAL_STORAGE_DIR` existe y
   pertenece al usuario del servicio, y que en nginx `client_max_body_size` es
   suficiente (50 MB por defecto).
-```

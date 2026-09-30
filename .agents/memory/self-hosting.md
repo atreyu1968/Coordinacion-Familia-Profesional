@@ -26,12 +26,22 @@ filesystem instead.
   (vite.config.ts throws otherwise). Self-hosted build uses `PORT=5173 BASE_PATH=/`.
   Output goes to `artifacts/web/dist/public`.
 - API server throws at boot if `PORT`, `DATABASE_URL`, or `JWT_SECRET` are absent.
-- DB schema is applied via `pnpm --filter @workspace/db run push` (drizzle push,
-  no SQL migration files).
+- A genuinely empty DB can be created from the Drizzle schema, but an existing
+  installation must use reviewed additive migrations; never run `push-force`
+  against its data.
 - Registration is invitation-only, so a fresh DB has no admin — must run the
   seed (`@workspace/scripts run seed-admin`, reads SEED_ADMIN_*).
 
 ## Installer
+- **Rule:** back up and validate an existing PostgreSQL catalog before applying
+  explicit, additive upgrades; do not treat `drizzle-kit push` returning zero as
+  proof that a noninteractive migration succeeded.
+  **Why:** Drizzle can return success after declining a destructive prompt, and
+  forcing the operation risks dropping live data. New API code must not start
+  against an old or only partially upgraded schema.
+  **How to apply:** use `push` only on a proven-empty database, add reviewed
+  changes transactionally on existing databases, check the resulting schema
+  and user data, and exercise both paths on disposable PostgreSQL before release.
 - `deploy/install.sh` is the one-shot bare-Ubuntu bootstrap; `deploy/update.sh`
   pulls+rebuilds+restarts. Must stay **idempotent**: preserve existing
   DB password, JWT_SECRET, and optional JAAS_*/RESEND_*/PUBLIC_APP_URL on rerun

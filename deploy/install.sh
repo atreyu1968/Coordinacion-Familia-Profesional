@@ -44,6 +44,25 @@ LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"  # set + real DOMAIN to enable HTTPS
 CLOUDFLARE_TUNNEL_TOKEN="${CLOUDFLARE_TUNNEL_TOKEN:-}"  # optional cloudflared tunnel token
 
 ENV_FILE="${APP_DIR}/.env"
+EXPLICIT_DB_PASSWORD="${DB_PASSWORD:-}"
+
+# PostgreSQL folds unquoted names to lower case and truncates names beyond 63
+# bytes. Restrict installer-provided identifiers to a safe, portable subset;
+# they are still quoted as identifiers when sent to PostgreSQL.
+validate_pg_identifier() {
+  local label="$1" value="$2"
+  if [[ ! "${value}" =~ ^[a-z_][a-z0-9_]{0,62}$ ]]; then
+    echo "Invalid ${label}: use 1-63 lowercase letters, digits, or underscores; the first character must be a letter or underscore." >&2
+    exit 1
+  fi
+}
+validate_pg_identifier "DB_NAME" "${DB_NAME}"
+validate_pg_identifier "DB_USER" "${DB_USER}"
+
+encode_url_component() {
+  URL_COMPONENT="$1" node -e \
+    'process.stdout.write(encodeURIComponent(process.env.URL_COMPONENT ?? ""))'
+}
 
 # Read a value from the existing .env so reruns preserve generated secrets and
 # optional settings instead of wiping them (keeps the installer idempotent).
@@ -145,14 +164,10 @@ if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="
 # would see a value and skip the question entirely (it returns when the var is set).
 INSTALL_COLLAB="${INSTALL_COLLAB:-}"
 prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${DEFAULT_COLLAB}"
-# Documentation wiki (Outline). Self-installs AND integrates automatically
-# (running deploy/outline/install-outline.sh, which also writes the connection
-# details into this app's .env). Unlike the collaborative space it needs its OWN
-# SUBDOMAIN (Outline can't be served from a subpath), so it defaults to "yes"
-# only when a real HTTPS domain is present, and requires a DNS record for the
-# wiki subdomain (docs.<domain> by default).
+# Documentation wiki (Outline) is optional and is never installed unless
+# explicitly requested. It needs its own subdomain because it cannot be served
+# from a subpath.
 DEFAULT_WIKI="no"
-if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_WIKI="yes"; fi
 INSTALL_WIKI="${INSTALL_WIKI:-}"
 prompt_default INSTALL_WIKI "Install the documentation wiki (Outline, needs its own subdomain)? [yes/no]" "${DEFAULT_WIKI}"
 OUTLINE_DOMAIN="${OUTLINE_DOMAIN:-$(env_get OUTLINE_DOMAIN)}"
@@ -219,26 +234,71 @@ note "node $(node -v) / pnpm $(pnpm -v)"
 # ---------------------------------------------------------------------------
 log "Configuring PostgreSQL"
 systemctl enable --now postgresql
-# Reuse the existing DB password on reruns; only generate one on first install.
-if [[ -z "${DB_PASSWORD:-}" ]]; then
-  EXISTING_DB_URL="$(env_get DATABASE_URL)"
-  if [[ "${EXISTING_DB_URL}" =~ ://[^:]+:([^@]+)@ ]]; then
-    DB_PASSWORD="${BASH_REMATCH[1]}"
-  else
-    DB_PASSWORD="$(openssl rand -hex 16)"
+# Reuse the existing DB password on reruns. An explicitly different value is
+# rejected before touching the PostgreSQL role; role rotation must be a separate
+# operation after an operator-created backup.
+EXISTING_DB_URL="$(env_get DATABASE_URL)"
+EXISTING_DB_PASSWORD=""
+if [[ -n "${EXISTING_DB_URL}" ]]; then
+  EXISTING_DB_PASSWORD="$(
+      EXISTING_DATABASE_URL="${EXISTING_DB_URL}" node -e '
+        try {
+          const url = new URL(process.env.EXISTING_DATABASE_URL);
+          if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.password) {
+            throw new Error();
+          }
+          process.stdout.write(decodeURIComponent(url.password));
+        } catch {
+          process.stderr.write("Cannot read the existing PostgreSQL password from .env; refusing to rotate it implicitly.\n");
+          process.exit(1);
+        }
+      '
+  )"
+  if [[ -n "${EXPLICIT_DB_PASSWORD}" && "${EXPLICIT_DB_PASSWORD}" != "${EXISTING_DB_PASSWORD}" ]]; then
+    echo "DB_PASSWORD differs from the saved DATABASE_URL. Refusing to rotate the PostgreSQL role before backup; use a separate, backed-up password-rotation procedure." >&2
+    exit 1
   fi
-fi
-# Create role (idempotent).
-if sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
-  sudo -u postgres psql -c "ALTER ROLE ${DB_USER} WITH LOGIN PASSWORD '${DB_PASSWORD}';" >/dev/null
+  DB_PASSWORD="${EXISTING_DB_PASSWORD}"
+elif [[ -n "${EXPLICIT_DB_PASSWORD}" ]]; then
+  DB_PASSWORD="${EXPLICIT_DB_PASSWORD}"
 else
-  sudo -u postgres psql -c "CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD '${DB_PASSWORD}';" >/dev/null
+  DB_PASSWORD="$(openssl rand -hex 16)"
+fi
+if [[ "${DB_PASSWORD}" == *$'\n'* || "${DB_PASSWORD}" == *$'\r'* ]]; then
+  echo "DB_PASSWORD cannot contain line breaks." >&2
+  exit 1
+fi
+# Create a missing role only. Never reset an existing role password before the
+# database backup/migration; use the saved .env value to connect on reruns.
+export DB_USER DB_PASSWORD DB_NAME
+ROLE_EXISTS=0
+if sudo -u postgres psql --no-psqlrc -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
+  ROLE_EXISTS=1
+fi
+if [[ "${ROLE_EXISTS}" -eq 1 && -z "${EXISTING_DB_URL}" ]]; then
+  echo "PostgreSQL role ${DB_USER} already exists but no DATABASE_URL is saved; refusing to change its password or continue without a verified backup." >&2
+  exit 1
+fi
+if [[ "${ROLE_EXISTS}" -eq 0 ]] && ! sudo -u postgres --preserve-env=DB_USER,DB_PASSWORD psql \
+  --set=ON_ERROR_STOP=1 >/dev/null 2>&1 <<'SQL'
+\getenv db_user DB_USER
+\getenv db_password DB_PASSWORD
+SELECT format(
+  'CREATE ROLE %I WITH LOGIN PASSWORD %L',
+  :'db_user',
+  :'db_password'
+) \gexec
+SQL
+then
+  echo "Unable to create the PostgreSQL role; no database password was displayed." >&2
+  exit 1
 fi
 # Create database (idempotent).
-if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
+if ! sudo -u postgres psql --no-psqlrc -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
   sudo -u postgres createdb -O "${DB_USER}" "${DB_NAME}"
 fi
-DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}"
+DATABASE_URL="postgresql://$(encode_url_component "${DB_USER}"):$(encode_url_component "${DB_PASSWORD}")@127.0.0.1:5432/$(encode_url_component "${DB_NAME}")"
+export DATABASE_URL SERVICE_USER
 
 # ---------------------------------------------------------------------------
 log "Writing environment file (${ENV_FILE})"
@@ -303,14 +363,119 @@ run_as_user() {
     sudo -u "${SERVICE_USER}" -H bash -lc "$*"
   fi
 }
+run_as_user_preserving_env() {
+  local variables="$1" command="$2"
+  if [[ "${SERVICE_USER}" == "root" ]]; then
+    bash -lc "${command}"
+  else
+    sudo -u "${SERVICE_USER}" -H --preserve-env="${variables}" -- bash -lc "${command}"
+  fi
+}
+run_db_helper() {
+  local command="$1"
+  DATABASE_URL="${DATABASE_URL}" DB_BACKUP_DIR="${DB_BACKUP_DIR:-/var/backups/coordina-adg}" \
+    SERVICE_USER="${SERVICE_USER}" bash "${SCRIPT_DIR}/db.sh" "${command}"
+}
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}" 2>/dev/null || true
 
 run_as_user "cd '${APP_DIR}' && corepack prepare pnpm@${PNPM_VERSION} --activate >/dev/null 2>&1 || true"
-run_as_user "cd '${APP_DIR}' && pnpm install --frozen-lockfile"
+# ---------------------------------------------------------------------------
+log "Applying database schema"
+# Back up and validate/migrate the database before building code that depends on
+# the target schema. No API artifact or live web tree has changed at this point.
+run_db_helper backup
+run_db_helper prepare
+run_db_helper apply
+
+# ---------------------------------------------------------------------------
+log "Preloading reference data (provinces, islands, municipalities, FP centers)"
+run_as_user_preserving_env "DATABASE_URL" \
+  "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-reference-data"
+
+# ---------------------------------------------------------------------------
+log "Creating the first administrator (if needed)"
+SEED_ADMIN_EMAIL="${ADMIN_EMAIL}" SEED_ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+  SEED_ADMIN_NAME="${ADMIN_NAME}" \
+  run_as_user_preserving_env \
+    "DATABASE_URL,SEED_ADMIN_EMAIL,SEED_ADMIN_PASSWORD,SEED_ADMIN_NAME" \
+    "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-admin"
+
+# ---------------------------------------------------------------------------
+if [[ "${SEED_TEST_TEACHERS:-no}" =~ ^[yY]([eE][sS])?$ ]]; then
+  log "Seeding test teachers (Administración y Gestión)"
+  if [[ -n "${TEST_TEACHER_PASSWORD:-}" ]]; then
+    TEST_TEACHER_PASSWORD="${TEST_TEACHER_PASSWORD}" \
+      run_as_user_preserving_env "DATABASE_URL,TEST_TEACHER_PASSWORD" \
+        "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-test-teachers"
+  else
+    run_as_user_preserving_env "DATABASE_URL" \
+      "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-test-teachers"
+  fi
+fi
+run_db_helper verify
+
+# Save the previous API build in a protected temporary directory before compiling
+# over it. Restore it on any build/readiness failure; the database is not rolled
+# back automatically.
+API_DIST="${APP_DIR}/artifacts/api-server/dist"
+API_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/coordina-api-dist.XXXXXX")"
+API_DIST_BACKUP="${API_BACKUP_DIR}/dist"
+API_DIST_WAS_PRESENT=0
+API_BUILD_STARTED=0
+API_RESTART_ATTEMPTED=0
+API_HEALTHY=0
+API_RESTORE_FAILED=0
+if [[ -e "${API_DIST}" || -L "${API_DIST}" ]]; then
+  if ! cp -a -- "${API_DIST}" "${API_DIST_BACKUP}"; then
+    rm -rf -- "${API_BACKUP_DIR}"
+    echo "ERROR: could not save the previous API distribution; refusing to build over it." >&2
+    exit 1
+  fi
+  API_DIST_WAS_PRESENT=1
+fi
+restore_api_dist_on_failure() {
+  local status="$1"
+  if [[ "${status}" -ne 0 && "${API_BUILD_STARTED}" -eq 1 && "${API_HEALTHY}" -eq 0 ]]; then
+    echo "==> Build/readiness failed; restoring the previous API distribution." >&2
+    if [[ ( -e "${API_DIST}" || -L "${API_DIST}" ) ]] && ! rm -rf -- "${API_DIST}"; then
+      API_RESTORE_FAILED=1
+      echo "ERROR: could not remove the failed API distribution at ${API_DIST}." >&2
+      echo "WARNING: PostgreSQL changes and installed dependencies are not automatically rolled back; use the pre-migration database backup and matching previous code if needed." >&2
+      return 0
+    fi
+    if [[ "${API_DIST_WAS_PRESENT}" -eq 1 ]]; then
+      if ! cp -a -- "${API_DIST_BACKUP}" "${API_DIST}"; then
+        API_RESTORE_FAILED=1
+        echo "ERROR: could not restore the previous API distribution from ${API_DIST_BACKUP}." >&2
+      fi
+    fi
+    if [[ "${API_RESTART_ATTEMPTED}" -eq 1 && "${API_DIST_WAS_PRESENT}" -eq 1 && "${API_RESTORE_FAILED}" -eq 0 ]]; then
+      systemctl restart coordina-adg.service || \
+        echo "ERROR: could not restart the service after restoring the previous API distribution." >&2
+    fi
+    echo "WARNING: PostgreSQL changes and installed dependencies are not automatically rolled back; use the pre-migration database backup and matching previous code if needed." >&2
+  fi
+}
+cleanup_api_dist() {
+  local status=$?
+  trap - EXIT
+  restore_api_dist_on_failure "${status}"
+  if [[ "${status}" -ne 0 && "${API_BUILD_STARTED}" -eq 0 ]]; then
+    echo "WARNING: PostgreSQL changes and installed dependencies are not automatically rolled back; use the pre-migration database backup and matching previous code if needed." >&2
+  fi
+  if [[ -d "${API_BACKUP_DIR}" && "${API_RESTORE_FAILED}" -eq 0 ]]; then rm -rf -- "${API_BACKUP_DIR}"; fi
+  if [[ "${API_RESTORE_FAILED}" -eq 1 ]]; then
+    echo "WARNING: the protected API distribution backup remains at ${API_BACKUP_DIR}." >&2
+  fi
+  exit "${status}"
+}
+trap cleanup_api_dist EXIT
 
 # Web build needs PORT (vite requirement, dummy here) and BASE_PATH=/ (root).
 run_as_user "cd '${APP_DIR}' && PORT=5173 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/web run build"
-# API build.
+# API build writes over the live repository dist; the prior output above is kept
+# until the service proves it can start against the migrated database.
+API_BUILD_STARTED=1
 run_as_user "cd '${APP_DIR}' && pnpm --filter @workspace/api-server run build"
 
 # Fail early if the web build didn't produce the entry point nginx will serve.
@@ -338,29 +503,6 @@ if [[ "${BUILD_MOBILE}" -eq 1 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-log "Applying database schema"
-# Non-interactive (push-force): the installer runs with no TTY, so the
-# interactive `push` could block on a confirmation prompt and abort the install
-# (set -e) before the reference-data seed runs. Schema changes here are additive.
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/db run push-force"
-
-# ---------------------------------------------------------------------------
-log "Preloading reference data (provinces, islands, municipalities, FP centers)"
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' pnpm --filter @workspace/scripts run seed-reference-data"
-
-# ---------------------------------------------------------------------------
-log "Creating the first administrator (if needed)"
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}' \
-  SEED_ADMIN_EMAIL='${ADMIN_EMAIL}' SEED_ADMIN_PASSWORD='${ADMIN_PASSWORD}' \
-  SEED_ADMIN_NAME='${ADMIN_NAME}' pnpm --filter @workspace/scripts run seed-admin"
-
-# ---------------------------------------------------------------------------
-log "Seeding test teachers (Administración y Gestión)"
-# Idempotent: keyed by email + assignment. Set TEST_TEACHER_PASSWORD in the
-# environment to override the default test password.
-run_as_user "cd '${APP_DIR}' && DATABASE_URL='${DATABASE_URL}'${TEST_TEACHER_PASSWORD:+ TEST_TEACHER_PASSWORD='${TEST_TEACHER_PASSWORD}'} pnpm --filter @workspace/scripts run seed-test-teachers"
-
-# ---------------------------------------------------------------------------
 log "Configuring the systemd service"
 SERVICE_FILE="/etc/systemd/system/coordina-adg.service"
 sed -e "s|__SERVICE_USER__|${SERVICE_USER}|g" \
@@ -369,6 +511,7 @@ sed -e "s|__SERVICE_USER__|${SERVICE_USER}|g" \
     "${SCRIPT_DIR}/coordina-adg.service.template" > "${SERVICE_FILE}"
 systemctl daemon-reload
 systemctl enable coordina-adg.service
+API_RESTART_ATTEMPTED=1
 systemctl restart coordina-adg.service
 
 # ---------------------------------------------------------------------------
@@ -377,16 +520,93 @@ log "Configuring nginx"
 # from the clone (e.g. /root/... or /home/user/...) fails because those home
 # directories are not traversable by www-data, producing a site-wide 500.
 WEB_ROOT="/var/www/coordina-adg"
-mkdir -p "${WEB_ROOT}"
-rm -rf "${WEB_ROOT:?}/"*
-cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_ROOT}/"
+WEB_PARENT="$(dirname "${WEB_ROOT}")"
+mkdir -p "${WEB_PARENT}"
+WEB_STAGE="$(mktemp -d "${WEB_PARENT}/.coordina-adg.stage.XXXXXX")"
+WEB_PREVIOUS="${WEB_PARENT}/.coordina-adg.previous.$$"
+NGINX_CONF="/etc/nginx/sites-available/coordina-adg"
+NGINX_ENABLED_CONF="/etc/nginx/sites-enabled/coordina-adg"
+NGINX_UPGRADE_CONF="/etc/nginx/conf.d/coordina-adg-upgrade.conf"
+NGINX_DEFAULT_CONF="/etc/nginx/sites-enabled/default"
+NGINX_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/coordina-nginx.XXXXXX")"
+NGINX_CONF_BACKUP="${NGINX_BACKUP_DIR}/site"
+NGINX_ENABLED_BACKUP="${NGINX_BACKUP_DIR}/enabled"
+NGINX_UPGRADE_BACKUP="${NGINX_BACKUP_DIR}/upgrade"
+NGINX_DEFAULT_BACKUP="${NGINX_BACKUP_DIR}/default"
+NGINX_CONF_WAS_PRESENT=0
+NGINX_ENABLED_WAS_PRESENT=0
+NGINX_UPGRADE_WAS_PRESENT=0
+NGINX_DEFAULT_WAS_PRESENT=0
+NGINX_TOUCHED=0
+PUBLISH_STARTED=0
+for path_info in \
+  "${NGINX_CONF}|${NGINX_CONF_BACKUP}|NGINX_CONF_WAS_PRESENT" \
+  "${NGINX_ENABLED_CONF}|${NGINX_ENABLED_BACKUP}|NGINX_ENABLED_WAS_PRESENT" \
+  "${NGINX_UPGRADE_CONF}|${NGINX_UPGRADE_BACKUP}|NGINX_UPGRADE_WAS_PRESENT" \
+  "${NGINX_DEFAULT_CONF}|${NGINX_DEFAULT_BACKUP}|NGINX_DEFAULT_WAS_PRESENT"; do
+  IFS='|' read -r source backup flag <<<"${path_info}"
+  if [[ -e "${source}" || -L "${source}" ]]; then
+    cp -a -- "${source}" "${backup}"
+    printf -v "${flag}" '1'
+  fi
+done
+
+restore_nginx_path() {
+  local source="$1" backup="$2" was_present="$3"
+  rm -f -- "${source}"
+  if [[ "${was_present}" -eq 1 ]]; then
+    cp -a -- "${backup}" "${source}"
+  fi
+}
+
+cleanup_install_publish() {
+  local status=$?
+  trap - EXIT
+  if [[ "${status}" -ne 0 ]]; then
+    restore_api_dist_on_failure "${status}"
+    if [[ "${API_HEALTHY}" -eq 1 || "${API_BUILD_STARTED}" -eq 0 ]]; then
+      echo "WARNING: PostgreSQL changes and installed dependencies are not automatically rolled back; use the pre-migration database backup and matching previous code if needed." >&2
+    fi
+    if [[ "${PUBLISH_STARTED}" -eq 1 ]]; then
+      echo "==> Installation failed after publication began; restoring previous web files and nginx configuration." >&2
+      if [[ -e "${WEB_ROOT}" || -L "${WEB_ROOT}" ]]; then rm -rf -- "${WEB_ROOT}"; fi
+      if [[ -e "${WEB_PREVIOUS}" || -L "${WEB_PREVIOUS}" ]]; then
+        mv -- "${WEB_PREVIOUS}" "${WEB_ROOT}" || \
+          echo "ERROR: could not restore the previous web root." >&2
+      fi
+    fi
+    if [[ "${NGINX_TOUCHED}" -eq 1 ]]; then
+      restore_nginx_path "${NGINX_CONF}" "${NGINX_CONF_BACKUP}" "${NGINX_CONF_WAS_PRESENT}" || true
+      restore_nginx_path "${NGINX_ENABLED_CONF}" "${NGINX_ENABLED_BACKUP}" "${NGINX_ENABLED_WAS_PRESENT}" || true
+      restore_nginx_path "${NGINX_UPGRADE_CONF}" "${NGINX_UPGRADE_BACKUP}" "${NGINX_UPGRADE_WAS_PRESENT}" || true
+      restore_nginx_path "${NGINX_DEFAULT_CONF}" "${NGINX_DEFAULT_BACKUP}" "${NGINX_DEFAULT_WAS_PRESENT}" || true
+      if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx >/dev/null 2>&1 || \
+          echo "ERROR: could not reload nginx with its restored configuration." >&2
+      else
+        echo "ERROR: restored nginx configuration did not pass nginx -t; inspect /etc/nginx." >&2
+      fi
+    fi
+  fi
+  if [[ -d "${WEB_STAGE}" ]]; then rm -rf -- "${WEB_STAGE}"; fi
+  if [[ -d "${NGINX_BACKUP_DIR}" ]]; then rm -rf -- "${NGINX_BACKUP_DIR}"; fi
+  if [[ -d "${API_BACKUP_DIR}" && "${API_RESTORE_FAILED}" -eq 0 ]]; then rm -rf -- "${API_BACKUP_DIR}"; fi
+  if [[ "${API_RESTORE_FAILED}" -eq 1 ]]; then
+    echo "WARNING: the protected API distribution backup remains at ${API_BACKUP_DIR}." >&2
+  fi
+  exit "${status}"
+}
+trap cleanup_install_publish EXIT
+
+cp -a "${APP_DIR}/artifacts/web/dist/public/." "${WEB_STAGE}/"
 # Publish the mobile app (PWA) under /app on the same root.
 if [[ "${BUILD_MOBILE}" -eq 1 ]]; then
-  mkdir -p "${WEB_ROOT}/app"
-  cp -a "${APP_DIR}/artifacts/movil/dist/." "${WEB_ROOT}/app/"
+  mkdir -p "${WEB_STAGE}/app"
+  cp -a "${APP_DIR}/artifacts/movil/dist/." "${WEB_STAGE}/app/"
 fi
-chown -R www-data:www-data "${WEB_ROOT}"
+chown -R www-data:www-data "${WEB_STAGE}"
 # Map needed for WebSocket (Socket.io) upgrades — http-level, set once.
+NGINX_TOUCHED=1
 cat > /etc/nginx/conf.d/coordina-adg-upgrade.conf <<'EOF'
 map $http_upgrade $connection_upgrade {
     default upgrade;
@@ -396,12 +616,45 @@ EOF
 sed -e "s|__SERVER_NAME__|${DOMAIN}|g" \
     -e "s|__WEB_ROOT__|${WEB_ROOT}|g" \
     -e "s|__API_PORT__|${API_PORT}|g" \
-    "${SCRIPT_DIR}/nginx-site.conf.template" > /etc/nginx/sites-available/coordina-adg
-ln -sf /etc/nginx/sites-available/coordina-adg /etc/nginx/sites-enabled/coordina-adg
-rm -f /etc/nginx/sites-enabled/default
+    "${SCRIPT_DIR}/nginx-site.conf.template" > "${NGINX_CONF}"
+ln -sf "${NGINX_CONF}" "${NGINX_ENABLED_CONF}"
+
+PUBLISH_STARTED=1
+if [[ -e "${WEB_ROOT}" || -L "${WEB_ROOT}" ]]; then
+  mv -- "${WEB_ROOT}" "${WEB_PREVIOUS}"
+fi
+if ! mv -- "${WEB_STAGE}" "${WEB_ROOT}"; then
+  echo "ERROR: could not publish staged web assets; the failure handler will restore the previous files." >&2
+  exit 1
+fi
+rm -f -- "${NGINX_DEFAULT_CONF}"
 nginx -t
 systemctl enable nginx
 systemctl restart nginx
+
+# Verify both the managed service and its database-backed readiness endpoint
+# before declaring installation complete.
+systemctl is-active --quiet coordina-adg.service || {
+  echo "ERROR: coordina-adg.service is not active after installation." >&2
+  exit 1
+}
+READY=0
+for attempt in $(seq 1 30); do
+  if curl --fail --silent --show-error "http://127.0.0.1:${API_PORT}/api/readyz" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 2
+done
+if [[ "${READY}" -ne 1 ]]; then
+  echo "ERROR: API/database readiness check failed at http://127.0.0.1:${API_PORT}/api/readyz." >&2
+  exit 1
+fi
+run_db_helper verify
+API_HEALTHY=1
+if [[ "${API_RESTORE_FAILED}" -eq 0 ]]; then rm -rf -- "${API_BACKUP_DIR}"; fi
+rm -rf -- "${WEB_PREVIOUS}"
+PUBLISH_STARTED=0
 
 # ---------------------------------------------------------------------------
 if [[ -n "${LETSENCRYPT_EMAIL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then

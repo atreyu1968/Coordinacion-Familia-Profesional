@@ -1,6 +1,6 @@
-# [Project name]
+# Coordina ADG
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Plataforma web y móvil para coordinar familias profesionales, centros, profesorado, FCT y comunicación educativa.
 
 ## Run & Operate
 
@@ -22,15 +22,25 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/api-server`: API Express, rutas y servicios.
+- `artifacts/web`: aplicación web React.
+- `artifacts/movil`: aplicación Expo.
+- `lib/db`: esquema Drizzle y acceso a PostgreSQL.
+- `lib/api-spec`: contrato OpenAPI; las librerías `lib/api-zod` y `lib/api-client-react` contienen código compartido generado.
+- `scripts`: tareas administrativas y de inicialización de datos.
+- `deploy`: instalación, actualización y configuración de producción.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- El monorepo usa pnpm; las dependencias internas se enlazan como workspaces.
+- La web y la aplicación móvil son clientes separados que comparten el contrato y tipos de API.
+- PostgreSQL es la base de datos de la aplicación y Drizzle mantiene su esquema.
+- En producción, nginx sirve los archivos compilados y hace proxy al API y sus websockets.
+- Los adjuntos de producción se guardan localmente en `LOCAL_STORAGE_DIR` salvo configuración distinta.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Coordina ADG ofrece gestión de centros, profesorado, FCT, encuestas, eventos, mensajería en tiempo real, foros, videollamadas, formularios documentales y una wiki de documentación nativa. La interfaz está disponible en web y móvil.
 
 ## User preferences
 
@@ -38,8 +48,16 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Para cambios de esquema en desarrollo, usar `pnpm --filter @workspace/db run push` con `DATABASE_URL` configurada.
+- En producción, Drizzle `push` solo corre si el chequeo no detecta objetos preexistentes en `public`; incluso una tabla o un enum ajenos bloquean la ruta vacía. En bases existentes, `deploy/db.sh` valida las columnas y defaults esperados, claves PK/UNIQUE/FK y etiquetas de enums antes de agregar transaccionalmente solo las columnas de sesión aprobadas. Incompatibilidades requieren migración manual; tablas personalizadas no se modifican.
+- Al volver a ejecutar `deploy/install.sh`, se conserva la contraseña almacenada en `DATABASE_URL`. Si `DB_PASSWORD` se especifica con un valor distinto, la instalación se detiene sin rotar el rol; la rotación de contraseña es un procedimiento separado.
+- `deploy/update.sh` instala dependencias y luego sigue backup → prepare → migración/verificación del esquema → seeds → verificación final antes de construir la API. Si falla la compilación o readiness, restaura la distribución API previa si existía; DB y dependencias no se revierten. Si la publicación falla después de readiness, restaura web/nginx, pero deja la API nueva.
+- `bash deploy/test-db.sh` comprueba base vacía, bloqueo de tabla/enum público ajeno, rechazo de esquema sin `users.email UNIQUE`, conservación de datos y tabla personalizada, y rechazo de un `session_nonce` incompatible. Corre como usuario no-root contra un clúster temporal privado; no prueba el despliegue completo apt/nginx/systemd.
+- Los paquetes de aplicaciones y librerías del workspace son privados y pueden mantener versiones técnicas independientes de la versión de producto.
+- La versión del contrato OpenAPI es independiente de la versión de producto.
+- No aplicar ni probar scripts de instalación/actualización contra producción o una base de datos compartida.
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `README.md` y `docs/instalacion-actualizacion.md`: instrucciones de despliegue y operación
