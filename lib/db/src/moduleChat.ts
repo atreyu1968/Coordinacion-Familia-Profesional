@@ -142,6 +142,10 @@ export async function syncModuleChatGroup(
   const desired = new Set([...teacherIds, ...managerIds]);
 
   if (!existing) {
+    // Avoid creating an automatic conversation that would only contain one
+    // participant (for example, a lone assigned teacher with no scoped manager).
+    if (desired.size < 2) return "skipped";
+
     await db.transaction(async (tx) => {
       const [g] = await tx
         .insert(chatGroupsTable)

@@ -45,7 +45,9 @@ export default function NewChatScreen() {
     );
   };
 
-  const others = (data ?? []).filter((u) => u.id !== user?.id);
+  const others = (data ?? []).filter(
+    (u) => u.id !== user?.id && u.status === "active",
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

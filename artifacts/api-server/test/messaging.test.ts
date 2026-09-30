@@ -5,7 +5,11 @@ import {
   db,
   messagesTable,
   chatGroupsTable,
+  chatGroupMembersTable,
+  teachingAssignmentsTable,
+  usersTable,
   notificationsTable,
+  syncModuleChatGroup,
 } from "@workspace/db";
 import app from "../src/app";
 import {
@@ -13,6 +17,9 @@ import {
   cleanup,
   authHeader,
   trackGroup,
+  createCenter,
+  createModule,
+  createProvince,
 } from "./helpers";
 
 afterAll(async () => {
@@ -80,6 +87,92 @@ describe("chat groups", () => {
       .post("/api/chat/groups")
       .send({ name: "Chat", type: "group", memberIds: [] });
     expect(res.status).toBe(401);
+  });
+
+  it("removes empty groups from storage when listing chats", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const [emptyGroup] = await db
+      .insert(chatGroupsTable)
+      .values({ name: "Grupo vacío", type: "group" })
+      .returning();
+    trackGroup(emptyGroup!.id);
+
+    const res = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+
+    expect(res.status).toBe(200);
+    expect(res.body).not.toContainEqual(
+      expect.objectContaining({ id: emptyGroup!.id }),
+    );
+    const remaining = await db
+      .select()
+      .from(chatGroupsTable)
+      .where(eq(chatGroupsTable.id, emptyGroup!.id));
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("hides direct conversations when the other account is inactive", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const counterpart = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({
+        name: "Conversación",
+        type: "direct",
+        memberIds: [counterpart.user.id],
+      });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+
+    await db
+      .update(usersTable)
+      .set({ status: "inactive" })
+      .where(eq(usersTable.id, counterpart.user.id));
+
+    const listed = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+
+    expect(listed.status).toBe(200);
+    expect(listed.body).not.toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+
+    const history = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(caller.token));
+    expect(history.status).toBe(403);
+  });
+
+  it("only creates automatic module chats with more than one member", async () => {
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const moduleId = await createModule({ centerId });
+    const teacher = await createUser({ role: "teacher", centerId });
+    await db.insert(teachingAssignmentsTable).values({
+      teacherId: teacher.user.id,
+      moduleId,
+      centerId,
+    });
+
+    const status = await syncModuleChatGroup(moduleId);
+    const [group] = await db
+      .select()
+      .from(chatGroupsTable)
+      .where(eq(chatGroupsTable.moduleId, moduleId));
+
+    if (group) {
+      trackGroup(group.id);
+      const members = await db
+        .select()
+        .from(chatGroupMembersTable)
+        .where(eq(chatGroupMembersTable.groupId, group.id));
+      expect(members.length).toBeGreaterThan(1);
+    } else {
+      expect(status).toBe("skipped");
+    }
   });
 });
 

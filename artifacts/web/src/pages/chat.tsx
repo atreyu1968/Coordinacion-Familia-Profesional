@@ -1229,12 +1229,16 @@ export default function ChatPage() {
   const { data: groups = [], isLoading, refetch } = useListChatGroups();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
+  const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
   const [didPreselect, setDidPreselect] = useState(false);
 
   useEffect(() => {
     if (didPreselect || moduleParam == null || groups.length === 0) return;
     const match = groups.find((g) => g.moduleId === moduleParam);
-    if (match) setSelectedId(match.id);
+    if (match) {
+      setSelectedId(match.id);
+      setActiveTab("groups");
+    }
     setDidPreselect(true);
   }, [didPreselect, moduleParam, groups]);
 
@@ -1256,13 +1260,18 @@ export default function ChatPage() {
   const sorted = useMemo(() => {
     const q = filter.trim().toLowerCase();
     return [...groups]
+      .filter((group) =>
+        activeTab === "people"
+          ? group.type === "direct"
+          : group.type !== "direct",
+      )
       .filter((g) => !q || g.name.toLowerCase().includes(q))
       .sort((a, b) => {
         const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
         const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
         return tb - ta;
       });
-  }, [groups, filter]);
+  }, [groups, filter, activeTab]);
 
   const selected = groups.find((g) => g.id === selectedId) ?? null;
 
@@ -1286,6 +1295,40 @@ export default function ChatPage() {
                 selected ? "hidden md:flex" : "flex"
               }`}
             >
+              <div className="grid grid-cols-2 gap-2 p-3 border-b shrink-0">
+                {(
+                  [
+                    ["people", "Personas"],
+                    ["groups", "Grupos"],
+                  ] as const
+                ).map(([tab, label]) => {
+                  const count = groups.filter((group) =>
+                    tab === "people"
+                      ? group.type === "direct"
+                      : group.type !== "direct",
+                  ).length;
+                  const selectedTab = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={selectedTab}
+                      onClick={() => {
+                        setSelectedId(null);
+                        setActiveTab(tab);
+                      }}
+                      className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                        selectedTab
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {label} <span className="opacity-80">· {count}</span>
+                    </button>
+                  );
+                })}
+              </div>
               <div className="p-3 border-b shrink-0">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1304,7 +1347,11 @@ export default function ChatPage() {
                   </p>
                 ) : sorted.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-8 text-center px-4">
-                    No tienes conversaciones.
+                    {filter.trim()
+                      ? "No se encontraron conversaciones."
+                      : activeTab === "people"
+                        ? "No tienes conversaciones con personas."
+                        : "Aún no perteneces a ningún grupo."}
                   </p>
                 ) : (
                   <ul>

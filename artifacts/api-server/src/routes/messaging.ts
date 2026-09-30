@@ -1,6 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import { Readable } from "stream";
-import { and, eq, inArray, desc, asc, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  inArray,
+  desc,
+  asc,
+  isNull,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import {
   db,
   chatGroupsTable,
@@ -110,16 +119,76 @@ async function isGroupMember(
   groupId: number,
   userId: number,
 ): Promise<boolean> {
-  const [m] = await db
-    .select({ id: chatGroupMembersTable.id })
+  const members = await db
+    .select({
+      userId: chatGroupMembersTable.userId,
+      type: chatGroupsTable.type,
+      status: usersTable.status,
+      deletedAt: usersTable.deletedAt,
+    })
     .from(chatGroupMembersTable)
-    .where(
-      and(
-        eq(chatGroupMembersTable.groupId, groupId),
-        eq(chatGroupMembersTable.userId, userId),
-      ),
-    );
-  return Boolean(m);
+    .innerJoin(
+      chatGroupsTable,
+      eq(chatGroupsTable.id, chatGroupMembersTable.groupId),
+    )
+    .innerJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+    .where(eq(chatGroupMembersTable.groupId, groupId));
+  const callerIsMember = members.some((member) => member.userId === userId);
+  if (!callerIsMember) return false;
+  if (members[0]?.type !== "direct") return true;
+  return (
+    members.length === 2 &&
+    members.every(
+      (member) => member.status === "active" && member.deletedAt == null,
+    )
+  );
+}
+
+// Remove orphaned conversations and their relational message data. Empty chat
+// groups have no participant who can access their history.
+async function deleteEmptyChatGroups(): Promise<void> {
+  await db.transaction(async (tx) => {
+    const emptyGroups = await tx
+      .select({ id: chatGroupsTable.id })
+      .from(chatGroupsTable)
+      .where(
+        notExists(
+          tx
+            .select({ id: chatGroupMembersTable.id })
+            .from(chatGroupMembersTable)
+            .where(eq(chatGroupMembersTable.groupId, chatGroupsTable.id)),
+        ),
+      );
+    const groupIds = emptyGroups.map((group) => group.id);
+    if (groupIds.length === 0) return;
+
+    const messageIds = tx
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(inArray(messagesTable.groupId, groupIds));
+    await tx
+      .delete(messageReactionsTable)
+      .where(inArray(messageReactionsTable.messageId, messageIds));
+    await tx
+      .delete(messagesTable)
+      .where(inArray(messagesTable.groupId, groupIds));
+    await tx
+      .delete(chatGroupMembersTable)
+      .where(inArray(chatGroupMembersTable.groupId, groupIds));
+    await tx
+      .delete(chatGroupsTable)
+      .where(
+        and(
+          inArray(chatGroupsTable.id, groupIds),
+          notExists(
+            tx
+              .select({ id: chatGroupMembersTable.id })
+              .from(chatGroupMembersTable)
+              .where(eq(chatGroupMembersTable.groupId, chatGroupsTable.id)),
+          ),
+        ),
+      );
+  });
 }
 
 // The full set of message columns we read for the rich chat UI.
@@ -283,6 +352,7 @@ async function loadAssembledMessage(messageId: number, callerId: number) {
 // Chat groups
 // ---------------------------------------------------------------------------
 router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
+  await deleteEmptyChatGroups();
   const caller = req.user!;
   const memberships = await db
     .select({ groupId: chatGroupMembersTable.groupId })
@@ -318,30 +388,14 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     lastReadByGroup.set(m.groupId, m.lastReadAt);
   }
 
-  // Count messages from other members newer than the caller's read marker.
-  const unreadRows = await db
-    .select({
-      groupId: messagesTable.groupId,
-      createdAt: messagesTable.createdAt,
-      senderId: messagesTable.senderId,
-    })
-    .from(messagesTable)
-    .where(inArray(messagesTable.groupId, groupIds));
-  const unreadByGroup = new Map<number, number>();
-  for (const m of unreadRows) {
-    if (m.groupId == null) continue;
-    if (m.senderId === caller.id) continue;
-    const lastRead = lastReadByGroup.get(m.groupId) ?? null;
-    if (lastRead && m.createdAt.getTime() <= lastRead.getTime()) continue;
-    unreadByGroup.set(m.groupId, (unreadByGroup.get(m.groupId) ?? 0) + 1);
-  }
-
-  // Member names, used to derive a display name for direct messages.
+  // Member status is used to hide direct conversations with inactive accounts.
   const allMembers = await db
     .select({
       groupId: chatGroupMembersTable.groupId,
       userId: chatGroupMembersTable.userId,
       name: usersTable.name,
+      status: usersTable.status,
+      deletedAt: usersTable.deletedAt,
     })
     .from(chatGroupMembersTable)
     .leftJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
@@ -349,15 +403,56 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
 
   const membersByGroup = new Map<
     number,
-    { userId: number; name: string | null }[]
+    {
+      userId: number;
+      name: string | null;
+      status: string | null;
+      deletedAt: Date | null;
+    }[]
   >();
   for (const m of allMembers) {
     const list = membersByGroup.get(m.groupId) ?? [];
-    list.push({ userId: m.userId, name: m.name });
+    list.push({
+      userId: m.userId,
+      name: m.name,
+      status: m.status,
+      deletedAt: m.deletedAt,
+    });
     membersByGroup.set(m.groupId, list);
   }
 
-  const result = groups.map((g) => {
+  // A direct thread is only visible while both participants still have active
+  // accounts. Keep the stored history intact; it is simply omitted from inboxes.
+  const visibleGroups = groups.filter((group) => {
+    if (group.type !== "direct") return true;
+    const members = membersByGroup.get(group.id) ?? [];
+    return (
+      members.length === 2 &&
+      members.every((member) => member.status === "active" && !member.deletedAt)
+    );
+  });
+
+  // Count messages from other members newer than the caller's read marker.
+  const visibleGroupIds = visibleGroups.map((group) => group.id);
+  const unreadRows = visibleGroupIds.length
+    ? await db
+        .select({
+          groupId: messagesTable.groupId,
+          createdAt: messagesTable.createdAt,
+          senderId: messagesTable.senderId,
+        })
+        .from(messagesTable)
+        .where(inArray(messagesTable.groupId, visibleGroupIds))
+    : [];
+  const unreadByGroup = new Map<number, number>();
+  for (const m of unreadRows) {
+    if (m.groupId == null || m.senderId === caller.id) continue;
+    const lastRead = lastReadByGroup.get(m.groupId) ?? null;
+    if (lastRead && m.createdAt.getTime() <= lastRead.getTime()) continue;
+    unreadByGroup.set(m.groupId, (unreadByGroup.get(m.groupId) ?? 0) + 1);
+  }
+
+  const result = visibleGroups.map((g) => {
     let name = g.name;
     if (g.type === "direct") {
       const other = (membersByGroup.get(g.id) ?? []).find(
@@ -394,6 +489,21 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       return;
     }
     const otherId = others[0]!;
+    const [activeCounterpart] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.id, otherId),
+          eq(usersTable.status, "active"),
+          isNull(usersTable.deletedAt),
+        ),
+      );
+    if (!activeCounterpart) {
+      res.status(400).json({ message: "Algún destinatario no es válido" });
+      return;
+    }
+
     const callerDirect = await db
       .select({ groupId: chatGroupMembersTable.groupId })
       .from(chatGroupMembersTable)

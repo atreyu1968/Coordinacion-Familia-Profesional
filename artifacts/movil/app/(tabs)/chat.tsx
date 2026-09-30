@@ -45,6 +45,7 @@ export default function ChatListScreen() {
   const { user } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useListChatGroups();
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
 
   const canManageModules =
     user?.role === "superadmin" ||
@@ -76,12 +77,20 @@ export default function ChatListScreen() {
 
   const bottomPad = Platform.OS === "web" ? 100 : 90;
 
+  const conversations = useMemo(() => {
+    const groups = data ?? [];
+    return groups.filter((group) =>
+      activeTab === "people" ? group.type === "direct" : group.type !== "direct",
+    );
+  }, [activeTab, data]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const groups = data ?? [];
-    if (!term) return groups;
-    return groups.filter((g) => g.name.toLowerCase().includes(term));
-  }, [data, search]);
+    if (!term) return conversations;
+    return conversations.filter((group) =>
+      group.name.toLowerCase().includes(term),
+    );
+  }, [conversations, search]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -120,7 +129,51 @@ export default function ChatListScreen() {
           scrollEnabled={filtered.length > 0}
           ListHeaderComponent={
             <View>
-              {canManageModules ? (
+              <View style={styles.tabs}>
+                {(
+                  [
+                    ["people", "Personas"],
+                    ["groups", "Grupos"],
+                  ] as const
+                ).map(([tab, label]) => {
+                  const selected = activeTab === tab;
+                  const count =
+                    tab === "people"
+                      ? (data ?? []).filter((group) => group.type === "direct").length
+                      : (data ?? []).filter((group) => group.type !== "direct").length;
+                  return (
+                    <Pressable
+                      key={tab}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected }}
+                      testID={`chat-tab-${tab}`}
+                      onPress={() => setActiveTab(tab)}
+                      style={[
+                        styles.tab,
+                        {
+                          backgroundColor: selected ? colors.primary : colors.card,
+                          borderColor: selected ? colors.primary : colors.border,
+                          borderRadius: colors.radius,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tabText,
+                          {
+                            color: selected
+                              ? colors.primaryForeground
+                              : colors.mutedForeground,
+                          },
+                        ]}
+                      >
+                        {label} · {count}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {canManageModules && activeTab === "groups" ? (
                 <View style={styles.generateWrap}>
                   <Pressable
                     onPress={generateModuleGroups}
@@ -185,9 +238,13 @@ export default function ChatListScreen() {
               />
             ) : (
               <EmptyState
-                icon="message-circle"
-                title="Sin conversaciones"
-                message="Pulsa el icono de redacción para iniciar un chat."
+                icon={activeTab === "people" ? "user" : "users"}
+                title={activeTab === "people" ? "Sin conversaciones" : "Sin grupos"}
+                message={
+                  activeTab === "people"
+                    ? "Pulsa el icono de redacción para iniciar una conversación."
+                    : "Aún no perteneces a ningún grupo."
+                }
               />
             )
           }
@@ -261,6 +318,20 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 18 },
+  tabs: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  tabText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   generateWrap: { paddingHorizontal: 16, paddingTop: 16 },
   generateBtn: {
     flexDirection: "row",
