@@ -96,8 +96,15 @@ o etiquetas de enums que no coincidan— abortan y requieren migración manual.
 
 **Antes de actualizar un servidor público**, completar y revisar los borradores
 de términos, privacidad y cookies de la web. Se ha indicado un responsable y
-una sede, pero falta confirmar la dirección postal completa, el correo de
-privacidad, los proveedores reales, las bases jurídicas y los plazos de conservación.
+una sede y un correo de privacidad. La dirección postal del centro indicado se
+ha tomado de la ficha oficial del Gobierno de Canarias
+(`https://www.gobiernodecanarias.org/educacion/centroseducativos/buscador-centros-openlayers/resultados/detalle?codigo=38001553`);
+queda por confirmar que sea el domicilio válido de contacto para este servicio.
+También hay que verificar los proveedores activos en el servidor de destino,
+las bases jurídicas por finalidad y establecer y aplicar plazos de conservación
+y supresión (incluidas copias, registros y archivos). El código desactiva cuentas,
+pero no las borra físicamente; no se deben prometer plazos de eliminación sin
+implementarlos. Antes de eliminar la marca de borrador hace falta revisión profesional.
 El formulario registra la versión que cada nuevo usuario aceptó, pero aceptar
 un borrador no acredita cumplimiento legal. Al publicar una versión definitiva,
 cambiar la versión legal en API y web de forma coordinada. Si Nextcloud ya está

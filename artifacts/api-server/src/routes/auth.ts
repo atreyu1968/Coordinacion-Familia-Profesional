@@ -32,7 +32,7 @@ import { disconnectUserSessions } from "../lib/realtime";
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
 // Keep in sync with the published documents in artifacts/web/src/lib/legal-content.ts.
-const CURRENT_LEGAL_VERSION = "borrador-2026-09-30-2";
+const CURRENT_LEGAL_VERSION = "borrador-2026-09-30-4";
 
 class RegisterError extends Error {
   constructor(

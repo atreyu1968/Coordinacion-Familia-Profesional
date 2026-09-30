@@ -33,10 +33,11 @@ function LegalPage({ kind }: { kind: LegalKind }) {
         </header>
 
         <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-          <strong>Borrador pendiente de completar.</strong> Falta el correo de privacidad
-          y confirmar la dirección postal completa, además de revisar los servicios externos, plazos y bases jurídicas. Este texto
-          informa de la implementación actual, pero no es asesoramiento legal ni debe
-          publicarse como política definitiva sin revisión profesional.
+          <strong>Borrador pendiente de validación.</strong> La dirección postal publicada
+          del centro indicado debe confirmarse como dirección válida para este servicio.
+          También deben verificarse los proveedores activos, las bases jurídicas y los
+          plazos de conservación. Este texto describe funciones de la aplicación, no
+          sustituye la revisión profesional ni acredita el cumplimiento legal.
         </div>
 
         {kind === "terms" && (
@@ -52,7 +53,7 @@ function LegalPage({ kind }: { kind: LegalKind }) {
             </Section>
             <Section title="4. Disponibilidad, cambios y baja">
               <p>El servicio puede necesitar interrupciones de mantenimiento. Los permisos podrán retirarse si deja de existir la relación que justificó el acceso o se incumplen estas normas. Los cambios sustanciales de los términos se comunicarán antes de solicitar una nueva aceptación.</p>
-              <p>Titular del servicio: {LEGAL_CONTROLLER.name}. Dirección indicada: {LEGAL_CONTROLLER.address}.</p>
+              <p>Titular del servicio indicado: {LEGAL_CONTROLLER.name}. Dirección publicada del centro indicado, pendiente de confirmación como domicilio de contacto del servicio: {LEGAL_CONTROLLER.address}. Correo de contacto: <a className="text-primary underline" href={`mailto:${LEGAL_CONTROLLER.email}`}>{LEGAL_CONTROLLER.email}</a>.</p>
             </Section>
           </>
         )}
@@ -60,18 +61,19 @@ function LegalPage({ kind }: { kind: LegalKind }) {
         {kind === "privacy" && (
           <>
             <Section title="1. Responsable y contacto">
-              <p>Responsable del tratamiento: {LEGAL_CONTROLLER.name}. Dirección indicada: {LEGAL_CONTROLLER.address}. Contacto para ejercer derechos o plantear consultas: {LEGAL_CONTROLLER.email}.</p>
+              <p>Responsable indicado del tratamiento: {LEGAL_CONTROLLER.name}. Dirección publicada del centro indicado, pendiente de confirmar como domicilio de contacto para este servicio: {LEGAL_CONTROLLER.address}. Para consultas y ejercicio de derechos: <a className="text-primary underline" href={`mailto:${LEGAL_CONTROLLER.email}`}>{LEGAL_CONTROLLER.email}</a>.</p>
             </Section>
             <Section title="2. Datos y finalidades">
-              <p>Se tratan los datos de registro (nombre, correo, contraseña protegida mediante hash, rol y ámbito), información profesional y académica facilitada en la plataforma, mensajes, contenidos y archivos que las personas usuarias decidan aportar, y datos técnicos imprescindibles para la seguridad y operación.</p>
-              <p>Se utilizan para crear y proteger cuentas, gestionar permisos, facilitar la coordinación, comunicaciones y colaboración, y atender incidencias. La base jurídica concreta de cada tratamiento y la información sobre datos de terceras personas aportados por usuarios están <strong>pendientes de validación por la entidad responsable</strong>.</p>
+              <p>Se tratan los datos de registro (nombre, correo, contraseña protegida mediante hash, rol, centro y ámbito), asignaciones y confirmaciones profesionales o académicas, y la fecha y versión de los textos aceptados. Según las funciones utilizadas, se tratan mensajes, encuestas, formularios, eventos, acreditaciones, contenidos, archivos y datos de otras personas que los usuarios aporten.</p>
+              <p>También se usan datos técnicos necesarios para la autenticación, seguridad, registros de funcionamiento y notificaciones, como identificadores de dispositivo o suscripciones push cuando se habilitan. Las encuestas configuradas como anónimas separan la participación de las respuestas; no debe presuponerse anonimato en otras funciones.</p>
+              <p>Se utilizan para crear y proteger cuentas, gestionar permisos e invitaciones, organizar la coordinación educativa, facilitar comunicaciones y colaboración, gestionar actividades y documentos y atender incidencias. <strong>Las bases jurídicas específicas por finalidad y el tratamiento de datos de terceros aportados por usuarios deben validarse antes de publicar este aviso como definitivo.</strong> El registro de lectura de este aviso no constituye consentimiento para tratamientos opcionales.</p>
             </Section>
             <Section title="3. Destinatarios y conservación">
-              <p>El acceso se limita según los roles y permisos de la aplicación. El alojamiento, correo, videoconferencias, almacenamiento colaborativo y funciones de IA pueden involucrar proveedores externos si están activados. <strong>Antes de publicar, identifique los proveedores reales, posibles transferencias internacionales y sus encargos de tratamiento.</strong></p>
-              <p>Los plazos de conservación y el procedimiento de eliminación están <strong>pendientes de determinar por el responsable</strong>; no se presume que borrar una cuenta elimine automáticamente mensajes o documentos compartidos.</p>
+              <p>Dentro de la aplicación, el acceso depende del rol, ámbito y permisos. Según la instalación y las funciones habilitadas, pueden intervenir el proveedor de alojamiento y almacenamiento, Resend (correo), Nextcloud/Collabora (documentos), Jitsi o 8x8 JaaS (videoconferencias), DeepSeek (funciones de IA) y Expo Push Service (avisos al móvil). Esta lista describe integraciones previstas por el código, <strong>no confirma cuáles se utilizan en una instalación concreta</strong>. Deben verificarse los encargados reales, ubicaciones, posibles transferencias internacionales y garantías aplicables.</p>
+              <p>Desactivar una cuenta no elimina automáticamente sus datos de la base de datos. Los mensajes y documentos compartidos, archivos almacenados, copias de seguridad y registros del servidor pueden persistir. <strong>El responsable debe establecer y aplicar plazos y procedimientos de conservación, bloqueo y supresión para cada categoría</strong>; no existe en la aplicación una purga general que permita prometer hoy un plazo único.</p>
             </Section>
             <Section title="4. Derechos">
-              <p>Podrás solicitar al responsable acceso, rectificación, supresión, oposición, limitación y portabilidad cuando proceda, mediante el contacto indicado arriba. También podrás acudir a la Agencia Española de Protección de Datos si consideras que tus derechos no han sido atendidos.</p>
+              <p>Podrás solicitar al responsable acceso, rectificación, supresión, oposición, limitación y portabilidad cuando proceda, mediante el correo indicado arriba. También podrás acudir a la <a className="text-primary underline" href="https://www.aepd.es/" target="_blank" rel="noopener noreferrer">Agencia Española de Protección de Datos</a> si consideras que tus derechos no han sido atendidos.</p>
             </Section>
           </>
         )}
@@ -83,7 +85,7 @@ function LegalPage({ kind }: { kind: LegalKind }) {
               <p>Esta web principal no incluye actualmente cookies de publicidad ni analítica. Por ello no se solicita aceptar cookies opcionales al registrarse. Puedes borrar los datos locales desde tu navegador; al borrar el token tendrás que volver a iniciar sesión.</p>
             </Section>
             <Section title="Servicios integrados">
-              <p>Servicios externos que se abran desde la plataforma, como el espacio colaborativo o las videoconferencias, pueden establecer sus propias cookies según su configuración. Su inventario y, si procede, la gestión del consentimiento previo están <strong>pendientes de revisar antes de la publicación definitiva</strong>.</p>
+              <p>Servicios externos que se abran desde la plataforma, como el espacio colaborativo o las videoconferencias, pueden establecer sus propias cookies según su configuración. Su inventario y, si procede, la gestión del consentimiento previo están <strong>pendientes de revisar antes de la publicación definitiva</strong>. Si se incorporan cookies no necesarias, deberá ofrecerse una elección separada antes de activarlas.</p>
             </Section>
           </>
         )}
