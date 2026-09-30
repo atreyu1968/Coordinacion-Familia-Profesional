@@ -14,6 +14,8 @@ const TOKEN_TTL = "30d";
 export interface TokenPayload {
   sub: number;
   role: string;
+  tokenVersion: number;
+  sessionNonce: string;
 }
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -35,7 +37,32 @@ export function verifyToken(token: string): TokenPayload | null {
   try {
     const decoded = jwt.verify(token, SECRET);
     if (typeof decoded === "string") return null;
-    return decoded as unknown as TokenPayload;
+    const payload = decoded as {
+      sub?: unknown;
+      role?: unknown;
+      tokenVersion?: unknown;
+      sessionNonce?: unknown;
+    };
+    const sessionNonce =
+      typeof payload.sessionNonce === "string" ? payload.sessionNonce : "";
+    if (
+      typeof payload.sub !== "number" ||
+      typeof payload.role !== "string" ||
+      typeof payload.tokenVersion !== "number" ||
+      !Number.isInteger(payload.tokenVersion) ||
+      payload.tokenVersion < 0 ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        sessionNonce,
+      )
+    ) {
+      return null;
+    }
+    return {
+      sub: payload.sub,
+      role: payload.role,
+      tokenVersion: payload.tokenVersion,
+      sessionNonce,
+    };
   } catch {
     return null;
   }

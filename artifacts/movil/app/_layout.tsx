@@ -52,10 +52,11 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
-    const inAuthGroup = segments[0] === "login";
-    if (!token && !inAuthGroup) {
+    const isPublicAuthRoute =
+      segments[0] === "login" || segments[0] === "recuperar";
+    if (!token && !isPublicAuthRoute) {
       router.replace("/login");
-    } else if (token && inAuthGroup) {
+    } else if (token && isPublicAuthRoute) {
       router.replace("/(tabs)");
     }
   }, [token, isLoading, segments, router]);

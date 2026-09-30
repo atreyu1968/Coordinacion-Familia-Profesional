@@ -29,6 +29,8 @@ import {
   MessageCircle,
   Pin,
   PinOff,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
@@ -48,6 +50,7 @@ export function AppLayout({ children }: LayoutProps) {
   const { user, isLoading, logout } = useAuth();
   const { customLogoUrl, appName } = useBranding();
   const [location, setLocation] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // The sidebar is collapsed (icons only) by default and expands on hover. The
   // pin (chincheta) at its foot keeps it open; that choice is persisted.
   const [pinned, setPinned] = useState<boolean>(() => {
@@ -69,12 +72,16 @@ export function AppLayout({ children }: LayoutProps) {
     }
   }, [user, isLoading, location, setLocation]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Cargando...</div>;
   }
 
   if (!user) {
-    return <>{children}</>;
+    return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Redirigiendo al acceso...</div>;
   }
 
   const role = user.role;
@@ -105,10 +112,22 @@ export function AppLayout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background overflow-hidden">
+    <div className="relative flex flex-col h-screen w-full bg-background overflow-hidden">
       {/* Top bar: spans full width above the sidebar, fixed height */}
       <header className="h-14 flex items-center justify-between gap-4 px-3 md:px-4 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0">
         <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="md:hidden text-sidebar-foreground hover:bg-sidebar-accent"
+            aria-label={mobileMenuOpen ? "Cerrar menú de navegación" : "Abrir menú de navegación"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-primary-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
           <img
             src={customLogoUrl ?? logoWhite}
             alt={appName}
@@ -144,6 +163,36 @@ export function AppLayout({ children }: LayoutProps) {
           </Button>
         </div>
       </header>
+
+      {mobileMenuOpen && (
+        <nav
+          id="mobile-primary-navigation"
+          aria-label="Navegación principal"
+          className="absolute inset-x-0 top-14 bottom-8 z-40 overflow-y-auto border-b border-border bg-background p-3 shadow-xl md:hidden"
+        >
+          <div className="grid grid-cols-2 gap-2">
+            {navItems.filter((item) => item.visible).map((item) => {
+              const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* Body: sidebar + main content */}
       <div className="flex flex-1 min-h-0 w-full">

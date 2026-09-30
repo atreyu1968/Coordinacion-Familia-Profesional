@@ -1,5 +1,5 @@
 import { Storage, File } from "@google-cloud/storage";
-import { Readable } from "stream";
+import { Readable, type Writable } from "stream";
 import { randomUUID, createHmac, timingSafeEqual } from "crypto";
 import { promises as fs, createReadStream } from "fs";
 import path from "path";
@@ -25,12 +25,15 @@ export function isLocalStorage(): boolean {
   return STORAGE_DRIVER === "local";
 }
 
-// Browser-facing prefix used to build the local upload URL. When the app is
-// served at the domain root (the default for the self-hosted installer) this is
-// "" and the URL is a root-relative "/api/...". Set PUBLIC_APP_URL to an origin
-// (e.g. https://example.org) only if the API is reached cross-origin.
-function localUploadUrlBase(): string {
-  return (process.env.PUBLIC_APP_URL || "").replace(/\/$/, "");
+// Browser-facing prefix for API-mediated upload URLs. When the app is served at
+// the domain root this is empty; set PUBLIC_APP_URL if the API is cross-origin.
+function uploadUrlBase(): string {
+  const configured = (process.env.PUBLIC_APP_URL || "").trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  const replitDomain =
+    process.env.REPLIT_DEV_DOMAIN ||
+    process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  return replitDomain ? `https://${replitDomain}` : "";
 }
 
 function localStorageDir(): string {
@@ -38,10 +41,15 @@ function localStorageDir(): string {
   return path.resolve(dir);
 }
 
-// Local upload URLs are signed with an expiry so they behave like the cloud
-// presigned URLs (a leaked link stops working after the TTL). The signature is
-// an HMAC over "<key>:<expiry>" keyed by JWT_SECRET (always set in production).
+// Local upload URLs are signed with an expiry and byte limit so they behave
+// like cloud presigned URLs (a leaked link stops working after the TTL).
 const LOCAL_UPLOAD_TTL_SEC = 900;
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+export interface ObjectUploadLimits {
+  maxBytes?: number;
+  expectedBytes?: number;
+}
 
 function localUploadSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -51,9 +59,14 @@ function localUploadSecret(): string {
   return secret;
 }
 
-function signLocalUpload(key: string, expMs: number): string {
+function signLocalUpload(
+  key: string,
+  expMs: number,
+  maxBytes: number,
+  expectedBytes?: number,
+): string {
   return createHmac("sha256", localUploadSecret())
-    .update(`${key}:${expMs}`)
+    .update(`${key}:${expMs}:${maxBytes}:${expectedBytes ?? ""}`)
     .digest("base64url");
 }
 
@@ -62,11 +75,29 @@ function checkLocalUploadSignature(
   key: string,
   exp?: string,
   sig?: string,
+  maxBytesRaw?: string,
+  expectedBytesRaw?: string,
 ): boolean {
-  if (!exp || !sig) return false;
+  if (!exp || !sig || maxBytesRaw === undefined) return false;
   const expMs = Number(exp);
   if (!Number.isFinite(expMs) || expMs < Date.now()) return false;
-  const expected = Buffer.from(signLocalUpload(key, expMs));
+  const maxBytes = Number(maxBytesRaw);
+  const expectedBytes =
+    expectedBytesRaw === undefined ? undefined : Number(expectedBytesRaw);
+  if (
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 1 ||
+    maxBytes > MAX_UPLOAD_BYTES ||
+    (expectedBytes !== undefined &&
+      (!Number.isSafeInteger(expectedBytes) ||
+        expectedBytes < 1 ||
+        expectedBytes > maxBytes))
+  ) {
+    return false;
+  }
+  const expected = Buffer.from(
+    signLocalUpload(key, expMs, maxBytes, expectedBytes),
+  );
   const provided = Buffer.from(sig);
   if (expected.length !== provided.length) return false;
   return timingSafeEqual(expected, provided);
@@ -118,6 +149,14 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
+export class ObjectStorageConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ObjectStorageConfigurationError";
+    Object.setPrototypeOf(this, ObjectStorageConfigurationError.prototype);
+  }
+}
+
 const EXT_CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
   ".png": "image/png",
@@ -156,8 +195,71 @@ export class ObjectStorageService {
   }
 
   // Validate the signed, time-limited signature on a local upload URL.
-  verifyLocalUploadSignature(key: string, exp?: string, sig?: string): boolean {
-    return checkLocalUploadSignature(key, exp, sig);
+  verifyLocalUploadSignature(
+    key: string,
+    exp?: string,
+    sig?: string,
+    maxBytes?: string,
+    expectedBytes?: string,
+  ): boolean {
+    return checkLocalUploadSignature(key, exp, sig, maxBytes, expectedBytes);
+  }
+
+  verifyUploadSignature(
+    key: string,
+    exp?: string,
+    sig?: string,
+    maxBytes?: string,
+    expectedBytes?: string,
+  ): boolean {
+    return checkLocalUploadSignature(key, exp, sig, maxBytes, expectedBytes);
+  }
+
+  private privateUploadFile(key: string): File {
+    if (
+      !key.startsWith("uploads/") ||
+      key.split("/").some((part) => !part || part === "." || part === "..")
+    ) {
+      throw new ObjectNotFoundError();
+    }
+    const fullPath =
+      `${this.getPrivateObjectDir().replace(/\/+$/, "")}/${key}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    return objectStorageClient.bucket(bucketName).file(objectName);
+  }
+
+  createPrivateUploadWriteStream(
+    key: string,
+    contentType: string,
+  ): Writable {
+    if (this.isLocal()) {
+      throw new ObjectStorageConfigurationError(
+        "Cloud upload stream requested with local storage enabled",
+      );
+    }
+    return this.privateUploadFile(key).createWriteStream({
+      metadata: { contentType },
+    });
+  }
+
+  async privateUploadExists(key: string): Promise<boolean> {
+    const [exists] = await this.privateUploadFile(key).exists();
+    return exists;
+  }
+
+  async commitPrivateUpload(tempKey: string, key: string): Promise<void> {
+    const source = this.privateUploadFile(tempKey);
+    const destination = this.privateUploadFile(key);
+    await source.copy(destination, {
+      preconditionOpts: { ifGenerationMatch: 0 },
+    });
+    await source.delete({ ignoreNotFound: true }).catch(() => undefined);
+  }
+
+  async discardPrivateUpload(key: string): Promise<void> {
+    await this.privateUploadFile(key)
+      .delete({ ignoreNotFound: true })
+      .catch(() => undefined);
   }
 
   getPublicObjectSearchPaths(): Array<string> {
@@ -176,7 +278,65 @@ export class ObjectStorageService {
           "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
       );
     }
+    this.assertPublicPrivatePathIsolation(paths);
     return paths;
+  }
+
+  private assertPublicPrivatePathIsolation(publicPaths: string[]): void {
+    if (this.isLocal()) {
+      const publicDir = path.resolve(localPublicDir());
+      const privateDir = path.resolve(localPrivateDir());
+      const isWithin = (parent: string, child: string) => {
+        const relative = path.relative(parent, child);
+        return (
+          relative === "" ||
+          (!path.isAbsolute(relative) &&
+            relative !== ".." &&
+            !relative.startsWith(`..${path.sep}`))
+        );
+      };
+      if (isWithin(publicDir, privateDir) || isWithin(privateDir, publicDir)) {
+        throw new ObjectStorageConfigurationError(
+          "Las carpetas de almacenamiento público y privado se solapan",
+        );
+      }
+      return;
+    }
+
+    const privateObjectDir = (process.env.PRIVATE_OBJECT_DIR || "").trim();
+    // Installations that only serve deliberately public legacy assets need not
+    // configure a private store. If one is configured, prove it is disjoint
+    // from all public search prefixes before serving any raw public-object path.
+    if (!privateObjectDir) return;
+
+    const privateLocation = parseObjectPath(privateObjectDir);
+    const normalizePrefix = (prefix: string) => {
+      const parts = prefix.split("/").filter((part) => part && part !== ".");
+      if (parts.some((part) => part === "..")) {
+        throw new ObjectStorageConfigurationError(
+          "Las rutas de almacenamiento no pueden contener segmentos '..'",
+        );
+      }
+      return parts.join("/");
+    };
+    const containsPrefix = (parent: string, child: string) =>
+      parent === "" || child === parent || child.startsWith(`${parent}/`);
+    const overlaps = (left: string, right: string) =>
+      containsPrefix(left, right) || containsPrefix(right, left);
+
+    for (const publicPath of publicPaths) {
+      const publicLocation = parseObjectPath(publicPath);
+      const publicPrefix = normalizePrefix(publicLocation.objectName);
+      const privatePrefix = normalizePrefix(privateLocation.objectName);
+      if (
+        publicLocation.bucketName === privateLocation.bucketName &&
+        overlaps(publicPrefix, privatePrefix)
+      ) {
+        throw new ObjectStorageConfigurationError(
+          "Las rutas de búsqueda pública se solapan con el almacenamiento privado",
+        );
+      }
+    }
   }
 
   getPrivateObjectDir(): string {
@@ -192,11 +352,30 @@ export class ObjectStorageService {
 
   async searchPublicObject(filePath: string): Promise<StoredObject | null> {
     if (this.isLocal()) {
+      this.assertPublicPrivatePathIsolation([]);
       const abs = resolveWithin(localPublicDir(), filePath);
       try {
-        const stat = await fs.stat(abs);
-        if (stat.isFile()) {
-          return { kind: "local", absPath: abs };
+        const publicRoot = await fs.realpath(localPublicDir());
+        const realFile = await fs.realpath(abs);
+        const privateRoot = await fs.realpath(localPrivateDir()).catch(() =>
+          path.resolve(localPrivateDir()),
+        );
+        const stat = await fs.stat(realFile);
+        const isWithin = (parent: string, child: string) => {
+          const relative = path.relative(parent, child);
+          return (
+            relative === "" ||
+            (!path.isAbsolute(relative) &&
+              relative !== ".." &&
+              !relative.startsWith(`..${path.sep}`))
+          );
+        };
+        if (
+          stat.isFile() &&
+          isWithin(publicRoot, realFile) &&
+          !isWithin(privateRoot, realFile)
+        ) {
+          return { kind: "local", absPath: realFile };
         }
       } catch {
         // fall through
@@ -258,37 +437,46 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(
+    limits: ObjectUploadLimits = {},
+  ): Promise<string> {
     const objectId = randomUUID();
+    const maxBytes = limits.maxBytes ?? MAX_UPLOAD_BYTES;
+    const expectedBytes = limits.expectedBytes;
+    if (
+      !Number.isSafeInteger(maxBytes) ||
+      maxBytes < 1 ||
+      maxBytes > MAX_UPLOAD_BYTES ||
+      (expectedBytes !== undefined &&
+        (!Number.isSafeInteger(expectedBytes) ||
+          expectedBytes < 1 ||
+          expectedBytes > maxBytes))
+    ) {
+      throw new Error("Límite de subida no válido");
+    }
 
     if (this.isLocal()) {
       // The browser PUTs the file directly to this endpoint, which streams it to
       // disk. The unguessable UUID plus a short-lived HMAC signature gate the
-      // write, mirroring the presigned-URL model used by the cloud backend.
+      // write and bind its maximum/expected byte count.
       const key = `uploads/${objectId}`;
       const exp = Date.now() + LOCAL_UPLOAD_TTL_SEC * 1000;
-      const sig = signLocalUpload(key, exp);
-      return `${localUploadUrlBase()}/api/storage/local-upload/${key}?exp=${exp}&sig=${sig}`;
+      const sig = signLocalUpload(key, exp, maxBytes, expectedBytes);
+      const expected =
+        expectedBytes === undefined ? "" : `&expected=${expectedBytes}`;
+      return `${uploadUrlBase()}/api/storage/local-upload/${key}?exp=${exp}&max=${maxBytes}${expected}&sig=${sig}`;
     }
 
-    const privateObjectDir = this.getPrivateObjectDir();
-    if (!privateObjectDir) {
-      throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
-      );
-    }
-
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
-
-    const { bucketName, objectName } = parseObjectPath(fullPath);
-
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "PUT",
-      ttlSec: 900,
-    });
+    // The sidecar's direct signed-PUT interface does not expose a verified
+    // content-length-range policy. Keep the client's PUT contract, but route
+    // cloud uploads through our byte-counting API proxy instead.
+    this.getPrivateObjectDir();
+    const key = `uploads/${objectId}`;
+    const exp = Date.now() + LOCAL_UPLOAD_TTL_SEC * 1000;
+    const sig = signLocalUpload(key, exp, maxBytes, expectedBytes);
+    const expected =
+      expectedBytes === undefined ? "" : `&expected=${expectedBytes}`;
+    return `${uploadUrlBase()}/api/storage/cloud-upload/${key}?exp=${exp}&max=${maxBytes}${expected}&sig=${sig}`;
   }
 
   async getObjectEntityFile(objectPath: string): Promise<StoredObject> {
@@ -332,14 +520,16 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    // Local upload URLs look like ".../api/storage/local-upload/uploads/<id>";
-    // store them as the canonical "/objects/uploads/<id>" entity path.
-    const localMarker = "/api/storage/local-upload/";
-    const localIdx = rawPath.indexOf(localMarker);
-    if (localIdx !== -1) {
-      // Drop the signing query string (?exp=...&sig=...) from the stored path.
-      const after = rawPath.slice(localIdx + localMarker.length).split("?")[0];
-      return `/objects/${after}`;
+    // API-mediated upload URLs (local or cloud) map to canonical object paths.
+    for (const marker of [
+      "/api/storage/local-upload/",
+      "/api/storage/cloud-upload/",
+    ]) {
+      const markerIdx = rawPath.indexOf(marker);
+      if (markerIdx !== -1) {
+        const after = rawPath.slice(markerIdx + marker.length).split("?")[0];
+        return `/objects/${after}`;
+      }
     }
 
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
@@ -412,47 +602,6 @@ function parseObjectPath(path: string): {
     bucketName,
     objectName,
   };
-}
-
-async function signObjectURL({
-  bucketName,
-  objectName,
-  method,
-  ttlSec,
-}: {
-  bucketName: string;
-  objectName: string;
-  method: "GET" | "PUT" | "DELETE" | "HEAD";
-  ttlSec: number;
-}): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
-    );
-  }
-
-  const { signed_url: signedURL } = (await response.json()) as {
-    signed_url: string;
-  };
-  return signedURL;
 }
 
 // Re-exported for consumers that previously imported the GCS File type.

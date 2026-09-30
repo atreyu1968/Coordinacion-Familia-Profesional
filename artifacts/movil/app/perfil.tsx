@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useRouter } from "expo-router";
 
 import { useUpdateProfile, type User } from "@workspace/api-client-react";
 
@@ -11,7 +12,8 @@ import { useColors } from "@/hooks/useColors";
 
 export default function PerfilScreen() {
   const colors = useColors();
-  const { user, updateUser } = useAuth();
+  const router = useRouter();
+  const { user, updateUser, signOut } = useAuth();
   const updateMut = useUpdateProfile();
 
   const [name, setName] = useState(user?.name ?? "");
@@ -65,6 +67,14 @@ export default function PerfilScreen() {
           ...(wantsPasswordChange ? { currentPassword, newPassword } : {}),
         },
       })) as User;
+      if (wantsPasswordChange) {
+        await signOut();
+        router.replace({
+          pathname: "/login",
+          params: { message: "Contraseña actualizada. Inicia sesión de nuevo." },
+        });
+        return;
+      }
       await updateUser(updated);
       setCurrentPassword("");
       setNewPassword("");

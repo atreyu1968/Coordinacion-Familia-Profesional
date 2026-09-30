@@ -17,8 +17,12 @@ The teacher-confirmation list is inherently per-year (backend returns active-yea
 
 ## Annual teacher confirmation lifecycle
 - Activating a year creates pending confirmations for role=teacher with a deadline (default 15 days) and sends a reminder email only if email is configured.
-- Teacher confirms center + modules → generates teaching assignments for that year.
-- A daily scheduler (setInterval-based, started in api-server index) deactivates teachers (role=teacher only) with an overdue pending confirmation. Inactive login shows a specific message; manual reactivation reopens the confirmation.
+- Teacher confirms the administrator-assigned center + modules; later corrections reconcile assignments for that year.
+- A daily scheduler deactivates teachers only for overdue pending confirmation of the active year; confirmations and deactivation must serialize.
+
+**Rule:** a teacher cannot self-select an unrelated center during annual confirmation; an authorized manager must approve a center transfer first.
+**Why:** changing center also changes geographic reading scope, so a self-declared center was an access escalation. Old-year pending confirmations must not disable a teacher in the current year.
+**How to apply:** validate the assigned center and active professional family inside the confirmation transaction, and reconcile omitted/old-center assignments on correction. Lock the relevant rows when competing with transfers or deactivation.
 
 ## "Pasar de curso" transition
 POST /academic-years/transition clones selectable blocks (groups, training offer, assignments) from a source year to a destination year and must be idempotent (re-running doesn't duplicate).

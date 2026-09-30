@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, pool, usersTable } from "@workspace/db";
 
 // Creates the first superadmin account on a fresh database. Registration in the
@@ -38,6 +38,7 @@ async function main(): Promise<void> {
         .update(usersTable)
         .set({
           passwordHash,
+          tokenVersion: sql`${usersTable.tokenVersion} + 1`,
           role: "superadmin",
           status: "active",
           deletedAt: null,

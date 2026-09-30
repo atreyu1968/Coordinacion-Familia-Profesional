@@ -742,7 +742,7 @@ paths:
       operationId: updateProfile
       tags: [auth]
       summary: Update the authenticated user's own profile
-      description: Lets a user edit their own name, email and password. Role, status and scope are not editable here.
+      description: Lets a user edit their own name, email and password. Role, status and scope are not editable here. Changing the password revokes existing sessions and requires signing in again.
       security:
         - bearerAuth: []
       requestBody:
@@ -757,7 +757,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                allOf:
+                  - $ref: "#/components/schemas/User"
+                  - type: object
+                    properties:
+                      requiresReauthentication:
+                        type: boolean
+                        description: True when changing the password has revoked this session.
+                      message:
+                        type: string
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -2398,6 +2406,7 @@ paths:
       operationId: checkInAccreditation
       tags: [events]
       summary: Validate a QR token at event check-in (used by the mobile scanner)
+      description: Only event managers within scope and users assigned as staff to the accreditation's event may check in a QR token.
       security:
         - bearerAuth: []
       requestBody:
@@ -2413,6 +2422,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CheckInResult"
+        "403":
+          description: Caller is not an event manager within scope or staff assigned to this event.
+        "404":
+          description: Accreditation or event not found.
   /events/{id}/staff:
     get:
       operationId: listEventStaff
@@ -2678,6 +2691,13 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/IdPath"
+        - in: query
+          name: beforeId
+          required: false
+          description: Return up to 200 messages older than this message id.
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: Messages
@@ -2687,6 +2707,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Message"
+        "400":
+          description: Invalid message cursor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "403":
           description: Forbidden
           content:

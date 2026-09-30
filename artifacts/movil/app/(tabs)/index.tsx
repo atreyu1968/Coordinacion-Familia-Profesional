@@ -1,4 +1,6 @@
 import React from "react";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import {
   Alert,
   FlatList,
@@ -35,37 +37,55 @@ function formatSize(bytes?: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Download a (private) attachment. On web/PWA we fetch with the auth header and
-// trigger a browser download via a blob URL. Native builds don't bundle file
-// libraries, so we surface a friendly notice there.
+// Download a private attachment with the current session. Web/PWA uses a blob
+// download; native devices save it to app storage and open the system share sheet.
 async function downloadAttachment(att: AnnouncementAttachment) {
-  if (Platform.OS !== "web" || typeof document === "undefined") {
-    Alert.alert(
-      "Documento adjunto",
-      "Abre el Tablón desde la versión web/instalada para descargar el documento.",
-    );
-    return;
-  }
   const token = getAuthToken();
   try {
-    const res = await fetch(`${apiBase()}/announcements/attachments/${att.id}/file`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) {
-      Alert.alert("No se pudo descargar", "Comprueba tus permisos o inténtalo de nuevo.");
+    if (!token) {
+      Alert.alert("Sesión caducada", "Inicia sesión de nuevo para descargar el adjunto.");
       return;
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = att.fileName || "documento";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    const url = `${apiBase()}/announcements/attachments/${att.id}/file`;
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Comprueba tus permisos o inténtalo de nuevo.");
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = att.fileName || "documento";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      return;
+    }
+
+    const directory = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+    if (!directory) throw new Error("No hay espacio disponible para guardar el archivo.");
+    const safeName = (att.fileName || `documento-${att.id}`).replace(/[^\w.\-]+/g, "_");
+    const destination = `${directory}tablon-${att.id}-${safeName}`;
+    const download = await FileSystem.downloadAsync(url, destination, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (download.status < 200 || download.status >= 300) {
+      await FileSystem.deleteAsync(download.uri, { idempotent: true });
+      throw new Error("Comprueba tus permisos o inténtalo de nuevo.");
+    }
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(download.uri, {
+        dialogTitle: `Compartir ${att.fileName || "documento"}`,
+        mimeType: att.contentType ?? "application/octet-stream",
+      });
+    } else {
+      Alert.alert("Adjunto descargado", "El archivo se ha guardado en los documentos de la app.");
+    }
   } catch {
-    Alert.alert("No se pudo descargar", "Error de red. Inténtalo de nuevo.");
+    Alert.alert("No se pudo descargar", "Comprueba tu conexión y permisos, e inténtalo de nuevo.");
   }
 }
 
@@ -113,6 +133,8 @@ export default function BoardScreen() {
                     <Pressable
                       key={att.id}
                       onPress={() => downloadAttachment(att)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Descargar ${att.fileName}`}
                       style={({ pressed }) => [
                         styles.attachment,
                         {

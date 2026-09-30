@@ -143,6 +143,10 @@ router.delete("/invitations/:id", requireAuth, async (req, res): Promise<void> =
   }
 
   const caller = req.user!;
+  if (!canInvite(caller.role, invitation.role)) {
+    res.status(403).json({ message: "No tienes permiso para gestionar este rol" });
+    return;
+  }
   const canManage =
     caller.role === "superadmin" ||
     invitation.invitedBy === caller.id ||
@@ -183,6 +187,10 @@ router.post("/invitations/:id/resend", requireAuth, async (req, res): Promise<vo
   }
 
   const caller = req.user!;
+  if (!canInvite(caller.role, invitation.role)) {
+    res.status(403).json({ message: "No tienes permiso para gestionar este rol" });
+    return;
+  }
   const canManage =
     caller.role === "superadmin" ||
     invitation.invitedBy === caller.id ||

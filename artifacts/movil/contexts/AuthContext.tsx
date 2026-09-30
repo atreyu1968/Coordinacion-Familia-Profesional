@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { login as loginRequest, type User } from "@workspace/api-client-react";
 
@@ -69,6 +70,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -140,8 +142,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, []);
 
+  const clearSessionData = useCallback(async () => {
+    const cancellation = queryClient.cancelQueries();
+    queryClient.clear();
+    await cancellation;
+  }, [queryClient]);
+
   const signIn = useCallback(
     async (email: string, password: string) => {
+      // Never let one account's cached responses survive into another login.
+      currentToken = null;
+      setToken(null);
+      setUser(null);
+      await clearSessionData();
       const result = await loginRequest({ email, password });
       currentToken = result.token;
       setToken(result.token);
@@ -150,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLocked(false);
       await persistSession(result.token, result.user);
     },
-    [persistSession],
+    [clearSessionData, persistSession],
   );
 
   const updateUser = useCallback(async (next: User) => {
@@ -167,13 +180,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLockedSession(null);
     setLocked(false);
     setBiometricEnabled(false);
+    const clearPromise = clearSessionData();
     await disableBiometric();
     await Promise.all([
       deleteStoredItem(TOKEN_KEY),
       deleteStoredItem(USER_KEY),
       deleteStoredItem(BIOMETRIC_KEY),
     ]);
-  }, []);
+    await clearPromise;
+  }, [clearSessionData]);
 
   const loginWithBiometric = useCallback(async (): Promise<boolean> => {
     if (!lockedSession) return false;

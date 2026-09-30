@@ -28,6 +28,7 @@ import {
   isInAudience,
   canManageAudience,
   resolveAudienceUserIds,
+  isWithinParticipationWindow,
 } from "../lib/audience";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
@@ -554,6 +555,14 @@ router.post(
         .json({ message: "Este formulario no está abierto a entregas" });
       return;
     }
+    if (
+      !isWithinParticipationWindow(form.status, null, form.closesAt, new Date())
+    ) {
+      res.status(409).json({
+        message: "El plazo para entregar este formulario ha finalizado",
+      });
+      return;
+    }
 
     const fields = await db
       .select()
@@ -638,6 +647,15 @@ router.post(
           visibility: "private",
         });
       }
+    }
+
+    // File ownership checks may take time; revalidate the deadline immediately
+    // before creating or replacing the submission.
+    if (!isWithinParticipationWindow(form.status, null, form.closesAt, new Date())) {
+      res.status(409).json({
+        message: "El plazo para entregar este formulario ha finalizado",
+      });
+      return;
     }
 
     // Upsert: one submission per user per form. Replace values on resubmit.

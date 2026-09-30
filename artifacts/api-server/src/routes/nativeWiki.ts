@@ -40,6 +40,7 @@ import {
   wikiUploadIntentsTable,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { getAppBaseUrl } from "../lib/appUrl";
 import { requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 
@@ -655,7 +656,12 @@ router.post(
       return;
     }
     const fileName = sanitizeFileName(parsed.data.fileName);
-    if (!fileName || parsed.data.size > MAX_UPLOAD_BYTES) {
+    if (
+      !fileName ||
+      !Number.isSafeInteger(parsed.data.size) ||
+      parsed.data.size < 1 ||
+      parsed.data.size > MAX_UPLOAD_BYTES
+    ) {
       res
         .status(400)
         .json({ message: "El nombre o tamaño del archivo no es válido" });
@@ -663,7 +669,13 @@ router.post(
     }
 
     try {
-      const uploadURL = await objectStorage.getObjectEntityUploadURL();
+      const uploadURL = new URL(
+        await objectStorage.getObjectEntityUploadURL({
+          maxBytes: parsed.data.size,
+          expectedBytes: parsed.data.size,
+        }),
+        getAppBaseUrl(req),
+      ).toString();
       const objectPath = objectStorage.normalizeObjectEntityPath(uploadURL);
       if (!OBJECT_PATH_PATTERN.test(objectPath)) {
         req.log.error(

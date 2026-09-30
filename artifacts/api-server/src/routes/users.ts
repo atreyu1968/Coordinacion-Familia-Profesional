@@ -1,6 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, ilike, or, desc, type SQL } from "drizzle-orm";
-import { db, usersTable, teacherYearConfirmationsTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  centersTable,
+  teacherYearConfirmationsTable,
+} from "@workspace/db";
 import {
   ListUsersQueryParams,
   ListUsersResponse,
@@ -12,7 +17,7 @@ import {
   DeactivateUserParams,
   ReactivateUserParams,
 } from "@workspace/api-zod";
-import { getActiveAcademicYear } from "../lib/settings";
+import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import {
   requireAuth,
   requireRole,
@@ -130,9 +135,52 @@ router.patch(
     }
 
     const caller = req.user!;
+    const updates = { ...parsed.data };
     if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
+    }
+
+    const destinationCenterId =
+      updates.centerId !== undefined ? updates.centerId : target.centerId;
+    let destinationProvinceId =
+      updates.provinceId !== undefined ? updates.provinceId : target.provinceId;
+    if (destinationCenterId != null) {
+      const [destinationCenter] = await db
+        .select()
+        .from(centersTable)
+        .where(
+          and(
+            eq(centersTable.id, destinationCenterId),
+            isNull(centersTable.deletedAt),
+          ),
+        );
+      if (!destinationCenter) {
+        res.status(400).json({ message: "El centro de destino no es válido" });
+        return;
+      }
+      if (
+        updates.provinceId !== undefined &&
+        destinationCenter.provinceId !== updates.provinceId
+      ) {
+        res.status(400).json({
+          message: "La provincia debe corresponder al centro de destino",
+        });
+        return;
+      }
+      if (updates.centerId !== undefined) {
+        const activeFamily = await getActiveFamily();
+        if (!destinationCenter.families.includes(activeFamily)) {
+          res.status(400).json({
+            message: "El centro de destino no pertenece a la familia activa",
+          });
+          return;
+        }
+        if (updates.provinceId === undefined) {
+          destinationProvinceId = destinationCenter.provinceId;
+          updates.provinceId = destinationCenter.provinceId;
+        }
+      }
     }
 
     if (caller.role !== "superadmin") {
@@ -144,14 +192,8 @@ router.patch(
         return;
       }
       const candidate = {
-        provinceId:
-          parsed.data.provinceId !== undefined
-            ? parsed.data.provinceId
-            : target.provinceId,
-        centerId:
-          parsed.data.centerId !== undefined
-            ? parsed.data.centerId
-            : target.centerId,
+        provinceId: destinationProvinceId,
+        centerId: destinationCenterId,
       };
       if (!hasScopeOver(caller, candidate)) {
         res.status(403).json({
@@ -163,7 +205,7 @@ router.patch(
 
     const [user] = await db
       .update(usersTable)
-      .set(parsed.data)
+      .set(updates)
       .where(
         and(eq(usersTable.id, params.data.id), isNull(usersTable.deletedAt)),
       )

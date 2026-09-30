@@ -22,6 +22,7 @@ import {
   useUpdateLmsCourse,
   useUpdateLmsLesson,
   useCommitLmsScormSession,
+  downloadLmsCertificate,
   getListLmsCoursesQueryKey,
   getGetLmsCourseQueryKey,
   getGetLmsScormSessionQueryKey,
@@ -54,26 +55,6 @@ function apiUrl(path: string) {
   return `${BASE}${path.replace(/^\/+/, "")}`;
 }
 
-function scormSnapshot(api: Scorm12API | Scorm2004API, version: string) {
-  const cmi = api.cmi as unknown as {
-    core?: { lesson_status?: unknown; score?: { raw?: unknown } };
-    completion_status?: unknown;
-    success_status?: unknown;
-    score?: { raw?: unknown; scaled?: unknown };
-  };
-  const status = version === "2004"
-    ? cmi.completion_status ?? cmi.success_status
-    : cmi.core?.lesson_status;
-  const rawScore = version === "2004"
-    ? cmi.score?.raw ?? (typeof cmi.score?.scaled === "string" ? Number(cmi.score.scaled) * 100 : undefined)
-    : cmi.core?.score?.raw;
-  const score = Number(rawScore);
-  return {
-    status: typeof status === "string" ? status : undefined,
-    score: rawScore !== undefined && Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : undefined,
-  };
-}
-
 function ScormRunner({ session, courseId }: { session: LmsScormSession; courseId?: number }) {
   const commit = useCommitLmsScormSession();
   const queryClient = useQueryClient();
@@ -83,12 +64,10 @@ function ScormRunner({ session, courseId }: { session: LmsScormSession; courseId
   const save = async () => {
     const api = apiRef.current;
     if (!api) return;
-    const state = scormSnapshot(api, session.version);
     await commit.mutateAsync({
       params: { token: session.token },
       data: {
         cmiData: api.renderCMIToJSONObject() as Record<string, unknown>,
-        ...state,
       },
     });
     if (courseId) {
@@ -173,8 +152,39 @@ function ProgressMark({ value }: { value: number }) {
   return <div className="flex items-center gap-2"><Progress value={value} className="h-2" /><span className="text-xs text-muted-foreground">{value}%</span></div>;
 }
 
+function CertificateDownloadButton({ courseId }: { courseId: number }) {
+  const [downloading, setDownloading] = useState(false);
+  const download = async () => {
+    setDownloading(true);
+    try {
+      const certificate = await downloadLmsCertificate(courseId);
+      const url = URL.createObjectURL(certificate);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `certificado-${courseId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      toast({
+        title: "No se pudo descargar el certificado",
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo más tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return <Button variant="outline" onClick={download} disabled={downloading}>
+    <Award className="mr-2 h-4 w-4" />{downloading ? "Preparando certificado..." : "Descargar certificado"}
+  </Button>;
+}
+
 function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; lesson: LmsLesson; onRefresh: () => void }) {
   const progress = course.progress.find((p) => p.lessonId === lesson.id);
+  const isScorm = lesson.kind === "scorm12" || lesson.kind === "scorm2004";
   const complete = useCompleteLmsLesson();
   const quiz = useSubmitLmsQuizAttempt();
   const download = useCreateLmsLessonDownloadToken();
@@ -223,9 +233,10 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
         {lesson.kind === "video" && Boolean(lesson.content.url || lesson.content.embedUrl) && <video controls className="max-h-[420px] w-full rounded-md bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />}
         {lesson.kind === "file" && <Button variant="outline" onClick={downloadFile} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>}
         {lesson.kind === "quiz" && <div className="space-y-4">{questions.map((question, index) => <fieldset key={index} className="space-y-2"><legend className="text-sm font-medium">{index + 1}. {question.prompt ?? question.text ?? "Pregunta"}</legend>{(question.options ?? []).map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name={`q-${lesson.id}-${index}`} checked={answers[index] === optionIndex} onChange={() => setAnswers((old) => { const next = [...old]; next[index] = optionIndex; return next; })} />{option}</label>)}</fieldset>)}<Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}>{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button></div>}
-        {(lesson.kind === "scorm12" || lesson.kind === "scorm2004") && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} />)}
+        {isScorm && <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
+        {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} />)}
         {lesson.kind !== "quiz" && !["scorm12", "scorm2004"].includes(lesson.kind) && progress?.status !== "completed" && <Button onClick={markComplete} disabled={complete.isPending}>{complete.isPending ? "Guardando..." : "Marcar como completada"}</Button>}
-        {progress?.score != null && <p className="text-xs text-muted-foreground">Mejor puntuación: {progress.score}% · Intentos: {progress.attempts}</p>}
+        {progress?.score != null && <p className="text-xs text-muted-foreground">{isScorm ? "Puntuación SCORM autodeclarada (no verificada)" : "Mejor puntuación"}: {progress.score}% · Intentos: {progress.attempts}</p>}
       </CardContent>
     </Card>
   );
@@ -304,6 +315,7 @@ export default function AutodirigidoPage() {
   if (scormToken) return <RemoteScormSession token={scormToken} />;
   if (selectedId && detail.isLoading) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
   const course = detail.data;
+  const containsScorm = course?.lessons.some((lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004") ?? false;
   const requiredLessons = course?.lessons.filter((lesson) => lesson.required) ?? [];
   const completedRequired = requiredLessons.filter((lesson) => course?.progress.some((progress) => progress.lessonId === lesson.id && progress.status === "completed")).length;
   const courseProgress = requiredLessons.length
@@ -312,6 +324,7 @@ export default function AutodirigidoPage() {
   return <div className="space-y-6">
     <header className="flex flex-wrap items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap /></div><div className="flex-1"><h1 className="text-2xl font-bold">Autodirigido</h1><p className="text-sm text-muted-foreground">Aprende a tu ritmo, completa tus lecciones y consigue tus certificados.</p></div>{manager && !selectedId && <Button onClick={() => setEditor("create")}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button>}</header>
     {editor && <CourseEditor course={editor === "edit" ? (course ?? null) : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} />}
-    {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground">{course.description}</p></div>{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => <button key={item.id} className="text-left" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}><Card className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} /></CardContent></Card></button>)}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}
+     {selectedId && course && containsScorm && <div role="note" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
+     {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground">{course.description}</p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => <button key={item.id} className="text-left" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}><Card className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} /></CardContent></Card></button>)}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}
   </div>;
 }

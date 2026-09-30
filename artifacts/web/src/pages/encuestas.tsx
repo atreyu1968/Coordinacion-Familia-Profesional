@@ -89,6 +89,79 @@ const STATUS_LABELS: Record<string, string> = {
   closed: "Cerrada",
 };
 
+type SurveyAvailability =
+  | "available"
+  | "not-yet-open"
+  | "deadline-passed"
+  | "closed";
+
+function getSurveyAvailability(
+  status: string | undefined,
+  opensAt: string | null | undefined,
+  closesAt: string | null | undefined,
+  now: number,
+): SurveyAvailability {
+  if (status !== "open") return "closed";
+  if (opensAt) {
+    const opensAtMs = new Date(opensAt).getTime();
+    if (Number.isFinite(opensAtMs) && now < opensAtMs) return "not-yet-open";
+  }
+  if (closesAt) {
+    const closesAtMs = new Date(closesAt).getTime();
+    if (Number.isFinite(closesAtMs) && now >= closesAtMs) return "deadline-passed";
+  }
+  return "available";
+}
+
+function formatSurveyDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getSurveyAvailabilityMessage(
+  availability: SurveyAvailability,
+  opensAt?: string | null,
+  closesAt?: string | null,
+): string {
+  if (availability === "not-yet-open") {
+    const opensAtLabel = formatSurveyDate(opensAt);
+    return opensAtLabel
+      ? `Esta encuesta aún no está abierta a participación. Se abrirá el ${opensAtLabel}.`
+      : "Esta encuesta aún no está abierta a participación.";
+  }
+  if (availability === "deadline-passed") {
+    const closesAtLabel = formatSurveyDate(closesAt);
+    return closesAtLabel
+      ? `El plazo de participación finalizó el ${closesAtLabel}.`
+      : "El plazo de participación de esta encuesta ha finalizado.";
+  }
+  return "Esta encuesta no está abierta a participación.";
+}
+
+function useAvailabilityNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function getApiErrorMessage(error: unknown): string | undefined {
+  const data = (error as { data?: unknown } | null)?.data;
+  if (!data || typeof data !== "object") return undefined;
+  const message = (data as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
 function canManageSurveys(role: string | undefined): boolean {
   return role === "superadmin" || role === "coordinator";
 }
@@ -444,16 +517,26 @@ function CreateSurveyDialog() {
 function VoteForm({
   surveyId,
   questions,
+  status,
+  opensAt,
+  closesAt,
   onVoted,
 }: {
   surveyId: number;
   questions: SurveyQuestion[];
+  status: string;
+  opensAt?: string | null;
+  closesAt?: string | null;
   onVoted: () => void;
 }) {
   const qc = useQueryClient();
   const submitMut = useSubmitSurveyResponse();
+  const now = useAvailabilityNow();
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [serverRejected, setServerRejected] = useState(false);
+  const availability = getSurveyAvailability(status, opensAt, closesAt, now);
+  const canSubmit = availability === "available" && !serverRejected;
 
   const setSingle = (qid: number, value: string) =>
     setAnswers((a) => ({ ...a, [qid]: [value] }));
@@ -475,6 +558,20 @@ function VoteForm({
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const currentAvailability = getSurveyAvailability(
+      status,
+      opensAt,
+      closesAt,
+      Date.now(),
+    );
+    if (currentAvailability !== "available" || serverRejected) {
+      setError(
+        serverRejected
+          ? "El servidor ha indicado que esta encuesta ya no admite respuestas."
+          : getSurveyAvailabilityMessage(currentAvailability, opensAt, closesAt),
+      );
+      return;
+    }
 
     for (const q of questions) {
       const val = answers[q.id] ?? [];
@@ -501,17 +598,54 @@ function VoteForm({
       toast({ title: "Respuesta registrada", description: "¡Gracias!" });
       onVoted();
     } catch (err) {
-      const status = (err as { status?: number })?.status;
-      setError(
-        status === 409
-          ? "Ya has participado en esta encuesta."
-          : "No se pudo enviar tu respuesta. Inténtalo de nuevo.",
-      );
+      const statusCode = (err as { status?: number })?.status;
+      if (statusCode === 409) {
+        const serverMessage = getApiErrorMessage(err);
+        const alreadyVoted = serverMessage?.toLowerCase().includes("participado") ?? false;
+        const message = alreadyVoted
+          ? serverMessage ?? "Ya has participado en esta encuesta."
+          : serverMessage ??
+            (getSurveyAvailability(status, opensAt, closesAt, Date.now()) === "available"
+              ? "El servidor ha cerrado la participación en esta encuesta."
+              : getSurveyAvailabilityMessage(
+                  getSurveyAvailability(status, opensAt, closesAt, Date.now()),
+                  opensAt,
+                  closesAt,
+                ));
+        setServerRejected(true);
+        setError(message);
+        void qc.invalidateQueries({ queryKey: getGetSurveyQueryKey(surveyId) });
+        void qc.invalidateQueries({
+          queryKey: getGetSurveyResultsQueryKey(surveyId),
+        });
+        if (alreadyVoted) {
+          toast({
+            title: "Ya has participado",
+            description: message,
+          });
+          onVoted();
+        } else {
+          toast({
+            title: "Votación no disponible",
+            description: message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        setError("No se pudo enviar tu respuesta. Inténtalo de nuevo.");
+      }
     }
   };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {!canSubmit && (
+        <p className="text-sm text-muted-foreground" role="status">
+          {serverRejected
+            ? "El servidor ha indicado que esta encuesta ya no admite respuestas."
+            : getSurveyAvailabilityMessage(availability, opensAt, closesAt)}
+        </p>
+      )}
       {questions.map((q, qi) => (
         <div key={q.id} className="space-y-3">
           <p className="font-medium">
@@ -588,8 +722,12 @@ function VoteForm({
         </div>
       ))}
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-      <Button type="submit" disabled={submitMut.isPending}>
-        {submitMut.isPending ? "Enviando..." : "Enviar respuesta"}
+      <Button type="submit" disabled={submitMut.isPending || !canSubmit}>
+        {submitMut.isPending
+          ? "Enviando..."
+          : canSubmit
+            ? "Enviar respuesta"
+            : "Votación no disponible"}
       </Button>
     </form>
   );
@@ -747,6 +885,7 @@ function SurveyDetailDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { user } = useAuth();
+  const now = useAvailabilityNow();
   const { data: survey, isLoading } = useGetSurvey(surveyId ?? 0, {
     query: {
       queryKey: getGetSurveyQueryKey(surveyId ?? 0),
@@ -755,6 +894,12 @@ function SurveyDetailDialog({
   });
 
   const [showResults, setShowResults] = useState(false);
+  const availability = getSurveyAvailability(
+    survey?.status,
+    survey?.opensAt,
+    survey?.closesAt,
+    now,
+  );
 
   useEffect(() => {
     if (open) setShowResults(false);
@@ -762,10 +907,10 @@ function SurveyDetailDialog({
 
   const manager = canManageSurveys(user?.role);
   const hasVoted = survey?.hasVoted === true;
-  const closed = survey?.status === "closed";
-  const canVote = !hasVoted && !closed && !manager;
-  // Managers and people who already voted (or closed surveys) see results.
-  const viewingResults = showResults || hasVoted || closed || manager;
+  const canVote = availability === "available" && !hasVoted && !manager;
+  const viewingResults = showResults || hasVoted || manager;
+  const opensAtLabel = formatSurveyDate(survey?.opensAt);
+  const closesAtLabel = formatSurveyDate(survey?.closesAt);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -785,8 +930,22 @@ function SurveyDetailDialog({
                   </Badge>
                 )}
                 <Badge variant="outline">
-                  {STATUS_LABELS[survey.status] ?? survey.status}
+                  {survey.status === "open" && availability === "not-yet-open"
+                    ? "Aún no abierta"
+                    : survey.status === "open" && availability === "deadline-passed"
+                      ? "Plazo finalizado"
+                      : STATUS_LABELS[survey.status] ?? survey.status}
                 </Badge>
+                {opensAtLabel && (
+                  <Badge variant="outline" className="text-xs">
+                    Abre {opensAtLabel}
+                  </Badge>
+                )}
+                {closesAtLabel && (
+                  <Badge variant="outline" className="text-xs">
+                    Cierra {closesAtLabel}
+                  </Badge>
+                )}
               </div>
               <DialogTitle className="pt-1">{survey.title}</DialogTitle>
               {survey.description && (
@@ -798,6 +957,16 @@ function SurveyDetailDialog({
               <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" /> Ya has participado.
               </div>
+            )}
+
+            {!canVote && !hasVoted && !manager && viewingResults && (
+              <p className="text-sm text-muted-foreground" role="status">
+                {getSurveyAvailabilityMessage(
+                  availability,
+                  survey.opensAt,
+                  survey.closesAt,
+                )}
+              </p>
             )}
 
             {viewingResults ? (
@@ -819,6 +988,9 @@ function SurveyDetailDialog({
                 <VoteForm
                   surveyId={survey.id}
                   questions={survey.questions ?? []}
+                  status={survey.status}
+                  opensAt={survey.opensAt}
+                  closesAt={survey.closesAt}
                   onVoted={() => setShowResults(true)}
                 />
                 <Button
@@ -844,6 +1016,7 @@ function SurveyDetailDialog({
 export default function EncuestasPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const now = useAvailabilityNow();
   const { data: surveys = [], isLoading } = useListSurveys();
   const { data: provinces = [] } = useListProvinces();
   const deleteMut = useDeleteSurvey();
@@ -907,7 +1080,22 @@ export default function EncuestasPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {surveys.map((s) => (
+          {surveys.map((s) => {
+            const availability = getSurveyAvailability(
+              s.status,
+              s.opensAt,
+              s.closesAt,
+              now,
+            );
+            const effectiveStatus =
+              s.status === "open" && availability === "not-yet-open"
+                ? "Aún no abierta"
+                : s.status === "open" && availability === "deadline-passed"
+                  ? "Plazo finalizado"
+                  : STATUS_LABELS[s.status] ?? s.status;
+            const opensAtLabel = formatSurveyDate(s.opensAt);
+            const closesAtLabel = formatSurveyDate(s.closesAt);
+            return (
             <Card
               key={s.id}
               className="flex flex-col cursor-pointer hover:border-primary/50 transition-colors"
@@ -944,9 +1132,28 @@ export default function EncuestasPage() {
                     </Badge>
                   )}
                   <Badge variant="outline" className="text-xs">
-                    {STATUS_LABELS[s.status] ?? s.status}
+                    {effectiveStatus}
                   </Badge>
+                  {opensAtLabel && (
+                    <Badge variant="outline" className="text-xs">
+                      Abre {opensAtLabel}
+                    </Badge>
+                  )}
+                  {closesAtLabel && (
+                    <Badge variant="outline" className="text-xs">
+                      Cierra {closesAtLabel}
+                    </Badge>
+                  )}
                 </div>
+                {availability !== "available" && (
+                  <p className="text-xs text-muted-foreground">
+                    {getSurveyAvailabilityMessage(
+                      availability,
+                      s.opensAt,
+                      s.closesAt,
+                    )}
+                  </p>
+                )}
                 {canDelete(s) && (
                   <div
                     className="flex justify-end pt-1"
@@ -984,7 +1191,8 @@ export default function EncuestasPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ne, desc } from "drizzle-orm";
+import { eq, and, isNull, ne, desc, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -27,6 +27,7 @@ import {
 } from "../lib/auth";
 import { sendEmail, buildPasswordResetEmail } from "../lib/email";
 import { requireAuth } from "../middlewares/auth";
+import { disconnectUserSessions } from "../lib/realtime";
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
@@ -39,6 +40,8 @@ class RegisterError extends Error {
     super(message);
   }
 }
+
+class PasswordResetConflict extends Error {}
 
 const router: IRouter = Router();
 
@@ -78,7 +81,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const token = signToken({ sub: user.id, role: user.role });
+  const token = signToken({
+    sub: user.id,
+    role: user.role,
+    tokenVersion: user.tokenVersion,
+    sessionNonce: user.sessionNonce,
+  });
   res.json(LoginResponse.parse({ token, user }));
 });
 
@@ -99,6 +107,7 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
     email?: string;
     passwordHash?: string;
   } = {};
+  const passwordChanged = parsed.data.newPassword !== undefined;
 
   if (parsed.data.name !== undefined) {
     const name = parsed.data.name.trim();
@@ -149,13 +158,38 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const updateWhere = [eq(usersTable.id, caller.id)];
+  if (passwordChanged) {
+    updateWhere.push(
+      eq(usersTable.tokenVersion, caller.tokenVersion),
+      eq(usersTable.passwordHash, caller.passwordHash),
+    );
+  }
+  const updateValues = passwordChanged
+    ? { ...updates, tokenVersion: sql`${usersTable.tokenVersion} + 1` }
+    : updates;
   const [user] = await db
     .update(usersTable)
-    .set(updates)
-    .where(eq(usersTable.id, caller.id))
+    .set(updateValues)
+    .where(and(...updateWhere))
     .returning();
 
-  res.json(UpdateProfileResponse.parse(user));
+  if (!user) {
+    res.status(401).json({ message: "La sesión ya no es válida" });
+    return;
+  }
+  if (passwordChanged) disconnectUserSessions(caller.id);
+
+  const response = UpdateProfileResponse.parse(user);
+  if (passwordChanged) {
+    res.json({
+      ...response,
+      requiresReauthentication: true,
+      message: "Contraseña actualizada. Inicia sesión de nuevo para continuar.",
+    });
+    return;
+  }
+  res.json(response);
 });
 
 router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
@@ -275,7 +309,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     throw err;
   }
 
-  const token = signToken({ sub: user.id, role: user.role });
+  const token = signToken({
+    sub: user.id,
+    role: user.role,
+    tokenVersion: user.tokenVersion,
+    sessionNonce: user.sessionNonce,
+  });
   res.json(RegisterWithTokenResponse.parse({ token, user }));
 });
 
@@ -378,35 +417,59 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   }
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
-  const consumed = await db.transaction(async (tx) => {
-    // Atomically claim the token: only the first concurrent request whose
-    // conditional update still sees `used_at IS NULL` may proceed, so a single
-    // OTP can never reset the password more than once.
-    const marked = await tx
-      .update(passwordResetTokensTable)
-      .set({ usedAt: new Date() })
-      .where(
-        and(
-          eq(passwordResetTokensTable.id, token.id),
-          isNull(passwordResetTokensTable.usedAt),
-        ),
-      )
-      .returning({ id: passwordResetTokensTable.id });
-    if (marked.length === 0) {
-      return false;
+  let consumed: boolean;
+  try {
+    consumed = await db.transaction(async (tx) => {
+      // Atomically claim the token: only the first concurrent request whose
+      // conditional update still sees `used_at IS NULL` may proceed, so a single
+      // OTP can never reset the password more than once.
+      const marked = await tx
+        .update(passwordResetTokensTable)
+        .set({ usedAt: new Date() })
+        .where(
+          and(
+            eq(passwordResetTokensTable.id, token.id),
+            isNull(passwordResetTokensTable.usedAt),
+          ),
+        )
+        .returning({ id: passwordResetTokensTable.id });
+      if (marked.length === 0) {
+        return false;
+      }
+      const [updatedUser] = await tx
+        .update(usersTable)
+        .set({
+          passwordHash,
+          tokenVersion: sql`${usersTable.tokenVersion} + 1`,
+        })
+        .where(
+          and(
+            eq(usersTable.id, user.id),
+            eq(usersTable.tokenVersion, user.tokenVersion),
+            eq(usersTable.status, "active"),
+            isNull(usersTable.deletedAt),
+          ),
+        )
+        .returning({ id: usersTable.id });
+      if (!updatedUser) {
+        throw new PasswordResetConflict();
+      }
+      return true;
+    });
+  } catch (err) {
+    if (err instanceof PasswordResetConflict) {
+      res.status(400).json({ message: invalid });
+      return;
     }
-    await tx
-      .update(usersTable)
-      .set({ passwordHash })
-      .where(eq(usersTable.id, user.id));
-    return true;
-  });
+    throw err;
+  }
 
   if (!consumed) {
     res.status(400).json({ message: invalid });
     return;
   }
 
+  disconnectUserSessions(user.id);
   res.json({ ok: true });
 });
 

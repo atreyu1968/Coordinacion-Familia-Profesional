@@ -107,7 +107,12 @@ export async function createUser(
     })
     .returning();
   created.userIds.push(user!.id);
-  const token = signToken({ sub: user!.id, role: user!.role });
+  const token = signToken({
+    sub: user!.id,
+    role: user!.role,
+    tokenVersion: user!.tokenVersion,
+    sessionNonce: user!.sessionNonce,
+  });
   return { user: user!, token, password, email };
 }
 

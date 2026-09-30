@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 
 export function ProfileDialog({
   user,
@@ -26,6 +27,7 @@ export function ProfileDialog({
   children: ReactNode;
 }) {
   const qc = useQueryClient();
+  const { logout } = useAuth();
   const updateMut = useUpdateProfile();
 
   const [open, setOpen] = useState(false);
@@ -91,6 +93,15 @@ export function ProfileDialog({
           ...(wantsPasswordChange ? { currentPassword, newPassword } : {}),
         },
       });
+      if (wantsPasswordChange) {
+        toast({
+          title: "Contraseña actualizada",
+          description: "Inicia sesión de nuevo con tu nueva contraseña.",
+        });
+        setOpen(false);
+        logout();
+        return;
+      }
       await qc.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
       toast({ title: "Perfil actualizado" });
       setOpen(false);

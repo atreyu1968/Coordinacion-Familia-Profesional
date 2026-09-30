@@ -170,6 +170,27 @@ describe("POST /meetings/token", () => {
       .send({ room: `adhoc-${Date.now()}` });
     expect(res.status).toBe(200);
   });
+
+  it("rejects tokens for soft-deleted meeting rooms", async () => {
+    clearJaas();
+    const host = await createUser({ role: "teacher" });
+    const room = `deleted-meeting-${Date.now()}`;
+    const meetingId = await createMeeting({
+      roomName: room,
+      hostId: host.user.id,
+    });
+    const deleted = await request(app)
+      .delete(`/api/meetings/${meetingId}`)
+      .set(authHeader(host.token));
+    expect(deleted.status).toBe(204);
+
+    const viewer = await createUser({ role: "teacher" });
+    const res = await request(app)
+      .post("/api/meetings/token")
+      .set(authHeader(viewer.token))
+      .send({ room });
+    expect(res.status).toBe(410);
+  });
 });
 
 describe("GET /meetings visibility", () => {
@@ -205,9 +226,9 @@ describe("GET /meetings visibility", () => {
     expect(moduleIds).not.toContain(theirs);
   });
 
-  it("hides legacy null-module meetings from regular teachers", async () => {
+  it("shows all-audience legacy meetings to regular teachers", async () => {
     const host = await createUser({ role: "coordinator" });
-    await createMeeting({
+    const meetingId = await createMeeting({
       roomName: `vis-legacy-${Date.now()}`,
       hostId: host.user.id,
       moduleId: null,
@@ -217,10 +238,12 @@ describe("GET /meetings visibility", () => {
       .get("/api/meetings")
       .set(authHeader(viewer.token));
     expect(res.status).toBe(200);
-    const hasLegacy = (res.body as { moduleId: number | null }[]).some(
-      (m) => m.moduleId === null,
+    const includesMeeting = (
+      res.body as { id: number; moduleId: number | null }[]
+    ).some(
+      (m) => m.id === meetingId && m.moduleId === null,
     );
-    expect(hasLegacy).toBe(false);
+    expect(includesMeeting).toBe(true);
   });
 });
 

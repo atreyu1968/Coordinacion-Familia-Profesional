@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { roleEnum } from "./enums";
 
 export const usersTable = pgTable("users", {
@@ -12,6 +13,10 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  tokenVersion: integer("token_version").notNull().default(0),
+  sessionNonce: text("session_nonce")
+    .notNull()
+    .default(sql`gen_random_uuid()::text`),
   role: roleEnum("role").notNull(),
   status: text("status").notNull().default("active"),
   provinceId: integer("province_id"),

@@ -97,11 +97,10 @@ async function managerScopeOverModule(
 // Whether `caller` may see / join a registered meeting. Meetings are primarily
 // scoped by module membership: a module-bound meeting is visible to the host,
 // the module's members, and managers with scope over the module. Non-module
-// meetings honor specific audience targeting (province/island/center/users/
-// role); the catch-all "all" audience (also the column default on legacy rows)
-// is NOT a public grant — such meetings are visible only to the host and
-// scoped managers, so leaked/guessed rooms can't be joined by outsiders.
-async function callerCanSeeMeeting(
+// meetings use the same explicit audience rules as forms/surveys; "all" is
+// visible to every authenticated viewer. Unlisted rooms remain protected by
+// the opaque room name and the authenticated token endpoint.
+export async function callerCanSeeMeeting(
   caller: User,
   ctx: ViewerContext,
   row: {
@@ -117,10 +116,7 @@ async function callerCanSeeMeeting(
     if (ctx.moduleIds.includes(row.moduleId)) return true;
     return managerScopeOverModule(caller, row.moduleId);
   }
-  if (
-    row.audienceType !== "all" &&
-    isInAudience(row.audienceType, row.audienceIds, ctx)
-  ) {
+  if (isInAudience(row.audienceType, row.audienceIds, ctx)) {
     return true;
   }
   return canManageAudience(caller, row.audienceType, row.audienceIds);
@@ -299,11 +295,14 @@ router.post("/meetings/token", requireAuth, async (req, res): Promise<void> => {
       hostId: meetingsTable.hostId,
       audienceType: meetingsTable.audienceType,
       audienceIds: meetingsTable.audienceIds,
+      deletedAt: meetingsTable.deletedAt,
     })
     .from(meetingsTable)
-    .where(
-      and(eq(meetingsTable.roomName, room), isNull(meetingsTable.deletedAt)),
-    );
+    .where(eq(meetingsTable.roomName, room));
+  if (meeting?.deletedAt) {
+    res.status(410).json({ message: "La reunión ya no está disponible" });
+    return;
+  }
   if (meeting) {
     const ctx = await getViewerContext(caller);
     if (!(await callerCanSeeMeeting(caller, ctx, meeting))) {

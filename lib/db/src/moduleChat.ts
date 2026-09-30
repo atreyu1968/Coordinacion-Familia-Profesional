@@ -192,6 +192,8 @@ export async function syncModuleChatGroup(
         .onConflictDoNothing();
     }
     if (toRemove.length > 0) {
+      // Realtime delivery rechecks these rows before broadcasting and leaves
+      // sockets whose membership has been revoked.
       await tx
         .delete(chatGroupMembersTable)
         .where(

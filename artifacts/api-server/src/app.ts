@@ -30,7 +30,23 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+app.use(
+  express.json({
+    // File uploads are raw PUT bodies even when the file itself has a JSON MIME
+    // type. Leave those streams untouched for the storage routes.
+    type: (req) => {
+      const requestPath = req.url?.split("?")[0] || "";
+      const isRawUpload =
+        req.method === "PUT" &&
+        /^\/api\/storage\/(?:local-upload|cloud-upload)\//.test(requestPath);
+      const contentType = req.headers["content-type"];
+      const isJson =
+        typeof contentType === "string" &&
+        /^application\/json(?:\s*;|$)/i.test(contentType);
+      return !isRawUpload && isJson;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

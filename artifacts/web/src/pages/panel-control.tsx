@@ -173,8 +173,14 @@ export default function PanelControlPage() {
         }
         throw new Error(message);
       }
+      const result = (await res.json().catch(() => null)) as
+        | { externalObjects?: { warning?: string } }
+        | null;
       setBackupMessage(
-        "Copia de seguridad restaurada correctamente. Recargando la aplicación...",
+        `Copia de seguridad restaurada correctamente. ${
+          result?.externalObjects?.warning ??
+          "Los bytes de los archivos no se incluyen en el ZIP."
+        } Recargando la aplicación...`,
       );
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
@@ -590,9 +596,9 @@ export default function PanelControlPage() {
             </CardTitle>
           </div>
           <CardDescription>
-            Descarga una copia completa de todos los datos en un archivo ZIP
-            para guardarla o trasladar la plataforma a otro servidor. La
-            restauración sustituye todos los datos actuales por los del archivo.
+            Descarga los datos de la base de datos en un archivo ZIP para
+            guardarlos o trasladarlos. Los bytes de los archivos adjuntos no se
+            incluyen en el ZIP.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -632,7 +638,11 @@ export default function PanelControlPage() {
             <p>
               Al restaurar, se eliminarán todos los datos actuales (centros,
               usuarios, encuestas, eventos, etc.) y se reemplazarán por los del
-              archivo. Esta acción no se puede deshacer.
+              archivo. Esta acción no se puede deshacer. Los archivos adjuntos
+              deben seguir disponibles en el almacenamiento actual; antes de
+              migrar, copia también los objetos al destino. Si falta un archivo
+              o no se puede verificar, la restauración se bloqueará antes de
+              modificar la base de datos.
             </p>
           </div>
 

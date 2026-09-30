@@ -75,6 +75,7 @@ import {
 } from "lucide-react";
 
 const TOKEN_KEY = "coordina_adg_token";
+const CHAT_PAGE_SIZE = 200;
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const EMOJIS = [
   "😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎",
@@ -595,6 +596,8 @@ function ConversationView({
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(false);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -614,6 +617,7 @@ function ConversationView({
   const uploadMut = useRequestUploadUrl();
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const preserveScrollHeightRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -641,6 +645,9 @@ function ConversationView({
     let cancelled = false;
     setLoading(true);
     setMessages([]);
+    setHasOlder(false);
+    setLoadingOlder(false);
+    preserveScrollHeightRef.current = null;
     listGroupMessages(groupId)
       .then((data) => {
         if (!cancelled) {
@@ -651,6 +658,7 @@ function ConversationView({
                 new Date(b.createdAt).getTime(),
             ),
           );
+          setHasOlder(data.length === CHAT_PAGE_SIZE);
         }
       })
       .catch(() => {
@@ -668,6 +676,28 @@ function ConversationView({
       cancelled = true;
     };
   }, [groupId]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const beforeId = messages[0]?.id;
+    if (!hasOlder || loadingOlder || beforeId == null) return;
+    setLoadingOlder(true);
+    try {
+      const older = await listGroupMessages(groupId, { beforeId });
+      setHasOlder(older.length === CHAT_PAGE_SIZE);
+      if (older.length > 0) {
+        preserveScrollHeightRef.current = scrollRef.current?.scrollHeight ?? null;
+        mergeMessages(older);
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes anteriores.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [groupId, hasOlder, loadingOlder, messages, mergeMessages]);
 
   // Realtime wiring
   useEffect(() => {
@@ -724,6 +754,12 @@ function ConversationView({
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
+      if (preserveScrollHeightRef.current !== null) {
+        scrollRef.current.scrollTop +=
+          scrollRef.current.scrollHeight - preserveScrollHeightRef.current;
+        preserveScrollHeightRef.current = null;
+        return;
+      }
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
@@ -982,28 +1018,45 @@ function ConversationView({
           <p className="text-sm text-muted-foreground py-8 text-center">
             Cargando mensajes…
           </p>
-        ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            {search.trim()
-              ? "Sin resultados para tu búsqueda."
-              : "No hay mensajes todavía. ¡Escribe el primero!"}
-          </p>
         ) : (
-          filtered.map((m) => (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              mine={m.senderId === meId}
-              onReact={(emoji) => onReact(m, emoji)}
-              onReply={() => {
-                setEditing(null);
-                setReplyTo(m);
-              }}
-              onEdit={() => startEdit(m)}
-              onDelete={() => onDelete(m)}
-              onForward={() => setForwardMsg(m)}
-            />
-          ))
+          <>
+            {hasOlder && (
+              <div className="flex justify-center pb-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={loadingOlder}
+                  onClick={loadOlderMessages}
+                >
+                  {loadingOlder ? "Cargando…" : "Cargar mensajes anteriores"}
+                </Button>
+              </div>
+            )}
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                {search.trim()
+                  ? "Sin resultados para tu búsqueda."
+                  : "No hay mensajes todavía. ¡Escribe el primero!"}
+              </p>
+            ) : (
+              filtered.map((m) => (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  mine={m.senderId === meId}
+                  onReact={(emoji) => onReact(m, emoji)}
+                  onReply={() => {
+                    setEditing(null);
+                    setReplyTo(m);
+                  }}
+                  onEdit={() => startEdit(m)}
+                  onDelete={() => onDelete(m)}
+                  onForward={() => setForwardMsg(m)}
+                />
+              ))
+            )}
+          </>
         )}
       </div>
 

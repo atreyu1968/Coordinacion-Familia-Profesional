@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   setAuthTokenGetter,
   useGetCurrentUser,
@@ -20,14 +21,30 @@ setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const currentUserQueryKey = getGetCurrentUserQueryKey();
 
   const { data: user, isLoading: isUserLoading, error } = useGetCurrentUser({
     query: {
-      queryKey: getGetCurrentUserQueryKey(),
+      queryKey: currentUserQueryKey,
       enabled: !!token,
       retry: false,
     }
   });
+
+  const clearSessionData = () => {
+    // cancelQueries starts cancellation synchronously; clear() removes both
+    // cached user data and mutation state before a different identity renders.
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  };
+
+  const logout = () => {
+    clearSessionData();
+    localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
+    setLocation("/login");
+  };
 
   useEffect(() => {
     if (error && (error as any)?.status === 401) {
@@ -35,15 +52,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [error]);
 
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
-    setToken(newToken);
-  };
+  useEffect(() => {
+    const syncSessionFromStorage = (event: StorageEvent) => {
+      if (event.key !== TOKEN_KEY && event.key !== null) return;
+      const nextToken = localStorage.getItem(TOKEN_KEY);
+      if (nextToken === token) return;
+      clearSessionData();
+      setToken(nextToken);
+      if (!nextToken) setLocation("/login");
+    };
+    window.addEventListener("storage", syncSessionFromStorage);
+    return () => window.removeEventListener("storage", syncSessionFromStorage);
+  }, [token, queryClient, setLocation]);
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setLocation("/login");
+  const login = (newToken: string, newUser: User) => {
+    clearSessionData();
+    localStorage.setItem(TOKEN_KEY, newToken);
+    queryClient.setQueryData(currentUserQueryKey, newUser);
+    setToken(newToken);
+    void queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
   };
 
   const isLoading = isUserLoading && !!token;

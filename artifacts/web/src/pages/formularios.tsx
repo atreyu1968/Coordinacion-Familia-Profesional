@@ -119,6 +119,44 @@ function formatDate(value: Date | string | null | undefined): string {
   });
 }
 
+type ParticipationAvailability = "available" | "deadline-passed" | "closed";
+
+function getFormAvailability(
+  status: string,
+  closesAt: Date | string | null | undefined,
+  now: number,
+): ParticipationAvailability {
+  if (status !== "open") return "closed";
+  if (closesAt) {
+    const closesAtMs = new Date(closesAt).getTime();
+    if (Number.isFinite(closesAtMs) && now >= closesAtMs) return "deadline-passed";
+  }
+  return "available";
+}
+
+function getFormAvailabilityMessage(availability: ParticipationAvailability): string {
+  if (availability === "deadline-passed") {
+    return "El plazo para entregar este formulario ha finalizado.";
+  }
+  return "Este formulario ya no está abierto a entregas.";
+}
+
+function useAvailabilityNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function getApiErrorMessage(error: unknown): string | undefined {
+  const data = (error as { data?: unknown } | null)?.data;
+  if (!data || typeof data !== "object") return undefined;
+  const message = (data as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
 async function downloadSubmissionFile(valueId: number, fileName: string) {
   const token = localStorage.getItem(TOKEN_KEY);
   try {
@@ -627,6 +665,7 @@ function FillFormDialog({
   const qc = useQueryClient();
   const submitMut = useSubmitDocumentForm();
   const uploadMut = useRequestUploadUrl();
+  const now = useAvailabilityNow();
 
   const { data: form, isLoading } = useGetDocumentForm(formId ?? 0, {
     query: {
@@ -639,6 +678,7 @@ function FillFormDialog({
   const [files, setFiles] = useState<Record<number, File | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [serverRejected, setServerRejected] = useState(false);
 
   const fields = form?.fields ?? [];
   const submissionByField = new Map(
@@ -658,6 +698,7 @@ function FillFormDialog({
       setTextValues(initial);
       setFiles({});
       setError(null);
+      setServerRejected(false);
     }
   }, [open, form]);
 
@@ -665,11 +706,30 @@ function FillFormDialog({
     setTextValues((t) => ({ ...t, [fieldId]: value }));
 
   const closed = form?.status !== "open";
+  const availability = form
+    ? getFormAvailability(form.status, form.closesAt, now)
+    : "closed";
+  const canSubmit = availability === "available" && !serverRejected;
   const hasSubmitted = form?.mySubmission != null;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (
+      !form ||
+      getFormAvailability(form.status, form.closesAt, Date.now()) !== "available" ||
+      serverRejected
+    ) {
+      const currentAvailability = form
+        ? getFormAvailability(form.status, form.closesAt, Date.now())
+        : "closed";
+      setError(
+        serverRejected
+          ? "El servidor ha indicado que este formulario ya no admite entregas."
+          : getFormAvailabilityMessage(currentAvailability),
+      );
+      return;
+    }
 
     for (const field of fields) {
       if (!field.required) continue;
@@ -732,6 +792,12 @@ function FillFormDialog({
         }
       }
 
+      if (getFormAvailability(form!.status, form!.closesAt, Date.now()) !== "available") {
+        setError(getFormAvailabilityMessage(
+          getFormAvailability(form!.status, form!.closesAt, Date.now()),
+        ));
+        return;
+      }
       await submitMut.mutateAsync({ id: form!.id, data: { values } });
       await qc.invalidateQueries({ queryKey: getListDocumentFormsQueryKey() });
       await qc.invalidateQueries({
@@ -748,12 +814,16 @@ function FillFormDialog({
     } catch (err) {
       const status = (err as { status?: number })?.status;
       if (status === 409) {
+        const message =
+          getApiErrorMessage(err) ??
+          "El formulario ya no está disponible para recibir entregas.";
+        setServerRejected(true);
+        setError(message);
         toast({
-          title: "Formulario cerrado",
-          description: "Este formulario ya no está abierto a entregas.",
+          title: "Entrega no disponible",
+          description: message,
           variant: "destructive",
         });
-        onOpenChange(false);
       } else {
         setError("No se pudo enviar tu entrega. Inténtalo de nuevo.");
       }
@@ -790,8 +860,10 @@ function FillFormDialog({
 
             {hasSubmitted && (
               <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" /> Ya has realizado una entrega.
-                Puedes editarla.
+                <CheckCircle2 className="w-4 h-4" />
+                {canSubmit
+                  ? "Ya has realizado una entrega. Puedes editarla."
+                  : "Ya has realizado una entrega."}
               </div>
             )}
 
@@ -801,6 +873,13 @@ function FillFormDialog({
               </p>
             ) : (
               <form onSubmit={onSubmit} className="space-y-5">
+                {!canSubmit && (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    {serverRejected
+                      ? "El servidor ha indicado que este formulario ya no admite entregas."
+                      : getFormAvailabilityMessage(availability)}
+                  </p>
+                )}
                 {fields.map((field) => {
                   const existing = submissionByField.get(field.id);
                   return (
@@ -874,9 +953,11 @@ function FillFormDialog({
                 )}
 
                 <DialogFooter>
-                  <Button type="submit" disabled={pending}>
+                  <Button type="submit" disabled={pending || !canSubmit}>
                     {pending
                       ? "Enviando..."
+                      : !canSubmit
+                        ? "Entrega no disponible"
                       : hasSubmitted
                         ? "Actualizar entrega"
                         : "Enviar entrega"}
@@ -897,6 +978,7 @@ function FillFormDialog({
 export default function FormulariosPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const now = useAvailabilityNow();
   const moduleParam = useModuleParam();
   const { data: allForms = [], isLoading } = useListDocumentForms();
   const forms =
@@ -978,8 +1060,11 @@ export default function FormulariosPage() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {forms.map((f) => (
-            <Card key={f.id} className="flex flex-col">
+          {forms.map((f) => {
+            const availability = getFormAvailability(f.status, f.closesAt, now);
+            const canFill = availability === "available";
+            return (
+              <Card key={f.id} className="flex flex-col">
               <CardContent className="p-4 flex flex-col gap-3 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -1012,22 +1097,39 @@ export default function FormulariosPage() {
                   )}
                 </div>
                 {f.status === "open" && (
-                  <Button
-                    size="sm"
-                    variant={f.hasSubmitted ? "outline" : "default"}
-                    className="gap-1.5 w-full"
-                    onClick={() => openFill(f)}
-                  >
-                    {f.hasSubmitted ? (
-                      <>
-                        <PencilLine className="w-4 h-4" /> Editar entrega
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="w-4 h-4" /> Rellenar
-                      </>
+                  <>
+                    <Button
+                      size="sm"
+                      variant={f.hasSubmitted ? "outline" : "default"}
+                      className="gap-1.5 w-full"
+                      disabled={!canFill}
+                      onClick={() => openFill(f)}
+                    >
+                      {!canFill ? (
+                        <>
+                          <FileText className="w-4 h-4" /> Plazo finalizado
+                        </>
+                      ) : f.hasSubmitted ? (
+                        <>
+                          <PencilLine className="w-4 h-4" /> Editar entrega
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-4 h-4" /> Rellenar
+                        </>
+                      )}
+                    </Button>
+                    {!canFill && (
+                      <p className="text-xs text-muted-foreground">
+                        {getFormAvailabilityMessage(availability)}
+                      </p>
                     )}
-                  </Button>
+                  </>
+                )}
+                {f.status !== "open" && (
+                  <p className="text-xs text-muted-foreground">
+                    Este formulario no está abierto a entregas.
+                  </p>
                 )}
                 {manager && (
                   <div className="flex items-center justify-between gap-2 pt-1">
@@ -1073,7 +1175,8 @@ export default function FormulariosPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

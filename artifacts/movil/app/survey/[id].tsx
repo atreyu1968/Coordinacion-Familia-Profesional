@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -25,9 +25,79 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 
+type ParticipationAvailability = "available" | "not-yet-open" | "deadline-passed" | "closed";
+
+function getParticipationAvailability(
+  status: string | undefined,
+  opensAt: string | null | undefined,
+  closesAt: string | null | undefined,
+  now: number,
+): ParticipationAvailability {
+  if (status !== "open") return "closed";
+  if (opensAt) {
+    const opensAtMs = new Date(opensAt).getTime();
+    if (Number.isFinite(opensAtMs) && now < opensAtMs) return "not-yet-open";
+  }
+  if (closesAt) {
+    const closesAtMs = new Date(closesAt).getTime();
+    if (Number.isFinite(closesAtMs) && now >= closesAtMs) return "deadline-passed";
+  }
+  return "available";
+}
+
+function formatDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getAvailabilityMessage(
+  availability: ParticipationAvailability,
+  opensAt?: string | null,
+  closesAt?: string | null,
+): string {
+  if (availability === "not-yet-open") {
+    const openLabel = formatDateTime(opensAt);
+    return openLabel
+      ? `Esta encuesta aún no está abierta a participación. Se abrirá el ${openLabel}.`
+      : "Esta encuesta aún no está abierta a participación.";
+  }
+  if (availability === "deadline-passed") {
+    const closeLabel = formatDateTime(closesAt);
+    return closeLabel
+      ? `El plazo de participación finalizó el ${closeLabel}.`
+      : "El plazo de participación de esta encuesta ha finalizado.";
+  }
+  return "Esta encuesta no está abierta a participación.";
+}
+
+function useAvailabilityNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function getApiErrorMessage(error: unknown): string | undefined {
+  const data = (error as { data?: unknown } | null)?.data;
+  if (!data || typeof data !== "object") return undefined;
+  const message = (data as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
 export default function SurveyDetailScreen() {
   const colors = useColors();
   const queryClient = useQueryClient();
+  const now = useAvailabilityNow();
   const params = useLocalSearchParams<{ id: string }>();
   const surveyId = Number(params.id);
 
@@ -35,6 +105,14 @@ export default function SurveyDetailScreen() {
   const submit = useSubmitSurveyResponse();
   const [answers, setAnswers] = useState<Record<number, string[]>>({});
   const [error, setError] = useState<string | null>(null);
+  const [serverRejected, setServerRejected] = useState(false);
+  const availability = getParticipationAvailability(
+    data?.status,
+    data?.opensAt,
+    data?.closesAt,
+    now,
+  );
+  const canSubmit = availability === "available" && !serverRejected;
 
   const setSingle = (qId: number, value: string) =>
     setAnswers((prev) => ({ ...prev, [qId]: [value] }));
@@ -52,6 +130,20 @@ export default function SurveyDetailScreen() {
     setAnswers((prev) => ({ ...prev, [qId]: value ? [value] : [] }));
 
   const onSubmit = () => {
+    const currentAvailability = getParticipationAvailability(
+      data?.status,
+      data?.opensAt,
+      data?.closesAt,
+      Date.now(),
+    );
+    if (currentAvailability !== "available" || serverRejected) {
+      setError(
+        serverRejected
+          ? "El servidor ha indicado que esta encuesta ya no admite respuestas."
+          : getAvailabilityMessage(currentAvailability, data?.opensAt, data?.closesAt),
+      );
+      return;
+    }
     const questions = data?.questions ?? [];
     const payload: SurveyAnswerInput[] = questions.map((q) => ({
       questionId: q.id,
@@ -72,7 +164,20 @@ export default function SurveyDetailScreen() {
           void queryClient.invalidateQueries({ queryKey: getGetSurveyQueryKey(surveyId) });
           router.back();
         },
-        onError: () => setError("No se pudo enviar tu respuesta. Inténtalo de nuevo."),
+        onError: (err) => {
+          if ((err as { status?: number })?.status === 409) {
+            setServerRejected(true);
+            setError(
+              getApiErrorMessage(err) ??
+                "La encuesta ya no está disponible para recibir respuestas.",
+            );
+            void queryClient.invalidateQueries({
+              queryKey: getGetSurveyQueryKey(surveyId),
+            });
+          } else {
+            setError("No se pudo enviar tu respuesta. Inténtalo de nuevo.");
+          }
+        },
       },
     );
   };
@@ -109,6 +214,14 @@ export default function SurveyDetailScreen() {
             </Text>
           ) : null}
 
+          {!canSubmit ? (
+            <Text style={[styles.availability, { color: colors.mutedForeground }]} accessibilityRole="alert">
+              {serverRejected
+                ? "El servidor ha indicado que esta encuesta ya no admite respuestas."
+                : getAvailabilityMessage(availability, data.opensAt, data.closesAt)}
+            </Text>
+          ) : null}
+
           {(data.questions ?? []).map((q, idx) => (
             <Card key={q.id} style={styles.qCard}>
               <Text style={[styles.qText, { color: colors.foreground }]}>
@@ -134,6 +247,7 @@ export default function SurveyDetailScreen() {
             icon="send"
             onPress={onSubmit}
             loading={submit.isPending}
+            disabled={!canSubmit}
             style={{ marginTop: 8 }}
           />
         </KeyboardAwareScrollView>
@@ -237,6 +351,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   surveyTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
   surveyDesc: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  availability: { fontSize: 14, fontFamily: "Inter_500Medium" },
   qCard: { gap: 12 },
   qText: { fontSize: 16, fontFamily: "Inter_600SemiBold", lineHeight: 22 },
   options: { gap: 8 },

@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { Readable } from "stream";
-import { and, eq, inArray, desc, asc, isNull } from "drizzle-orm";
+import { and, eq, inArray, desc, asc, isNull, sql } from "drizzle-orm";
 import {
   db,
   chatGroupsTable,
@@ -54,7 +54,8 @@ import {
   toAnnouncement,
   toNotification,
 } from "../lib/mappers";
-import { emitToGroup, emitToUser } from "../lib/realtime";
+import { emitToGroup, emitToGroupMembers } from "../lib/realtime";
+import { parseBeforeId } from "../lib/messageCursor";
 import { notifyUsers } from "../lib/notify";
 import {
   getViewerContext,
@@ -66,6 +67,7 @@ import {
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
 import { sendPushToUsers } from "../lib/push";
+import { buildChatPushPayload } from "../lib/chatPushPayload";
 import { sendEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
@@ -591,6 +593,11 @@ router.get(
       res.status(400).json({ message: params.error.message });
       return;
     }
+    const cursor = parseBeforeId(req.query.beforeId);
+    if (!cursor.ok) {
+      res.status(400).json({ message: "Cursor de mensajes no válido" });
+      return;
+    }
     const caller = req.user!;
     const groupId = params.data.id;
     if (!(await isGroupMember(groupId, caller.id))) {
@@ -598,13 +605,41 @@ router.get(
       return;
     }
 
-    const rows = (await db
+    const filters = [eq(messagesTable.groupId, groupId)];
+    if (cursor.beforeId != null) {
+      const [anchor] = await db
+        .select({ id: messagesTable.id })
+        .from(messagesTable)
+        .where(
+          and(
+            eq(messagesTable.groupId, groupId),
+            eq(messagesTable.id, cursor.beforeId),
+          ),
+        );
+      if (!anchor) {
+        res.status(400).json({ message: "Cursor no válido para este chat" });
+        return;
+      }
+      filters.push(
+        sql`(${messagesTable.createdAt}, ${messagesTable.id}) < (
+          SELECT "cursor"."created_at", "cursor"."id"
+          FROM "messages" AS "cursor"
+          WHERE "cursor"."group_id" = ${groupId}
+            AND "cursor"."id" = ${anchor.id}
+        )`,
+      );
+    }
+
+    const newestFirst = (await db
       .select(messageColumns)
       .from(messagesTable)
       .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
-      .where(eq(messagesTable.groupId, groupId))
-      .orderBy(asc(messagesTable.createdAt))
+      .where(and(...filters))
+      .orderBy(desc(messagesTable.createdAt), desc(messagesTable.id))
       .limit(200)) as MessageRow[];
+    // Keep the existing array response in chronological order. Supplying the
+    // oldest returned message's id as beforeId fetches the preceding page.
+    const rows = newestFirst.reverse();
 
     const reads = await groupMemberReads(groupId);
     const dtos = await assembleMessages(rows, caller.id, reads);
@@ -751,39 +786,49 @@ router.post(
     );
 
     // Real-time delivery to everyone currently in the chat room.
-    emitToGroup(groupId, "message", mapped);
+    await emitToGroup(groupId, "message", mapped, caller.id);
 
     // Notify other members' personal rooms for chat-list/badge updates.
     const otherMemberIds = reads
       .map((m) => m.userId)
       .filter((id) => id !== caller.id);
-    for (const userId of otherMemberIds) {
-      emitToUser(userId, "chat_update", { groupId });
-    }
+    await emitToGroupMembers(
+      groupId,
+      caller.id,
+      otherMemberIds,
+      "chat_update",
+      { groupId },
+    );
 
-    // Best-effort device push so members are alerted when the app is closed.
-    // Real-time socket delivery (above) covers the foreground case; chat
-    // messages are intentionally not persisted as in-app notifications, so we
-    // push directly. The `groupId` lets a tapped notification deep-link to the
-    // chat. Fire-and-forget: push failures never block sending a message.
-    if (otherMemberIds.length > 0) {
-      const [group] = await db
-        .select({ name: chatGroupsTable.name })
-        .from(chatGroupsTable)
-        .where(eq(chatGroupsTable.id, groupId));
-      const preview =
-        kind === "image"
-          ? "📷 Foto"
-          : kind === "audio"
-            ? "🎤 Mensaje de voz"
-            : kind === "file"
-              ? `📎 ${data.attachmentName ?? "Archivo"}`
-              : content;
-      void sendPushToUsers(otherMemberIds, {
-        title: group?.name ?? "Nuevo mensaje",
-        body: `${caller.name}: ${preview}`,
-        data: { type: "message", groupId },
-      });
+    // Resolve recipients again immediately before push: the earlier membership
+    // snapshot can be stale after a concurrent revocation. Keep push content
+    // generic as a second safeguard against a revocation racing this lookup.
+    try {
+      const currentMembers = await db
+        .select({ userId: chatGroupMembersTable.userId })
+        .from(chatGroupMembersTable)
+        .innerJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+        .where(
+          and(
+            eq(chatGroupMembersTable.groupId, groupId),
+            eq(usersTable.status, "active"),
+            isNull(usersTable.deletedAt),
+          ),
+        );
+      const currentMemberIds = new Set(
+        currentMembers.map((member) => member.userId),
+      );
+      const currentRecipients = [...currentMemberIds].filter(
+        (userId) => userId !== caller.id,
+      );
+      if (currentMemberIds.has(caller.id) && currentRecipients.length > 0) {
+        void sendPushToUsers(
+          currentRecipients,
+          buildChatPushPayload(caller.name, groupId),
+        );
+      }
+    } catch (err) {
+      logger.warn({ err, groupId }, "Could not resolve current chat push members");
     }
 
     res.status(201).json(mapped);
@@ -843,7 +888,9 @@ router.patch(
       .where(eq(messagesTable.id, msg.id));
 
     const mapped = await loadAssembledMessage(msg.id, caller.id);
-    if (msg.groupId != null) emitToGroup(msg.groupId, "message_edited", mapped);
+    if (msg.groupId != null) {
+      await emitToGroup(msg.groupId, "message_edited", mapped, caller.id);
+    }
     res.json(mapped);
   },
 );
@@ -883,7 +930,9 @@ router.delete(
     }
 
     const mapped = await loadAssembledMessage(msg.id, caller.id);
-    if (msg.groupId != null) emitToGroup(msg.groupId, "message_deleted", mapped);
+    if (msg.groupId != null) {
+      await emitToGroup(msg.groupId, "message_deleted", mapped, caller.id);
+    }
     res.json(mapped);
   },
 );
@@ -952,7 +1001,7 @@ router.post(
     }
 
     const mapped = await loadAssembledMessage(msg.id, caller.id);
-    emitToGroup(msg.groupId, "message_reaction", mapped);
+    await emitToGroup(msg.groupId, "message_reaction", mapped, caller.id);
     res.json(mapped);
   },
 );
@@ -1025,12 +1074,16 @@ router.post(
         caller.id,
         reads,
       );
-      emitToGroup(targetId, "message", mapped);
-      for (const userId of reads
-        .map((m) => m.userId)
-        .filter((uid) => uid !== caller.id)) {
-        emitToUser(userId, "chat_update", { groupId: targetId });
-      }
+      await emitToGroup(targetId, "message", mapped, caller.id);
+      await emitToGroupMembers(
+        targetId,
+        caller.id,
+        reads
+          .map((member) => member.userId)
+          .filter((userId) => userId !== caller.id),
+        "chat_update",
+        { groupId: targetId },
+      );
       results.push(mapped);
     }
 

@@ -826,8 +826,29 @@ async function notifyThreadParticipants(
   ids.delete(poster.id);
   if (ids.size === 0) return;
 
+  const participants = await db
+    .select()
+    .from(usersTable)
+    .where(
+      and(
+        inArray(usersTable.id, [...ids]),
+        eq(usersTable.status, "active"),
+        isNull(usersTable.deletedAt),
+      ),
+    );
+  const visibleIds = (
+    await Promise.all(
+      participants.map(async (participant) =>
+        (await moduleVisibleById(participant, thread.moduleId))
+          ? participant.id
+          : null,
+      ),
+    )
+  ).filter((id): id is number => id != null);
+  if (visibleIds.length === 0) return;
+
   const snippet = content.length > 120 ? `${content.slice(0, 117)}…` : content;
-  await notifyUsers([...ids], {
+  await notifyUsers(visibleIds, {
     title: `Nueva respuesta en «${thread.title}»`,
     body: `${poster.name}: ${snippet}`,
     type: "forum_reply",

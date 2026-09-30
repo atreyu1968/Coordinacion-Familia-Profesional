@@ -10,8 +10,9 @@ server {
     root __WEB_ROOT__;
     index index.html;
 
-    # Document uploads in forms can be sizable; raise the body limit.
-    client_max_body_size 50M;
+    # Storage upload URLs allow files up to 100 MiB; let the API enforce that
+    # signed limit while proxying uploads.
+    client_max_body_size 100M;
 
     # API and realtime (Socket.io lives at /api/socket.io).
     location /api/ {
@@ -24,6 +25,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 600s;
+        proxy_request_buffering off;
     }
 
     # Installable mobile app (PWA), built from the Expo project into <root>/app.

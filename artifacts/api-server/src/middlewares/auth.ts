@@ -36,7 +36,12 @@ export async function requireAuth(
     .from(usersTable)
     .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
 
-  if (!user || user.status !== "active") {
+  if (
+    !user ||
+    user.status !== "active" ||
+    user.tokenVersion !== payload.tokenVersion ||
+    user.sessionNonce !== payload.sessionNonce
+  ) {
     res.status(401).json({ message: "Usuario no válido" });
     return;
   }
@@ -67,7 +72,11 @@ export async function optionalAuth(
     .from(usersTable)
     .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
 
-  if (user?.status === "active") {
+  if (
+    user?.status === "active" &&
+    user.tokenVersion === payload.tokenVersion &&
+    user.sessionNonce === payload.sessionNonce
+  ) {
     req.user = user;
   }
   next();

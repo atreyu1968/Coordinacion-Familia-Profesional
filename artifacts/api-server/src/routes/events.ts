@@ -5,11 +5,13 @@ import {
   and,
   or,
   isNull,
+  isNotNull,
+  exists,
+  sql,
   gte,
   lte,
   desc,
   asc,
-  inArray,
   type SQL,
 } from "drizzle-orm";
 import {
@@ -23,7 +25,6 @@ import {
   centersTable,
   usersTable,
   meetingsTable,
-  moduleMembershipsTable,
   type User,
 } from "@workspace/db";
 import {
@@ -60,6 +61,7 @@ import {
   resolveReadScope,
   type ReadScope,
 } from "../middlewares/auth";
+import { getViewerContext } from "../lib/audience";
 import {
   toEvent,
   toAccreditation,
@@ -71,6 +73,7 @@ import { sendEmail, buildAccreditationEmail } from "../lib/email";
 import { generateQrDataUrl, generateCertificatePdfBase64 } from "../lib/documents";
 import { getSettings, professionalFamilyOf } from "../lib/settings";
 import { notifyUsers, resolveProvinceAudience } from "../lib/notify";
+import { callerCanSeeMeeting } from "./meetings";
 
 const router: IRouter = Router();
 
@@ -513,7 +516,6 @@ router.post(
 router.post(
   "/accreditations/check-in",
   requireAuth,
-  requireRole("superadmin", "coordinator", "department_head", "teacher"),
   async (req, res): Promise<void> => {
     const body = CheckInAccreditationBody.safeParse(req.body);
     if (!body.success) {
@@ -532,11 +534,43 @@ router.post(
       return;
     }
 
-    // Enforce that the scanner belongs to the event's province scope.
-    const loaded = await loadAccessibleEvent(accreditation.eventId, caller);
-    if (!loaded.ok) {
-      res.status(loaded.status).json({ message: loaded.message });
-      return;
+    // Event managers retain their normal province access rules. Other users
+    // may scan only when they have an explicit staff assignment for this exact
+    // event; knowing a holder's QR token is not authorization to check them in.
+    if (canManageEvents(caller.role)) {
+      const loaded = await loadAccessibleEvent(accreditation.eventId, caller);
+      if (!loaded.ok) {
+        res.status(loaded.status).json({ message: loaded.message });
+        return;
+      }
+    } else {
+      const [event] = await db
+        .select({ id: eventsTable.id })
+        .from(eventsTable)
+        .where(
+          and(
+            eq(eventsTable.id, accreditation.eventId),
+            isNull(eventsTable.deletedAt),
+          ),
+        );
+      if (!event) {
+        res.status(404).json({ message: "Evento no encontrado" });
+        return;
+      }
+
+      const [assignment] = await db
+        .select({ id: eventStaffTable.id })
+        .from(eventStaffTable)
+        .where(
+          and(
+            eq(eventStaffTable.eventId, accreditation.eventId),
+            eq(eventStaffTable.userId, caller.id),
+          ),
+        );
+      if (!assignment) {
+        res.status(403).json({ message: "Permiso denegado" });
+        return;
+      }
     }
 
     if (accreditation.checkedInAt) {
@@ -793,56 +827,97 @@ router.post(
       return;
     }
 
-    // Attendees = users who RSVP'd "yes".
-    const attendees = await db
-      .select({
-        rsvpId: eventRsvpsTable.id,
-        userId: eventRsvpsTable.userId,
-        email: usersTable.email,
-        fullName: usersTable.name,
-      })
+    // A positive RSVP is not proof of attendance. Only issue to users whose
+    // registered email matches a checked-in accreditation for this event.
+    const candidates = await db
+      .select({ rsvpId: eventRsvpsTable.id })
       .from(eventRsvpsTable)
-      .leftJoin(usersTable, eq(usersTable.id, eventRsvpsTable.userId))
       .where(
         and(
           eq(eventRsvpsTable.eventId, loaded.event.id),
           eq(eventRsvpsTable.status, "yes"),
+          isNull(eventRsvpsTable.certificateIssuedAt),
         ),
       );
 
     const professionalFamily = professionalFamilyOf(await getSettings());
 
     let issued = 0;
-    for (const attendee of attendees) {
-      if (!attendee.email || !attendee.fullName) continue;
-      const pdfBase64 = await generateCertificatePdfBase64({
-        attendeeName: attendee.fullName,
-        eventName: loaded.event.name,
-        location: loaded.event.location,
-        date: loaded.event.startAt,
-        professionalFamily,
-      });
-      const result = await sendEmail({
-        to: attendee.email,
-        subject: `Certificado de asistencia · ${loaded.event.name}`,
-        html: `<div style="font-family: Arial, sans-serif; max-width:560px;margin:0 auto;">
-          <h2>Coordina ADG</h2>
-          <p>Hola ${attendee.fullName}, adjuntamos tu certificado de asistencia a
-          <strong>${loaded.event.name}</strong>.</p></div>`,
-        attachments: [
-          {
-            filename: `certificado-${loaded.event.id}.pdf`,
-            content: pdfBase64,
-          },
-        ],
-      });
-      if (result.sent) {
-        await db
+    for (const candidate of candidates) {
+      // Lock and re-check each RSVP while sending so two concurrent manager
+      // requests cannot issue the same certificate twice. The transaction
+      // commits the issued timestamp only after the mail provider accepts it.
+      const sent = await db.transaction(async (tx) => {
+        const [attendee] = await tx
+          .select({
+            rsvpId: eventRsvpsTable.id,
+            email: usersTable.email,
+            fullName: usersTable.name,
+          })
+          .from(eventRsvpsTable)
+          .innerJoin(usersTable, eq(usersTable.id, eventRsvpsTable.userId))
+          .where(
+            and(
+              eq(eventRsvpsTable.id, candidate.rsvpId),
+              eq(eventRsvpsTable.eventId, loaded.event.id),
+              eq(eventRsvpsTable.status, "yes"),
+              isNull(eventRsvpsTable.certificateIssuedAt),
+              exists(
+                tx
+                  .select({ id: eventAccreditationsTable.id })
+                  .from(eventAccreditationsTable)
+                  .where(
+                    and(
+                      eq(
+                        eventAccreditationsTable.eventId,
+                        eventRsvpsTable.eventId,
+                      ),
+                      isNotNull(eventAccreditationsTable.checkedInAt),
+                      sql`lower(trim(${eventAccreditationsTable.holderEmail})) = lower(trim(${usersTable.email}))`,
+                    ),
+                  ),
+              ),
+            ),
+          )
+          .for("update");
+
+        if (!attendee?.email || !attendee.fullName) return false;
+
+        const pdfBase64 = await generateCertificatePdfBase64({
+          attendeeName: attendee.fullName,
+          eventName: loaded.event.name,
+          location: loaded.event.location,
+          date: loaded.event.startAt,
+          professionalFamily,
+        });
+        const result = await sendEmail({
+          to: attendee.email,
+          subject: `Certificado de asistencia · ${loaded.event.name}`,
+          html: `<div style="font-family: Arial, sans-serif; max-width:560px;margin:0 auto;">
+            <h2>Coordina ADG</h2>
+            <p>Hola ${attendee.fullName}, adjuntamos tu certificado de asistencia a
+            <strong>${loaded.event.name}</strong>.</p></div>`,
+          attachments: [
+            {
+              filename: `certificado-${loaded.event.id}.pdf`,
+              content: pdfBase64,
+            },
+          ],
+        });
+        if (!result.sent) return false;
+
+        await tx
           .update(eventRsvpsTable)
           .set({ certificateIssuedAt: new Date() })
-          .where(eq(eventRsvpsTable.id, attendee.rsvpId));
-        issued += 1;
-      }
+          .where(
+            and(
+              eq(eventRsvpsTable.id, attendee.rsvpId),
+              isNull(eventRsvpsTable.certificateIssuedAt),
+            ),
+          );
+        return true;
+      });
+      if (sent) issued += 1;
     }
 
     res.json({ ok: true, issued });
@@ -889,61 +964,58 @@ router.get("/calendar", requireAuth, async (req, res): Promise<void> => {
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(asc(calendarEntriesTable.date));
 
-  // Mirror visible videoconferences (meetings) into the calendar so their
-  // participants see them as events. Managers see all; others see only
-  // meetings of modules they belong to. A province filter excludes meetings
-  // (they are module-scoped, not province-scoped).
-  const isManager = caller.role === "superadmin" || caller.role === "coordinator";
-  let includeMeetings = query.data.provinceId == null;
-  const meetingConds: SQL[] = [isNull(meetingsTable.deletedAt)];
-  if (includeMeetings && !isManager) {
-    const memberRows = await db
-      .select({ moduleId: moduleMembershipsTable.moduleId })
-      .from(moduleMembershipsTable)
-      .where(
-        and(
-          eq(moduleMembershipsTable.userId, caller.id),
-          isNull(moduleMembershipsTable.deletedAt),
-        ),
-      );
-    const ids = memberRows.map((r) => r.moduleId);
-    if (ids.length === 0) includeMeetings = false;
-    else meetingConds.push(inArray(meetingsTable.moduleId, ids));
-  }
+  // Use the same visibility predicate as GET /meetings and token issuance.
+  // Otherwise the calendar can disclose a room name that the meetings page
+  // would hide, or omit meetings targeted to an ordinary user's audience.
+  // Province-filtered calendars continue to exclude meetings because meeting
+  // audiences are not represented as calendar province IDs.
+  const meetingEntries: Array<{
+    id: number;
+    title: string;
+    type: string;
+    date: string;
+    endDate: null;
+    provinceId: null;
+    description: string | null;
+    meetingId: number;
+    roomName: string;
+  }> = [];
+  if (query.data.provinceId == null) {
+    const ctx = await getViewerContext(caller);
+    const meetingRows = await db
+      .select({
+        id: meetingsTable.id,
+        title: meetingsTable.title,
+        description: meetingsTable.description,
+        roomName: meetingsTable.roomName,
+        hostId: meetingsTable.hostId,
+        moduleId: meetingsTable.moduleId,
+        audienceType: meetingsTable.audienceType,
+        audienceIds: meetingsTable.audienceIds,
+        scheduledAt: meetingsTable.scheduledAt,
+      })
+      .from(meetingsTable)
+      .where(isNull(meetingsTable.deletedAt));
 
-  const meetingEntries = includeMeetings
-    ? (
-        await db
-          .select({
-            id: meetingsTable.id,
-            title: meetingsTable.title,
-            description: meetingsTable.description,
-            roomName: meetingsTable.roomName,
-            scheduledAt: meetingsTable.scheduledAt,
-          })
-          .from(meetingsTable)
-          .where(and(...meetingConds))
-      )
-        .filter((m) => m.scheduledAt != null)
-        .map((m) => ({
-          id: -m.id,
-          title: m.title,
-          type: "meeting",
-          date: toDateString(m.scheduledAt!),
-          endDate: null,
-          provinceId: null,
-          description: m.description,
-          meetingId: m.id,
-          roomName: m.roomName,
-        }))
-        .filter((e) => {
-          if (query.data.from && e.date < toDateString(query.data.from))
-            return false;
-          if (query.data.to && e.date > toDateString(query.data.to))
-            return false;
-          return true;
-        })
-    : [];
+    for (const meeting of meetingRows) {
+      if (!meeting.scheduledAt) continue;
+      if (!(await callerCanSeeMeeting(caller, ctx, meeting))) continue;
+      const date = toDateString(meeting.scheduledAt);
+      if (query.data.from && date < toDateString(query.data.from)) continue;
+      if (query.data.to && date > toDateString(query.data.to)) continue;
+      meetingEntries.push({
+        id: -meeting.id,
+        title: meeting.title,
+        type: "meeting",
+        date,
+        endDate: null,
+        provinceId: null,
+        description: meeting.description,
+        meetingId: meeting.id,
+        roomName: meeting.roomName,
+      });
+    }
+  }
 
   const all = [...rows.map(toCalendarEntry), ...meetingEntries].sort((a, b) =>
     a.date.localeCompare(b.date),

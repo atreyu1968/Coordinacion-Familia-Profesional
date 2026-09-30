@@ -35,6 +35,7 @@ import {
   isInAudience,
   canManageAudience,
   resolveAudienceUserIds,
+  isWithinParticipationWindow,
 } from "../lib/audience";
 import { toSurvey } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
@@ -336,6 +337,23 @@ router.post(
         .json({ message: "Esta encuesta no está abierta a participación" });
       return;
     }
+    const now = new Date();
+    if (
+      !isWithinParticipationWindow(
+        survey.status,
+        survey.opensAt,
+        survey.closesAt,
+        now,
+      )
+    ) {
+      res.status(409).json({
+        message:
+          survey.opensAt && now < survey.opensAt
+            ? "Esta encuesta aún no está abierta a participación"
+            : "El plazo de participación de esta encuesta ha finalizado",
+      });
+      return;
+    }
 
     // Load the full question set so we can validate answers server-side.
     const questions = await db
@@ -400,6 +418,22 @@ router.post(
           return;
         }
       }
+    }
+
+    // Recheck just before persistence so a long validation pass cannot carry a
+    // response past the configured close instant.
+    if (
+      !isWithinParticipationWindow(
+        survey.status,
+        survey.opensAt,
+        survey.closesAt,
+        new Date(),
+      )
+    ) {
+      res.status(409).json({
+        message: "El plazo de participación de esta encuesta ha finalizado",
+      });
+      return;
     }
 
     try {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -42,9 +42,67 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type ParticipationAvailability = "available" | "deadline-passed" | "closed";
+
+function getFormAvailability(
+  status: string | undefined,
+  closesAt: string | null | undefined,
+  now: number,
+): ParticipationAvailability {
+  if (status !== "open") return "closed";
+  if (closesAt) {
+    const closesAtMs = new Date(closesAt).getTime();
+    if (Number.isFinite(closesAtMs) && now >= closesAtMs) return "deadline-passed";
+  }
+  return "available";
+}
+
+function formatDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getAvailabilityMessage(
+  availability: ParticipationAvailability,
+  closesAt?: string | null,
+): string {
+  if (availability === "deadline-passed") {
+    const closeLabel = formatDateTime(closesAt);
+    return closeLabel
+      ? `El plazo para entregar este formulario finalizó el ${closeLabel}.`
+      : "El plazo para entregar este formulario ha finalizado.";
+  }
+  return "Este formulario no está abierto a entregas.";
+}
+
+function useAvailabilityNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function getApiErrorMessage(error: unknown): string | undefined {
+  const data = (error as { data?: unknown } | null)?.data;
+  if (!data || typeof data !== "object") return undefined;
+  const message = (data as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
 export default function FormDetailScreen() {
   const colors = useColors();
   const queryClient = useQueryClient();
+  const now = useAvailabilityNow();
   const params = useLocalSearchParams<{ id: string }>();
   const formId = Number(params.id);
 
@@ -81,6 +139,9 @@ export default function FormDetailScreen() {
   const [files, setFiles] = useState<Record<number, FileValue>>(initialFiles);
   const [uploadingField, setUploadingField] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [serverRejected, setServerRejected] = useState(false);
+  const availability = getFormAvailability(data?.status, data?.closesAt, now);
+  const canSubmit = availability === "available" && !serverRejected;
 
   const setText = (fieldId: number, value: string) =>
     setTexts((prev) => ({ ...prev, [fieldId]: value }));
@@ -126,6 +187,15 @@ export default function FormDetailScreen() {
   };
 
   const onSubmit = () => {
+    const currentAvailability = getFormAvailability(data?.status, data?.closesAt, Date.now());
+    if (currentAvailability !== "available" || serverRejected) {
+      setError(
+        serverRejected
+          ? "El servidor ha indicado que este formulario ya no admite entregas."
+          : getAvailabilityMessage(currentAvailability, data?.closesAt),
+      );
+      return;
+    }
     const fields = data?.fields ?? [];
     const values: SubmitDocumentFormValueInput[] = [];
 
@@ -169,7 +239,14 @@ export default function FormDetailScreen() {
         onError: (err) => {
           const status = (err as { status?: number } | null)?.status;
           if (status === 409) {
-            setError("Este formulario ya no está abierto a entregas.");
+            setServerRejected(true);
+            setError(
+              getApiErrorMessage(err) ??
+                "El formulario ya no está disponible para recibir entregas.",
+            );
+            void queryClient.invalidateQueries({
+              queryKey: getGetDocumentFormQueryKey(formId),
+            });
           } else {
             setError("No se pudo enviar tu entrega. Inténtalo de nuevo.");
           }
@@ -185,7 +262,7 @@ export default function FormDetailScreen() {
         <Loading />
       ) : isError || !data ? (
         <ErrorState onRetry={refetch} />
-      ) : data.status !== "open" && !submission ? (
+      ) : data.status !== "open" ? (
         <EmptyState
           icon="lock"
           title="No disponible"
@@ -203,6 +280,13 @@ export default function FormDetailScreen() {
           {data.description ? (
             <Text style={[styles.formDesc, { color: colors.mutedForeground }]}>
               {data.description}
+            </Text>
+          ) : null}
+          {!canSubmit ? (
+            <Text style={[styles.availability, { color: colors.mutedForeground }]} accessibilityRole="alert">
+              {serverRejected
+                ? "El servidor ha indicado que este formulario ya no admite entregas."
+                : getAvailabilityMessage(availability, data.closesAt)}
             </Text>
           ) : null}
           {submission ? (
@@ -243,7 +327,7 @@ export default function FormDetailScreen() {
             icon="upload"
             onPress={onSubmit}
             loading={submit.isPending}
-            disabled={uploadingField !== null}
+            disabled={uploadingField !== null || !canSubmit}
             style={{ marginTop: 8 }}
           />
         </KeyboardAwareScrollView>
@@ -395,6 +479,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   formTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
   formDesc: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  availability: { fontSize: 14, fontFamily: "Inter_500Medium" },
   notice: {
     flexDirection: "row",
     alignItems: "center",

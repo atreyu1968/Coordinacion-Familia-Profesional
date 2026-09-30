@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { Button } from "@/components/ui";
@@ -24,6 +24,10 @@ export default function LoginScreen() {
   const { logoUri, professionalFamily } = useBrandingAssets();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ message?: string | string[] }>();
+  const loginMessage = Array.isArray(routeParams.message)
+    ? routeParams.message[0]
+    : routeParams.message;
   const {
     signIn,
     loginWithBiometric,
@@ -168,6 +172,9 @@ export default function LoginScreen() {
           {error ? (
             <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
           ) : null}
+          {loginMessage ? (
+            <Text style={[styles.info, { color: colors.primary }]}>{loginMessage}</Text>
+          ) : null}
 
           <Button
             label="Iniciar sesión"
@@ -227,6 +234,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     marginTop: 14,
+  },
+  info: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    marginTop: 14,
+    textAlign: "center",
   },
   bioBlock: {
     marginBottom: 28,

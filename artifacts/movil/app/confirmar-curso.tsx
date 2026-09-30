@@ -58,11 +58,25 @@ export default function ConfirmYearScreen() {
 
   useEffect(() => {
     if (initialized) return;
-    if (loadingConfirmation) return;
-    setCenterId(confirmation?.centerId ?? user?.centerId ?? null);
-    setModuleIds(confirmation?.moduleIds ?? []);
+    if (loadingConfirmation || loadingModules) return;
+    setCenterId(user?.centerId ?? null);
+    const visibleModuleIds = new Set(
+      modules
+        .filter((module) => module.centerId == null || module.centerId === user?.centerId)
+        .map((module) => module.id),
+    );
+    setModuleIds(
+      (confirmation?.moduleIds ?? []).filter((id) => visibleModuleIds.has(id)),
+    );
     setInitialized(true);
-  }, [initialized, loadingConfirmation, confirmation, user]);
+  }, [
+    initialized,
+    loadingConfirmation,
+    loadingModules,
+    confirmation,
+    modules,
+    user,
+  ]);
 
   const deadlineLabel = useMemo(() => {
     if (!confirmation?.deadline) return null;
@@ -102,17 +116,29 @@ export default function ConfirmYearScreen() {
 
   const bottomPad = Platform.OS === "web" ? 100 : 40;
   const loading = loadingConfirmation || loadingCenters || loadingModules;
+  const deadlinePassed =
+    confirmation?.deadline != null &&
+    new Date(confirmation.deadline).getTime() < Date.now();
+  const canEdit =
+    isTeacher &&
+    !!confirmation &&
+    (confirmation.status === "pending" || confirmation.status === "confirmed") &&
+    !deadlinePassed;
+  const assignedCenter = centers.find((center) => center.id === user?.centerId);
+  const eligibleModules = modules.filter(
+    (module) => module.centerId == null || module.centerId === user?.centerId,
+  );
 
-  // Non-teacher or no pending window: nothing to confirm.
-  const notPending =
-    !isTeacher || !confirmation || confirmation.status !== "pending";
+  // Teachers can revisit a confirmed form until the confirmation deadline to
+  // correct their module selection. Center transfers remain administrator-only.
+  const notEditable = !canEdit;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Confirmar curso" subtitle="Centro y módulos" showBack />
       {loading ? (
         <Loading />
-      ) : notPending ? (
+      ) : notEditable ? (
         <EmptyState
           icon="check-circle"
           title="Nada que confirmar"
@@ -122,79 +148,50 @@ export default function ConfirmYearScreen() {
               : "No tienes ninguna confirmación pendiente en este momento."
           }
         />
+      ) : centerId == null ? (
+        <EmptyState
+          icon="map-pin"
+          title="Centro no asignado"
+          message="Solicita a un administrador que asigne tu centro antes de confirmar el curso."
+        />
       ) : (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[styles.intro, { color: colors.mutedForeground }]}>
-            Indica tu centro y los módulos que vas a impartir
+            Revisa los módulos que vas a impartir
             {confirmation?.year ? ` en el curso ${confirmation.year}` : ""}.
             {deadlineLabel
               ? ` Tienes hasta el ${deadlineLabel}.`
               : ""}
+            {confirmation?.status === "confirmed"
+              ? " Puedes corregir tu selección antes de que termine el plazo."
+              : ""}
           </Text>
 
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Centro
+            Centro asignado
           </Text>
           <Card style={styles.listCard}>
-            {centers.length === 0 ? (
-              <Text style={[styles.muted, { color: colors.mutedForeground }]}>
-                No hay centros disponibles.
-              </Text>
-            ) : (
-              centers.map((c) => {
-                const active = centerId === c.id;
-                return (
-                  <Pressable
-                    key={c.id}
-                    onPress={() => setCenterId(c.id)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      {
-                        borderColor: active ? colors.primary : colors.border,
-                        backgroundColor: active
-                          ? colors.accent
-                          : colors.background,
-                        borderRadius: colors.radius,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name={active ? "check-circle" : "circle"}
-                      size={20}
-                      color={active ? colors.primary : colors.mutedForeground}
-                    />
-                    <Text
-                      style={[
-                        styles.optionText,
-                        {
-                          color: active
-                            ? colors.foreground
-                            : colors.mutedForeground,
-                        },
-                      ]}
-                    >
-                      {c.name}
-                    </Text>
-                  </Pressable>
-                );
-              })
-            )}
+            <Text style={[styles.optionText, { color: colors.foreground }]}>
+              {assignedCenter?.name ?? "Centro actual"}
+            </Text>
+            <Text style={[styles.muted, { color: colors.mutedForeground }]}>
+              Para cambiar de centro, solicita una transferencia a un administrador.
+            </Text>
           </Card>
 
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Módulos que impartes
           </Text>
           <Card style={styles.listCard}>
-            {modules.length === 0 ? (
+            {eligibleModules.length === 0 ? (
               <Text style={[styles.muted, { color: colors.mutedForeground }]}>
                 No hay módulos disponibles.
               </Text>
             ) : (
-              modules.map((m) => {
+              eligibleModules.map((m) => {
                 const active = moduleIds.includes(m.id);
                 return (
                   <Pressable
@@ -243,7 +240,11 @@ export default function ConfirmYearScreen() {
           ) : null}
 
           <Button
-            label="Confirmar"
+            label={
+              confirmation?.status === "confirmed"
+                ? "Guardar cambios"
+                : "Confirmar curso"
+            }
             icon="check"
             onPress={onConfirm}
             loading={confirmMut.isPending}

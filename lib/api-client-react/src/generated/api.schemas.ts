@@ -1980,6 +1980,12 @@ moduleId: number;
 q?: string;
 };
 
+export type UpdateProfile200 = User & {
+  /** True when changing the password has revoked this session. */
+  requiresReauthentication?: boolean;
+  message?: string;
+};
+
 export type ListInvitationsParams = {
 status?: StatusQueryParameter;
 };
@@ -2083,6 +2089,14 @@ export type ListCalendarEventsParams = {
 provinceId?: ProvinceQueryParameter;
 from?: string;
 to?: string;
+};
+
+export type ListGroupMessagesParams = {
+/**
+ * Return up to 200 messages older than this message id.
+ * @minimum 1
+ */
+beforeId?: number;
 };
 
 export type GetDashboardSummaryParams = {

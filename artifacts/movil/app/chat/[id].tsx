@@ -69,6 +69,7 @@ const EMOJIS = [
 
 // Quick reaction bar shown on long-press (WhatsApp-style).
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const CHAT_PAGE_SIZE = 200;
 
 const ON_WEB = Platform.OS === "web";
 
@@ -322,6 +323,8 @@ export default function ChatDetailScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
 
@@ -376,10 +379,13 @@ export default function ChatDetailScreen() {
   }, []);
 
   const loadMessages = useCallback(async () => {
+    setLoading(true);
     setLoadError(false);
+    setHasOlder(false);
     try {
       const data = await listGroupMessages(groupId);
       mergeMessages(data);
+      setHasOlder(data.length === CHAT_PAGE_SIZE);
     } catch {
       setLoadError(true);
     } finally {
@@ -388,8 +394,29 @@ export default function ChatDetailScreen() {
   }, [groupId, mergeMessages]);
 
   useEffect(() => {
+    setMessages([]);
+    setHasOlder(false);
+    setLoadingOlder(false);
     void loadMessages();
   }, [loadMessages]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const beforeId = messages[messages.length - 1]?.id;
+    if (!hasOlder || loadingOlder || beforeId == null) return;
+    setLoadingOlder(true);
+    try {
+      const older = await listGroupMessages(groupId, { beforeId });
+      mergeMessages(older);
+      setHasOlder(older.length === CHAT_PAGE_SIZE);
+    } catch {
+      Alert.alert(
+        "No se pudieron cargar los mensajes anteriores",
+        "Comprueba tu conexión e inténtalo de nuevo.",
+      );
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [groupId, hasOlder, loadingOlder, messages, mergeMessages]);
 
   const { token } = useAuth();
 
@@ -809,6 +836,28 @@ export default function ChatDetailScreen() {
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
+            ListFooterComponent={
+              hasOlder ? (
+                <Pressable
+                  onPress={loadOlderMessages}
+                  disabled={loadingOlder}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cargar mensajes anteriores"
+                  style={({ pressed }) => [
+                    styles.loadOlder,
+                    { opacity: loadingOlder || pressed ? 0.55 : 1 },
+                  ]}
+                >
+                  {loadingOlder ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={[styles.loadOlderText, { color: colors.primary }]}>
+                      Cargar mensajes anteriores
+                    </Text>
+                  )}
+                </Pressable>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
                 <EmptyState
@@ -1610,6 +1659,13 @@ const styles = StyleSheet.create({
   memberInitials: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   memberName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   memberRole: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  loadOlder: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  loadOlderText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   selfBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
   selfBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 });

@@ -77,6 +77,30 @@ export type ViewerContext = {
   moduleIds: number[];
 };
 
+// Match the province used by isInAudience: an explicit user province takes
+// precedence, and the center is only a fallback for users without one.
+export function effectiveProvinceId(
+  userProvinceId: number | null | undefined,
+  centerProvinceId: number | null | undefined,
+): number | null {
+  return userProvinceId ?? centerProvinceId ?? null;
+}
+
+// Server-side submission gate shared by time-limited surveys and forms. The
+// closing instant is exclusive so submissions at or after closesAt are denied.
+export function isWithinParticipationWindow(
+  status: string,
+  opensAt: Date | null | undefined,
+  closesAt: Date | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return (
+    status === "open" &&
+    (opensAt == null || now.getTime() >= opensAt.getTime()) &&
+    (closesAt == null || now.getTime() < closesAt.getTime())
+  );
+}
+
 // Build the audience-membership context for a viewer: their province, the
 // center they belong to (and its island/province), and the modules they are
 // enrolled in (any role).
@@ -95,7 +119,7 @@ export async function getViewerContext(user: User): Promise<ViewerContext> {
       .where(eq(centersTable.id, centerId));
     if (center) {
       islandId = center.islandId ?? null;
-      if (provinceId == null) provinceId = center.provinceId ?? null;
+      provinceId = effectiveProvinceId(provinceId, center.provinceId);
     }
   }
 
@@ -117,6 +141,20 @@ export async function getViewerContext(user: User): Promise<ViewerContext> {
     islandId,
     moduleIds: memberships.map((m) => m.moduleId),
   };
+}
+
+// SQL equivalent of getViewerContext's province precedence for recipient
+// resolution. A user with an explicit province is never also counted through
+// a different province attached to their center.
+function provinceContextPredicate(ids: number[]): SQL | undefined {
+  if (ids.length === 0) return undefined;
+  return or(
+    inArray(usersTable.provinceId, ids),
+    and(
+      isNull(usersTable.provinceId),
+      inArray(centersTable.provinceId, ids),
+    ),
+  );
 }
 
 // Whether a viewer falls within the given audience.
@@ -311,15 +349,7 @@ export async function resolveAudienceUserIds(
       return selectUsers(active);
     case "province":
       if (ids.length === 0) return [];
-      return selectUsers(
-        and(
-          active,
-          or(
-            inArray(usersTable.provinceId, ids),
-            inArray(centersTable.provinceId, ids),
-          ),
-        ),
-      );
+      return selectUsers(and(active, provinceContextPredicate(ids)));
     case "island":
       if (ids.length === 0) return [];
       return selectUsers(and(active, inArray(centersTable.islandId, ids)));
@@ -334,14 +364,7 @@ export async function resolveAudienceUserIds(
       const roleCond = eq(usersTable.role, audienceType);
       if (ids.length === 0) return selectUsers(and(active, roleCond));
       return selectUsers(
-        and(
-          active,
-          roleCond,
-          or(
-            inArray(usersTable.provinceId, ids),
-            inArray(centersTable.provinceId, ids),
-          ),
-        ),
+        and(active, roleCond, provinceContextPredicate(ids)),
       );
     }
     case "module": {

@@ -52,8 +52,19 @@
     <small>Coordina ADG · Informe técnico</small>
     <h1>Auditoría funcional y de lógica</h1>
     <p>Revisión transversal de API, permisos, LMS, contenidos, comunicación, copias de seguridad, web y móvil. Hallazgos priorizados por impacto y acompañados de evidencia en el código.</p>
-    <div class="meta"><span class="pill">30 de septiembre de 2026</span><span class="pill">Entorno de desarrollo</span><span class="pill">Resultado: requiere correcciones</span></div>
+    <div class="meta"><span class="pill">30 de septiembre de 2026</span><span class="pill">Entorno de desarrollo</span><span class="pill">Diagnóstico inicial: requiere correcciones</span></div>
   </header>
+
+  <section>
+    <h2>Actualización tras las correcciones</h2>
+    <p>Se aplicaron correcciones o bloqueos seguros para los 19 hallazgos y el riesgo condicionado descritos abajo. El diagnóstico original se conserva como referencia del estado anterior; <strong>no debe interpretarse como una lista de fallos todavía sin atender</strong>. Aun así, las comprobaciones disponibles no certifican todos los recorridos autenticados.</p>
+    <ul>
+      <li>Las copias incluyen todas las tablas y verifican con SHA-256 los archivos de almacenamiento gestionado antes de restaurar. El formato actual es v5; los anteriores se rechazan porque no garantizan una restauración completa. <strong>El ZIP no contiene los bytes de los archivos:</strong> deben existir idénticos en el almacenamiento de destino o la restauración se bloquea sin modificar la base.</li>
+      <li>Al restaurar se renuevan los identificadores de sesión de todas las cuentas; la incorporación de esta protección también obliga a iniciar sesión de nuevo con los tokens anteriores. La confirmación anual usa el centro asignado por administración: un traslado requiere actualizarlo por una vía autorizada.</li>
+      <li>Los datos SCORM enviados desde el navegador se conservan como autodeclarados, pero no conceden finalización académica ni certificados automáticos. Para reactivar certificados de cursos con SCORM hace falta una evaluación verificable o una política de validación manual.</li>
+      <li>Pasaron el typecheck completo, 18 pruebas unitarias sin escritura en base de datos, el build web y la exportación web móvil. La API inició correctamente: <code>/api/healthz</code> y <code>/api/readyz</code> respondieron 200; rutas privadas sin sesión respondieron 401. Se comprobó visualmente que <code>/recuperar</code> móvil abre sin sesión. No se ejecutaron restauraciones ni pruebas autenticadas contra la base compartida o producción.</li>
+    </ul>
+  </section>
 
   <section>
     <h2>Conclusión ejecutiva</h2>
@@ -142,7 +153,7 @@
     <h2>Limitaciones y criterio de confianza</h2>
     <p>Esta es una auditoría amplia pero no exhaustiva de cada combinación de rol, dato y dispositivo. La mayoría de los hallazgos son <strong>defectos demostrables en la lógica del código</strong>; salvo el desvío de recuperación móvil, no se ejecutaron los escenarios contra cuentas autenticadas. Las integraciones externas, el envío real de correos/push, una restauración completa y la versión publicada no se probaron. La suite existente usa la base compartida de desarrollo y crea registros, por lo que no se ejecutó sin aislamiento. No se garantiza el funcionamiento global hasta corregir las prioridades críticas/altas y realizar esas pruebas.</p>
   </section>
-  <footer>Auditoría de desarrollo · Informe generado el 30/09/2026 · Sin cambios en producción</footer>
+  <footer>Auditoría de desarrollo y actualización de correcciones · 30/09/2026 · Sin cambios en producción</footer>
 </main>
 </body>
 </html>

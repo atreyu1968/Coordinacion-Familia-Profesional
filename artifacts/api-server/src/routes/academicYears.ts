@@ -43,10 +43,15 @@ import {
   toTeacherYearConfirmation,
 } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
-import { getSettings, getActiveAcademicYear } from "../lib/settings";
+import {
+  getSettings,
+  getActiveAcademicYear,
+  getActiveFamily,
+} from "../lib/settings";
 import { sendEmail, buildYearConfirmationEmail } from "../lib/email";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
+import { moduleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
 
@@ -614,18 +619,51 @@ router.post(
       });
       return;
     }
+    if (
+      confirmation.status !== "pending" &&
+      confirmation.status !== "confirmed"
+    ) {
+      res.status(409).json({
+        message: "La confirmación de este curso ya no está disponible",
+      });
+      return;
+    }
+    if (confirmation.deadline.getTime() < Date.now()) {
+      res.status(409).json({
+        message: "El plazo de confirmación ha finalizado",
+      });
+      return;
+    }
 
     const [center] = await db
       .select()
       .from(centersTable)
       .where(
         and(
-          eq(centersTable.id, parsed.data.centerId),
+          eq(centersTable.id, caller.centerId ?? -1),
           isNull(centersTable.deletedAt),
         ),
       );
-    if (!center) {
-      res.status(404).json({ message: "Centro no encontrado" });
+    if (!center || parsed.data.centerId !== center.id) {
+      res.status(409).json({
+        message:
+          "Tu centro debe ser asignado por un administrador antes de confirmar",
+      });
+      return;
+    }
+    if (center.provinceId !== caller.provinceId) {
+      res.status(409).json({
+        message:
+          "El ámbito de tu cuenta no coincide con el centro; contacta con un administrador",
+      });
+      return;
+    }
+
+    const activeFamily = await getActiveFamily();
+    if (!center.families.includes(activeFamily)) {
+      res.status(409).json({
+        message: "Tu centro no pertenece a la familia profesional activa",
+      });
       return;
     }
 
@@ -638,6 +676,7 @@ router.post(
           and(
             inArray(modulesTable.id, moduleIds),
             isNull(modulesTable.deletedAt),
+            moduleFamilyFilter(activeFamily),
           ),
         );
       const validIds = new Set(validModules.map((m) => m.id));
@@ -658,47 +697,153 @@ router.post(
       }
     }
 
-    // Reflect a possible center move on the teacher's own record.
-    if (caller.centerId !== center.id) {
-      await db
-        .update(usersTable)
-        .set({ centerId: center.id, provinceId: center.provinceId })
-        .where(eq(usersTable.id, caller.id));
-    }
-
-    // Generate teaching assignments for the year (idempotent per module).
-    const existing = await db
-      .select({ moduleId: teachingAssignmentsTable.moduleId })
-      .from(teachingAssignmentsTable)
-      .where(
-        and(
-          eq(teachingAssignmentsTable.teacherId, caller.id),
-          eq(teachingAssignmentsTable.schoolYear, year),
-          isNull(teachingAssignmentsTable.deletedAt),
-        ),
-      );
-    const existingModules = new Set(existing.map((a) => a.moduleId));
     const touchedModuleIds = new Set<number>();
-    for (const moduleId of moduleIds) {
-      if (existingModules.has(moduleId)) continue;
-      await db.insert(teachingAssignmentsTable).values({
-        teacherId: caller.id,
-        moduleId,
-        centerId: center.id,
-        schoolYear: year,
-      });
-      touchedModuleIds.add(moduleId);
-    }
+    const confirmedAt = new Date();
+    const updated = await db.transaction(async (tx) => {
+      // Lock the teacher first (matching the scheduler's lock order), then
+      // reread the assigned center under that lock. A concurrent manager
+      // transfer must either precede this snapshot or wait until assignments
+      // and the confirmation are committed.
+      const [lockedUser] = await tx
+        .select({
+          id: usersTable.id,
+          centerId: usersTable.centerId,
+          provinceId: usersTable.provinceId,
+        })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.id, caller.id),
+            eq(usersTable.role, "teacher"),
+            eq(usersTable.status, "active"),
+            isNull(usersTable.deletedAt),
+          ),
+        )
+        .for("update");
+      if (!lockedUser || lockedUser.centerId !== parsed.data.centerId) {
+        return undefined;
+      }
 
-    const [updated] = await db
-      .update(teacherYearConfirmationsTable)
-      .set({
-        status: "confirmed",
-        confirmedAt: new Date(),
-        centerId: center.id,
-      })
-      .where(eq(teacherYearConfirmationsTable.id, confirmation.id))
-      .returning();
+      const [center] = await tx
+        .select()
+        .from(centersTable)
+        .where(
+          and(
+            eq(centersTable.id, lockedUser.centerId),
+            isNull(centersTable.deletedAt),
+          ),
+        )
+        .for("update");
+      if (
+        !center ||
+        center.provinceId !== lockedUser.provinceId ||
+        !center.families.includes(activeFamily)
+      ) {
+        return undefined;
+      }
+
+      const [lockedConfirmation] = await tx
+        .select()
+        .from(teacherYearConfirmationsTable)
+        .where(
+          and(
+            eq(teacherYearConfirmationsTable.id, confirmation.id),
+            eq(teacherYearConfirmationsTable.teacherId, caller.id),
+            eq(teacherYearConfirmationsTable.schoolYear, year),
+          ),
+        )
+        .for("update");
+      if (
+        !lockedConfirmation ||
+        (lockedConfirmation.status !== "pending" &&
+          lockedConfirmation.status !== "confirmed") ||
+        lockedConfirmation.deadline.getTime() < Date.now()
+      ) {
+        return undefined;
+      }
+
+      const assignments = await tx
+        .select()
+        .from(teachingAssignmentsTable)
+        .where(
+          and(
+            eq(teachingAssignmentsTable.teacherId, caller.id),
+            eq(teachingAssignmentsTable.schoolYear, year),
+          ),
+        );
+      const selectedModules = new Set(moduleIds);
+      const activeAssignments = assignments.filter((a) => a.deletedAt == null);
+
+      for (const assignment of activeAssignments) {
+        if (selectedModules.has(assignment.moduleId)) continue;
+        await tx
+          .update(teachingAssignmentsTable)
+          .set({ deletedAt: confirmedAt })
+          .where(eq(teachingAssignmentsTable.id, assignment.id));
+        touchedModuleIds.add(assignment.moduleId);
+      }
+
+      for (const moduleId of moduleIds) {
+        const moduleAssignments = assignments.filter(
+          (assignment) => assignment.moduleId === moduleId,
+        );
+        const activeForModule = moduleAssignments.filter(
+          (assignment) => assignment.deletedAt == null,
+        );
+        if (activeForModule.length > 0) {
+          for (const assignment of activeForModule) {
+            if (assignment.centerId === center.id) continue;
+            await tx
+              .update(teachingAssignmentsTable)
+              .set({ centerId: center.id, groupId: null })
+              .where(eq(teachingAssignmentsTable.id, assignment.id));
+            touchedModuleIds.add(moduleId);
+          }
+          continue;
+        }
+
+        const previous = moduleAssignments.find(
+          (assignment) => assignment.deletedAt != null,
+        );
+        if (previous) {
+          await tx
+            .update(teachingAssignmentsTable)
+            .set({
+              deletedAt: null,
+              centerId: center.id,
+              groupId:
+                previous.centerId === center.id ? previous.groupId : null,
+            })
+            .where(eq(teachingAssignmentsTable.id, previous.id));
+        } else {
+          await tx.insert(teachingAssignmentsTable).values({
+            teacherId: caller.id,
+            moduleId,
+            centerId: center.id,
+            schoolYear: year,
+          });
+        }
+        touchedModuleIds.add(moduleId);
+      }
+
+      const [result] = await tx
+        .update(teacherYearConfirmationsTable)
+        .set({
+          status: "confirmed",
+          confirmedAt,
+          centerId: center.id,
+        })
+        .where(eq(teacherYearConfirmationsTable.id, confirmation.id))
+        .returning();
+      return result;
+    });
+    if (!updated) {
+      res.status(409).json({
+        message:
+          "La confirmación, el plazo o tu centro han cambiado; vuelve a cargar e inténtalo de nuevo",
+      });
+      return;
+    }
 
     for (const moduleId of touchedModuleIds) {
       try {

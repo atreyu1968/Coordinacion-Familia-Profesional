@@ -565,7 +565,7 @@ export const GetCurrentUserResponse = zod.object({
 
 
 /**
- * Lets a user edit their own name, email and password. Role, status and scope are not editable here.
+ * Lets a user edit their own name, email and password. Role, status and scope are not editable here. Changing the password revokes existing sessions and requires signing in again.
  * @summary Update the authenticated user's own profile
  */
 
@@ -589,7 +589,10 @@ export const UpdateProfileResponse = zod.object({
   "provinceId": zod.number().nullish(),
   "centerId": zod.number().nullish(),
   "createdAt": zod.coerce.date().optional()
-})
+}).and(zod.object({
+  "requiresReauthentication": zod.boolean().optional().describe('True when changing the password has revoked this session.'),
+  "message": zod.string().optional()
+}))
 
 
 /**
@@ -1821,6 +1824,7 @@ export const CreateAccreditationBody = zod.object({
 
 
 /**
+ * Only event managers within scope and users assigned as staff to the accreditation's event may check in a QR token.
  * @summary Validate a QR token at event check-in (used by the mobile scanner)
  */
 export const CheckInAccreditationBody = zod.object({
@@ -2020,6 +2024,13 @@ export const ListChatMembersResponse = zod.array(ListChatMembersResponseItem)
 
 export const ListGroupMessagesParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+
+
+export const ListGroupMessagesQueryParams = zod.object({
+  "beforeId": zod.coerce.number().min(1).optional().describe('Return up to 200 messages older than this message id.')
 })
 
 export const ListGroupMessagesResponseItem = zod.object({

@@ -116,6 +116,7 @@ import type {
   ListFeedbackParams,
   ListForumThreadsParams,
   ListGdcanResourcesParams,
+  ListGroupMessagesParams,
   ListGroupsParams,
   ListInvitationsParams,
   ListIslandsParams,
@@ -196,6 +197,7 @@ import type {
   UpdateModuleInput,
   UpdateModuleMemberInput,
   UpdateModuleWikiEditorsInput,
+  UpdateProfile200,
   UpdateProfileInput,
   UpdateUserInput,
   UploadUrlRequest,
@@ -2386,12 +2388,12 @@ export const getUpdateProfileUrl = () => {
 }
 
 /**
- * Lets a user edit their own name, email and password. Role, status and scope are not editable here.
+ * Lets a user edit their own name, email and password. Role, status and scope are not editable here. Changing the password revokes existing sessions and requires signing in again.
  * @summary Update the authenticated user's own profile
  */
-export const updateProfile = async (updateProfileInput: UpdateProfileInput, options?: RequestInit): Promise<User> => {
+export const updateProfile = async (updateProfileInput: UpdateProfileInput, options?: RequestInit): Promise<UpdateProfile200> => {
 
-  return customFetch<User>(getUpdateProfileUrl(),
+  return customFetch<UpdateProfile200>(getUpdateProfileUrl(),
   {
     ...options,
     method: 'PATCH',
@@ -7799,6 +7801,7 @@ export const getCheckInAccreditationUrl = () => {
 }
 
 /**
+ * Only event managers within scope and users assigned as staff to the accreditation's event may check in a QR token.
  * @summary Validate a QR token at event check-in (used by the mobile scanner)
  */
 export const checkInAccreditation = async (checkInInput: CheckInInput, options?: RequestInit): Promise<CheckInResult> => {
@@ -7816,7 +7819,7 @@ export const checkInAccreditation = async (checkInInput: CheckInInput, options?:
 
 
 
-export const getCheckInAccreditationMutationOptions = <TError = ErrorType<unknown>,
+export const getCheckInAccreditationMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInAccreditation>>, TError,{data: BodyType<CheckInInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof checkInAccreditation>>, TError,{data: BodyType<CheckInInput>}, TContext> => {
 
@@ -7845,12 +7848,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CheckInAccreditationMutationResult = NonNullable<Awaited<ReturnType<typeof checkInAccreditation>>>
     export type CheckInAccreditationMutationBody = BodyType<CheckInInput>
-    export type CheckInAccreditationMutationError = ErrorType<unknown>
+    export type CheckInAccreditationMutationError = ErrorType<void>
 
     /**
  * @summary Validate a QR token at event check-in (used by the mobile scanner)
  */
-export const useCheckInAccreditation = <TError = ErrorType<unknown>,
+export const useCheckInAccreditation = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkInAccreditation>>, TError,{data: BodyType<CheckInInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof checkInAccreditation>>,
@@ -8779,17 +8782,26 @@ export function useListChatMembers<TData = Awaited<ReturnType<typeof listChatMem
 
 
 
-export const getListGroupMessagesUrl = (id: number,) => {
+export const getListGroupMessagesUrl = (id: number,
+    params?: ListGroupMessagesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/chat/groups/${id}/messages`
+  return stringifiedParams.length > 0 ? `/api/chat/groups/${id}/messages?${stringifiedParams}` : `/api/chat/groups/${id}/messages`
 }
 
-export const listGroupMessages = async (id: number, options?: RequestInit): Promise<Message[]> => {
+export const listGroupMessages = async (id: number,
+    params?: ListGroupMessagesParams, options?: RequestInit): Promise<Message[]> => {
 
-  return customFetch<Message[]>(getListGroupMessagesUrl(id),
+  return customFetch<Message[]>(getListGroupMessagesUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -8802,23 +8814,25 @@ export const listGroupMessages = async (id: number, options?: RequestInit): Prom
 
 
 
-export const getListGroupMessagesQueryKey = (id: number,) => {
+export const getListGroupMessagesQueryKey = (id: number,
+    params?: ListGroupMessagesParams,) => {
     return [
-    `/api/chat/groups/${id}/messages`
+    `/api/chat/groups/${id}/messages`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListGroupMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListGroupMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<Error>>(id: number,
+    params?: ListGroupMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListGroupMessagesQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getListGroupMessagesQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGroupMessages>>> = ({ signal }) => listGroupMessages(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGroupMessages>>> = ({ signal }) => listGroupMessages(id,params, { signal, ...requestOptions });
 
 
 
@@ -8833,11 +8847,12 @@ export type ListGroupMessagesQueryError = ErrorType<Error>
 
 
 export function useListGroupMessages<TData = Awaited<ReturnType<typeof listGroupMessages>>, TError = ErrorType<Error>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ id: number,
+    params?: ListGroupMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroupMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListGroupMessagesQueryOptions(id,options)
+  const queryOptions = getListGroupMessagesQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

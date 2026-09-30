@@ -1047,7 +1047,13 @@ router.post(
           moduleMembershipsTable.moduleId,
           moduleMembershipsTable.userId,
         ],
-        set: { deletedAt: null },
+        set: {
+          deletedAt: null,
+          role: sql`case
+            when ${moduleMembershipsTable.deletedAt} is not null then 'member'
+            else ${moduleMembershipsTable.role}
+          end`,
+        },
       })
       .returning();
     res.status(201).json(

@@ -44,20 +44,47 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 const scormZipCache = new Map<string, { zip: JSZip; expiresAt: number }>();
+const MAX_SCORM_ARCHIVE_SIZE = 100 * 1024 * 1024;
 
 type SignedLmsToken = {
   userId: number;
   lessonId: number;
+  tokenVersion: number;
+  sessionNonce: string;
+  lessonRevision?: number;
 };
+
+function userSessionNonce(user: User): string | undefined {
+  const nonce = (user as User & { sessionNonce?: unknown }).sessionNonce;
+  return typeof nonce === "string" && nonce.length > 0 ? nonce : undefined;
+}
+
+function requiredSessionNonce(user: User): string {
+  const nonce = userSessionNonce(user);
+  if (!nonce) {
+    throw new Error("Stored user session nonce is missing");
+  }
+  return nonce;
+}
 
 function signLmsToken(
   purpose: "lms_scorm" | "lms_file",
   userId: number,
   lessonId: number,
+  tokenVersion: number,
+  sessionNonce: string,
+  lessonRevision?: number,
 ): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required for LMS access tokens");
-  return jwt.sign({ purpose, lessonId }, secret, {
+  if (!sessionNonce) throw new Error("A stored user session nonce is required for LMS access tokens");
+  return jwt.sign({
+    purpose,
+    lessonId,
+    tokenVersion,
+    sessionNonce,
+    ...(lessonRevision === undefined ? {} : { lessonRevision }),
+  }, secret, {
     subject: String(userId),
     expiresIn: purpose === "lms_scorm" ? 1800 : 600,
   });
@@ -76,11 +103,23 @@ function verifyLmsToken(
       typeof payload !== "object" ||
       payload.purpose !== purpose ||
       !Number.isInteger(Number(payload.sub)) ||
-      !Number.isInteger(Number(payload.lessonId))
+      !Number.isInteger(Number(payload.lessonId)) ||
+      !Number.isSafeInteger(payload.tokenVersion) ||
+      typeof payload.sessionNonce !== "string" ||
+      payload.sessionNonce.length === 0 ||
+      (purpose === "lms_scorm" && !Number.isSafeInteger(payload.lessonRevision))
     ) {
       return undefined;
     }
-    return { userId: Number(payload.sub), lessonId: Number(payload.lessonId) };
+    return {
+      userId: Number(payload.sub),
+      lessonId: Number(payload.lessonId),
+      tokenVersion: Number(payload.tokenVersion),
+      sessionNonce: payload.sessionNonce,
+      ...(Number.isSafeInteger(payload.lessonRevision)
+        ? { lessonRevision: Number(payload.lessonRevision) }
+        : {}),
+    };
   } catch {
     return undefined;
   }
@@ -144,6 +183,10 @@ function learnerSafeLessonContent(
   };
 }
 
+function isScormKind(kind: string): boolean {
+  return kind === "scorm12" || kind === "scorm2004";
+}
+
 async function courseDetail(courseId: number, user: User) {
   const [course] = await db.select().from(lmsCoursesTable).where(and(eq(lmsCoursesTable.id, courseId), isNull(lmsCoursesTable.deletedAt)));
   if (!course || !(await visibleCourse(user, course))) return undefined;
@@ -154,7 +197,9 @@ async function courseDetail(courseId: number, user: User) {
   const progress = await db.select().from(lmsLessonProgressTable)
     .where(and(eq(lmsLessonProgressTable.courseId, courseId), eq(lmsLessonProgressTable.userId, user.id)));
   const required = lessons.filter((l) => l.required);
-  const completed = required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
+  const scormLessonIds = new Set(lessons.filter((lesson) => isScormKind(lesson.kind)).map((lesson) => lesson.id));
+  const containsScorm = scormLessonIds.size > 0;
+  const completed = !containsScorm && required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
   return {
     id: course.id, title: course.title, description: course.description, moduleId: course.moduleId,
     status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length,
@@ -163,7 +208,13 @@ async function courseDetail(courseId: number, user: User) {
       ...lesson,
       content: managerView ? lesson.content : learnerSafeLessonContent(lesson.content),
     })),
-    progress: progress.map((p) => ({ lessonId: p.lessonId, status: p.status, score: p.score, attempts: p.attempts, completedAt: p.completedAt })),
+    progress: progress.map((p) => ({
+      lessonId: p.lessonId,
+      status: scormLessonIds.has(p.lessonId) ? "in_progress" : p.status,
+      score: p.score,
+      attempts: p.attempts,
+      completedAt: scormLessonIds.has(p.lessonId) ? null : p.completedAt,
+    })),
   };
 }
 
@@ -173,11 +224,16 @@ router.get("/lms/courses", requireAuth, async (req, res): Promise<void> => {
   const result = [];
   for (const course of rows) {
     if (!(await visibleCourse(user, course))) continue;
-    const lessons = await db.select({ id: lmsLessonsTable.id, required: lmsLessonsTable.required }).from(lmsLessonsTable)
+    const lessons = await db.select({
+      id: lmsLessonsTable.id,
+      required: lmsLessonsTable.required,
+      kind: lmsLessonsTable.kind,
+    }).from(lmsLessonsTable)
       .where(and(eq(lmsLessonsTable.courseId, course.id), isNull(lmsLessonsTable.deletedAt)));
     const progress = await db.select().from(lmsLessonProgressTable).where(and(eq(lmsLessonProgressTable.courseId, course.id), eq(lmsLessonProgressTable.userId, user.id)));
     const required = lessons.filter((l) => l.required);
-    const completed = required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
+    const containsScorm = lessons.some((lesson) => isScormKind(lesson.kind));
+    const completed = !containsScorm && required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
     result.push({ id: course.id, title: course.title, description: course.description, moduleId: course.moduleId, status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length, completed, certificateAvailable: completed && course.certificateEnabled });
   }
   res.json(ListLmsCoursesResponse.parse(result));
@@ -302,16 +358,101 @@ function normalizedZipPath(value: string): string | undefined {
   return normalized;
 }
 
-async function loadScormZip(objectPath: string): Promise<JSZip> {
-  const cached = scormZipCache.get(objectPath);
+function flattenCmiData(value: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  const walk = (current: unknown, prefix = "") => {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return;
+    for (const [key, item] of Object.entries(current as Record<string, unknown>)) {
+      const pathKey = prefix ? `${prefix}.${key}` : key;
+      if (item && typeof item === "object" && !Array.isArray(item)) walk(item, pathKey);
+      else result[pathKey] = item;
+    }
+  };
+  walk(value);
+  return result;
+}
+
+function cmiValue(flattened: Record<string, unknown>, key: string): unknown {
+  return flattened[`cmi.${key}`] ?? flattened[key];
+}
+
+function cmiNumber(flattened: Record<string, unknown>, key: string): number | undefined {
+  const value = cmiValue(flattened, key);
+  if (typeof value !== "number" && typeof value !== "string") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function scormScore(
+  lessonKind: "scorm12" | "scorm2004",
+  flattened: Record<string, unknown>,
+): number | null {
+  const scaled = lessonKind === "scorm2004" ? cmiNumber(flattened, "score.scaled") : undefined;
+  const raw = cmiNumber(
+    flattened,
+    lessonKind === "scorm12" ? "core.score.raw" : "score.raw",
+  );
+  const value = scaled === undefined ? raw : scaled * 100;
+  return value === undefined ? null : Math.max(0, Math.min(100, Math.round(value)));
+}
+
+async function readScormArchive(response: Response, expectedSize?: number): Promise<Buffer> {
+  if (!response.ok) throw new Error("No se pudo leer el paquete SCORM.");
+  if (expectedSize !== undefined && (
+    !Number.isSafeInteger(expectedSize) ||
+    expectedSize < 1 ||
+    expectedSize > MAX_SCORM_ARCHIVE_SIZE
+  )) {
+    throw new Error("El paquete SCORM supera el tamaño máximo permitido o no es válido.");
+  }
+
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_SCORM_ARCHIVE_SIZE) {
+    await response.body?.cancel();
+    throw new Error("El paquete SCORM supera el tamaño máximo permitido.");
+  }
+  if (!response.body) throw new Error("No se pudo leer el paquete SCORM.");
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalSize += value.byteLength;
+      if (totalSize > MAX_SCORM_ARCHIVE_SIZE) {
+        await reader.cancel();
+        throw new Error("El paquete SCORM supera el tamaño máximo permitido.");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (expectedSize !== undefined && totalSize !== expectedSize) {
+    throw new Error("El tamaño del paquete SCORM no coincide con el archivo registrado.");
+  }
+  if (totalSize === 0) throw new Error("El paquete SCORM está vacío.");
+  return Buffer.concat(chunks, totalSize);
+}
+
+async function loadScormZip(objectPath: string, expectedSize?: number): Promise<JSZip> {
+  if (expectedSize !== undefined && (
+    !Number.isSafeInteger(expectedSize) ||
+    expectedSize < 1 ||
+    expectedSize > MAX_SCORM_ARCHIVE_SIZE
+  )) {
+    throw new Error("El paquete SCORM supera el tamaño máximo permitido o no es válido.");
+  }
+  const cacheKey = `${objectPath}:${expectedSize ?? "unknown"}`;
+  const cached = scormZipCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.zip;
 
   const objectFile = await storage.getObjectEntityFile(objectPath);
   const response = await storage.downloadObject(objectFile, 0);
-  const archive = Buffer.from(await response.arrayBuffer());
-  if (archive.byteLength > 100 * 1024 * 1024) {
-    throw new Error("El paquete SCORM supera el tamaño máximo permitido.");
-  }
+  const archive = await readScormArchive(response, expectedSize);
   const zip = await JSZip.loadAsync(archive);
   const entries = Object.values(zip.files);
   if (entries.length > 5000) throw new Error("El paquete SCORM contiene demasiados archivos.");
@@ -325,15 +466,16 @@ async function loadScormZip(objectPath: string): Promise<JSZip> {
     }
   }
   scormZipCache.clear();
-  scormZipCache.set(objectPath, { zip, expiresAt: Date.now() + 30 * 60_000 });
+  scormZipCache.set(cacheKey, { zip, expiresAt: Date.now() + 30 * 60_000 });
   return zip;
 }
 
 async function getScormLaunch(
   objectPath: string,
   kind: "scorm12" | "scorm2004",
+  expectedSize?: number,
 ): Promise<{ scormVersion: string; scormLaunchPath: string }> {
-  const zip = await loadScormZip(objectPath);
+  const zip = await loadScormZip(objectPath, expectedSize);
   const manifestFile = zip.file("imsmanifest.xml");
   if (!manifestFile) throw new Error("El paquete no contiene imsmanifest.xml en su raíz.");
   const manifest = await manifestFile.async("string");
@@ -386,17 +528,23 @@ router.post("/lms/courses/:courseId/lessons", requireAuth, async (req, res): Pro
   let scormMetadata: { scormVersion: string; scormLaunchPath: string } | undefined;
   if (lessonInput.kind === "scorm12" || lessonInput.kind === "scorm2004") {
     try {
-      scormMetadata = await getScormLaunch(uploadMetadata!.objectPath, lessonInput.kind);
+      scormMetadata = await getScormLaunch(uploadMetadata!.objectPath, lessonInput.kind, uploadMetadata!.objectSize);
     } catch (error) {
       res.status(400).json({ message: error instanceof Error ? error.message : "Paquete SCORM no válido." }); return;
     }
   }
-  const [lesson] = await db.insert(lmsLessonsTable).values({
-    ...lessonInput,
-    ...(uploadMetadata ?? {}),
-    ...(scormMetadata ?? {}),
-    courseId: course.id,
-  }).returning();
+  const [lesson] = await db.transaction(async (tx) => {
+    const created = await tx.insert(lmsLessonsTable).values({
+      ...lessonInput,
+      ...(uploadMetadata ?? {}),
+      ...(scormMetadata ?? {}),
+      courseId: course.id,
+    }).returning();
+    if (created[0]?.required || isScormKind(created[0]?.kind ?? "")) {
+      await tx.delete(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, course.id));
+    }
+    return created;
+  });
   const { objectPath: _path, ...safe } = lesson;
   res.status(201).json(safe);
 });
@@ -429,23 +577,43 @@ router.patch("/lms/lessons/:lessonId", requireAuth, async (req, res): Promise<vo
   }
   const nextKind = lessonFields.kind ?? lesson.kind;
   const nextObjectPath = uploadMetadata?.objectPath ?? lesson.objectPath;
+  const nextObjectSize = uploadMetadata?.objectSize ?? lesson.objectSize ?? undefined;
+  const nextRequired = lessonFields.required ?? lesson.required;
+  const nextContent = lessonFields.content ?? lesson.content;
+  const assessmentChanged =
+    nextKind !== lesson.kind ||
+    nextObjectPath !== lesson.objectPath ||
+    JSON.stringify(nextContent) !== JSON.stringify(lesson.content);
+  const requirementsChanged = nextRequired !== lesson.required;
+  const invalidateCertificates =
+    requirementsChanged ||
+    (assessmentChanged && (lesson.required || nextRequired || isScormKind(lesson.kind) || isScormKind(nextKind)));
   let scormMetadata: { scormVersion: string; scormLaunchPath: string } | { scormVersion: null; scormLaunchPath: null } | undefined;
   if (nextKind === "scorm12" || nextKind === "scorm2004") {
     if (!nextObjectPath) { res.status(400).json({ message: "Debes subir un paquete SCORM válido." }); return; }
     try {
-      scormMetadata = await getScormLaunch(nextObjectPath, nextKind);
+      scormMetadata = await getScormLaunch(nextObjectPath, nextKind, nextObjectSize);
     } catch (error) {
       res.status(400).json({ message: error instanceof Error ? error.message : "Paquete SCORM no válido." }); return;
     }
   } else if (lesson.kind === "scorm12" || lesson.kind === "scorm2004") {
     scormMetadata = { scormVersion: null, scormLaunchPath: null };
   }
-  const [updated] = await db.update(lmsLessonsTable).set({
-    ...lessonFields,
-    ...(uploadMetadata ?? {}),
-    ...(scormMetadata ?? {}),
-    updatedAt: new Date(),
-  }).where(eq(lmsLessonsTable.id, lesson.id)).returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const result = await tx.update(lmsLessonsTable).set({
+      ...lessonFields,
+      ...(uploadMetadata ?? {}),
+      ...(scormMetadata ?? {}),
+      updatedAt: new Date(),
+    }).where(eq(lmsLessonsTable.id, lesson.id)).returning();
+    if (assessmentChanged) {
+      await tx.delete(lmsLessonProgressTable).where(eq(lmsLessonProgressTable.lessonId, lesson.id));
+    }
+    if (invalidateCertificates) {
+      await tx.delete(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, lesson.courseId));
+    }
+    return result;
+  });
   const { objectPath: _path, ...safe } = updated;
   res.json(safe);
 });
@@ -456,13 +624,22 @@ router.delete("/lms/lessons/:lessonId", requireAuth, async (req, res): Promise<v
   if (!lesson) { res.status(404).json({ message: "Lección no encontrada" }); return; }
   const [course] = await db.select().from(lmsCoursesTable).where(eq(lmsCoursesTable.id, lesson.courseId));
   if (!course || !(await canManageCourse(req.user!, course))) { res.status(403).json({ message: "Permiso denegado" }); return; }
-  await db.update(lmsLessonsTable).set({ deletedAt: new Date() }).where(eq(lmsLessonsTable.id, id));
+  await db.transaction(async (tx) => {
+    await tx.update(lmsLessonsTable).set({ deletedAt: new Date() }).where(eq(lmsLessonsTable.id, id));
+    await tx.delete(lmsLessonProgressTable).where(eq(lmsLessonProgressTable.lessonId, id));
+    if (lesson.required || isScormKind(lesson.kind)) {
+      await tx.delete(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, lesson.courseId));
+    }
+  });
   res.sendStatus(204);
 });
 
 router.post("/lms/uploads/request-url", requireAuth, async (req, res): Promise<void> => {
   const parsed = RequestLmsUploadUrlBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ message: parsed.error.message }); return; }
+  if (!Number.isSafeInteger(parsed.data.size)) {
+    res.status(400).json({ message: "El tamaño del archivo no es válido" }); return;
+  }
   const [course] = await db.select().from(lmsCoursesTable).where(and(
     eq(lmsCoursesTable.id, parsed.data.courseId),
     isNull(lmsCoursesTable.deletedAt),
@@ -470,7 +647,10 @@ router.post("/lms/uploads/request-url", requireAuth, async (req, res): Promise<v
   if (!course || !(await canManageCourse(req.user!, course))) {
     res.status(403).json({ message: "No tienes permiso para adjuntar archivos a este curso" }); return;
   }
-  const uploadURL = await storage.getObjectEntityUploadURL();
+  const uploadURL = await storage.getObjectEntityUploadURL({
+    maxBytes: parsed.data.size,
+    expectedBytes: parsed.data.size,
+  });
   const objectPath = storage.normalizeObjectEntityPath(uploadURL);
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 15 * 60_000);
@@ -509,12 +689,17 @@ async function issueCertificateIfComplete(courseId: number, userId: number): Pro
     isNull(lmsCoursesTable.deletedAt),
   ));
   if (!course?.certificateEnabled) return;
-  const required = await db.select({ id: lmsLessonsTable.id }).from(lmsLessonsTable)
+  const lessons = await db.select({
+    id: lmsLessonsTable.id,
+    required: lmsLessonsTable.required,
+    kind: lmsLessonsTable.kind,
+  }).from(lmsLessonsTable)
     .where(and(
       eq(lmsLessonsTable.courseId, courseId),
-      eq(lmsLessonsTable.required, true),
       isNull(lmsLessonsTable.deletedAt),
     ));
+  if (lessons.some((lesson) => isScormKind(lesson.kind))) return;
+  const required = lessons.filter((lesson) => lesson.required);
   if (!required.length) return;
   const completed = await db.select({ lessonId: lmsLessonProgressTable.lessonId }).from(lmsLessonProgressTable)
     .where(and(
@@ -659,12 +844,21 @@ async function scormSessionResponse(token: string): Promise<{
     eq(usersTable.status, "active"),
     isNull(usersTable.deletedAt),
   ));
-  if (!user) return undefined;
+  if (
+    !user ||
+    user.tokenVersion !== claims.tokenVersion ||
+    userSessionNonce(user) !== claims.sessionNonce
+  ) return undefined;
   const [lesson] = await db.select().from(lmsLessonsTable).where(and(
     eq(lmsLessonsTable.id, claims.lessonId),
     isNull(lmsLessonsTable.deletedAt),
   ));
-  if (!lesson || !lesson.objectPath || !lesson.scormLaunchPath) return undefined;
+  if (
+    !lesson ||
+    !lesson.objectPath ||
+    !lesson.scormLaunchPath ||
+    claims.lessonRevision !== lesson.updatedAt.getTime()
+  ) return undefined;
   const [course] = await db.select().from(lmsCoursesTable).where(and(
     eq(lmsCoursesTable.id, lesson.courseId),
     isNull(lmsCoursesTable.deletedAt),
@@ -693,7 +887,14 @@ async function scormSessionResponse(token: string): Promise<{
 }
 
 async function startScormSession(user: User, lesson: typeof lmsLessonsTable.$inferSelect) {
-  const token = signLmsToken("lms_scorm", user.id, lesson.id);
+  const token = signLmsToken(
+    "lms_scorm",
+    user.id,
+    lesson.id,
+    user.tokenVersion,
+    requiredSessionNonce(user),
+    lesson.updatedAt.getTime(),
+  );
   const now = new Date();
   await db.insert(lmsLessonProgressTable).values({
     userId: user.id,
@@ -705,9 +906,10 @@ async function startScormSession(user: User, lesson: typeof lmsLessonsTable.$inf
   }).onConflictDoUpdate({
     target: [lmsLessonProgressTable.userId, lmsLessonProgressTable.lessonId],
     set: {
-      status: sql`CASE WHEN ${lmsLessonProgressTable.status} = 'completed' THEN 'completed' ELSE 'in_progress' END`,
+      status: "in_progress",
       attempts: sql`${lmsLessonProgressTable.attempts} + 1`,
       startedAt: sql`COALESCE(${lmsLessonProgressTable.startedAt}, ${now})`,
+      completedAt: null,
       updatedAt: now,
     },
   });
@@ -782,7 +984,7 @@ router.get("/lms/scorm/sessions/:token/content/*assetPath", async (req, res): Pr
   const rawPath = Array.isArray(req.params.assetPath) ? req.params.assetPath.join("/") : req.params.assetPath;
   const assetPath = normalizedZipPath(rawPath);
   if (!assetPath) { res.status(404).json({ message: "Archivo no encontrado" }); return; }
-  const zip = await loadScormZip(session.lesson.objectPath!);
+   const zip = await loadScormZip(session.lesson.objectPath!, session.lesson.objectSize ?? undefined);
   const file = zip.file(assetPath);
   if (!file || file.dir) { res.status(404).json({ message: "Archivo no encontrado" }); return; }
   let content = await file.async("nodebuffer");
@@ -828,61 +1030,36 @@ router.post("/lms/scorm/commit", async (req, res): Promise<void> => {
   if (!cmiData || typeof cmiData !== "object" || Array.isArray(cmiData)) {
     res.status(400).json({ message: "Datos SCORM no válidos" }); return;
   }
-  const flatten = (value: Record<string, unknown>) => {
-    const result: Record<string, unknown> = {};
-    const walk = (current: unknown, prefix = "") => {
-      if (!current || typeof current !== "object" || Array.isArray(current)) return;
-      for (const [key, item] of Object.entries(current as Record<string, unknown>)) {
-        const pathKey = prefix ? `${prefix}.${key}` : key;
-        if (item && typeof item === "object" && !Array.isArray(item)) walk(item, pathKey);
-        else result[pathKey] = item;
-      }
-    };
-    walk(value);
-    return result;
-  };
-  const flattened = flatten(cmiData as Record<string, unknown>);
-  const rawStatus = String(
-    req.body?.status ??
-    flattened["cmi.core.lesson_status"] ??
-    flattened["cmi.completion_status"] ??
-    flattened["cmi.success_status"] ??
-    "",
-  ).toLowerCase();
-  const scoreValue = Number(
-    req.body?.score ??
-    flattened["cmi.core.score.raw"] ??
-    flattened["cmi.score.raw"],
-  );
-  const score = Number.isFinite(scoreValue) ? Math.max(0, Math.min(100, Math.round(scoreValue))) : null;
-  const passedStatus = rawStatus === "completed" || rawStatus === "passed";
+  const lessonKind = session.lesson.kind as "scorm12" | "scorm2004";
+  const flattened = flattenCmiData(cmiData as Record<string, unknown>);
+  const score = scormScore(lessonKind, flattened);
   const [previous] = await db.select().from(lmsLessonProgressTable).where(and(
     eq(lmsLessonProgressTable.userId, session.user.id),
     eq(lmsLessonProgressTable.lessonId, session.lesson.id),
   ));
-  const completed = passedStatus || previous?.status === "completed";
+  // CMI is controlled by the learner and cannot prove an academic outcome.
+  // Keep its status/score only as self-reported telemetry, never completion.
   const now = new Date();
   const [progress] = await db.insert(lmsLessonProgressTable).values({
     userId: session.user.id,
     courseId: session.course.id,
     lessonId: session.lesson.id,
-    status: completed ? "completed" : "in_progress",
+    status: "in_progress",
     score,
     attempts: 1,
     cmiData: cmiData as Record<string, unknown>,
     startedAt: now,
-    completedAt: completed ? (previous?.completedAt ?? now) : null,
+    completedAt: null,
   }).onConflictDoUpdate({
     target: [lmsLessonProgressTable.userId, lmsLessonProgressTable.lessonId],
     set: {
-      status: completed ? "completed" : "in_progress",
+      status: "in_progress",
       score: score === null ? previous?.score ?? null : Math.max(score, previous?.score ?? 0),
       cmiData: cmiData as Record<string, unknown>,
-      completedAt: completed ? (previous?.completedAt ?? now) : null,
+      completedAt: null,
       updatedAt: now,
     },
   }).returning();
-  if (completed) await issueCertificateIfComplete(session.course.id, session.user.id);
   res.json({ lessonId: progress.lessonId, status: progress.status, score: progress.score, attempts: progress.attempts, completedAt: progress.completedAt });
 });
 
@@ -898,7 +1075,13 @@ router.post("/lms/lessons/:lessonId/download-token", requireAuth, async (req, re
     isNull(lmsCoursesTable.deletedAt),
   ));
   if (!course || !(await visibleCourse(req.user!, course))) { res.status(404).json({ message: "Curso no encontrado" }); return; }
-  const token = signLmsToken("lms_file", req.user!.id, lesson.id);
+  const token = signLmsToken(
+    "lms_file",
+    req.user!.id,
+    lesson.id,
+    req.user!.tokenVersion,
+    requiredSessionNonce(req.user!),
+  );
   const expiresAt = new Date(Date.now() + 10 * 60_000);
   res.json({ url: `/api/lms/files?token=${encodeURIComponent(token)}`, expiresAt });
 });
@@ -920,7 +1103,14 @@ router.get("/lms/files", async (req, res): Promise<void> => {
     eq(lmsCoursesTable.id, lesson.courseId),
     isNull(lmsCoursesTable.deletedAt),
   )) : [];
-  if (!user || !lesson?.objectPath || !course || !(await visibleCourse(user, course))) {
+  if (
+    !user ||
+    user.tokenVersion !== claims.tokenVersion ||
+    userSessionNonce(user) !== claims.sessionNonce ||
+    !lesson?.objectPath ||
+    !course ||
+    !(await visibleCourse(user, course))
+  ) {
     res.status(404).json({ message: "Archivo no encontrado" }); return;
   }
   const file = await storage.getObjectEntityFile(lesson.objectPath);
@@ -935,7 +1125,9 @@ router.get("/lms/files", async (req, res): Promise<void> => {
 
 router.get("/lms/courses/:courseId/certificate", requireAuth, async (req, res): Promise<void> => {
   const detail = await courseDetail(idParam(req.params.courseId), req.user!);
-  if (!detail?.completed || !detail.certificateEnabled) { res.status(409).json({ message: "El curso aún no está completado" }); return; }
+  if (!detail?.certificateAvailable) {
+    res.status(409).json({ message: "El curso aún no está completado o incluye seguimiento SCORM no verificado." }); return;
+  }
   const existing = await db.select().from(lmsCertificatesTable).where(and(eq(lmsCertificatesTable.courseId, detail.id), eq(lmsCertificatesTable.userId, req.user!.id)));
   const certificate = existing[0] ?? (await db.insert(lmsCertificatesTable).values({ courseId: detail.id, userId: req.user!.id, certificateNumber: `ADG-${randomUUID()}` }).returning())[0];
   const pdf = await PDFDocument.create();

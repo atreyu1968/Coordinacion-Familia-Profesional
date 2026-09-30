@@ -1,33 +1,33 @@
 ---
 name: Backup & restore (server migration)
-description: Design rules and gotchas for the full-database ZIP backup/restore feature
+description: Fail-closed restore, separately managed object bytes, and session invalidation across restores
 ---
 
 # Backup & Restore for migration
 
-Superadmin-only full-database export/import as a ZIP, for moving the platform
-between servers. There is **no file storage** — resources are external URLs —
-so a backup is purely the Postgres data (one `backup.json` inside the zip).
+Superadmin-only ZIP export/import for moving the platform between servers.
+The ZIP contains database rows and an inventory of managed object hashes,
+**not the object bytes**. Copy the associated object storage separately before
+restoring on another server.
 
 ## Hard rules
-- **Restore must validate completeness BEFORE the destructive delete.** Restore
-  wipes every table then re-inserts. A backup that omits a table would otherwise
-  silently drop that table's live data. So: reject (400) unless *every* table in
-  the registry is present as an array of plain objects, and the format/version
-  markers match. Validate first, mutate second.
-- **Whole restore runs in a single DB transaction** (delete-all reverse order →
-  insert parent-first, chunked → realign sequences). Any error rolls back, so a
-  failed restore never leaves partial state.
-- **Realign serial sequences after restore** via
-  `setval(pg_get_serial_sequence('"<table>"','id'), GREATEST(MAX(id),1))`, or new
-  inserts collide with restored ids. Table names come from the schema (trusted),
-  so `sql.raw` interpolation is safe here.
-- **Revive dates on import:** JSON timestamps are ISO strings; Drizzle timestamp
-  columns (dataType `"date"`) need real `Date` objects. Convert per column using
-  `getTableColumns`.
-- **Bump the backup version marker** whenever the table set or row shape changes,
-  and keep restore's version check in lockstep — an unsupported version must be
-  rejected, never applied destructively.
+- **Rule:** reject incomplete, legacy, or schema-incompatible archives before
+  any mutation; compare every managed destination object against the archived
+  digest and size, failing closed if it is missing or unverifiable. Replace rows
+  and realign sequences inside one database transaction.
+  **Why:** a partial table set loses data, and an existing object path can refer
+  to different bytes on a new server. Storage and Postgres cannot be locked in
+  a single transaction.
+  **How to apply:** keep the archive format/schema fingerprint in lockstep with
+  the schema; never reinterpret an older format as a complete backup. For a
+  server move, copy objects first and verify them before invoking restore.
+- **Rule:** every restored account receives a fresh random session identifier,
+  and live sockets are disconnected after commit.
+  **Why:** incrementing a stored token version alone can resurrect an old JWT
+  when an account was absent from the live database before restoration.
+  **How to apply:** issue and verify the identifier in all user and LMS bearer
+  tokens; rotate it for *all* restored users, including accounts not present
+  before the restore.
 
 ## Binary endpoints bypass the OpenAPI client
 The generated react-query client is JSON-only. Backup download (blob) and restore
@@ -35,5 +35,4 @@ The generated react-query client is JSON-only. Backup download (blob) and restor
 hit root-relative `/api/...` (shared proxy) with a `Bearer` token read from
 localStorage — same URL/token convention the generated client uses.
 
-**Why:** these were the review-blocking concerns — silent data loss from
-incomplete backups, and binary payloads that don't fit the codegen pipeline.
+**Why:** binary payloads do not fit the JSON-only generated client.
