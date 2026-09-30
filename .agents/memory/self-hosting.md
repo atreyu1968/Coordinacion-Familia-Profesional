@@ -33,6 +33,15 @@ filesystem instead.
   seed (`@workspace/scripts run seed-admin`, reads SEED_ADMIN_*).
 
 ## Installer
+- **Rule:** an updater that pulls new source during its own execution may still
+  finish using its old deployment logic; a new version on disk afterward does
+  not prove the new safety checks ran.
+  **Why:** an Ubuntu update completed with legacy force-push and optional
+  service steps even though the checkout subsequently reported the newer
+  release. The catalog needed a separate read-only verification.
+  **How to apply:** when crossing from an old installer, fetch code before
+  launching a fresh updater process; inspect the actual run log for backups and
+  verification, and run the read-only schema check after a legacy run.
 - **Rule:** back up and validate an existing PostgreSQL catalog before applying
   explicit, additive upgrades; do not treat `drizzle-kit push` returning zero as
   proof that a noninteractive migration succeeded.
