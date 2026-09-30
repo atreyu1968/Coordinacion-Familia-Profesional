@@ -32,7 +32,7 @@ import SugerenciasPage from "@/pages/sugerencias";
 import MemoriasPage from "@/pages/memorias";
 import AsistenteIaPage from "@/pages/asistente-ia";
 import AppMovilPage from "@/pages/app-movil";
-import AutodirigidoPage from "@/pages/autodirigido";
+import AutodirigidoPage, { ScormPlayerPage } from "@/pages/autodirigido";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +76,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/recuperar" component={RecuperarPage} />
+      <Route path="/scorm-player" component={ScormPlayerPage} />
       <Route component={AuthedRoutes} />
     </Switch>
   );

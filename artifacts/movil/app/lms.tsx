@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -19,13 +19,18 @@ export default function LmsScreen() {
   const [managing, setManaging] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [scopeKey, setScopeKey] = useState("");
   const courses = useListLmsCourses();
-  const scopes = useGetLmsManagementScopes({ query: { enabled: managing, queryKey: ["lms-management-scopes"] } });
+  const scopes = useGetLmsManagementScopes();
   const create = useCreateLmsCourse();
   const canManage = (scopes.data?.length ?? 0) > 0;
+  const selectedScope = scopes.data?.find((scope) => String(scope.moduleId ?? "general") === scopeKey) ?? scopes.data?.[0];
+  useEffect(() => {
+    if (!scopeKey && scopes.data?.length) setScopeKey(String(scopes.data[0].moduleId ?? "general"));
+  }, [scopeKey, scopes.data]);
   const submit = () => {
     if (!title.trim()) return;
-    create.mutate({ data: { title: title.trim(), description: description.trim(), moduleId: scopes.data?.[0]?.moduleId ?? null } }, {
+    create.mutate({ data: { title: title.trim(), description: description.trim(), moduleId: selectedScope?.moduleId ?? null } }, {
       onSuccess: (course) => {
         setTitle(""); setDescription(""); setManaging(false);
         void queryClient.invalidateQueries({ queryKey: getListLmsCoursesQueryKey() });
@@ -55,7 +60,15 @@ export default function LmsScreen() {
                 <Text style={[styles.formTitle, { color: colors.foreground }]}>Nuevo curso</Text>
                 <TextInput value={title} onChangeText={setTitle} placeholder="Título del curso" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
                 <TextInput value={description} onChangeText={setDescription} placeholder="Descripción (opcional)" placeholderTextColor={colors.mutedForeground} multiline style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-                <Button label="Crear curso" icon="plus" onPress={submit} loading={create.isPending} disabled={!title.trim()} />
+                <Text style={[styles.meta, { color: colors.mutedForeground }]}>Ámbito del curso</Text>
+                <View style={styles.scopeList}>
+                  {(scopes.data ?? []).map((scope) => {
+                    const key = String(scope.moduleId ?? "general");
+                    const selected = key === String(selectedScope?.moduleId ?? "general");
+                    return <Pressable key={key} onPress={() => setScopeKey(key)} style={[styles.scopeChip, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.accent : colors.card }]}><Text style={[styles.scopeText, { color: selected ? colors.primary : colors.foreground }]}>{scope.label}</Text></Pressable>;
+                  })}
+                </View>
+                <Button label="Crear curso" icon="plus" onPress={submit} loading={create.isPending} disabled={!title.trim() || !selectedScope} />
               </Card> : null}
             </View>
           }
@@ -88,4 +101,5 @@ const styles = StyleSheet.create({
   textarea: { minHeight: 72, textAlignVertical: "top" }, course: { flexDirection: "row", alignItems: "center", gap: 12 },
   icon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" }, courseCopy: { flex: 1, gap: 4 },
   courseTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" }, meta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  scopeList: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, scopeChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, paddingVertical: 7, paddingHorizontal: 11 }, scopeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 });
