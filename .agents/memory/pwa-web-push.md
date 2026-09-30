@@ -18,6 +18,21 @@ it. Tried it, it had no effect, deleted it.
 192/512 + apple-touch) — `public/` IS served at web root in dev. The SW is best-effort
 (skipWaiting/claim, noop fetch, `push` + `notificationclick` handlers).
 
+## Installed Chrome PWA opens blank but browser works
+If the public page loads in Chrome on Android but the installed PWA stays blank,
+uninstalling and reinstalling the icon alone may not clear Chrome's retained
+site data. Clearing the site's data in Chrome's site settings, then reopening
+the public URL and reinstalling, resolved this on the affected device.
+
+**Why:** The user confirmed that reinstalling alone did not help, whereas clearing
+site data before reinstalling did. This is a device-side recovery procedure,
+not proof of which stored item caused the blank screen.
+
+**How to apply:** First confirm the public URL works in the same phone's browser.
+If an installed launch still fails, explain that clearing site data signs them
+out and removes local-only preferences, then clear data for that origin and
+reinstall. Do not claim that changing code or updating the server was necessary.
+
 ## Web push pipeline
 Self-generated VAPID keypair stored in the **database** (the `integration_settings`
 singleton row, columns `vapid_public_key`/`vapid_private_key`/`vapid_subject`), NOT in env
