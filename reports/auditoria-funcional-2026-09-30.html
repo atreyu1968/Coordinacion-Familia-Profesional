@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditoría funcional y de lógica · Coordina ADG</title>
+  <style>
+    :root { color-scheme: light; --ink:#142238; --muted:#53647a; --line:#dfe6ee; --paper:#fff; --bg:#f4f7fa; --blue:#1456a0; --red:#a02530; --amber:#986009; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1020px; margin:auto; padding:34px 22px 80px; }
+    header { padding:34px 36px; background:#102c50; border-radius:18px; color:white; }
+    header small { text-transform:uppercase; letter-spacing:.13em; opacity:.8; font-weight:700; }
+    h1 { font-size:clamp(30px,4vw,43px); line-height:1.15; margin:10px 0 12px; }
+    h2 { font-size:25px; margin:0 0 14px; }
+    h3 { font-size:17px; line-height:1.35; margin:0 0 8px; }
+    p { margin:8px 0; }
+    header p { max-width:750px; color:#dbe7f8; }
+    .meta { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+    .pill { display:inline-block; padding:5px 10px; border-radius:20px; background:#ffffff20; color:#fff; font-size:12px; font-weight:700; }
+    section { margin-top:24px; padding:26px 30px; background:var(--paper); border:1px solid var(--line); border-radius:16px; }
+    .lead { font-size:17px; }
+    .warning { border-left:4px solid var(--red); padding:10px 16px; background:#fff3f2; border-radius:0 9px 9px 0; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .metric { padding:16px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; }
+    .metric strong { display:block; font-size:16px; }
+    .metric span { font-size:13px; color:var(--muted); }
+    .finding { padding:17px 0; border-top:1px solid var(--line); }
+    .finding:first-of-type { border-top:0; padding-top:2px; }
+    .finding p { margin:5px 0; }
+    .finding small { color:var(--muted); }
+    .label { display:inline-block; margin-right:8px; font-size:11px; font-weight:800; letter-spacing:.05em; padding:3px 7px; border-radius:5px; vertical-align:2px; }
+    .critical { background:#fce7e6; color:#921c24; }
+    .high { background:#fff0db; color:#805007; }
+    .medium { background:#e9f0fc; color:#174b91; }
+    code { font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; color:#264a74; }
+    ul,ol { padding-left:22px; margin:10px 0; }
+    li { margin:7px 0; }
+    .cols { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    .muted { color:var(--muted); }
+    table { border-collapse:collapse; width:100%; }
+    th,td { border-bottom:1px solid var(--line); padding:10px 8px; text-align:left; vertical-align:top; }
+    th { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+    footer { margin-top:22px; color:var(--muted); font-size:12px; text-align:center; }
+    @media (max-width:700px) { main { padding:12px 12px 36px; } header,section { padding:22px 18px; border-radius:12px; } .grid,.cols { grid-template-columns:1fr; } table { font-size:13px; } }
+    @media print { body { background:white; } main { max-width:none; padding:0; } header,section { break-inside:avoid; } section { border-radius:0; } .finding { break-inside:avoid; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <small>Coordina ADG · Informe técnico</small>
+    <h1>Auditoría funcional y de lógica</h1>
+    <p>Revisión transversal de API, permisos, LMS, contenidos, comunicación, copias de seguridad, web y móvil. Hallazgos priorizados por impacto y acompañados de evidencia en el código.</p>
+    <div class="meta"><span class="pill">30 de septiembre de 2026</span><span class="pill">Entorno de desarrollo</span><span class="pill">Resultado: requiere correcciones</span></div>
+  </header>
+
+  <section>
+    <h2>Conclusión ejecutiva</h2>
+    <p class="lead">La aplicación compila y sus servicios responden, pero <strong>no es posible certificar que todo funciona correctamente</strong>. La revisión encontró fallos concretos que pueden provocar pérdida de datos al restaurar, acceso tras revocación de permisos, cambios indebidos de ámbito y resultados académicos incorrectos.</p>
+    <p class="warning"><strong>Precaución inmediata:</strong> no ejecutar una restauración de copia sobre datos reales hasta corregir y probar el procedimiento completo en una base aislada. Una copia actual no incluye todas las tablas persistentes.</p>
+    <div class="grid">
+      <div class="metric"><strong>Compilación: correcta</strong><span>Typecheck completo; build web con variables de artefacto; exportación web móvil.</span></div>
+      <div class="metric"><strong>Servicios: activos</strong><span>API, web y Expo funcionando. /api/healthz devuelve 200; rutas privadas sin sesión, 401.</span></div>
+      <div class="metric"><strong>Pruebas autenticadas: pendientes</strong><span>No se ejecutó la suite existente: usa la misma base de desarrollo y crea datos.</span></div>
+      <div class="metric"><strong>Producción: no examinada</strong><span>No se modificó producción ni se ejecutó una restauración o prueba destructiva.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Alcance y método</h2>
+    <p>Se revisaron de forma independiente permisos/ámbitos, LMS y archivos, comunicación/eventos, operaciones/copias y clientes web/móvil. Los defectos marcados como <strong>«código»</strong> están sustentados por las rutas y condiciones citadas, pero no equivalen a una explotación demostrada contra usuarios reales. El fallo de recuperación móvil también se reprodujo visualmente: al abrir <code>/recuperar</code> sin sesión aparece la pantalla de inicio de sesión.</p>
+    <table>
+      <tr><th>Comprobación</th><th>Resultado</th><th>Límite</th></tr>
+      <tr><td><code>pnpm run typecheck</code></td><td>Correcto en librerías, API, web, móvil, sandbox y scripts.</td><td>Comprueba tipos, no comportamiento.</td></tr>
+      <tr><td>Build web y exportación web móvil</td><td>Correctos. El build web necesita <code>PORT</code> y <code>BASE_PATH</code>, inyectados por el servicio gestionado.</td><td>Hay avisos de sourcemaps y un paquete web principal de ~2,79 MB.</td></tr>
+      <tr><td>API pública y acceso sin sesión</td><td><code>/api/healthz</code> 200; <code>/api/auth/me</code> y <code>/api/lms/courses</code> 401; reproductor público SCORM servido.</td><td>No acredita operaciones autenticadas.</td></tr>
+      <tr><td>Suite de pruebas y restauración</td><td>No ejecutadas.</td><td>Los tests crean datos en la base de desarrollo; una restauración puede borrar datos.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Prioridad crítica · corregir antes de confiar en los datos</h2>
+    <div class="finding">
+      <h3><span class="label critical">CRÍTICO</span>La restauración puede perder información no incluida en la copia</h3>
+      <p>La copia y la sustitución usan una lista fija que omite años académicos, confirmaciones, chats, formularios, wiki, anuncios y otras tablas. Al borrar módulos pueden eliminarse en cascada resultados de aprendizaje no exportados; otras referencias pueden impedir la restauración y provocar rollback. Las tablas se leen secuencialmente, sin una instantánea consistente.</p>
+      <p><strong>Acción:</strong> inventariar todas las tablas y archivos asociados, versionar el formato, exportar bajo una transacción de lectura consistente y exigir una restauración completa probada de ida y vuelta en un entorno aislado. Hasta entonces, no usar la operación de restauración sobre datos reales.</p>
+      <small>Código: <code>artifacts/api-server/src/routes/backup.ts:55-87,118-121,223-244</code>; <code>lib/db/src/schema/index.ts:16-41</code>. Estado: confirmado por código; no se ejecutó la restauración.</small>
+    </div>
+    <div class="finding">
+      <h3><span class="label critical">CRÍTICO</span>Una persona expulsada de un chat puede seguir recibiendo mensajes</h3>
+      <p>La pertenencia se comprueba solo al entrar en la sala Socket.io. La sincronización elimina la fila de pertenencia, pero no expulsa las conexiones ya unidas; los envíos a la sala siguen alcanzándolas hasta desconectar.</p>
+      <p><strong>Acción:</strong> retirar las conexiones de usuarios revocados y/o comprobar pertenencia en cada entrega y evento de escritura.</p>
+      <small>Código: <code>artifacts/api-server/src/lib/realtime.ts:64-78,107-113</code>; <code>lib/db/src/moduleChat.ts:190-201</code>. Estado: confirmado por código; entrega tras revocación no probada en socket real.</small>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prioridad alta · permisos e integridad funcional</h2>
+    <div class="finding"><h3><span class="label high">ALTO</span>Autodeclaración de centro sin verificación independiente</h3><p>Durante la confirmación anual, un docente puede seleccionar cualquier centro no eliminado; el servidor cambia su centro y provincia y, con ello, el alcance de lectura. Debe validarse el traslado y la familia profesional por una vía autorizada, no solo por el valor enviado por el docente.</p><small><code>artifacts/api-server/src/routes/academicYears.ts:618-666</code>; <code>artifacts/api-server/src/routes/users.ts:40-44,88-95</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Reenvío de invitaciones sin comprobar el rol que se invita</h3><p>El permiso para renovar y obtener el enlace depende del ámbito o de haber emitido la invitación, pero no de si el rol de destino sigue siendo delegable por quien la reenvía. Revalidar <code>canInvite</code> y el ámbito actual tanto al renovar como al revocar.</p><small><code>artifacts/api-server/src/routes/invitations.ts:185-189,204-217</code>; <code>artifacts/api-server/src/routes/auth.ts:249-259</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Reincorporación que restaura el privilegio de coordinador</h3><p>La autoinscripción puede reactivar una pertenencia eliminada conservando su rol privilegiado. Al reactivar por cuenta propia debe asignarse el rol normal; la designación de coordinación debe quedar reservada a un gestor.</p><small><code>artifacts/api-server/src/routes/academics.ts:1024-1051</code>; <code>artifacts/api-server/src/middlewares/auth.ts:203-209</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Asignación de usuarios a centros de otra provincia</h3><p>La edición valida la provincia declarada, pero no comprueba que el centro de destino pertenezca a ella. Resolver el centro en servidor y validar su provincia, estado y familia activa antes de guardar.</p><small><code>artifacts/api-server/src/routes/users.ts:138-161</code>; <code>artifacts/api-server/src/middlewares/auth.ts:140-143</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Datos privados en caché al cambiar de cuenta</h3><p>Web y móvil mantienen una instancia de React Query entre sesiones; cerrar sesión borra el token pero no cancela ni limpia consultas del usuario anterior. Al entrar otra cuenta podrían mostrarse datos de perfil o contenido previamente cacheados. Cancelar y limpiar consultas privadas en cierre/cambio de cuenta y probar el cambio de usuarios sin recargar.</p><small><code>artifacts/web/src/App.tsx:37,87-94</code>; <code>artifacts/web/src/lib/auth.tsx:24-52</code>; <code>artifacts/movil/app/_layout.tsx:46,173-180</code>; <code>artifacts/movil/contexts/AuthContext.tsx:162-176</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Visibilidad y enlaces de reuniones inconsistentes</h3><p>Una reunión dirigida a «todos» notifica a personas a quienes la lectura puede denegar acceso; el calendario expone salas de reuniones a coordinadores ajenos al ámbito; una sala eliminada puede pasar a tratarse como sala ad hoc al solicitar un token. Usar una sola regla de visibilidad para listado, calendario, avisos y token; distinguir definitivamente salas eliminadas de salas ad hoc.</p><small><code>artifacts/api-server/src/routes/meetings.ts:97-126,198-205,241-253,292-313</code>; <code>artifacts/api-server/src/routes/events.ts:892-926</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Progreso SCORM y certificados aceptan estados inconsistentes</h3><p>El commit acepta un <code>status=passed</code> independiente del CMI; una lección SCORM o un cuestionario editados conservan completados anteriores. En SCORM 2004 se prioriza «completed» aunque el éxito sea «failed». Derivar estados de CMI validado, definir una política explícita para éxito/finalización y versionar evaluaciones o invalidar progresos tras cambios sustantivos.</p><small><code>artifacts/api-server/src/routes/lms.ts:404-451,823-885</code>; <code>artifacts/web/src/pages/autodirigido.tsx:57-74</code>. Código; validez de certificados depende de la política académica.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>El tamaño declarado de una carga no limita el cuerpo recibido</h3><p>La ruta local de carga escribe el flujo sin contar bytes; el importador SCORM lo carga entero en memoria antes de comprobar 100 MB. Imponer límite durante la recepción y antes de cargar/descomprimir; aplicar una política equivalente al destino cloud.</p><small><code>artifacts/api-server/src/routes/storage.ts:67-105</code>; <code>artifacts/api-server/src/routes/lms.ts:309-315</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label high">ALTO</span>Certificados de eventos basados solo en una reserva afirmativa</h3><p>La emisión elige todos los RSVP «sí» sin acreditar asistencia ni excluir certificados ya emitidos. Puede enviarse el certificado a quien no asistió y reenviarse varias veces. Definir evidencia de asistencia, comprobar <code>certificateIssuedAt</code> y hacer la emisión idempotente.</p><small><code>artifacts/api-server/src/routes/events.ts:796-845</code>. Código; confirmar la regla de negocio de asistencia.</small></div>
+  </section>
+
+  <section>
+    <h2>Prioridad media · flujos rotos y consistencia</h2>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Recuperación de contraseña móvil bloqueada</h3><p>El enlace apunta a <code>/recuperar</code>, pero el guard solo permite <code>/login</code> sin sesión y redirige inmediatamente. Se observó la pantalla de acceso al abrir la ruta. Permitir las dos pantallas públicas y probar solicitud y cambio de contraseña.</p><small><code>artifacts/movil/app/login.tsx:181</code>; <code>artifacts/movil/app/_layout.tsx:53-61</code>. Código y vista previa.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>El certificado del LMS no se puede descargar desde web</h3><p>La vista web muestra una insignia de certificado, pero no ofrece el endpoint de descarga aun cuando está disponible. Añadir acción cuando <code>certificateAvailable</code> sea verdadero.</p><small><code>artifacts/web/src/pages/autodirigido.tsx:307-315</code>; <code>artifacts/api-server/src/routes/lms.ts:936-947</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Confirmaciones académicas y asignaciones antiguas no se reconcilian</h3><p>Una confirmación posterior agrega módulos pero no retira los omitidos ni corrige los asociados al centro anterior. En móvil, además, la edición desaparece después de confirmar. Definir un flujo de corrección autorizada que sincronice asignaciones y pertenencia a espacios colaborativos.</p><small><code>artifacts/api-server/src/routes/academicYears.ts:669-700</code>; <code>artifacts/movil/app/confirmar-curso.tsx:106-122</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Plazos de encuestas y formularios no se aplican al enviar</h3><p>Se guardan las fechas de apertura/cierre, pero la API permite respuestas y entregas mientras el estado sea «open», incluso fuera del plazo. Comparar fechas en servidor y exponer disponibilidad efectiva al cliente.</p><small><code>artifacts/api-server/src/routes/surveys.ts:164-168,329-338</code>; <code>artifacts/api-server/src/routes/documentForms.ts:186-197,531-555</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Chats largos muestran los mensajes más antiguos</h3><p>La consulta ordena de antiguo a reciente y limita a 200; en conversaciones largas faltan los mensajes nuevos. Recuperar primero los últimos y ofrecer paginación hacia atrás.</p><small><code>artifacts/api-server/src/routes/messaging.ts:601-607</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Notificaciones pueden revelar contenido ya inaccesible</h3><p>Las respuestas de foro incluyen autores históricos sin volver a verificar acceso. El cálculo de destinatarios por provincia puede usar el centro cuando la comprobación de lectura usa la provincia explícita. Alinear ambos cálculos con la autorización actual.</p><small><code>artifacts/api-server/src/routes/forums.ts:807-835</code>; <code>artifacts/api-server/src/lib/audience.ts:83-99,132-147,312-320</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Accesibilidad funcional desigual en clientes</h3><p>La navegación web desaparece a ancho de teléfono sin menú alternativo. En móvil nativo, el botón de archivos del Tablón muestra un aviso «solo web» en vez de descargar. Reutilizar el menú filtrado por rol y la descarga autenticada nativa existente en chat.</p><small><code>artifacts/web/src/components/layout.tsx:82-105,110-163</code>; <code>artifacts/movil/app/(tabs)/index.tsx:38-48,110-115</code>. Código.</small></div>
+    <div class="finding"><h3><span class="label medium">MEDIO</span>Sesiones y señal de salud no reflejan cambios críticos</h3><p>Cambiar la contraseña no invalida los JWT anteriores, válidos durante 30 días. <code>/api/healthz</code> devuelve OK sin comprobar la base, aunque el arranque haya registrado errores de inicialización. Añadir versión de token por usuario y una comprobación de readiness dependiente de DB.</p><small><code>artifacts/api-server/src/routes/auth.ts:380-410</code>; <code>artifacts/api-server/src/lib/auth.ts:30-38</code>; <code>artifacts/api-server/src/routes/health.ts:6-9</code>. Código.</small></div>
+  </section>
+
+  <section>
+    <h2>Riesgo condicionado que necesita comprobación de despliegue</h2>
+    <p>La ruta de objetos buscables permite acceso anónimo cuando faltan metadatos ACL. Esto es compatible con recursos públicos heredados, pero sería una fuga si la ruta pública coincidiera con la ubicación de cargas privadas o si se perdiera su ACL. <strong>No se ha confirmado esa coincidencia en el despliegue.</strong> Verificar separación de rutas y negar por defecto las cargas sin ACL.</p>
+    <p class="muted"><code>artifacts/api-server/src/routes/storage.ts:129-148</code>; <code>artifacts/api-server/src/lib/objectAcl.ts:130-143</code>.</p>
+  </section>
+
+  <section>
+    <h2>Plan de mejoras recomendado</h2>
+    <ol>
+      <li><strong>Contener riesgos:</strong> suspender restauraciones reales; corregir revocación de sockets y los cuatro límites de rol/ámbito; limpiar cachés privadas al cerrar sesión.</li>
+      <li><strong>Proteger resultados:</strong> normalizar visibilidad de reuniones, endurecer commit SCORM y cargas, versionar progreso tras editar contenido y exigir asistencia real para certificados.</li>
+      <li><strong>Reparar flujos:</strong> recuperación móvil, descarga de certificados web y adjuntos nativos, confirmaciones corregibles, plazos y mensajes recientes.</li>
+      <li><strong>Probar sin afectar datos compartidos:</strong> disponer de base de pruebas separada; añadir regresiones de permisos por rol/ámbito, copia-restauración, SCORM 1.2/2004, fechas y cambios de cuenta; después probar recorridos autenticados web y móvil.</li>
+      <li><strong>Operación y rendimiento:</strong> readiness de DB, exportación consistente, división del bundle web de ~2,79 MB y ajuste de versiones Expo advertidas por Metro.</li>
+    </ol>
+    <p><strong>Orden recomendado:</strong> primero datos y acceso; después integridad de cursos/certificados; finalmente experiencia, cobertura de pruebas y rendimiento. No se ha aplicado ningún cambio al código de la aplicación durante esta auditoría.</p>
+  </section>
+
+  <section>
+    <h2>Limitaciones y criterio de confianza</h2>
+    <p>Esta es una auditoría amplia pero no exhaustiva de cada combinación de rol, dato y dispositivo. La mayoría de los hallazgos son <strong>defectos demostrables en la lógica del código</strong>; salvo el desvío de recuperación móvil, no se ejecutaron los escenarios contra cuentas autenticadas. Las integraciones externas, el envío real de correos/push, una restauración completa y la versión publicada no se probaron. La suite existente usa la base compartida de desarrollo y crea registros, por lo que no se ejecutó sin aislamiento. No se garantiza el funcionamiento global hasta corregir las prioridades críticas/altas y realizar esas pruebas.</p>
+  </section>
+  <footer>Auditoría de desarrollo · Informe generado el 30/09/2026 · Sin cambios en producción</footer>
+</main>
+</body>
+</html>
