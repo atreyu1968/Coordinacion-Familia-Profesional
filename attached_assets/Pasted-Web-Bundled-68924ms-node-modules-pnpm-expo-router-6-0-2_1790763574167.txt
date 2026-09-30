@@ -1,0 +1,154 @@
+Web Bundled 68924ms node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/entry.js (1601 modules)
+
+› Assets (58):
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin_Italic/Inter_100Thin_Italic.1b97f7df9b976cfe530c18c09598e6f6.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/100Thin/Inter_100Thin.ddbb1cd55ad509e82377bd10beed6506.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight_Italic/Inter_200ExtraLight_Italic.3d0662838915a7a16d01c262735d3d29.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/200ExtraLight/Inter_200ExtraLight.e1f33daee21eb5998b13d3e05264d9a3.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light_Italic/Inter_300Light_Italic.17f8f23a2852bfa14ce5bf590c2a0e2c.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/300Light/Inter_300Light.d2994e3dea3856e1834395ad6cce32af.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular_Italic/Inter_400Regular_Italic.36cad9f97595b7759264b945d64502b4.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.51b6ad87261f18b6433ec52871ddfabc.ttf (342 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium_Italic/Inter_500Medium_Italic.155406bfbfb023eb104728edfe62c0e9.ttf (346 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.137ab18bace28dd0bd83eb3b8ed2bc54.ttf (343 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold_Italic/Inter_600SemiBold_Italic.a349d1ac188e1a67689432f44de99849.ttf (347 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.a5f35888d2da465de352e0dcfaf33324.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold_Italic/Inter_700Bold_Italic.3398006c80026f0508aaaf4808950d56.ttf (348 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.6e237de4f1f413afa2fcc45c77ac343a.ttf (344 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold_Italic/Inter_800ExtraBold_Italic.7ca909a56537d965feef41abe58b87e0.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.6016034293c084aa0c056e83938bf1cc.ttf (345 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black_Italic/Inter_900Black_Italic.d5f78c24de59ce5e4bad405e10e71941.ttf (349 kB)
+../../node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter/900Black/Inter_900Black.bcec6eda9700a81ba92c483a2f2c02c1.ttf (345 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.3f78af31cca60105799838a1a7a59fbd.ttf (130 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Entypo.31b5ffea3daddc69dd01a1f3d6cf63c5.ttf (66.2 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/EvilIcons.140c53a7643ea949007aa9a282153849.ttf (13.5 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ca4b48e04dc1ce10bfbddb262c8b835f.ttf (55.6 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.3b89dd103490708d19a95adcae52210e.ttf (134 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.1f77739ca9ff2188b539c36f30ffa2be.ttf (33.7 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.605ed7926cf39a2ad5ec2d1f9d391d3d.ttf (203 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Brands.56c8d80832e37783f12c05db7c8849e2.ttf (209 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Regular.370dd5af19f8364907b6e2c41f45dbbf.ttf (68 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Solid.adec7d6f310bc577f05e8fe06a5daccf.ttf (424 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Fontisto.b49ae8ab2dbccb02c4d11caaacf09eab.ttf (314 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Foundation.e20945d7c929279ef7a6f1db184a4470.ttf (57 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.b4eb097d35f44ed943676fd56f6bdc51.ttf (390 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.6e435534bd35da5fef04168860a9b8fa.ttf (1.31 MB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.4e85bc9ebe07e0340c9c4fc2f6c38908.ttf (357 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Octicons.871378c6eab492a3e689a9385dc45a12.ttf (69.4 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/SimpleLineIcons.d2285965fe34b05465047401b8595dd0.ttf (54.1 kB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@14.0.12_expo@54.0.37_react-native@0.81.5_@babel+cor_79f799f727fa4019caa854ba70b889a1/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Zocial.1681f34aaca71b8dfb70756bca331eb2.ttf (25.8 kB)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.21_@react-navigation+native@7.3.0_react-native@0.81.5_@b_949ed956b1e05bd30ee78de8dff21256/node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.46 kB)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__1aff3836ea3e29527de60a30fc807a77/node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.75 kB)
+assets/images/icon-mark.93c4516148808dcdb9655dd17755750f.png (204 kB)
+assets/images/logo-white.617b098b3876ebf2d25b2e68d47f7ced.png (73.5 kB)
+assets/images/logo.cfdd8e90f787f75e04298b56c94df717.png (384 kB)
+
+› web bundles (1):
+_expo/static/js/web/entry-d2b690e23aee5f35a9411ca6cbe46df7.js (3.52 MB)
+
+› Files (3):
+favicon.ico (14.5 kB)
+index.html (1.23 kB)
+metadata.json (49 B)
+
+Exported: dist
+==> Publishing web files to /var/www/coordina-adg
+==> Publishing the mobile app to /var/www/coordina-adg/app
+==> Ensuring nginx serves from /var/www/coordina-adg
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Applying database schema
+
+> @workspace/db@0.0.0 push-force /root/Coordinacion-Familia-Profesional/lib/db
+> drizzle-kit push --force --config ./drizzle.config.ts
+
+Reading config file '/root/Coordinacion-Familia-Profesional/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+==> Preloading reference data (provinces, islands, municipalities, FP centers)
+
+> @workspace/scripts@0.0.0 seed-reference-data /root/Coordinacion-Familia-Profesional/scripts
+> tsx ./src/seed-reference-data.ts
+
+Reference data ready — inserted: 0, updated: 0, unchanged: 3137.
+==> Seeding test teachers (Administración y Gestión)
+
+> @workspace/scripts@0.0.0 seed-test-teachers /root/Coordinacion-Familia-Profesional/scripts
+> tsx ./src/seed-test-teachers.ts
+
+Target center: CIFP CÉSAR MANRIQUE (id 5).
+Test teachers ready — created: 0, existing: 4, new assignments: 62.
+Module chat groups — created: 0, updated: 47, unchanged: 0, skipped: 0.
+Login: ana.garcia@admin.coordina.test, bruno.lopez@admin.coordina.test, carmen.ruiz@admin.coordina.test, david.sanchez@admin.coordina.test — password: Profesor2026!
+==> Restarting service
+==> Updating the collaborative space (Nextcloud + Collabora)
+
+==> Ensuring Docker is installed
+Synchronizing state of docker.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable docker
+
+==> Gathering configuration
+Main application domain (e.g. adg.example.org) [coordinacionag.iesmmg.org]: coordinacionfp.org
+    Main domain        : coordinacionfp.org
+    Nextcloud (Drive)  : https://coordinacionfp.org/nextcloud
+    Collabora (Office) : https://coordinacionfp.org/collabora
+
+==> Writing /root/Coordinacion-Familia-Profesional/deploy/nextcloud/.env
+
+==> Starting Nextcloud + Collabora (docker compose up -d)
+[+] pull 31/31
+ ✔ Image postgres:16-alpine    Pulled                                                                                      13.2s
+ ✔ Image nextcloud:30-apache   Pulled                                                                                      1.5ss
+ ✔ Image collabora/code:latest Pulled                                                                                      22.8s
+ ✔ Image redis:7-alpine        Pulled                                                                                      10.3s
+[+] up 4/4
+ ✔ Container nextcloud-collabora-1       Recreated                                                                         1.6ss
+ ✔ Container nextcloud-nextcloud-db-1    Healthy                                                                           12.4s
+ ✔ Container nextcloud-nextcloud-redis-1 Recreated                                                                         0.6ss
+ ✔ Container nextcloud-nextcloud-1       Running                                                                           0.0ss
+
+==> Waiting for Nextcloud to become ready
+Nextcloud did not become ready in time.
+WARNING: collaborative space update failed; re-run deploy/nextcloud/install-collab.sh
+==> Updating the documentation wiki (Outline)
+
+==> Ensuring Docker is installed
+Synchronizing state of docker.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable docker
+
+==> Gathering configuration
+Main application domain (e.g. adg.example.org) [coordinacionag.iesmmg.org]: coordinacionfp.org
+    Main domain        : coordinacionfp.org
+    Wiki (Outline)     : http://docs.coordinacionfp.org
+    Storage (MinIO)    : http://files.coordinacionfp.org
+      (no HTTPS: set LETSENCRYPT_EMAIL to enable TLS — required for SSO login)
+
+==> Writing /root/Coordinacion-Familia-Profesional/deploy/outline/.env
+
+==> Configuring nginx server blocks for docs.coordinacionfp.org and files.coordinacionfp.org
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+==> Starting Outline + Postgres + Redis + MinIO (docker compose up -d)
+[+] pull 5/5
+ ! Image redis:7-alpine                           Interrupted                                                               0.8s
+ ! Image minio/minio:RELEASE.2025-04-22T22-12-26Z Interrupted                                                               0.8s
+ ! Image outlinewiki/outline:0.82.0               Interrupted                                                               0.8s
+ ✘ Image minio/mc:RELEASE.2025-04-16T18-13-26Z    Error pull access denied for minio/mc, repository does not exist...       0.8s
+ ! Image postgres:16-alpine                       Interrupted                                                               0.8s
+Error response from daemon: pull access denied for minio/mc, repository does not exist or may require 'docker login'
+WARNING: documentation wiki update failed; re-run deploy/outline/install-outline.sh
+==> Done. Logs: journalctl -u coordina-adg -f
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
