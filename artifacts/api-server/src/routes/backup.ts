@@ -34,6 +34,12 @@ import {
   calendarEntriesTable,
   annualReportsTable,
   integrationSettingsTable,
+  lmsCoursesTable,
+  lmsLessonsTable,
+  lmsCourseManagersTable,
+  lmsLessonProgressTable,
+  lmsCertificatesTable,
+  lmsUploadIntentsTable,
 } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -72,6 +78,12 @@ const TABLES: [string, Table][] = [
   ["calendarEntries", calendarEntriesTable],
   ["annualReports", annualReportsTable],
   ["integrationSettings", integrationSettingsTable],
+  ["lmsCourses", lmsCoursesTable],
+  ["lmsLessons", lmsLessonsTable],
+  ["lmsCourseManagers", lmsCourseManagersTable],
+  ["lmsLessonProgress", lmsLessonProgressTable],
+  ["lmsCertificates", lmsCertificatesTable],
+  ["lmsUploadIntents", lmsUploadIntentsTable],
 ];
 
 type BackupFile = {

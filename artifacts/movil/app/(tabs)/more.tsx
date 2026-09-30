@@ -56,6 +56,7 @@ export default function MoreScreen() {
   }[] = [
     { icon: "video", label: "Videoconferencias", onPress: () => router.push("/videoconferencias") },
     { icon: "book-open", label: "Mis módulos", onPress: () => router.push("/modulos") },
+    { icon: "award", label: "Cursos autodirigidos", description: "Aprende a tu ritmo y consigue certificados", onPress: () => router.push("/lms") },
     {
       icon: "file-text",
       label: "Documentación",

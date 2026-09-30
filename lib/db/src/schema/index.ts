@@ -39,3 +39,4 @@ export * from "./wikiPermissionGroups";
 export * from "./wikiModulePermissionGroupMembers";
 export * from "./wikiPages";
 export * from "./wikiExternalLinks";
+export * from "./lms";

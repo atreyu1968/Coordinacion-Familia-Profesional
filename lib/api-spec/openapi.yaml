@@ -44,6 +44,8 @@ tags:
     description: In-app improvement suggestions and incident reports
   - name: meetings
     description: Videoconference meeting rooms (Jitsi)
+  - name: lms
+    description: Autodirigido learning courses and certificates
 
 paths:
   /storage/uploads/request-url:
@@ -3863,6 +3865,196 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
+  /lms/courses:
+    get:
+      operationId: listLmsCourses
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Courses, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsCourse" } } } } }
+    post:
+      operationId: createLmsCourse
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseDetail" } } } }
+  /lms/courses/{courseId}:
+    get:
+      operationId: getLmsCourse
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      responses:
+        "200": { description: Course, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseDetail" } } } }
+    patch:
+      operationId: updateLmsCourse
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseUpdate" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseDetail" } } } }
+    delete:
+      operationId: deleteLmsCourse
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      responses: { "204": { description: Deleted } }
+  /lms/courses/{courseId}/publish:
+    post:
+      operationId: publishLmsCourse
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      responses:
+        "200": { description: Published, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseDetail" } } } }
+  /lms/courses/{courseId}/lessons:
+    post:
+      operationId: createLmsLesson
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsLessonInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/LmsLesson" } } } }
+  /lms/lessons/{lessonId}:
+    patch:
+      operationId: updateLmsLesson
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsLessonUpdate" } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/LmsLesson" } } } }
+    delete:
+      operationId: deleteLmsLesson
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      responses: { "204": { description: Deleted } }
+  /lms/uploads/request-url:
+    post:
+      operationId: requestLmsUploadUrl
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsUploadInput" } } } }
+      responses:
+        "200": { description: Upload URL, content: { application/json: { schema: { $ref: "#/components/schemas/LmsUploadResponse" } } } }
+  /lms/lessons/{lessonId}/download-token:
+    post:
+      operationId: createLmsLessonDownloadToken
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      responses:
+        "200": { description: Short-lived file download URL, content: { application/json: { schema: { $ref: "#/components/schemas/LmsDownloadToken" } } } }
+  /lms/files:
+    get:
+      operationId: downloadLmsLessonFile
+      tags: [lms]
+      parameters: [{ $ref: "#/components/parameters/LmsTokenQuery" }]
+      responses:
+        "200": { description: Private course file, content: { "*/*": { schema: { type: string, format: binary } } } }
+  /lms/lessons/{lessonId}/complete:
+    post:
+      operationId: completeLmsLesson
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      responses:
+        "200": { description: Progress, content: { application/json: { schema: { $ref: "#/components/schemas/LmsProgress" } } } }
+  /lms/lessons/{lessonId}/quiz-attempt:
+    post:
+      operationId: submitLmsQuizAttempt
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsQuizAttemptInput" } } } }
+      responses:
+        "200": { description: Result, content: { application/json: { schema: { $ref: "#/components/schemas/LmsQuizResult" } } } }
+  /lms/management/scopes:
+    get:
+      operationId: getLmsManagementScopes
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Scopes, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsManagementScope" } } } } }
+  /lms/general/managers:
+    get:
+      operationId: getLmsGeneralManagers
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Managers, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsManager" } } } } }
+    put:
+      operationId: updateLmsGeneralManagers
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsManagersInput" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsManager" } } } } } }
+  /lms/modules/{moduleId}/managers:
+    get:
+      operationId: getLmsModuleManagers
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ModuleIdPath" }]
+      responses: { "200": { description: Managers, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsManager" } } } } } }
+    put:
+      operationId: updateLmsModuleManagers
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ModuleIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsManagersInput" } } } }
+      responses: { "200": { description: Updated, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LmsManager" } } } } } }
+  /lms/courses/{courseId}/certificate:
+    get:
+      operationId: downloadLmsCertificate
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      responses: { "200": { description: PDF certificate, content: { application/pdf: { schema: { type: string, format: binary } } } } }
+  /lms/courses/{courseId}/scorm-session:
+    post:
+      operationId: createLmsScormSession
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormSessionInput" } } } }
+      responses: { "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormSession" } } } } }
+  /lms/lessons/{lessonId}/scorm-session:
+    post:
+      operationId: createLmsLessonScormSession
+      tags: [lms]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      responses: { "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormSession" } } } } }
+  /lms/scorm/session:
+    get:
+      operationId: getLmsScormSession
+      tags: [lms]
+      parameters: [{ $ref: "#/components/parameters/LmsTokenQuery" }]
+      responses:
+        "200": { description: SCORM session, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormSession" } } } }
+  /lms/scorm/commit:
+    post:
+      operationId: commitLmsScormSession
+      tags: [lms]
+      parameters: [{ $ref: "#/components/parameters/LmsTokenQuery" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormCommitInput" } } } }
+      responses: { "200": { description: Progress, content: { application/json: { schema: { $ref: "#/components/schemas/LmsProgress" } } } } }
+  /lms/scorm/sessions/{token}/content/{assetPath}:
+    get:
+      operationId: getLmsScormContent
+      tags: [lms]
+      parameters:
+        - $ref: "#/components/parameters/TokenPath"
+        - name: assetPath
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: SCORM asset, content: { "*/*": { schema: { type: string, format: binary } } } } }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3870,6 +4062,21 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    CourseIdPath:
+      name: courseId
+      in: path
+      required: true
+      schema: { type: integer }
+    LessonIdPath:
+      name: lessonId
+      in: path
+      required: true
+      schema: { type: integer }
+    ModuleIdPath:
+      name: moduleId
+      in: path
+      required: true
+      schema: { type: integer }
     IdPath:
       name: id
       in: path
@@ -3882,6 +4089,13 @@ components:
       required: true
       schema:
         type: string
+    LmsTokenQuery:
+      name: token
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
     StatusQuery:
       name: status
       in: query
@@ -3925,6 +4139,163 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    LmsCourse:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        moduleId: { type: [integer, "null"] }
+        status: { type: string, enum: [draft, published] }
+        certificateEnabled: { type: boolean }
+        lessonCount: { type: integer }
+        completed: { type: boolean }
+        certificateAvailable: { type: boolean }
+      required: [id, title, description, moduleId, status, certificateEnabled, lessonCount, completed, certificateAvailable]
+    LmsCourseDetail:
+      allOf:
+        - $ref: "#/components/schemas/LmsCourse"
+        - type: object
+          properties:
+            lessons:
+              type: array
+              items: { $ref: "#/components/schemas/LmsLesson" }
+            progress:
+              type: array
+              items: { $ref: "#/components/schemas/LmsProgress" }
+          required: [lessons, progress]
+    LmsCourseInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        moduleId: { type: [integer, "null"] }
+        certificateEnabled: { type: boolean }
+      required: [title]
+    LmsCourseUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        moduleId: { type: [integer, "null"] }
+        certificateEnabled: { type: boolean }
+    LmsLesson:
+      type: object
+      properties:
+        id: { type: integer }
+        courseId: { type: integer }
+        title: { type: string }
+        kind: { type: string, enum: [text, file, video, quiz, scorm12, scorm2004] }
+        position: { type: integer }
+        required: { type: boolean }
+        content: { type: object, additionalProperties: true }
+        objectName: { type: [string, "null"] }
+        objectContentType: { type: [string, "null"] }
+        objectSize: { type: [integer, "null"] }
+        scormVersion: { type: [string, "null"] }
+        scormLaunchPath: { type: [string, "null"] }
+      required: [id, courseId, title, kind, position, required, content, objectName, objectContentType, objectSize, scormVersion, scormLaunchPath]
+    LmsLessonInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        kind: { type: string, enum: [text, file, video, quiz, scorm12, scorm2004] }
+        position: { type: integer }
+        required: { type: boolean }
+        content: { type: object, additionalProperties: true }
+        objectPath: { type: string }
+        objectName: { type: string }
+        objectContentType: { type: string }
+        objectSize: { type: integer }
+        intentToken: { type: string }
+      required: [title, kind]
+    LmsLessonUpdate:
+      allOf:
+        - $ref: "#/components/schemas/LmsLessonInput"
+    LmsProgress:
+      type: object
+      properties:
+        lessonId: { type: integer }
+        status: { type: string, enum: [not_started, in_progress, completed, failed] }
+        score: { type: [integer, "null"] }
+        attempts: { type: integer }
+        completedAt: { type: [string, "null"], format: date-time }
+      required: [lessonId, status, score, attempts, completedAt]
+    LmsQuizAttemptInput:
+      type: object
+      properties:
+        selectedIndexes: { type: array, items: { type: integer } }
+      required: [selectedIndexes]
+    LmsQuizResult:
+      allOf:
+        - $ref: "#/components/schemas/LmsProgress"
+        - type: object
+          properties:
+            passed: { type: boolean }
+            score: { type: integer }
+          required: [passed]
+    LmsUploadInput:
+      type: object
+      properties:
+        courseId: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1, maximum: 104857600 }
+        contentType: { type: string, minLength: 1 }
+      required: [courseId, name, size, contentType]
+    LmsUploadResponse:
+      type: object
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+        intentToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+      required: [uploadURL, objectPath, intentToken, expiresAt]
+    LmsDownloadToken:
+      type: object
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+      required: [url, expiresAt]
+    LmsManager:
+      type: object
+      properties:
+        userId: { type: integer }
+        name: { type: string }
+        email: { type: string }
+      required: [userId, name, email]
+    LmsManagersInput:
+      type: object
+      properties:
+        userIds: { type: array, items: { type: integer } }
+      required: [userIds]
+    LmsManagementScope:
+      type: object
+      properties:
+        moduleId: { type: [integer, "null"] }
+        label: { type: string }
+        canManage: { type: boolean }
+      required: [moduleId, label, canManage]
+    LmsScormSessionInput:
+      type: object
+      properties:
+        lessonId: { type: integer }
+      required: [lessonId]
+    LmsScormSession:
+      type: object
+      properties:
+        token: { type: string }
+        launchPath: { type: string }
+        version: { type: string }
+        expiresAt: { type: string, format: date-time }
+        cmiData: { type: object, additionalProperties: true }
+      required: [token, launchPath, version, expiresAt, cmiData]
+    LmsScormCommitInput:
+      type: object
+      properties:
+        cmiData: { type: object, additionalProperties: true }
+        status: { type: string }
+        score: { type: integer }
+      required: [cmiData]
     HealthStatus:
       type: object
       properties:

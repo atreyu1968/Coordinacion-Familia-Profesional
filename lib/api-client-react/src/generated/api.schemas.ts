@@ -5,6 +5,208 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+export type LmsCourseStatus = typeof LmsCourseStatus[keyof typeof LmsCourseStatus];
+
+
+export const LmsCourseStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface LmsCourse {
+  id: number;
+  title: string;
+  description: string;
+  /** @nullable */
+  moduleId: number | null;
+  status: LmsCourseStatus;
+  certificateEnabled: boolean;
+  lessonCount: number;
+  completed: boolean;
+  certificateAvailable: boolean;
+}
+
+export type LmsLessonKind = typeof LmsLessonKind[keyof typeof LmsLessonKind];
+
+
+export const LmsLessonKind = {
+  text: 'text',
+  file: 'file',
+  video: 'video',
+  quiz: 'quiz',
+  scorm12: 'scorm12',
+  scorm2004: 'scorm2004',
+} as const;
+
+export type LmsLessonContent = { [key: string]: unknown };
+
+export interface LmsLesson {
+  id: number;
+  courseId: number;
+  title: string;
+  kind: LmsLessonKind;
+  position: number;
+  required: boolean;
+  content: LmsLessonContent;
+  /** @nullable */
+  objectName: string | null;
+  /** @nullable */
+  objectContentType: string | null;
+  /** @nullable */
+  objectSize: number | null;
+  /** @nullable */
+  scormVersion: string | null;
+  /** @nullable */
+  scormLaunchPath: string | null;
+}
+
+export type LmsProgressStatus = typeof LmsProgressStatus[keyof typeof LmsProgressStatus];
+
+
+export const LmsProgressStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface LmsProgress {
+  lessonId: number;
+  status: LmsProgressStatus;
+  /** @nullable */
+  score: number | null;
+  attempts: number;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export type LmsCourseDetail = LmsCourse & {
+  lessons: LmsLesson[];
+  progress: LmsProgress[];
+};
+
+export interface LmsCourseInput {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  /** @nullable */
+  moduleId?: number | null;
+  certificateEnabled?: boolean;
+}
+
+export interface LmsCourseUpdate {
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  /** @nullable */
+  moduleId?: number | null;
+  certificateEnabled?: boolean;
+}
+
+export type LmsLessonInputKind = typeof LmsLessonInputKind[keyof typeof LmsLessonInputKind];
+
+
+export const LmsLessonInputKind = {
+  text: 'text',
+  file: 'file',
+  video: 'video',
+  quiz: 'quiz',
+  scorm12: 'scorm12',
+  scorm2004: 'scorm2004',
+} as const;
+
+export type LmsLessonInputContent = { [key: string]: unknown };
+
+export interface LmsLessonInput {
+  /** @minLength 1 */
+  title: string;
+  kind: LmsLessonInputKind;
+  position?: number;
+  required?: boolean;
+  content?: LmsLessonInputContent;
+  objectPath?: string;
+  objectName?: string;
+  objectContentType?: string;
+  objectSize?: number;
+  intentToken?: string;
+}
+
+export type LmsLessonUpdate = LmsLessonInput;
+
+export interface LmsQuizAttemptInput {
+  selectedIndexes: number[];
+}
+
+export type LmsQuizResult = LmsProgress & {
+  passed: boolean;
+  score?: number;
+};
+
+export interface LmsUploadInput {
+  /** @minimum 1 */
+  courseId: number;
+  /** @minLength 1 */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface LmsUploadResponse {
+  uploadURL: string;
+  objectPath: string;
+  intentToken: string;
+  expiresAt: string;
+}
+
+export interface LmsDownloadToken {
+  url: string;
+  expiresAt: string;
+}
+
+export interface LmsManager {
+  userId: number;
+  name: string;
+  email: string;
+}
+
+export interface LmsManagersInput {
+  userIds: number[];
+}
+
+export interface LmsManagementScope {
+  /** @nullable */
+  moduleId: number | null;
+  label: string;
+  canManage: boolean;
+}
+
+export interface LmsScormSessionInput {
+  lessonId: number;
+}
+
+export type LmsScormSessionCmiData = { [key: string]: unknown };
+
+export interface LmsScormSession {
+  token: string;
+  launchPath: string;
+  version: string;
+  expiresAt: string;
+  cmiData: LmsScormSessionCmiData;
+}
+
+export type LmsScormCommitInputCmiData = { [key: string]: unknown };
+
+export interface LmsScormCommitInput {
+  cmiData: LmsScormCommitInputCmiData;
+  status?: string;
+  score?: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -1719,6 +1921,8 @@ export interface ConfirmYearInput {
  */
 export type ErrorResponse = Error;
 
+export type LmsTokenQueryParameter = string;
+
 export type StatusQueryParameter = string;
 
 export type RoleQueryParameter = Role;
@@ -1911,5 +2115,26 @@ export type ListYearConfirmationsParams = {
  * Academic year to inspect. Defaults to the active course.
  */
 schoolYear?: string;
+};
+
+export type DownloadLmsLessonFileParams = {
+/**
+ * @minLength 1
+ */
+token: LmsTokenQueryParameter;
+};
+
+export type GetLmsScormSessionParams = {
+/**
+ * @minLength 1
+ */
+token: LmsTokenQueryParameter;
+};
+
+export type CommitLmsScormSessionParams = {
+/**
+ * @minLength 1
+ */
+token: LmsTokenQueryParameter;
 };
 

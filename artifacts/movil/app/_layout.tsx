@@ -95,6 +95,8 @@ function RootLayoutNav() {
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
         <Stack.Screen name="confirmar-curso" />
+        <Stack.Screen name="lms" />
+        <Stack.Screen name="lms/[id]" />
       </Stack>
       {token && locked ? <AppLock /> : null}
     </>

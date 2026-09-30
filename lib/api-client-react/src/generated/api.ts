@@ -42,6 +42,7 @@ import type {
   CheckInInput,
   CheckInResult,
   CollabStatus,
+  CommitLmsScormSessionParams,
   CompanyAlert,
   CompanyAlertCreated,
   ConfirmYearInput,
@@ -77,6 +78,7 @@ import type {
   DocumentFormDetail,
   DocumentFormSubmissionsResponse,
   DocumentFormSummary,
+  DownloadLmsLessonFileParams,
   EditMessageInput,
   Error,
   ErrorResponse,
@@ -95,6 +97,7 @@ import type {
   GenerateReportInput,
   GetDashboardStatisticsParams,
   GetDashboardSummaryParams,
+  GetLmsScormSessionParams,
   Group,
   HealthStatus,
   IntegrationSettings,
@@ -124,6 +127,25 @@ import type {
   ListUsersParams,
   ListWikiPagesParams,
   ListYearConfirmationsParams,
+  LmsCourse,
+  LmsCourseDetail,
+  LmsCourseInput,
+  LmsCourseUpdate,
+  LmsDownloadToken,
+  LmsLesson,
+  LmsLessonInput,
+  LmsLessonUpdate,
+  LmsManagementScope,
+  LmsManager,
+  LmsManagersInput,
+  LmsProgress,
+  LmsQuizAttemptInput,
+  LmsQuizResult,
+  LmsScormCommitInput,
+  LmsScormSession,
+  LmsScormSessionInput,
+  LmsUploadInput,
+  LmsUploadResponse,
   LoginInput,
   Meeting,
   MeetingAccess,
@@ -12553,4 +12575,1710 @@ export const useReactivateUser = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getReactivateUserMutationOptions(options));
     }
+
+export const getListLmsCoursesUrl = () => {
+
+
+
+
+  return `/api/lms/courses`
+}
+
+export const listLmsCourses = async ( options?: RequestInit): Promise<LmsCourse[]> => {
+
+  return customFetch<LmsCourse[]>(getListLmsCoursesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLmsCoursesQueryKey = () => {
+    return [
+    `/api/lms/courses`
+    ] as const;
+    }
+
+
+export const getListLmsCoursesQueryOptions = <TData = Awaited<ReturnType<typeof listLmsCourses>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLmsCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLmsCoursesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLmsCourses>>> = ({ signal }) => listLmsCourses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLmsCourses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLmsCoursesQueryResult = NonNullable<Awaited<ReturnType<typeof listLmsCourses>>>
+export type ListLmsCoursesQueryError = ErrorType<unknown>
+
+
+
+export function useListLmsCourses<TData = Awaited<ReturnType<typeof listLmsCourses>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLmsCourses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLmsCoursesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLmsCourseUrl = () => {
+
+
+
+
+  return `/api/lms/courses`
+}
+
+export const createLmsCourse = async (lmsCourseInput: LmsCourseInput, options?: RequestInit): Promise<LmsCourseDetail> => {
+
+  return customFetch<LmsCourseDetail>(getCreateLmsCourseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsCourseInput,)
+  }
+);}
+
+
+
+
+export const getCreateLmsCourseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsCourse>>, TError,{data: BodyType<LmsCourseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLmsCourse>>, TError,{data: BodyType<LmsCourseInput>}, TContext> => {
+
+const mutationKey = ['createLmsCourse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsCourse>>, {data: BodyType<LmsCourseInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLmsCourse(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLmsCourseMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsCourse>>>
+    export type CreateLmsCourseMutationBody = BodyType<LmsCourseInput>
+    export type CreateLmsCourseMutationError = ErrorType<unknown>
+
+    export const useCreateLmsCourse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsCourse>>, TError,{data: BodyType<LmsCourseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLmsCourse>>,
+        TError,
+        {data: BodyType<LmsCourseInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLmsCourseMutationOptions(options));
+    }
+
+export const getGetLmsCourseUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}`
+}
+
+export const getLmsCourse = async (courseId: number, options?: RequestInit): Promise<LmsCourseDetail> => {
+
+  return customFetch<LmsCourseDetail>(getGetLmsCourseUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsCourseQueryKey = (courseId: number,) => {
+    return [
+    `/api/lms/courses/${courseId}`
+    ] as const;
+    }
+
+
+export const getGetLmsCourseQueryOptions = <TData = Awaited<ReturnType<typeof getLmsCourse>>, TError = ErrorType<unknown>>(courseId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsCourseQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsCourse>>> = ({ signal }) => getLmsCourse(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(courseId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsCourse>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsCourseQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsCourse>>>
+export type GetLmsCourseQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsCourse<TData = Awaited<ReturnType<typeof getLmsCourse>>, TError = ErrorType<unknown>>(
+ courseId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsCourse>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsCourseQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLmsCourseUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}`
+}
+
+export const updateLmsCourse = async (courseId: number,
+    lmsCourseUpdate: LmsCourseUpdate, options?: RequestInit): Promise<LmsCourseDetail> => {
+
+  return customFetch<LmsCourseDetail>(getUpdateLmsCourseUrl(courseId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsCourseUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateLmsCourseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsCourse>>, TError,{courseId: number;data: BodyType<LmsCourseUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLmsCourse>>, TError,{courseId: number;data: BodyType<LmsCourseUpdate>}, TContext> => {
+
+const mutationKey = ['updateLmsCourse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLmsCourse>>, {courseId: number;data: BodyType<LmsCourseUpdate>}> = (props) => {
+          const {courseId,data} = props ?? {};
+
+          return  updateLmsCourse(courseId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLmsCourseMutationResult = NonNullable<Awaited<ReturnType<typeof updateLmsCourse>>>
+    export type UpdateLmsCourseMutationBody = BodyType<LmsCourseUpdate>
+    export type UpdateLmsCourseMutationError = ErrorType<unknown>
+
+    export const useUpdateLmsCourse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsCourse>>, TError,{courseId: number;data: BodyType<LmsCourseUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLmsCourse>>,
+        TError,
+        {courseId: number;data: BodyType<LmsCourseUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateLmsCourseMutationOptions(options));
+    }
+
+export const getDeleteLmsCourseUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}`
+}
+
+export const deleteLmsCourse = async (courseId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLmsCourseUrl(courseId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLmsCourseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLmsCourse>>, TError,{courseId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLmsCourse>>, TError,{courseId: number}, TContext> => {
+
+const mutationKey = ['deleteLmsCourse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLmsCourse>>, {courseId: number}> = (props) => {
+          const {courseId} = props ?? {};
+
+          return  deleteLmsCourse(courseId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLmsCourseMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLmsCourse>>>
+
+    export type DeleteLmsCourseMutationError = ErrorType<unknown>
+
+    export const useDeleteLmsCourse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLmsCourse>>, TError,{courseId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLmsCourse>>,
+        TError,
+        {courseId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteLmsCourseMutationOptions(options));
+    }
+
+export const getPublishLmsCourseUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/publish`
+}
+
+export const publishLmsCourse = async (courseId: number, options?: RequestInit): Promise<LmsCourseDetail> => {
+
+  return customFetch<LmsCourseDetail>(getPublishLmsCourseUrl(courseId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPublishLmsCourseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishLmsCourse>>, TError,{courseId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishLmsCourse>>, TError,{courseId: number}, TContext> => {
+
+const mutationKey = ['publishLmsCourse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishLmsCourse>>, {courseId: number}> = (props) => {
+          const {courseId} = props ?? {};
+
+          return  publishLmsCourse(courseId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishLmsCourseMutationResult = NonNullable<Awaited<ReturnType<typeof publishLmsCourse>>>
+
+    export type PublishLmsCourseMutationError = ErrorType<unknown>
+
+    export const usePublishLmsCourse = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishLmsCourse>>, TError,{courseId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishLmsCourse>>,
+        TError,
+        {courseId: number},
+        TContext
+      > => {
+      return useMutation(getPublishLmsCourseMutationOptions(options));
+    }
+
+export const getCreateLmsLessonUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/lessons`
+}
+
+export const createLmsLesson = async (courseId: number,
+    lmsLessonInput: LmsLessonInput, options?: RequestInit): Promise<LmsLesson> => {
+
+  return customFetch<LmsLesson>(getCreateLmsLessonUrl(courseId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsLessonInput,)
+  }
+);}
+
+
+
+
+export const getCreateLmsLessonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLesson>>, TError,{courseId: number;data: BodyType<LmsLessonInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLmsLesson>>, TError,{courseId: number;data: BodyType<LmsLessonInput>}, TContext> => {
+
+const mutationKey = ['createLmsLesson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsLesson>>, {courseId: number;data: BodyType<LmsLessonInput>}> = (props) => {
+          const {courseId,data} = props ?? {};
+
+          return  createLmsLesson(courseId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLmsLessonMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsLesson>>>
+    export type CreateLmsLessonMutationBody = BodyType<LmsLessonInput>
+    export type CreateLmsLessonMutationError = ErrorType<unknown>
+
+    export const useCreateLmsLesson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLesson>>, TError,{courseId: number;data: BodyType<LmsLessonInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLmsLesson>>,
+        TError,
+        {courseId: number;data: BodyType<LmsLessonInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLmsLessonMutationOptions(options));
+    }
+
+export const getUpdateLmsLessonUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}`
+}
+
+export const updateLmsLesson = async (lessonId: number,
+    lmsLessonUpdate: LmsLessonUpdate, options?: RequestInit): Promise<LmsLesson> => {
+
+  return customFetch<LmsLesson>(getUpdateLmsLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsLessonUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateLmsLessonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsLesson>>, TError,{lessonId: number;data: BodyType<LmsLessonUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLmsLesson>>, TError,{lessonId: number;data: BodyType<LmsLessonUpdate>}, TContext> => {
+
+const mutationKey = ['updateLmsLesson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLmsLesson>>, {lessonId: number;data: BodyType<LmsLessonUpdate>}> = (props) => {
+          const {lessonId,data} = props ?? {};
+
+          return  updateLmsLesson(lessonId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLmsLessonMutationResult = NonNullable<Awaited<ReturnType<typeof updateLmsLesson>>>
+    export type UpdateLmsLessonMutationBody = BodyType<LmsLessonUpdate>
+    export type UpdateLmsLessonMutationError = ErrorType<unknown>
+
+    export const useUpdateLmsLesson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsLesson>>, TError,{lessonId: number;data: BodyType<LmsLessonUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLmsLesson>>,
+        TError,
+        {lessonId: number;data: BodyType<LmsLessonUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateLmsLessonMutationOptions(options));
+    }
+
+export const getDeleteLmsLessonUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}`
+}
+
+export const deleteLmsLesson = async (lessonId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLmsLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLmsLessonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLmsLesson>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLmsLesson>>, TError,{lessonId: number}, TContext> => {
+
+const mutationKey = ['deleteLmsLesson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLmsLesson>>, {lessonId: number}> = (props) => {
+          const {lessonId} = props ?? {};
+
+          return  deleteLmsLesson(lessonId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLmsLessonMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLmsLesson>>>
+
+    export type DeleteLmsLessonMutationError = ErrorType<unknown>
+
+    export const useDeleteLmsLesson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLmsLesson>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLmsLesson>>,
+        TError,
+        {lessonId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteLmsLessonMutationOptions(options));
+    }
+
+export const getRequestLmsUploadUrlUrl = () => {
+
+
+
+
+  return `/api/lms/uploads/request-url`
+}
+
+export const requestLmsUploadUrl = async (lmsUploadInput: LmsUploadInput, options?: RequestInit): Promise<LmsUploadResponse> => {
+
+  return customFetch<LmsUploadResponse>(getRequestLmsUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsUploadInput,)
+  }
+);}
+
+
+
+
+export const getRequestLmsUploadUrlMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLmsUploadUrl>>, TError,{data: BodyType<LmsUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestLmsUploadUrl>>, TError,{data: BodyType<LmsUploadInput>}, TContext> => {
+
+const mutationKey = ['requestLmsUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestLmsUploadUrl>>, {data: BodyType<LmsUploadInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestLmsUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestLmsUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestLmsUploadUrl>>>
+    export type RequestLmsUploadUrlMutationBody = BodyType<LmsUploadInput>
+    export type RequestLmsUploadUrlMutationError = ErrorType<unknown>
+
+    export const useRequestLmsUploadUrl = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLmsUploadUrl>>, TError,{data: BodyType<LmsUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestLmsUploadUrl>>,
+        TError,
+        {data: BodyType<LmsUploadInput>},
+        TContext
+      > => {
+      return useMutation(getRequestLmsUploadUrlMutationOptions(options));
+    }
+
+export const getCreateLmsLessonDownloadTokenUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}/download-token`
+}
+
+export const createLmsLessonDownloadToken = async (lessonId: number, options?: RequestInit): Promise<LmsDownloadToken> => {
+
+  return customFetch<LmsDownloadToken>(getCreateLmsLessonDownloadTokenUrl(lessonId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateLmsLessonDownloadTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonDownloadToken>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonDownloadToken>>, TError,{lessonId: number}, TContext> => {
+
+const mutationKey = ['createLmsLessonDownloadToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsLessonDownloadToken>>, {lessonId: number}> = (props) => {
+          const {lessonId} = props ?? {};
+
+          return  createLmsLessonDownloadToken(lessonId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLmsLessonDownloadTokenMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsLessonDownloadToken>>>
+
+    export type CreateLmsLessonDownloadTokenMutationError = ErrorType<unknown>
+
+    export const useCreateLmsLessonDownloadToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonDownloadToken>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLmsLessonDownloadToken>>,
+        TError,
+        {lessonId: number},
+        TContext
+      > => {
+      return useMutation(getCreateLmsLessonDownloadTokenMutationOptions(options));
+    }
+
+export const getDownloadLmsLessonFileUrl = (params: DownloadLmsLessonFileParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lms/files?${stringifiedParams}` : `/api/lms/files`
+}
+
+export const downloadLmsLessonFile = async (params: DownloadLmsLessonFileParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadLmsLessonFileUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadLmsLessonFileQueryKey = (params?: DownloadLmsLessonFileParams,) => {
+    return [
+    `/api/lms/files`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getDownloadLmsLessonFileQueryOptions = <TData = Awaited<ReturnType<typeof downloadLmsLessonFile>>, TError = ErrorType<unknown>>(params: DownloadLmsLessonFileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLmsLessonFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadLmsLessonFileQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadLmsLessonFile>>> = ({ signal }) => downloadLmsLessonFile(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadLmsLessonFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadLmsLessonFileQueryResult = NonNullable<Awaited<ReturnType<typeof downloadLmsLessonFile>>>
+export type DownloadLmsLessonFileQueryError = ErrorType<unknown>
+
+
+
+export function useDownloadLmsLessonFile<TData = Awaited<ReturnType<typeof downloadLmsLessonFile>>, TError = ErrorType<unknown>>(
+ params: DownloadLmsLessonFileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLmsLessonFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadLmsLessonFileQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCompleteLmsLessonUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}/complete`
+}
+
+export const completeLmsLesson = async (lessonId: number, options?: RequestInit): Promise<LmsProgress> => {
+
+  return customFetch<LmsProgress>(getCompleteLmsLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCompleteLmsLessonMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeLmsLesson>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeLmsLesson>>, TError,{lessonId: number}, TContext> => {
+
+const mutationKey = ['completeLmsLesson'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeLmsLesson>>, {lessonId: number}> = (props) => {
+          const {lessonId} = props ?? {};
+
+          return  completeLmsLesson(lessonId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteLmsLessonMutationResult = NonNullable<Awaited<ReturnType<typeof completeLmsLesson>>>
+
+    export type CompleteLmsLessonMutationError = ErrorType<unknown>
+
+    export const useCompleteLmsLesson = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeLmsLesson>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeLmsLesson>>,
+        TError,
+        {lessonId: number},
+        TContext
+      > => {
+      return useMutation(getCompleteLmsLessonMutationOptions(options));
+    }
+
+export const getSubmitLmsQuizAttemptUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}/quiz-attempt`
+}
+
+export const submitLmsQuizAttempt = async (lessonId: number,
+    lmsQuizAttemptInput: LmsQuizAttemptInput, options?: RequestInit): Promise<LmsQuizResult> => {
+
+  return customFetch<LmsQuizResult>(getSubmitLmsQuizAttemptUrl(lessonId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsQuizAttemptInput,)
+  }
+);}
+
+
+
+
+export const getSubmitLmsQuizAttemptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitLmsQuizAttempt>>, TError,{lessonId: number;data: BodyType<LmsQuizAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitLmsQuizAttempt>>, TError,{lessonId: number;data: BodyType<LmsQuizAttemptInput>}, TContext> => {
+
+const mutationKey = ['submitLmsQuizAttempt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitLmsQuizAttempt>>, {lessonId: number;data: BodyType<LmsQuizAttemptInput>}> = (props) => {
+          const {lessonId,data} = props ?? {};
+
+          return  submitLmsQuizAttempt(lessonId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitLmsQuizAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof submitLmsQuizAttempt>>>
+    export type SubmitLmsQuizAttemptMutationBody = BodyType<LmsQuizAttemptInput>
+    export type SubmitLmsQuizAttemptMutationError = ErrorType<unknown>
+
+    export const useSubmitLmsQuizAttempt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitLmsQuizAttempt>>, TError,{lessonId: number;data: BodyType<LmsQuizAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitLmsQuizAttempt>>,
+        TError,
+        {lessonId: number;data: BodyType<LmsQuizAttemptInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitLmsQuizAttemptMutationOptions(options));
+    }
+
+export const getGetLmsManagementScopesUrl = () => {
+
+
+
+
+  return `/api/lms/management/scopes`
+}
+
+export const getLmsManagementScopes = async ( options?: RequestInit): Promise<LmsManagementScope[]> => {
+
+  return customFetch<LmsManagementScope[]>(getGetLmsManagementScopesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsManagementScopesQueryKey = () => {
+    return [
+    `/api/lms/management/scopes`
+    ] as const;
+    }
+
+
+export const getGetLmsManagementScopesQueryOptions = <TData = Awaited<ReturnType<typeof getLmsManagementScopes>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsManagementScopes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsManagementScopesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsManagementScopes>>> = ({ signal }) => getLmsManagementScopes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsManagementScopes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsManagementScopesQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsManagementScopes>>>
+export type GetLmsManagementScopesQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsManagementScopes<TData = Awaited<ReturnType<typeof getLmsManagementScopes>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsManagementScopes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsManagementScopesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLmsGeneralManagersUrl = () => {
+
+
+
+
+  return `/api/lms/general/managers`
+}
+
+export const getLmsGeneralManagers = async ( options?: RequestInit): Promise<LmsManager[]> => {
+
+  return customFetch<LmsManager[]>(getGetLmsGeneralManagersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsGeneralManagersQueryKey = () => {
+    return [
+    `/api/lms/general/managers`
+    ] as const;
+    }
+
+
+export const getGetLmsGeneralManagersQueryOptions = <TData = Awaited<ReturnType<typeof getLmsGeneralManagers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsGeneralManagers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsGeneralManagersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsGeneralManagers>>> = ({ signal }) => getLmsGeneralManagers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsGeneralManagers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsGeneralManagersQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsGeneralManagers>>>
+export type GetLmsGeneralManagersQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsGeneralManagers<TData = Awaited<ReturnType<typeof getLmsGeneralManagers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsGeneralManagers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsGeneralManagersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLmsGeneralManagersUrl = () => {
+
+
+
+
+  return `/api/lms/general/managers`
+}
+
+export const updateLmsGeneralManagers = async (lmsManagersInput: LmsManagersInput, options?: RequestInit): Promise<LmsManager[]> => {
+
+  return customFetch<LmsManager[]>(getUpdateLmsGeneralManagersUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsManagersInput,)
+  }
+);}
+
+
+
+
+export const getUpdateLmsGeneralManagersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsGeneralManagers>>, TError,{data: BodyType<LmsManagersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLmsGeneralManagers>>, TError,{data: BodyType<LmsManagersInput>}, TContext> => {
+
+const mutationKey = ['updateLmsGeneralManagers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLmsGeneralManagers>>, {data: BodyType<LmsManagersInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateLmsGeneralManagers(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLmsGeneralManagersMutationResult = NonNullable<Awaited<ReturnType<typeof updateLmsGeneralManagers>>>
+    export type UpdateLmsGeneralManagersMutationBody = BodyType<LmsManagersInput>
+    export type UpdateLmsGeneralManagersMutationError = ErrorType<unknown>
+
+    export const useUpdateLmsGeneralManagers = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsGeneralManagers>>, TError,{data: BodyType<LmsManagersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLmsGeneralManagers>>,
+        TError,
+        {data: BodyType<LmsManagersInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateLmsGeneralManagersMutationOptions(options));
+    }
+
+export const getGetLmsModuleManagersUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/lms/modules/${moduleId}/managers`
+}
+
+export const getLmsModuleManagers = async (moduleId: number, options?: RequestInit): Promise<LmsManager[]> => {
+
+  return customFetch<LmsManager[]>(getGetLmsModuleManagersUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsModuleManagersQueryKey = (moduleId: number,) => {
+    return [
+    `/api/lms/modules/${moduleId}/managers`
+    ] as const;
+    }
+
+
+export const getGetLmsModuleManagersQueryOptions = <TData = Awaited<ReturnType<typeof getLmsModuleManagers>>, TError = ErrorType<unknown>>(moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsModuleManagers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsModuleManagersQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsModuleManagers>>> = ({ signal }) => getLmsModuleManagers(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(moduleId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsModuleManagers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsModuleManagersQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsModuleManagers>>>
+export type GetLmsModuleManagersQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsModuleManagers<TData = Awaited<ReturnType<typeof getLmsModuleManagers>>, TError = ErrorType<unknown>>(
+ moduleId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsModuleManagers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsModuleManagersQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLmsModuleManagersUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/lms/modules/${moduleId}/managers`
+}
+
+export const updateLmsModuleManagers = async (moduleId: number,
+    lmsManagersInput: LmsManagersInput, options?: RequestInit): Promise<LmsManager[]> => {
+
+  return customFetch<LmsManager[]>(getUpdateLmsModuleManagersUrl(moduleId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsManagersInput,)
+  }
+);}
+
+
+
+
+export const getUpdateLmsModuleManagersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsModuleManagers>>, TError,{moduleId: number;data: BodyType<LmsManagersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLmsModuleManagers>>, TError,{moduleId: number;data: BodyType<LmsManagersInput>}, TContext> => {
+
+const mutationKey = ['updateLmsModuleManagers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLmsModuleManagers>>, {moduleId: number;data: BodyType<LmsManagersInput>}> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  updateLmsModuleManagers(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLmsModuleManagersMutationResult = NonNullable<Awaited<ReturnType<typeof updateLmsModuleManagers>>>
+    export type UpdateLmsModuleManagersMutationBody = BodyType<LmsManagersInput>
+    export type UpdateLmsModuleManagersMutationError = ErrorType<unknown>
+
+    export const useUpdateLmsModuleManagers = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLmsModuleManagers>>, TError,{moduleId: number;data: BodyType<LmsManagersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLmsModuleManagers>>,
+        TError,
+        {moduleId: number;data: BodyType<LmsManagersInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateLmsModuleManagersMutationOptions(options));
+    }
+
+export const getDownloadLmsCertificateUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/certificate`
+}
+
+export const downloadLmsCertificate = async (courseId: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadLmsCertificateUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadLmsCertificateQueryKey = (courseId: number,) => {
+    return [
+    `/api/lms/courses/${courseId}/certificate`
+    ] as const;
+    }
+
+
+export const getDownloadLmsCertificateQueryOptions = <TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(courseId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadLmsCertificateQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadLmsCertificate>>> = ({ signal }) => downloadLmsCertificate(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(courseId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadLmsCertificateQueryResult = NonNullable<Awaited<ReturnType<typeof downloadLmsCertificate>>>
+export type DownloadLmsCertificateQueryError = ErrorType<unknown>
+
+
+
+export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(
+ courseId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadLmsCertificateQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLmsScormSessionUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/scorm-session`
+}
+
+export const createLmsScormSession = async (courseId: number,
+    lmsScormSessionInput: LmsScormSessionInput, options?: RequestInit): Promise<LmsScormSession> => {
+
+  return customFetch<LmsScormSession>(getCreateLmsScormSessionUrl(courseId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsScormSessionInput,)
+  }
+);}
+
+
+
+
+export const getCreateLmsScormSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsScormSession>>, TError,{courseId: number;data: BodyType<LmsScormSessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLmsScormSession>>, TError,{courseId: number;data: BodyType<LmsScormSessionInput>}, TContext> => {
+
+const mutationKey = ['createLmsScormSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsScormSession>>, {courseId: number;data: BodyType<LmsScormSessionInput>}> = (props) => {
+          const {courseId,data} = props ?? {};
+
+          return  createLmsScormSession(courseId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLmsScormSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsScormSession>>>
+    export type CreateLmsScormSessionMutationBody = BodyType<LmsScormSessionInput>
+    export type CreateLmsScormSessionMutationError = ErrorType<unknown>
+
+    export const useCreateLmsScormSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsScormSession>>, TError,{courseId: number;data: BodyType<LmsScormSessionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLmsScormSession>>,
+        TError,
+        {courseId: number;data: BodyType<LmsScormSessionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLmsScormSessionMutationOptions(options));
+    }
+
+export const getCreateLmsLessonScormSessionUrl = (lessonId: number,) => {
+
+
+
+
+  return `/api/lms/lessons/${lessonId}/scorm-session`
+}
+
+export const createLmsLessonScormSession = async (lessonId: number, options?: RequestInit): Promise<LmsScormSession> => {
+
+  return customFetch<LmsScormSession>(getCreateLmsLessonScormSessionUrl(lessonId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateLmsLessonScormSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonScormSession>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonScormSession>>, TError,{lessonId: number}, TContext> => {
+
+const mutationKey = ['createLmsLessonScormSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsLessonScormSession>>, {lessonId: number}> = (props) => {
+          const {lessonId} = props ?? {};
+
+          return  createLmsLessonScormSession(lessonId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLmsLessonScormSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsLessonScormSession>>>
+
+    export type CreateLmsLessonScormSessionMutationError = ErrorType<unknown>
+
+    export const useCreateLmsLessonScormSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonScormSession>>, TError,{lessonId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLmsLessonScormSession>>,
+        TError,
+        {lessonId: number},
+        TContext
+      > => {
+      return useMutation(getCreateLmsLessonScormSessionMutationOptions(options));
+    }
+
+export const getGetLmsScormSessionUrl = (params: GetLmsScormSessionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lms/scorm/session?${stringifiedParams}` : `/api/lms/scorm/session`
+}
+
+export const getLmsScormSession = async (params: GetLmsScormSessionParams, options?: RequestInit): Promise<LmsScormSession> => {
+
+  return customFetch<LmsScormSession>(getGetLmsScormSessionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsScormSessionQueryKey = (params?: GetLmsScormSessionParams,) => {
+    return [
+    `/api/lms/scorm/session`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLmsScormSessionQueryOptions = <TData = Awaited<ReturnType<typeof getLmsScormSession>>, TError = ErrorType<unknown>>(params: GetLmsScormSessionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsScormSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsScormSessionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsScormSession>>> = ({ signal }) => getLmsScormSession(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsScormSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsScormSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsScormSession>>>
+export type GetLmsScormSessionQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsScormSession<TData = Awaited<ReturnType<typeof getLmsScormSession>>, TError = ErrorType<unknown>>(
+ params: GetLmsScormSessionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsScormSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsScormSessionQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCommitLmsScormSessionUrl = (params: CommitLmsScormSessionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/lms/scorm/commit?${stringifiedParams}` : `/api/lms/scorm/commit`
+}
+
+export const commitLmsScormSession = async (lmsScormCommitInput: LmsScormCommitInput,
+    params: CommitLmsScormSessionParams, options?: RequestInit): Promise<LmsProgress> => {
+
+  return customFetch<LmsProgress>(getCommitLmsScormSessionUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lmsScormCommitInput,)
+  }
+);}
+
+
+
+
+export const getCommitLmsScormSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitLmsScormSession>>, TError,{data: BodyType<LmsScormCommitInput>;params: CommitLmsScormSessionParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitLmsScormSession>>, TError,{data: BodyType<LmsScormCommitInput>;params: CommitLmsScormSessionParams}, TContext> => {
+
+const mutationKey = ['commitLmsScormSession'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitLmsScormSession>>, {data: BodyType<LmsScormCommitInput>;params: CommitLmsScormSessionParams}> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  commitLmsScormSession(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitLmsScormSessionMutationResult = NonNullable<Awaited<ReturnType<typeof commitLmsScormSession>>>
+    export type CommitLmsScormSessionMutationBody = BodyType<LmsScormCommitInput>
+    export type CommitLmsScormSessionMutationError = ErrorType<unknown>
+
+    export const useCommitLmsScormSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitLmsScormSession>>, TError,{data: BodyType<LmsScormCommitInput>;params: CommitLmsScormSessionParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof commitLmsScormSession>>,
+        TError,
+        {data: BodyType<LmsScormCommitInput>;params: CommitLmsScormSessionParams},
+        TContext
+      > => {
+      return useMutation(getCommitLmsScormSessionMutationOptions(options));
+    }
+
+export const getGetLmsScormContentUrl = (token: string,
+    assetPath: string,) => {
+
+
+
+
+  return `/api/lms/scorm/sessions/${token}/content/${assetPath}`
+}
+
+export const getLmsScormContent = async (token: string,
+    assetPath: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetLmsScormContentUrl(token,assetPath),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsScormContentQueryKey = (token: string,
+    assetPath: string,) => {
+    return [
+    `/api/lms/scorm/sessions/${token}/content/${assetPath}`
+    ] as const;
+    }
+
+
+export const getGetLmsScormContentQueryOptions = <TData = Awaited<ReturnType<typeof getLmsScormContent>>, TError = ErrorType<unknown>>(token: string,
+    assetPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsScormContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsScormContentQueryKey(token,assetPath);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsScormContent>>> = ({ signal }) => getLmsScormContent(token,assetPath, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token && assetPath), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsScormContent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLmsScormContentQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsScormContent>>>
+export type GetLmsScormContentQueryError = ErrorType<unknown>
+
+
+
+export function useGetLmsScormContent<TData = Awaited<ReturnType<typeof getLmsScormContent>>, TError = ErrorType<unknown>>(
+ token: string,
+    assetPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLmsScormContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLmsScormContentQueryOptions(token,assetPath,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

@@ -32,6 +32,7 @@ import SugerenciasPage from "@/pages/sugerencias";
 import MemoriasPage from "@/pages/memorias";
 import AsistenteIaPage from "@/pages/asistente-ia";
 import AppMovilPage from "@/pages/app-movil";
+import AutodirigidoPage from "@/pages/autodirigido";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ function AuthedRoutes() {
         <Route path="/memorias" component={MemoriasPage} />
         <Route path="/asistente-ia" component={AsistenteIaPage} />
         <Route path="/app-movil" component={AppMovilPage} />
+        <Route path="/autodirigido" component={AutodirigidoPage} />
         <Route path="/panel-control" component={ConfiguracionPage} />
         <Route component={NotFound} />
       </Switch>

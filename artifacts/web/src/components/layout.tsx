@@ -23,6 +23,7 @@ import {
   BookText,
   Sparkles,
   Smartphone,
+  GraduationCap as LearningIcon,
   MessageSquarePlus,
   MessagesSquare,
   MessageCircle,
@@ -99,6 +100,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: role === "superadmin" },
     { label: "Sugerencias", path: "/sugerencias", icon: MessageSquarePlus, visible: true },
     { label: "App Móvil", path: "/app-movil", icon: Smartphone, visible: true },
+    { label: "Autodirigido", path: "/autodirigido", icon: LearningIcon, visible: true },
     { label: "Configuración", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
   ];
 

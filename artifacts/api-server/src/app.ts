@@ -11,10 +11,14 @@ app.use(
     logger,
     serializers: {
       req(req) {
+        const url = req.url?.split("?")[0]?.replace(
+          /(\/lms\/scorm\/sessions\/)[^/]+(?=\/content\/)/,
+          "$1[redacted]",
+        );
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url,
         };
       },
       res(res) {
