@@ -93,6 +93,19 @@ export default function PerfilScreen() {
   }, {});
   const selectedCenter =
     centersQuery.data?.find((center) => center.id === teachingCenterId) ?? null;
+  const isSavedCenterSelected =
+    teachingCenterId === (user?.centerId ?? null);
+  const mustCompleteTeachingProfile =
+    isTeacher &&
+    (user?.centerId == null ||
+      (isSavedCenterSelected &&
+        (teachingProfileQuery.isPending ||
+          teachingProfileQuery.isError ||
+          !teachingProfileQuery.data ||
+          teachingProfileQuery.data.targetCenterId !== user.centerId ||
+          user.provinceId !== teachingProfileQuery.data.targetProvinceId ||
+          (Boolean(teachingProfileQuery.data.activeYear) &&
+            teachingProfileQuery.data.moduleIds.length === 0))));
   const filteredCenters = (centersQuery.data ?? []).filter((center) =>
     center.name.toLocaleLowerCase().includes(centerSearch.trim().toLocaleLowerCase()),
   );
@@ -190,6 +203,10 @@ export default function PerfilScreen() {
     }
     const moduleIds =
       teachingProfileQuery.data.activeYear == null ? [] : selectedModuleIds;
+    if (teachingProfileQuery.data.activeYear && moduleIds.length === 0) {
+      setTeachingError("Selecciona al menos un módulo que impartes.");
+      return;
+    }
 
     try {
       const updated = await teachingProfileMut.mutateAsync({
@@ -217,7 +234,19 @@ export default function PerfilScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Editar perfil" subtitle="Tus datos de cuenta" showBack />
+      <AppHeader
+        title={
+          mustCompleteTeachingProfile
+            ? "Completa tu perfil docente"
+            : "Editar perfil"
+        }
+        subtitle={
+          mustCompleteTeachingProfile
+            ? "Este paso es necesario para continuar"
+            : "Tus datos de cuenta"
+        }
+        showBack={!mustCompleteTeachingProfile}
+      />
       <KeyboardAwareScrollView
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         keyboardShouldPersistTaps="handled"
@@ -381,7 +410,8 @@ export default function PerfilScreen() {
                   </Text>
                 ) : Object.entries(modulesByCycle).length === 0 ? (
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    No hay módulos disponibles para este centro.
+                    No hay módulos disponibles para este centro. Elige otro
+                    centro con módulos del curso activo.
                   </Text>
                 ) : (
                   <View style={styles.moduleList}>
@@ -448,6 +478,24 @@ export default function PerfilScreen() {
                 No hay un curso académico activo. Puedes actualizar el centro;
                 los módulos estarán disponibles cuando se active un curso.
               </Text>
+            ) : null}
+
+            {teachingProfileQuery.isError || centersQuery.isError ? (
+              <View style={styles.retryRow}>
+                <Text style={[styles.error, { color: colors.destructive }]}>
+                  No se pudieron cargar los datos para completar el perfil.
+                </Text>
+                <Button
+                  label="Reintentar"
+                  onPress={() => {
+                    void Promise.all([
+                      teachingProfileQuery.refetch(),
+                      centersQuery.refetch(),
+                    ]);
+                  }}
+                  style={{ marginTop: 2 }}
+                />
+              </View>
             ) : null}
 
             {teachingError ? (
@@ -580,6 +628,9 @@ const styles = StyleSheet.create({
   centerOption: {
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  retryRow: {
+    gap: 6,
   },
   optionText: {
     fontSize: 14,

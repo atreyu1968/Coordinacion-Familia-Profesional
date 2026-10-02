@@ -1,5 +1,9 @@
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
+import {
+  getGetMyTeachingProfileQueryKey,
+  useGetMyTeachingProfile,
+} from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import {
@@ -50,6 +54,29 @@ export function AppLayout({ children }: LayoutProps) {
   const { user, isLoading, logout } = useAuth();
   const { customLogoUrl, appName } = useBranding();
   const [location, setLocation] = useLocation();
+  const isTeacher = user?.role === "teacher";
+  const teachingProfileQuery = useGetMyTeachingProfile(
+    { targetCenterId: user?.centerId ?? undefined },
+    {
+      query: {
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
+        enabled: isTeacher,
+      },
+    },
+  );
+  const teachingProfile = teachingProfileQuery.data;
+  const forceTeachingProfileCompletion =
+    isTeacher &&
+    (teachingProfileQuery.isPending ||
+      teachingProfileQuery.isError ||
+      !teachingProfile ||
+      teachingProfile.user.centerId == null ||
+      teachingProfile.targetCenterId !== teachingProfile.user.centerId ||
+      teachingProfile.user.provinceId !== teachingProfile.targetProvinceId ||
+      (Boolean(teachingProfile.activeYear) &&
+        teachingProfile.moduleIds.length === 0));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // The sidebar is collapsed (icons only) by default and expands on hover. The
   // pin (chincheta) at its foot keeps it open; that choice is persisted.
@@ -136,7 +163,10 @@ export function AppLayout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <ProfileDialog user={user}>
+          <ProfileDialog
+            user={user}
+            forceOpen={forceTeachingProfileCompletion}
+          >
             <button
               type="button"
               title="Editar perfil"

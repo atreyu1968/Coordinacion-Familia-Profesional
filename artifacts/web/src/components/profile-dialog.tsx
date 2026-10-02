@@ -34,9 +34,11 @@ import { useAuth } from "@/lib/auth";
 export function ProfileDialog({
   user,
   children,
+  forceOpen = false,
 }: {
   user: User;
   children: ReactNode;
+  forceOpen?: boolean;
 }) {
   const qc = useQueryClient();
   const { logout } = useAuth();
@@ -63,7 +65,7 @@ export function ProfileDialog({
     {
       query: {
         queryKey: getListCentersQueryKey({}),
-        enabled: open && isTeacher,
+         enabled: (open || forceOpen) && isTeacher,
       },
     },
   );
@@ -74,7 +76,7 @@ export function ProfileDialog({
         queryKey: getGetMyTeachingProfileQueryKey({
           targetCenterId: teachingCenterId ?? undefined,
         }),
-        enabled: open && isTeacher,
+         enabled: (open || forceOpen) && isTeacher,
       },
     },
   );
@@ -109,6 +111,7 @@ export function ProfileDialog({
   };
 
   const onOpenChange = (next: boolean) => {
+    if (forceOpen && !next) return;
     if (next) reset();
     setOpen(next);
   };
@@ -201,6 +204,10 @@ export function ProfileDialog({
     }
     const moduleIds =
       teachingProfileQuery.data.activeYear == null ? [] : selectedModuleIds;
+    if (teachingProfileQuery.data.activeYear && moduleIds.length === 0) {
+      setTeachingError("Selecciona al menos un módulo que impartes.");
+      return;
+    }
 
     try {
       const updated = await teachingProfileMut.mutateAsync({
@@ -219,14 +226,21 @@ export function ProfileDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={forceOpen || open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent
+        className={`max-h-[90vh] overflow-y-auto sm:max-w-2xl ${
+          forceOpen ? "[&>button]:hidden" : ""
+        }`}
+      >
         <DialogHeader>
-          <DialogTitle>Editar perfil</DialogTitle>
+          <DialogTitle>
+            {forceOpen ? "Completa tu perfil docente" : "Editar perfil"}
+          </DialogTitle>
           <DialogDescription>
-            Actualiza tus datos de cuenta. El rol y los permisos los gestiona la
-            administración.
+            {forceOpen
+              ? "Para continuar, completa los datos docentes pendientes. La provincia se calcula automáticamente a partir del centro."
+              : "Actualiza tus datos de cuenta. El rol y los permisos los gestiona la administración."}
           </DialogDescription>
         </DialogHeader>
 
@@ -306,7 +320,8 @@ export function ProfileDialog({
                       </p>
                     ) : Object.entries(modulesByCycle).length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No hay módulos disponibles para este centro.
+                        No hay módulos disponibles para este centro. Elige otro
+                        centro con módulos del curso activo.
                       </p>
                     ) : (
                       Object.entries(modulesByCycle).map(([cycle, modules]) => (
@@ -341,6 +356,26 @@ export function ProfileDialog({
                 </p>
               ) : null}
 
+              {(teachingProfileQuery.isError || centersQuery.isError) && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-destructive">
+                    No se pudieron cargar los datos necesarios para completar el
+                    perfil.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      void Promise.all([
+                        teachingProfileQuery.refetch(),
+                        centersQuery.refetch(),
+                      ]);
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              )}
               {teachingError && (
                 <p className="text-sm text-destructive">{teachingError}</p>
               )}
@@ -404,13 +439,15 @@ export function ProfileDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
-              Cancelar
-            </Button>
+            {!forceOpen && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Cancelar
+              </Button>
+            )}
             <Button type="submit" disabled={updateMut.isPending}>
               Guardar cambios
             </Button>

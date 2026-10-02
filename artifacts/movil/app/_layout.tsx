@@ -6,9 +6,9 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -19,6 +19,8 @@ import { useColors } from "@/hooks/useColors";
 import {
   setAuthTokenGetter,
   setBaseUrl,
+  getGetMyTeachingProfileQueryKey,
+  useGetMyTeachingProfile,
 } from "@workspace/api-client-react";
 
 import { AppLock } from "@/components/AppLock";
@@ -46,9 +48,23 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { token, isLoading, locked } = useAuth();
+  const { token, user, isLoading, locked } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
+  const isTeacher = Boolean(token && user?.role === "teacher");
+  const teachingProfileQuery = useGetMyTeachingProfile(
+    { targetCenterId: user?.centerId ?? undefined },
+    {
+      query: {
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
+        enabled: isTeacher && !locked,
+      },
+    },
+  );
+  const profileWasForced = useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -62,6 +78,53 @@ function RootLayoutNav() {
   }, [token, isLoading, segments, router]);
 
   useEffect(() => {
+    if (
+      isLoading ||
+      !isTeacher ||
+      locked ||
+      teachingProfileQuery.isPending
+    ) {
+      return;
+    }
+
+    const profile = teachingProfileQuery.data;
+    const incomplete =
+      teachingProfileQuery.isError ||
+      !profile ||
+      profile.user.centerId == null ||
+      profile.targetCenterId !== profile.user.centerId ||
+      profile.user.provinceId !== profile.targetProvinceId ||
+      (Boolean(profile.activeYear) && profile.moduleIds.length === 0);
+
+    if (incomplete) {
+      if (
+        pathname !== "/perfil" &&
+        segments[0] !== "login" &&
+        segments[0] !== "recuperar"
+      ) {
+        profileWasForced.current = true;
+        router.replace("/perfil");
+      }
+      return;
+    }
+
+    if (profileWasForced.current && pathname === "/perfil") {
+      profileWasForced.current = false;
+      router.replace("/(tabs)");
+    }
+  }, [
+    isLoading,
+    isTeacher,
+    locked,
+    teachingProfileQuery.data,
+    teachingProfileQuery.isError,
+    teachingProfileQuery.isPending,
+    pathname,
+    segments,
+    router,
+  ]);
+
+  useEffect(() => {
     if (token) {
       void registerForPushNotifications();
       void registerWebPush();
@@ -70,7 +133,7 @@ function RootLayoutNav() {
 
   useNotificationDeepLinks(!!token && !isLoading);
 
-  if (isLoading) {
+  if (isLoading || (isTeacher && !locked && teachingProfileQuery.isPending)) {
     return <Loading />;
   }
 
