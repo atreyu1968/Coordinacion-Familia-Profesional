@@ -519,6 +519,50 @@ export class ObjectStorageService {
     return { kind: "gcs", file: objectFile };
   }
 
+  async deleteObjectEntity(objectPath: string): Promise<void> {
+    if (!objectPath.startsWith("/objects/")) {
+      throw new ObjectNotFoundError();
+    }
+
+    const parts = objectPath.slice(1).split("/");
+    if (
+      parts.length < 3 ||
+      parts[0] !== "objects" ||
+      parts.some((part) => !part || part === "." || part === "..")
+    ) {
+      throw new ObjectNotFoundError();
+    }
+    const entityId = parts.slice(1).join("/");
+
+    if (this.isLocal()) {
+      const abs = resolveWithin(localPrivateDir(), entityId);
+      const unlinkIfPresent = async (filePath: string) => {
+        try {
+          await fs.unlink(filePath);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            throw error;
+          }
+        }
+      };
+      await unlinkIfPresent(abs);
+      await unlinkIfPresent(`${abs}.meta.json`);
+      return;
+    }
+
+    let entityDir = this.getPrivateObjectDir();
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const { bucketName, objectName } = parseObjectPath(
+      `${entityDir}${entityId}`,
+    );
+    await objectStorageClient
+      .bucket(bucketName)
+      .file(objectName)
+      .delete({ ignoreNotFound: true });
+  }
+
   normalizeObjectEntityPath(rawPath: string): string {
     // API-mediated upload URLs (local or cloud) map to canonical object paths.
     for (const marker of [

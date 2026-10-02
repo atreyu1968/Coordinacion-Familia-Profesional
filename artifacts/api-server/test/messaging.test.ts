@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, afterAll, afterEach, vi } from "vitest";
 import request from "supertest";
 import { eq } from "drizzle-orm";
 import {
@@ -21,6 +21,12 @@ import {
   createModule,
   createProvince,
 } from "./helpers";
+import { ObjectStorageService } from "../src/lib/objectStorage";
+import { logger } from "../src/lib/logger";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 afterAll(async () => {
   await cleanup();
@@ -88,7 +94,6 @@ describe("chat groups", () => {
       .send({ name: "Chat", type: "group", memberIds: [] });
     expect(res.status).toBe(401);
   });
-
   it("removes empty groups from storage when listing chats", async () => {
     const caller = await createUser({ role: "teacher" });
     const [emptyGroup] = await db
@@ -110,6 +115,96 @@ describe("chat groups", () => {
       .from(chatGroupsTable)
       .where(eq(chatGroupsTable.id, emptyGroup!.id));
     expect(remaining).toHaveLength(0);
+  });
+
+  it("removes only unreferenced attachments from messages in empty groups", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const [emptyGroup] = await db
+      .insert(chatGroupsTable)
+      .values({ name: "Grupo vacío con adjuntos", type: "group" })
+      .returning();
+    const [activeGroup] = await db
+      .insert(chatGroupsTable)
+      .values({ name: "Grupo activo", type: "group" })
+      .returning();
+    trackGroup(emptyGroup!.id);
+    trackGroup(activeGroup!.id);
+    await db.insert(chatGroupMembersTable).values({
+      groupId: activeGroup!.id,
+      userId: caller.user.id,
+    });
+
+    const orphanedPath = "/objects/uploads/orphaned-chat-file";
+    const sharedPath = "/objects/uploads/shared-chat-file";
+    await db.insert(messagesTable).values([
+      {
+        groupId: emptyGroup!.id,
+        senderId: caller.user.id,
+        content: "",
+        kind: "file",
+        attachmentPath: orphanedPath,
+      },
+      {
+        groupId: emptyGroup!.id,
+        senderId: caller.user.id,
+        content: "",
+        kind: "file",
+        attachmentPath: sharedPath,
+      },
+      {
+        groupId: activeGroup!.id,
+        senderId: caller.user.id,
+        content: "",
+        kind: "file",
+        attachmentPath: sharedPath,
+      },
+    ]);
+
+    const deleteObject = vi
+      .spyOn(ObjectStorageService.prototype, "deleteObjectEntity")
+      .mockResolvedValue();
+    const res = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+
+    expect(res.status).toBe(200);
+    expect(deleteObject).toHaveBeenCalledTimes(1);
+    expect(deleteObject).toHaveBeenCalledWith(orphanedPath);
+  });
+
+  it("keeps inbox listing available and logs storage cleanup failures", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const [emptyGroup] = await db
+      .insert(chatGroupsTable)
+      .values({ name: "Grupo vacío con adjunto fallido", type: "group" })
+      .returning();
+    trackGroup(emptyGroup!.id);
+    await db.insert(messagesTable).values({
+      groupId: emptyGroup!.id,
+      senderId: caller.user.id,
+      content: "",
+      kind: "file",
+      attachmentPath: "/objects/uploads/storage-failure",
+    });
+
+    vi.spyOn(ObjectStorageService.prototype, "deleteObjectEntity").mockRejectedValue(
+      new Error("storage unavailable"),
+    );
+    const logError = vi.spyOn(logger, "error");
+    const res = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+
+    expect(res.status).toBe(200);
+    expect(logError).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      "Failed to remove an attachment from a deleted chat message",
+    );
+    const remainingGroup = await db
+      .select()
+      .from(chatGroupsTable)
+      .where(eq(chatGroupsTable.id, emptyGroup!.id));
+    expect(remainingGroup).toHaveLength(0);
   });
 
   it("hides direct conversations when the other account is inactive", async () => {

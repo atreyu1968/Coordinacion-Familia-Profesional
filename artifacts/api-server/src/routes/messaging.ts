@@ -147,7 +147,7 @@ async function isGroupMember(
 // Remove orphaned conversations and their relational message data. Empty chat
 // groups have no participant who can access their history.
 async function deleteEmptyChatGroups(): Promise<void> {
-  await db.transaction(async (tx) => {
+  const attachmentPaths = await db.transaction(async (tx) => {
     const emptyGroups = await tx
       .select({ id: chatGroupsTable.id })
       .from(chatGroupsTable)
@@ -160,7 +160,7 @@ async function deleteEmptyChatGroups(): Promise<void> {
         ),
       );
     const groupIds = emptyGroups.map((group) => group.id);
-    if (groupIds.length === 0) return;
+    if (groupIds.length === 0) return [];
 
     const messageIds = tx
       .select({ id: messagesTable.id })
@@ -169,9 +169,10 @@ async function deleteEmptyChatGroups(): Promise<void> {
     await tx
       .delete(messageReactionsTable)
       .where(inArray(messageReactionsTable.messageId, messageIds));
-    await tx
+    const deletedMessages = await tx
       .delete(messagesTable)
-      .where(inArray(messagesTable.groupId, groupIds));
+      .where(inArray(messagesTable.groupId, groupIds))
+      .returning({ attachmentPath: messagesTable.attachmentPath });
     await tx
       .delete(chatGroupMembersTable)
       .where(inArray(chatGroupMembersTable.groupId, groupIds));
@@ -188,7 +189,44 @@ async function deleteEmptyChatGroups(): Promise<void> {
           ),
         ),
       );
+
+    const deletedPaths = Array.from(
+      new Set(
+        deletedMessages
+          .map((message) => message.attachmentPath)
+          .filter((attachmentPath): attachmentPath is string =>
+            Boolean(attachmentPath),
+          ),
+      ),
+    );
+    if (deletedPaths.length === 0) return [];
+
+    // Forwarded messages can share an object path. Keep it while any surviving
+    // message still references it.
+    const remainingReferences = await tx
+      .select({ attachmentPath: messagesTable.attachmentPath })
+      .from(messagesTable)
+      .where(inArray(messagesTable.attachmentPath, deletedPaths));
+    const referencedPaths = new Set(
+      remainingReferences.map((message) => message.attachmentPath),
+    );
+    return deletedPaths.filter(
+      (attachmentPath) => !referencedPaths.has(attachmentPath),
+    );
   });
+
+  await Promise.all(
+    attachmentPaths.map(async (attachmentPath) => {
+      try {
+        await objectStorageService.deleteObjectEntity(attachmentPath);
+      } catch (err) {
+        logger.error(
+          { err },
+          "Failed to remove an attachment from a deleted chat message",
+        );
+      }
+    }),
+  );
 }
 
 // The full set of message columns we read for the rich chat UI.
