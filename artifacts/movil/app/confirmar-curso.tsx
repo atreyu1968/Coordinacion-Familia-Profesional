@@ -178,7 +178,8 @@ export default function ConfirmYearScreen() {
               {assignedCenter?.name ?? "Centro actual"}
             </Text>
             <Text style={[styles.muted, { color: colors.mutedForeground }]}>
-              Para cambiar de centro, solicita una transferencia a un administrador.
+              Puedes cambiar de centro desde Mi perfil. La provincia se actualiza
+              automáticamente según el centro seleccionado.
             </Text>
           </Card>
 

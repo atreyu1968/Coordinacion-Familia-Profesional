@@ -770,6 +770,66 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+  /auth/me/teaching-profile:
+    get:
+      operationId: getMyTeachingProfile
+      tags: [auth]
+      summary: Get the authenticated teacher's current teaching profile
+      description: Returns the active-year assignments and module options for the requested center. Only active-family centers and modules are included.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: targetCenterId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Current teacher teaching profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyTeachingProfile"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateMyTeachingProfile
+      tags: [auth]
+      summary: Update the authenticated teacher's center and active-year modules
+      description: Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyTeachingProfileInput"
+      responses:
+        "200":
+          description: Updated teacher and active-year assignments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyTeachingProfileUpdateResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /auth/invitations/{token}:
     get:
       operationId: getInvitationByToken
@@ -7243,6 +7303,88 @@ components:
           items:
             type: integer
       required: [status]
+    MyTeachingModuleOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        cycleName:
+          type: string
+          nullable: true
+        cycleId:
+          type: integer
+          nullable: true
+        centerId:
+          type: integer
+          nullable: true
+      required: [id, name]
+    MyTeachingProfile:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        activeYear:
+          type: string
+          nullable: true
+        targetCenterId:
+          type: integer
+          nullable: true
+        targetCenterName:
+          type: string
+          nullable: true
+        targetProvinceId:
+          type: integer
+          nullable: true
+        targetProvinceName:
+          type: string
+          nullable: true
+        moduleIds:
+          type: array
+          items:
+            type: integer
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTeachingModuleOption"
+      required:
+        - user
+        - activeYear
+        - targetCenterId
+        - targetCenterName
+        - targetProvinceId
+        - targetProvinceName
+        - moduleIds
+        - modules
+    UpdateMyTeachingProfileInput:
+      type: object
+      properties:
+        centerId:
+          type: integer
+          minimum: 1
+        moduleIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+      required: [centerId, moduleIds]
+    MyTeachingProfileUpdateResult:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        activeYear:
+          type: string
+          nullable: true
+        moduleIds:
+          type: array
+          items:
+            type: integer
+      required: [user, activeYear, moduleIds]
     ConfirmYearInput:
       type: object
       properties:

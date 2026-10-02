@@ -14,13 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -57,10 +50,11 @@ export function TeacherConfirmationBanner() {
     {},
     { query: { queryKey: getListModulesQueryKey({}), enabled: open } },
   );
+  const assignedCenter = centers.find((center) => center.id === user?.centerId);
 
   useEffect(() => {
     if (open) {
-      setCenterId(confirmation?.centerId ?? user?.centerId ?? null);
+      setCenterId(user?.centerId ?? null);
       setModuleIds(confirmation?.moduleIds ?? []);
       setError(null);
     }
@@ -87,7 +81,7 @@ export function TeacherConfirmationBanner() {
   const onConfirm = async () => {
     setError(null);
     if (centerId == null) {
-      setError("Selecciona tu centro.");
+      setError("No tienes un centro asignado. Actualízalo desde Mi perfil.");
       return;
     }
     if (moduleIds.length === 0) {
@@ -121,7 +115,7 @@ export function TeacherConfirmationBanner() {
                 {confirmation.year ? ` ${confirmation.year}` : ""}
               </p>
               <p className="text-sm text-amber-800/90 dark:text-amber-200/80">
-                Es obligatorio confirmar tu centro y los módulos que imparten.
+                Es obligatorio confirmar tu centro y los módulos que impartes.
                 {deadlineLabel
                   ? ` Tienes hasta el ${deadlineLabel}; si no confirmas, tu cuenta se desactivará automáticamente.`
                   : ""}
@@ -142,28 +136,23 @@ export function TeacherConfirmationBanner() {
           <DialogHeader>
             <DialogTitle>Confirmar curso académico</DialogTitle>
             <DialogDescription>
-              Indica tu centro y los módulos que vas a impartir
+              Revisa los módulos que vas a impartir
               {confirmation.year ? ` en el curso ${confirmation.year}` : ""}.
+              El centro actual se toma de tu perfil; para cambiarlo, ve a Mi
+              perfil.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Centro *</Label>
-              <Select
-                value={centerId != null ? String(centerId) : ""}
-                onValueChange={(v) => setCenterId(Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona tu centro" />
-                </SelectTrigger>
-                <SelectContent>
-                  {centers.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Centro actual</Label>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="text-sm font-medium">
+                  {assignedCenter?.name ?? "No tienes un centro asignado"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  La provincia se obtiene automáticamente del centro.
+                </p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Módulos que impartes *</Label>

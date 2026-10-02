@@ -596,6 +596,74 @@ export const UpdateProfileResponse = zod.object({
 
 
 /**
+ * Returns the active-year assignments and module options for the requested center. Only active-family centers and modules are included.
+ * @summary Get the authenticated teacher's current teaching profile
+ */
+
+
+
+export const GetMyTeachingProfileQueryParams = zod.object({
+  "targetCenterId": zod.coerce.number().min(1).optional()
+})
+
+export const GetMyTeachingProfileResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "status": zod.string(),
+  "provinceId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "createdAt": zod.coerce.date().optional()
+}),
+  "activeYear": zod.string().nullable(),
+  "targetCenterId": zod.number().nullable(),
+  "targetCenterName": zod.string().nullable(),
+  "targetProvinceId": zod.number().nullable(),
+  "targetProvinceName": zod.string().nullable(),
+  "moduleIds": zod.array(zod.number()),
+  "modules": zod.array(zod.object({
+  "id": zod.number(),
+  "code": zod.string().nullish(),
+  "name": zod.string(),
+  "cycleName": zod.string().nullish(),
+  "cycleId": zod.number().nullish(),
+  "centerId": zod.number().nullish()
+}))
+})
+
+
+/**
+ * Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
+ * @summary Update the authenticated teacher's center and active-year modules
+ */
+
+
+
+
+export const UpdateMyTeachingProfileBody = zod.object({
+  "centerId": zod.number().min(1),
+  "moduleIds": zod.array(zod.number().min(1))
+})
+
+export const UpdateMyTeachingProfileResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "status": zod.string(),
+  "provinceId": zod.number().nullish(),
+  "centerId": zod.number().nullish(),
+  "createdAt": zod.coerce.date().optional()
+}),
+  "activeYear": zod.string().nullable(),
+  "moduleIds": zod.array(zod.number())
+})
+
+
+/**
  * Returns invitation details so the registration form can be prefilled. Fails if expired or the registration limit has been reached.
  * @summary Resolve a magic invitation token
  */

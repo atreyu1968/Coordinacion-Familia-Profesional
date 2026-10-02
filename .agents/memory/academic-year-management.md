@@ -17,12 +17,12 @@ The teacher-confirmation list is inherently per-year (backend returns active-yea
 
 ## Annual teacher confirmation lifecycle
 - Activating a year creates pending confirmations for role=teacher with a deadline (default 15 days) and sends a reminder email only if email is configured.
-- Teacher confirms the administrator-assigned center + modules; later corrections reconcile assignments for that year.
+- Annual confirmation records the teacher's current center + modules; later corrections reconcile assignments for that year.
 - A daily scheduler deactivates teachers only for overdue pending confirmation of the active year; confirmations and deactivation must serialize.
 
-**Rule:** a teacher cannot self-select an unrelated center during annual confirmation; an authorized manager must approve a center transfer first.
-**Why:** changing center also changes geographic reading scope, so a self-declared center was an access escalation. Old-year pending confirmations must not disable a teacher in the current year.
-**How to apply:** validate the assigned center and active professional family inside the confirmation transaction, and reconcile omitted/old-center assignments on correction. Lock the relevant rows when competing with transfers or deactivation.
+**Rule:** annual confirmation remains a separate, deadline-gated obligation and uses the teacher's saved center. Teachers may change their center immediately and edit active-year modules at any time from their teaching profile; province is derived from the selected center.
+**Why:** the user explicitly chose immediate self-service center changes and anytime active-year module editing. Old-year assignments must remain untouched.
+**How to apply:** keep the annual confirmation route's deadline and current-center checks. Put teacher-initiated changes on a dedicated authenticated endpoint; validate the destination against the active family, derive province server-side, reconcile only active-year assignments, and synchronize affected module chats.
 
 ## "Pasar de curso" transition
 POST /academic-years/transition clones selectable blocks (groups, training offer, assignments) from a source year to a destination year and must be idempotent (re-running doesn't duplicate).

@@ -1938,6 +1938,38 @@ export interface MyYearConfirmation {
   moduleIds?: number[];
 }
 
+export interface MyTeachingModuleOption {
+  id: number;
+  code?: string | null;
+  name: string;
+  cycleName?: string | null;
+  cycleId?: number | null;
+  centerId?: number | null;
+}
+
+export interface MyTeachingProfile {
+  user: User;
+  activeYear: string | null;
+  targetCenterId: number | null;
+  targetCenterName: string | null;
+  targetProvinceId: number | null;
+  targetProvinceName: string | null;
+  moduleIds: number[];
+  modules: MyTeachingModuleOption[];
+}
+
+export interface UpdateMyTeachingProfileInput {
+  /** @minimum 1 */
+  centerId: number;
+  moduleIds: number[];
+}
+
+export interface MyTeachingProfileUpdateResult {
+  user: User;
+  activeYear: string | null;
+  moduleIds: number[];
+}
+
 export interface ConfirmYearInput {
   centerId: number;
   moduleIds: number[];
@@ -2011,6 +2043,13 @@ export type UpdateProfile200 = User & {
   /** True when changing the password has revoked this session. */
   requiresReauthentication?: boolean;
   message?: string;
+};
+
+export type GetMyTeachingProfileParams = {
+/**
+ * @minimum 1
+ */
+targetCenterId?: number;
 };
 
 export type ListInvitationsParams = {

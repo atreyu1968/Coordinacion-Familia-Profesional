@@ -98,6 +98,7 @@ import type {
   GetDashboardStatisticsParams,
   GetDashboardSummaryParams,
   GetLmsScormSessionParams,
+  GetMyTeachingProfileParams,
   Group,
   HealthStatus,
   IntegrationSettings,
@@ -158,6 +159,8 @@ import type {
   ModuleSpaceAccess,
   ModuleWikiEditors,
   Municipality,
+  MyTeachingProfile,
+  MyTeachingProfileUpdateResult,
   MyYearConfirmation,
   Notification,
   OkResult,
@@ -197,6 +200,7 @@ import type {
   UpdateModuleInput,
   UpdateModuleMemberInput,
   UpdateModuleWikiEditorsInput,
+  UpdateMyTeachingProfileInput,
   UpdateProfile200,
   UpdateProfileInput,
   UpdateUserInput,
@@ -2449,6 +2453,163 @@ export const useUpdateProfile = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdateProfileMutationOptions(options));
+    }
+
+export const getGetMyTeachingProfileUrl = (params?: GetMyTeachingProfileParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/auth/me/teaching-profile?${stringifiedParams}` : `/api/auth/me/teaching-profile`
+}
+
+/**
+ * Returns the active-year assignments and module options for the requested center. Only active-family centers and modules are included.
+ * @summary Get the authenticated teacher's current teaching profile
+ */
+export const getMyTeachingProfile = async (params?: GetMyTeachingProfileParams, options?: RequestInit): Promise<MyTeachingProfile> => {
+
+  return customFetch<MyTeachingProfile>(getGetMyTeachingProfileUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyTeachingProfileQueryKey = (params?: GetMyTeachingProfileParams,) => {
+    return [
+    `/api/auth/me/teaching-profile`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyTeachingProfileQueryOptions = <TData = Awaited<ReturnType<typeof getMyTeachingProfile>>, TError = ErrorType<ErrorResponse>>(params?: GetMyTeachingProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTeachingProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyTeachingProfileQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyTeachingProfile>>> = ({ signal }) => getMyTeachingProfile(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyTeachingProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyTeachingProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getMyTeachingProfile>>>
+export type GetMyTeachingProfileQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the authenticated teacher's current teaching profile
+ */
+
+export function useGetMyTeachingProfile<TData = Awaited<ReturnType<typeof getMyTeachingProfile>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetMyTeachingProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTeachingProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyTeachingProfileQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateMyTeachingProfileUrl = () => {
+
+
+
+
+  return `/api/auth/me/teaching-profile`
+}
+
+/**
+ * Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
+ * @summary Update the authenticated teacher's center and active-year modules
+ */
+export const updateMyTeachingProfile = async (updateMyTeachingProfileInput: UpdateMyTeachingProfileInput, options?: RequestInit): Promise<MyTeachingProfileUpdateResult> => {
+
+  return customFetch<MyTeachingProfileUpdateResult>(getUpdateMyTeachingProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateMyTeachingProfileInput,)
+  }
+);}
+
+
+
+
+export const getUpdateMyTeachingProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyTeachingProfile>>, TError,{data: BodyType<UpdateMyTeachingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyTeachingProfile>>, TError,{data: BodyType<UpdateMyTeachingProfileInput>}, TContext> => {
+
+const mutationKey = ['updateMyTeachingProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyTeachingProfile>>, {data: BodyType<UpdateMyTeachingProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMyTeachingProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyTeachingProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyTeachingProfile>>>
+    export type UpdateMyTeachingProfileMutationBody = BodyType<UpdateMyTeachingProfileInput>
+    export type UpdateMyTeachingProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update the authenticated teacher's center and active-year modules
+ */
+export const useUpdateMyTeachingProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyTeachingProfile>>, TError,{data: BodyType<UpdateMyTeachingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyTeachingProfile>>,
+        TError,
+        {data: BodyType<UpdateMyTeachingProfileInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMyTeachingProfileMutationOptions(options));
     }
 
 export const getGetInvitationByTokenUrl = (token: string,) => {

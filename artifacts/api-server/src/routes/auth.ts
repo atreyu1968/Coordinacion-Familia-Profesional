@@ -1,10 +1,16 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ne, desc, sql } from "drizzle-orm";
+import { eq, and, isNull, ne, desc, sql, inArray, or } from "drizzle-orm";
 import {
   db,
   usersTable,
   invitationsTable,
   passwordResetTokensTable,
+  centersTable,
+  provincesTable,
+  modulesTable,
+  teachingAssignmentsTable,
+  teacherYearConfirmationsTable,
+  syncModuleChatGroup,
 } from "@workspace/db";
 import {
   LoginBody,
@@ -18,6 +24,10 @@ import {
   UpdateProfileResponse,
   ForgotPasswordBody,
   ResetPasswordBody,
+  GetMyTeachingProfileQueryParams,
+  GetMyTeachingProfileResponse,
+  UpdateMyTeachingProfileBody,
+  UpdateMyTeachingProfileResponse,
 } from "@workspace/api-zod";
 import {
   hashPassword,
@@ -26,8 +36,11 @@ import {
   generateResetCode,
 } from "../lib/auth";
 import { sendEmail, buildPasswordResetEmail } from "../lib/email";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireRole } from "../middlewares/auth";
 import { disconnectUserSessions } from "../lib/realtime";
+import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
+import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { logger } from "../lib/logger";
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
@@ -193,6 +206,340 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
   }
   res.json(response);
 });
+
+router.get(
+  "/auth/me/teaching-profile",
+  requireAuth,
+  requireRole("teacher"),
+  async (req, res): Promise<void> => {
+    const query = GetMyTeachingProfileQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ message: query.error.message });
+      return;
+    }
+
+    const caller = req.user!;
+    const targetCenterId = query.data.targetCenterId ?? caller.centerId;
+    const activeYear = await getActiveAcademicYear();
+    const activeFamily = await getActiveFamily();
+
+    let targetCenter:
+      | {
+          id: number;
+          name: string;
+          provinceId: number | null;
+          provinceName: string | null;
+        }
+      | undefined;
+    if (targetCenterId != null) {
+      const [center] = await db
+        .select({
+          id: centersTable.id,
+          name: centersTable.name,
+          provinceId: centersTable.provinceId,
+          provinceName: provincesTable.name,
+        })
+        .from(centersTable)
+        .leftJoin(
+          provincesTable,
+          eq(provincesTable.id, centersTable.provinceId),
+        )
+        .where(
+          and(
+            eq(centersTable.id, targetCenterId),
+            isNull(centersTable.deletedAt),
+            sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+          ),
+        );
+      if (!center) {
+        res.status(404).json({ message: "El centro no existe o no está disponible" });
+        return;
+      }
+      targetCenter = center;
+    }
+
+    const modules = targetCenter
+      ? await db
+          .select({
+            id: modulesTable.id,
+            code: modulesTable.code,
+            name: modulesTable.name,
+            cycleName: modulesTable.cycleName,
+            cycleId: modulesTable.cycleId,
+            centerId: modulesTable.centerId,
+          })
+          .from(modulesTable)
+          .where(
+            and(
+              isNull(modulesTable.deletedAt),
+              moduleFamilyFilter(activeFamily),
+              or(
+                isNull(modulesTable.centerId),
+                eq(modulesTable.centerId, targetCenter.id),
+              ),
+            ),
+          )
+          .orderBy(modulesTable.cycleName, modulesTable.name)
+      : [];
+
+    let moduleIds: number[] = [];
+    if (
+      activeYear &&
+      targetCenter &&
+      caller.centerId === targetCenter.id
+    ) {
+      const assignments = await db
+        .select({ moduleId: teachingAssignmentsTable.moduleId })
+        .from(teachingAssignmentsTable)
+        .where(
+          and(
+            eq(teachingAssignmentsTable.teacherId, caller.id),
+            eq(teachingAssignmentsTable.schoolYear, activeYear),
+            eq(teachingAssignmentsTable.centerId, targetCenter.id),
+            isNull(teachingAssignmentsTable.deletedAt),
+          ),
+        );
+      const availableModuleIds = new Set(modules.map((module) => module.id));
+      moduleIds = [
+        ...new Set(
+          assignments
+            .map((assignment) => assignment.moduleId)
+            .filter((id) => availableModuleIds.has(id)),
+        ),
+      ];
+    }
+
+    res.json(
+      GetMyTeachingProfileResponse.parse({
+        user: GetCurrentUserResponse.parse(caller),
+        activeYear,
+        targetCenterId: targetCenter?.id ?? null,
+        targetCenterName: targetCenter?.name ?? null,
+        targetProvinceId: targetCenter?.provinceId ?? null,
+        targetProvinceName: targetCenter?.provinceName ?? null,
+        moduleIds,
+        modules,
+      }),
+    );
+  },
+);
+
+router.patch(
+  "/auth/me/teaching-profile",
+  requireAuth,
+  requireRole("teacher"),
+  async (req, res): Promise<void> => {
+    const parsed = UpdateMyTeachingProfileBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: parsed.error.message });
+      return;
+    }
+
+    const caller = req.user!;
+    const activeYear = await getActiveAcademicYear();
+    const activeFamily = await getActiveFamily();
+    const moduleIds = [...new Set(parsed.data.moduleIds)];
+    if (activeYear && moduleIds.length === 0) {
+      res.status(400).json({
+        message: "Selecciona al menos un módulo que impartes en el curso activo",
+      });
+      return;
+    }
+    if (!activeYear && moduleIds.length > 0) {
+      res.status(409).json({
+        message: "No hay un curso activo para guardar módulos",
+      });
+      return;
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [lockedUser] = await tx
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.id, caller.id),
+            eq(usersTable.role, "teacher"),
+            eq(usersTable.status, "active"),
+            isNull(usersTable.deletedAt),
+          ),
+        )
+        .for("update");
+      if (!lockedUser) return { kind: "user" as const };
+
+      const [center] = await tx
+        .select()
+        .from(centersTable)
+        .where(
+          and(
+            eq(centersTable.id, parsed.data.centerId),
+            isNull(centersTable.deletedAt),
+            sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+          ),
+        )
+        .for("update");
+      if (!center) return { kind: "center" as const };
+
+      if (activeYear && moduleIds.length > 0) {
+        const validModules = await tx
+          .select({
+            id: modulesTable.id,
+            centerId: modulesTable.centerId,
+          })
+          .from(modulesTable)
+          .where(
+            and(
+              inArray(modulesTable.id, moduleIds),
+              isNull(modulesTable.deletedAt),
+              moduleFamilyFilter(activeFamily),
+            ),
+          );
+        const validIds = new Set(validModules.map((module) => module.id));
+        if (moduleIds.some((id) => !validIds.has(id))) {
+          return { kind: "modules" as const };
+        }
+        if (
+          validModules.some(
+            (module) =>
+              module.centerId != null && module.centerId !== center.id,
+          )
+        ) {
+          return { kind: "modules" as const };
+        }
+      }
+
+      const [updatedUser] = await tx
+        .update(usersTable)
+        .set({ centerId: center.id, provinceId: center.provinceId })
+        .where(eq(usersTable.id, caller.id))
+        .returning();
+      if (!updatedUser) return { kind: "user" as const };
+
+      const touchedModuleIds = new Set<number>();
+      if (activeYear) {
+        const assignments = await tx
+          .select()
+          .from(teachingAssignmentsTable)
+          .where(
+            and(
+              eq(teachingAssignmentsTable.teacherId, caller.id),
+              eq(teachingAssignmentsTable.schoolYear, activeYear),
+            ),
+          )
+          .for("update");
+        const selectedModules = new Set(moduleIds);
+        const activeAssignments = assignments.filter(
+          (assignment) => assignment.deletedAt == null,
+        );
+
+        for (const assignment of activeAssignments) {
+          if (selectedModules.has(assignment.moduleId)) continue;
+          await tx
+            .update(teachingAssignmentsTable)
+            .set({ deletedAt: new Date() })
+            .where(eq(teachingAssignmentsTable.id, assignment.id));
+          touchedModuleIds.add(assignment.moduleId);
+        }
+
+        for (const moduleId of moduleIds) {
+          const moduleAssignments = assignments.filter(
+            (assignment) => assignment.moduleId === moduleId,
+          );
+          const activeForModule = moduleAssignments.filter(
+            (assignment) => assignment.deletedAt == null,
+          );
+          if (activeForModule.length > 0) {
+            for (const assignment of activeForModule) {
+              if (assignment.centerId === center.id) continue;
+              await tx
+                .update(teachingAssignmentsTable)
+                .set({ centerId: center.id, groupId: null })
+                .where(eq(teachingAssignmentsTable.id, assignment.id));
+              touchedModuleIds.add(moduleId);
+            }
+            continue;
+          }
+
+          const previous = moduleAssignments.find(
+            (assignment) => assignment.deletedAt != null,
+          );
+          if (previous) {
+            await tx
+              .update(teachingAssignmentsTable)
+              .set({
+                deletedAt: null,
+                centerId: center.id,
+                groupId:
+                  previous.centerId === center.id ? previous.groupId : null,
+              })
+              .where(eq(teachingAssignmentsTable.id, previous.id));
+          } else {
+            await tx.insert(teachingAssignmentsTable).values({
+              teacherId: caller.id,
+              moduleId,
+              centerId: center.id,
+              schoolYear: activeYear,
+            });
+          }
+          touchedModuleIds.add(moduleId);
+        }
+
+        await tx
+          .update(teacherYearConfirmationsTable)
+          .set({ centerId: center.id })
+          .where(
+            and(
+              eq(teacherYearConfirmationsTable.teacherId, caller.id),
+              eq(teacherYearConfirmationsTable.schoolYear, activeYear),
+            ),
+          );
+      }
+
+      return {
+        kind: "success" as const,
+        user: updatedUser,
+        moduleIds: activeYear ? moduleIds : [],
+        touchedModuleIds: [...touchedModuleIds],
+      };
+    });
+
+    if (result.kind === "user") {
+      res.status(403).json({ message: "La cuenta de profesorado no está activa" });
+      return;
+    }
+    if (result.kind === "center") {
+      res.status(404).json({
+        message: "El centro no existe o no pertenece a la familia activa",
+      });
+      return;
+    }
+    if (result.kind === "modules") {
+      res.status(400).json({
+        message: "Algún módulo no está disponible para el centro seleccionado",
+      });
+      return;
+    }
+
+    for (const moduleId of result.touchedModuleIds) {
+      try {
+        await syncModuleChatGroup(moduleId);
+      } catch (err) {
+        logger.error(
+          { err, moduleId },
+          "syncModuleChatGroup (teacher profile) failed",
+        );
+      }
+    }
+
+    res.json(
+      UpdateMyTeachingProfileResponse.parse({
+        user: GetCurrentUserResponse.parse(result.user),
+        activeYear,
+        moduleIds: result.moduleIds,
+      }),
+    );
+  },
+);
 
 router.get("/auth/invitations/:token", async (req, res): Promise<void> => {
   const params = GetInvitationByTokenParams.safeParse(req.params);
