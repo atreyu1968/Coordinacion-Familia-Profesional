@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, or, desc, type SQL } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, desc, count, sql, type SQL } from "drizzle-orm";
 import {
   db,
   usersTable,
   centersTable,
   teacherYearConfirmationsTable,
+  type User,
 } from "@workspace/db";
 import {
   ListUsersQueryParams,
@@ -16,6 +17,8 @@ import {
   UpdateUserResponse,
   DeactivateUserParams,
   ReactivateUserParams,
+  ListManagedUsersQueryParams,
+  ListManagedUsersResponse,
 } from "@workspace/api-zod";
 import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import {
@@ -27,6 +30,60 @@ import {
 } from "../middlewares/auth";
 
 const router: IRouter = Router();
+
+function mayManageAccount(caller: User, target: User): boolean {
+  return caller.id !== target.id &&
+    (caller.role === "superadmin" || canManageUser(caller, target));
+}
+
+// Separate administration from the directory: ordinary users and existing
+// directory consumers must not gain access to soft-deactivated accounts.
+router.get("/users/management", requireAuth,
+  requireRole("superadmin", "coordinator", "department_head"),
+  async (req, res): Promise<void> => {
+    const query = ListManagedUsersQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ message: "Filtros o paginación no válidos" });
+      return;
+    }
+    const caller = req.user!;
+    const filters: SQL[] = [];
+    if (caller.role === "coordinator") {
+      if (caller.provinceId == null) {
+        res.status(403).json({ message: "Tu cuenta no tiene una provincia asignada" });
+        return;
+      }
+      filters.push(eq(usersTable.provinceId, caller.provinceId));
+    } else if (caller.role === "department_head") {
+      if (caller.centerId == null) {
+        res.status(403).json({ message: "Tu cuenta no tiene un centro asignado" });
+        return;
+      }
+      filters.push(eq(usersTable.centerId, caller.centerId));
+    }
+    const { role, provinceId, centerId, search, status = "all", page: requestedPage = 1, pageSize = 25 } = query.data;
+    if (role) filters.push(eq(usersTable.role, role));
+    if (provinceId != null) filters.push(eq(usersTable.provinceId, provinceId));
+    if (centerId != null) filters.push(eq(usersTable.centerId, centerId));
+    if (status !== "all") filters.push(eq(usersTable.status, status));
+    // A soft-deactivated record is retained for recovery, never hard-deleted.
+    filters.push(or(isNull(usersTable.deletedAt), eq(usersTable.status, "inactive"))!);
+    if (search?.trim()) {
+      const term = `%${search.trim().replace(/[\\%_]/g, "\\$&")}%`;
+      filters.push(or(ilike(usersTable.name, term), ilike(usersTable.email, term))!);
+    }
+    const result = await db.transaction(async (tx) => {
+      const [summary] = await tx.select({ total: count() }).from(usersTable).where(and(...filters));
+      const total = summary.total;
+      const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
+      const rows = await tx.select().from(usersTable).where(and(...filters))
+        .orderBy(desc(usersTable.createdAt), desc(usersTable.id))
+        .limit(pageSize).offset((page - 1) * pageSize);
+      return { users: rows.map((target) => ({ ...target, canManage: mayManageAccount(caller, target) })), total, page, pageSize };
+    }, { isolationLevel: "repeatable read", accessMode: "read only" });
+    res.json(ListManagedUsersResponse.parse(result));
+  },
+);
 
 router.get("/users", requireAuth, async (req, res): Promise<void> => {
   const query = ListUsersQueryParams.safeParse(req.query);
@@ -125,9 +182,7 @@ router.patch(
     const [target] = await db
       .select()
       .from(usersTable)
-      .where(
-        and(eq(usersTable.id, params.data.id), isNull(usersTable.deletedAt)),
-      );
+      .where(eq(usersTable.id, params.data.id));
 
     if (!target) {
       res.status(404).json({ message: "Usuario no encontrado" });
@@ -136,8 +191,19 @@ router.patch(
 
     const caller = req.user!;
     const updates = { ...parsed.data };
-    if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
+    if (!mayManageAccount(caller, target)) {
       res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    if (updates.name !== undefined) {
+      updates.name = updates.name.trim();
+      if (!updates.name) {
+        res.status(400).json({ message: "El nombre no puede estar vacío" });
+        return;
+      }
+    }
+    if (updates.status !== undefined && updates.status !== target.status) {
+      res.status(400).json({ message: "Utiliza las acciones Desactivar o Reactivar para cambiar el acceso" });
       return;
     }
 
@@ -183,6 +249,19 @@ router.patch(
       }
     }
 
+    const newRole = updates.role ?? target.role;
+    if (["coordinator", "prospector"].includes(newRole) && destinationProvinceId == null) {
+      res.status(400).json({ message: "Este rol requiere una provincia" });
+      return;
+    }
+    if (["department_head", "teacher"].includes(newRole) && destinationCenterId == null) {
+      // Allow unrelated edits to legacy incomplete teachers; onboarding will
+      // still require a center. Do not allow newly assigning an unscoped role.
+      if (updates.role !== undefined || updates.centerId !== undefined) {
+        res.status(400).json({ message: "Este rol requiere un centro" });
+        return;
+      }
+    }
     if (caller.role !== "superadmin") {
       const newRole = parsed.data.role ?? target.role;
       if (roleRank(newRole) >= roleRank(caller.role)) {
@@ -206,9 +285,7 @@ router.patch(
     const [user] = await db
       .update(usersTable)
       .set(updates)
-      .where(
-        and(eq(usersTable.id, params.data.id), isNull(usersTable.deletedAt)),
-      )
+      .where(eq(usersTable.id, params.data.id))
       .returning();
 
     res.json(UpdateUserResponse.parse(user));
@@ -239,14 +316,14 @@ router.delete(
     }
 
     const caller = req.user!;
-    if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
+    if (!mayManageAccount(caller, target)) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
     }
 
     await db
       .update(usersTable)
-      .set({ status: "inactive", deletedAt: new Date() })
+      .set({ status: "inactive", deletedAt: new Date(), tokenVersion: sql`${usersTable.tokenVersion} + 1` })
       .where(eq(usersTable.id, params.data.id));
 
     res.sendStatus(204);
@@ -277,14 +354,18 @@ router.post(
     }
 
     const caller = req.user!;
-    if (caller.role !== "superadmin" && !canManageUser(caller, target)) {
+    if (!mayManageAccount(caller, target)) {
       res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    if (target.status === "active" && target.deletedAt == null) {
+      res.json(UpdateUserResponse.parse(target));
       return;
     }
 
     const [updated] = await db
       .update(usersTable)
-      .set({ status: "active", deletedAt: null })
+      .set({ status: "active", deletedAt: null, tokenVersion: sql`${usersTable.tokenVersion} + 1` })
       .where(eq(usersTable.id, params.data.id))
       .returning();
 

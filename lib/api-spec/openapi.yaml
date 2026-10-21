@@ -1005,6 +1005,51 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+  /users/management:
+    get:
+      operationId: listManagedUsers
+      tags: [users]
+      summary: Paginated user administration, including deactivated accounts within the manager's scope
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleQuery"
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, active, inactive]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: Scoped page and total matching users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManagedUserPage"
+        "403":
+          description: User administration requires a manager role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/{id}:
     get:
       operationId: getUser
@@ -4749,15 +4794,41 @@ components:
           type: string
           format: date-time
       required: [id, name, email, role, status]
+    ManagedUser:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            canManage:
+              type: boolean
+              description: Whether this caller may edit or change this account's access
+          required: [canManage]
+    ManagedUserPage:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManagedUser"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [users, total, page, pageSize]
     UpdateUserInput:
       type: object
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 200
         role:
           $ref: "#/components/schemas/Role"
         status:
           type: string
+          enum: [active, inactive]
         provinceId:
           type: integer
           nullable: true

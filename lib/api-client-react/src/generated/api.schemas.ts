@@ -466,10 +466,34 @@ export interface AuthResult {
   user: User;
 }
 
+export type ManagedUser = User & {
+  /** Whether this caller may edit or change this account's access */
+  canManage: boolean;
+};
+
+export interface ManagedUserPage {
+  users: ManagedUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type UpdateUserInputStatus = typeof UpdateUserInputStatus[keyof typeof UpdateUserInputStatus];
+
+
+export const UpdateUserInputStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
 export interface UpdateUserInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
   name?: string;
   role?: Role;
-  status?: string;
+  status?: UpdateUserInputStatus;
   /** @nullable */
   provinceId?: number | null;
   /** @nullable */
@@ -2368,6 +2392,33 @@ provinceId?: ProvinceQueryParameter;
 centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
 };
+
+export type ListManagedUsersParams = {
+role?: RoleQueryParameter;
+provinceId?: ProvinceQueryParameter;
+centerId?: CenterQueryParameter;
+search?: SearchQueryParameter;
+status?: ListManagedUsersStatus;
+/**
+ * @minimum 1
+ * @maximum 1000000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListManagedUsersStatus = typeof ListManagedUsersStatus[keyof typeof ListManagedUsersStatus];
+
+
+export const ListManagedUsersStatus = {
+  all: 'all',
+  active: 'active',
+  inactive: 'inactive',
+} as const;
 
 export type ListIslandsParams = {
 provinceId?: ProvinceQueryParameter;

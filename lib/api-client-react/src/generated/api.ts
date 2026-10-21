@@ -126,6 +126,7 @@ import type {
   ListGroupsParams,
   ListInvitationsParams,
   ListIslandsParams,
+  ListManagedUsersParams,
   ListModulesParams,
   ListMunicipalitiesParams,
   ListResourcesParams,
@@ -154,6 +155,7 @@ import type {
   LmsUploadInput,
   LmsUploadResponse,
   LoginInput,
+  ManagedUserPage,
   Meeting,
   MeetingAccess,
   MeetingTokenInput,
@@ -4002,6 +4004,114 @@ export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListManagedUsersUrl = (params?: ListManagedUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/management?${stringifiedParams}` : `/api/users/management`
+}
+
+/**
+ * @summary Paginated user administration, including deactivated accounts within the manager's scope
+ */
+export const listManagedUsers = async (params?: ListManagedUsersParams, options?: Parameters<typeof customFetch>[1]): Promise<ManagedUserPage> => {
+
+  return customFetch<ManagedUserPage>(getListManagedUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListManagedUsersQueryKey = (params?: ListManagedUsersParams,) => {
+    return [
+    `/api/users/management`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListManagedUsersQueryOptions = <TData = Awaited<ReturnType<typeof listManagedUsers>>, TError = ErrorType<Error>>(params?: ListManagedUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListManagedUsersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listManagedUsers>>> = ({ signal }) => listManagedUsers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListManagedUsersQueryResult = NonNullable<Awaited<ReturnType<typeof listManagedUsers>>>
+export type ListManagedUsersQueryError = ErrorType<Error>
+
+
+export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManagedUsers>>, TError = ErrorType<Error>>(
+ params: undefined |  ListManagedUsersParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManagedUsers>>, TError = ErrorType<Error>>(
+ params?: ListManagedUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedUsers>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManagedUsers>>, TError = ErrorType<Error>>(
+ params?: ListManagedUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Paginated user administration, including deactivated accounts within the manager's scope
+ */
+
+export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManagedUsers>>, TError = ErrorType<Error>>(
+ params?: ListManagedUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListManagedUsersQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -6,11 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Role } from './role';
+import type { UpdateUserInputStatus } from './updateUserInputStatus';
 
 export interface UpdateUserInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
   name?: string;
   role?: Role;
-  status?: string;
+  status?: UpdateUserInputStatus;
   /** @nullable */
   provinceId?: number | null;
   /** @nullable */

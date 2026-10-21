@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
+import { syncAdgCenters } from "./lib/sync-adg-centers";
 import {
   db,
   pool,
@@ -260,6 +261,13 @@ async function main(): Promise<void> {
         stats.inserted++;
       }
     }
+
+    // Apply the explicitly supplied, newer ADG contact directory after the
+    // broad historical reference catalog. Never remove absent centers.
+    const adg = await syncAdgCenters(tx, true);
+    stats.inserted += adg.inserted;
+    stats.updated += adg.updated;
+    stats.skipped += adg.unchanged;
 
     // --- cycles (key: name + level) ---------------------------------------
     const cycleIdBySrcId = new Map<number, number>();

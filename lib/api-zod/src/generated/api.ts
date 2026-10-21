@@ -982,6 +982,47 @@ export const ListUsersResponseItem = zod.object({
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
 
+/**
+ * @summary Paginated user administration, including deactivated accounts within the manager's scope
+ */
+export const listManagedUsersQueryStatusDefault = `all`;
+export const listManagedUsersQueryPageDefault = 1;
+export const listManagedUsersQueryPageMax = 1000000;
+
+export const listManagedUsersQueryPageSizeDefault = 25;
+export const listManagedUsersQueryPageSizeMax = 100;
+
+
+
+export const ListManagedUsersQueryParams = zod.object({
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
+  "provinceId": zod.coerce.number().int().optional(),
+  "centerId": zod.coerce.number().int().optional(),
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['all', 'active', 'inactive']).default(listManagedUsersQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).max(listManagedUsersQueryPageMax).default(listManagedUsersQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listManagedUsersQueryPageSizeMax).default(listManagedUsersQueryPageSizeDefault)
+})
+
+export const ListManagedUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "status": zod.string(),
+  "provinceId": zod.number().int().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
+}).and(zod.object({
+  "canManage": zod.boolean().describe('Whether this caller may edit or change this account\'s access')
+}))),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
 export const GetUserParams = zod.object({
   "id": zod.coerce.number().int()
 })
@@ -1002,10 +1043,14 @@ export const UpdateUserParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateUserBodyNameMax = 200;
+
+
+
 export const UpdateUserBody = zod.object({
-  "name": zod.string().optional(),
+  "name": zod.string().min(1).max(updateUserBodyNameMax).optional(),
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
-  "status": zod.string().optional(),
+  "status": zod.enum(['active', 'inactive']).optional(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish()
 })

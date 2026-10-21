@@ -26,3 +26,11 @@ For list/aggregate endpoints (e.g. `/departments`, `/dashboard/*`), use `resolve
 **Why:** A code review found that branching on `caller.provinceId != null` *before* `caller.centerId` leaked province-wide data to center-bound roles, because a center user's record also carries the `provinceId` of its center. The fix keys scope off ROLE, never off which id happens to be populated.
 
 **How to apply:** Never write `if (caller.provinceId) {...} else if (caller.centerId) {...}` for scoping. Call `resolveReadScope` and switch on `.kind`. Only superadmin may honor a caller-supplied `provinceId` filter; ignore it for everyone else.
+
+## Account recovery is administration, not directory visibility
+
+**Rule:** Keep recoverable deactivated accounts available to scoped managers without broadening the ordinary user directory or reinterpreting existing directory calls as administrative access.
+
+**Why:** The user approved fixing accounts disappearing after deactivation while preserving accounts and histories. Directory consumers across web and mobile must not gain inactive-account visibility as a side effect of that repair.
+
+**How to apply:** Preserve the distinction between directory reads and manager-only recovery. Editing and access actions must share server-authoritative scope/hierarchy checks; a manager's own access is handled separately from account administration.
