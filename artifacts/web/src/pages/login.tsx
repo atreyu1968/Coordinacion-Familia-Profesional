@@ -151,11 +151,11 @@ export default function LoginPage() {
 
           <div className="pt-2 text-center">
             <a
-              href="https://www.coordinacionfp.org/"
+              href="https://coordinacionfp.org/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-primary hover:underline"
-            >www.coordinacionfp.org</a>
+            >coordinacionfp.org</a>
           </div>
         </div>
       </div>

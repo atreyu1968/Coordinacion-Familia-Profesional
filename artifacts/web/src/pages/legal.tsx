@@ -80,6 +80,7 @@ function LegalPage({ kind }: { kind: LegalKind }) {
           <Link href="/terminos" className="text-primary underline underline-offset-4">Términos</Link>
           <Link href="/privacidad" className="text-primary underline underline-offset-4">Privacidad</Link>
           <Link href="/cookies" className="text-primary underline underline-offset-4">Cookies</Link>
+          <a href="https://coordinacionfp.org/" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">coordinacionfp.org</a>
         </nav>
       </article>
     </main>
