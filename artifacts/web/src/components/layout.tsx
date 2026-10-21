@@ -39,6 +39,7 @@ import {
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
 import { TeacherConfirmationBanner } from "./teacher-confirmation-banner";
+import { SpaceNotifications } from "./collab/space-notifications";
 import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
@@ -164,6 +165,7 @@ export function AppLayout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          <SpaceNotifications userId={user.id} />
           <ProfileDialog
             user={user}
             forceOpen={forceTeachingProfileCompletion}

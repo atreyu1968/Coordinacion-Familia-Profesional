@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
@@ -144,6 +144,11 @@ export function useNotificationDeepLinks(enabled: boolean): void {
     const handle = (response: Notifications.NotificationResponse) => {
       const identifier = response.notification.request.identifier;
       if (handledIdRef.current === identifier) return;
+      if (response.notification.request.content.data.type === "collaborative_space") {
+        handledIdRef.current = identifier;
+        void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
+        return;
+      }
       const target = deepLinkFromData(
         response.notification.request.content.data,
       );

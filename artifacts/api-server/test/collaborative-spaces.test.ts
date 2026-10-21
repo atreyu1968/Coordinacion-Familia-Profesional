@@ -1,9 +1,11 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, collaborativeSpacesTable as spaces, collaborativeSpaceMembersTable as members, usersTable, centersTable } from "@workspace/db";
+import { db, collaborativeSpacesTable as spaces, collaborativeSpaceMembersTable as members, usersTable, centersTable, notificationsTable } from "@workspace/db";
 import app from "../src/app";
 import * as nextcloud from "../src/lib/nextcloud";
+import * as notify from "../src/lib/notify";
+import { withPushPath } from "../src/lib/push";
 import { createUser, createCenter, createProvince, cleanup, authHeader } from "./helpers";
 
 const ids: number[] = [];
@@ -34,7 +36,9 @@ describe("independent collaborative spaces", () => {
     const admin = await createUser({ role: "superadmin" });
     const provinceId = await createProvince(), centerId = await createCenter(provinceId);
     const first = await createUser({ centerId }), second = await createUser({ centerId });
-    await createUser({ centerId, status: "inactive" });
+    const inactive = await createUser({ centerId, status: "inactive" });
+    const deleted = await createUser({ centerId });
+    await db.update(usersTable).set({ deletedAt: new Date() }).where(eq(usersTable.id, deleted.user.id));
     const created = await createSpace(admin.token, {
       name: "  Equipo de innovación  ", description: "Centros colaboradores",
       userIds: [first.user.id, first.user.id], centerIds: [centerId, centerId],
@@ -44,12 +48,56 @@ describe("independent collaborative spaces", () => {
     const detail = await request(app).get(`/api/collab/spaces/${created.body.id}`).set(authHeader(admin.token));
     expect(detail.status).toBe(200);
     expect(detail.body.members.map((m: { id: number }) => m.id).sort()).toEqual([first.user.id, second.user.id].sort());
+    const recipients = [first.user.id, second.user.id, inactive.user.id, deleted.user.id, admin.user.id];
+    const notices = await db.select().from(notificationsTable).where(inArray(notificationsTable.userId, recipients));
+    expect(notices).toHaveLength(2);
+    expect(notices.map((n) => n.userId).sort()).toEqual([first.user.id, second.user.id].sort());
+    expect(notices[0]).toMatchObject({
+      type: "collaborative_space", title: "Te han añadido a un espacio colaborativo", readAt: null,
+    });
+    expect(notices[0]!.body).toContain("Equipo de innovación");
+    expect(withPushPath({ title: "Aviso", data: { type: notices[0]!.type } }).data?.path).toBe("/espacio");
     const later = await createUser({ centerId });
     const unchanged = await request(app).get(`/api/collab/spaces/${created.body.id}`).set(authHeader(admin.token));
     expect(unchanged.body.members.some((m: { id: number }) => m.id === later.user.id)).toBe(false);
     const added = await request(app).post(`/api/collab/spaces/${created.body.id}/members`).set(authHeader(admin.token))
       .send({ userIds: [later.user.id], centerIds: [centerId] });
     expect(added.body.memberCount).toBe(3);
+    const repeat = () => request(app).post(`/api/collab/spaces/${created.body.id}/members`).set(authHeader(admin.token))
+      .send({ userIds: [later.user.id, first.user.id, later.user.id], centerIds: [centerId, centerId] });
+    const retries = await Promise.all([repeat(), repeat()]);
+    expect(retries.map((r) => r.status)).toEqual([200, 200]);
+    const afterRetries = await db.select().from(notificationsTable)
+      .where(inArray(notificationsTable.userId, [...recipients, later.user.id]));
+    expect(afterRetries).toHaveLength(3);
+    expect(afterRetries.map((n) => n.userId).sort()).toEqual([first.user.id, second.user.id, later.user.id].sort());
+  });
+
+  it("notifies only the inserted members when simultaneous additions overlap", async () => {
+    const admin = await createUser({ role: "superadmin" }), teacher = await createUser();
+    const created = await createSpace(admin.token);
+    const add = () => request(app).post(`/api/collab/spaces/${created.body.id}/members`).set(authHeader(admin.token))
+      .send({ userIds: [teacher.user.id] });
+    expect((await Promise.all([add(), add()])).map((r) => r.status)).toEqual([200, 200]);
+    expect(await db.select().from(notificationsTable).where(eq(notificationsTable.userId, teacher.user.id))).toHaveLength(1);
+  });
+
+  it("commits creation and additions even if notifications fail, without retrying already applied selections", async () => {
+    const admin = await createUser({ role: "superadmin" }), first = await createUser(), second = await createUser();
+    const delivery = vi.spyOn(notify, "notifyUsers").mockRejectedValue(new Error("Notification unavailable"));
+    const created = await createSpace(admin.token, { name: "Equipo con avisos fallidos", userIds: [first.user.id] });
+    expect(created.status).toBe(201);
+    expect(created.body.memberCount).toBe(1);
+    const add = () => request(app).post(`/api/collab/spaces/${created.body.id}/members`).set(authHeader(admin.token))
+      .send({ userIds: [first.user.id, second.user.id] });
+    const added = await add();
+    expect(added.status).toBe(200);
+    expect(added.body.memberCount).toBe(2);
+    expect(delivery).toHaveBeenNthCalledWith(1, [first.user.id], expect.objectContaining({ type: "collaborative_space" }));
+    expect(delivery).toHaveBeenNthCalledWith(2, [second.user.id], expect.anything());
+    delivery.mockResolvedValue(0);
+    expect((await add()).status).toBe(200);
+    expect(delivery).toHaveBeenCalledTimes(2);
   });
 
   it("reserves management and candidate personal data for superadmin and hides spaces from outsiders", async () => {
@@ -132,6 +180,13 @@ describe("independent collaborative spaces", () => {
     const stalePath = new URL(another.body.url).pathname + new URL(another.body.url).search;
     expect((await request(app).get(stalePath)).status).toBe(403);
     expect((await request(app).post(`/api/collab/spaces/${id}/open`).set(authHeader(teacher.token))).status).toBe(403);
+    // An old persisted notification is information, not an authorization grant.
+    const notices = await request(app).get("/api/notifications").set(authHeader(teacher.token));
+    expect(notices.status).toBe(200);
+    expect(notices.body).toEqual(expect.arrayContaining([expect.objectContaining({ type: "collaborative_space" })]));
+    const visible = await request(app).get("/api/collab/spaces").set(authHeader(teacher.token));
+    expect(visible.body.some((s: { id: number }) => s.id === id)).toBe(false);
+    expect(remote.provision).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed when remote revocation fails or configuration disappears after partial provisioning", async () => {

@@ -245,6 +245,10 @@ export default function NotificationsScreen() {
                     case "year_confirmation":
                       router.push("/confirmar-curso");
                       break;
+                    case "collaborative_space":
+                      // Documents live in the web app; it rechecks current access.
+                      void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
+                      break;
                     case "event":
                     case "calendar":
                       router.push("/(tabs)");

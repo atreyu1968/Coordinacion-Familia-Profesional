@@ -17,8 +17,23 @@ import {
 import { createIndependentSpaceTicket } from "../lib/oidc";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
+import { notifyUsers } from "../lib/notify";
 
 const router = Router();
+// Run only after membership commits: notification failures must never roll it back.
+async function notifyNewMembers(userIds: number[], space: { id: number; name: string }) {
+  if (!userIds.length) return;
+  try {
+    await notifyUsers(userIds, {
+      title: "Te han añadido a un espacio colaborativo",
+      body: `Ya formas parte de «${space.name}». Accede desde Espacio colaborativo.`,
+      type: "collaborative_space",
+      data: { spaceId: space.id },
+    });
+  } catch (error) {
+    logger.error({ err: error, spaceId: space.id }, "Unable to notify new collaborative space members");
+  }
+}
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 class SpaceError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -113,9 +128,10 @@ router.post("/collab/spaces", requireAuth, requireRole("superadmin"), handle(asy
       name: parsed.data.name.trim(), description: parsed.data.description?.trim() ?? "", createdBy: req.user!.id,
     }).returning();
     if (userIds.length) await tx.insert(members).values(userIds.map((userId) => ({ spaceId: space!.id, userId })));
-    return info(tx, space!.id);
+    return { space: await info(tx, space!.id), addedUserIds: userIds };
   });
-  res.status(201).json(result);
+  await notifyNewMembers(result.addedUserIds, result.space);
+  res.status(201).json(result.space);
 }));
 
 router.get("/collab/spaces/:id", requireAuth, requireRole("superadmin"), handle(async (req, res) => {
@@ -147,10 +163,14 @@ router.post("/collab/spaces/:id/members", requireAuth, requireRole("superadmin")
   const result = await db.transaction(async (tx) => {
     await lock(tx, id); await load(tx, id);
     const userIds = await resolveSelection(tx, parsed.data);
-    if (userIds.length) await tx.insert(members).values(userIds.map((userId) => ({ spaceId: id, userId }))).onConflictDoNothing();
-    return info(tx, id);
+    const inserted = userIds.length
+      ? await tx.insert(members).values(userIds.map((userId) => ({ spaceId: id, userId })))
+        .onConflictDoNothing().returning({ userId: members.userId })
+      : [];
+    return { space: await info(tx, id), addedUserIds: inserted.map((row) => row.userId) };
   });
-  res.json(result);
+  await notifyNewMembers(result.addedUserIds, result.space);
+  res.json(result.space);
 }));
 
 router.delete("/collab/spaces/:id/members/:userId", requireAuth, requireRole("superadmin"), handle(async (req, res) => {

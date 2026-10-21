@@ -51,6 +51,8 @@ function pushPath(data: Record<string, unknown>): string {
       return "/videoconferencias";
     case "year_confirmation":
       return "/confirmar-curso";
+    case "collaborative_space":
+      return "/espacio";
     case "company_alert":
       return "/alerts";
     case "forum_thread":
