@@ -379,6 +379,7 @@ router.patch(
         )
         .for("update");
       if (!center) return { kind: "center" as const };
+      if (center.provinceId == null) return { kind: "province" as const };
 
       if (activeYear && moduleIds.length > 0) {
         const validModules = await tx
@@ -503,6 +504,12 @@ router.patch(
       };
     });
 
+    if (result.kind === "province") {
+      res.status(409).json({
+        message: "El centro no tiene provincia asignada. Contacta con un administrador o selecciona otro centro.",
+      });
+      return;
+    }
     if (result.kind === "user") {
       res.status(403).json({ message: "La cuenta de profesorado no está activa" });
       return;

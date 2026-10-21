@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { getSocket } from "@/lib/socket";
 import {
   useUpdateProfile,
   useGetMyTeachingProfile,
@@ -213,6 +214,8 @@ export function ProfileDialog({
       const updated = await teachingProfileMut.mutateAsync({
         data: { centerId: teachingCenterId, moduleIds },
       });
+      // Socket.io does not automatically retry a server-denied handshake.
+      getSocket()?.connect();
       await qc.invalidateQueries();
       setTeachingCenterId(updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);

@@ -73,6 +73,7 @@ export function AppLayout({ children }: LayoutProps) {
       teachingProfileQuery.isError ||
       !teachingProfile ||
       teachingProfile.user.centerId == null ||
+      teachingProfile.user.provinceId == null ||
       teachingProfile.targetCenterId !== teachingProfile.user.centerId ||
       teachingProfile.user.provinceId !== teachingProfile.targetProvinceId ||
       (Boolean(teachingProfile.activeYear) &&

@@ -98,6 +98,7 @@ function RootLayoutNav() {
       teachingProfileQuery.isError ||
       !profile ||
       profile.user.centerId == null ||
+      profile.user.provinceId == null ||
       profile.targetCenterId !== profile.user.centerId ||
       profile.user.provinceId !== profile.targetProvinceId ||
       (Boolean(profile.activeYear) && profile.moduleIds.length === 0);

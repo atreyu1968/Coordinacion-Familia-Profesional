@@ -26,8 +26,9 @@ import {
   trainingOfferTable,
   type User,
 } from "@workspace/db";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { hashPassword, signToken } from "../src/lib/auth";
+import { getActiveAcademicYear, getActiveFamily } from "../src/lib/settings";
 
 // A unique tag for this test run so seeded rows are easy to identify and never
 // collide with other data in the shared database.
@@ -65,7 +66,7 @@ export async function createProvince(name = "Provincia"): Promise<number> {
 export async function createCenter(provinceId: number): Promise<number> {
   const [row] = await db
     .insert(centersTable)
-    .values({ name: `Centro ${RUN_TAG}`, provinceId })
+    .values({ name: `Centro ${RUN_TAG}`, provinceId, families: [await getActiveFamily()] })
     .returning();
   created.centerIds.push(row!.id);
   return row!.id;
@@ -78,6 +79,9 @@ export interface SeedUserOptions {
   name?: string;
   password?: string;
   status?: string;
+  // Most permission tests need an otherwise valid teacher. Explicitly opt out
+  // when testing onboarding or incomplete-profile denial.
+  incompleteProfile?: boolean;
 }
 
 export interface SeededUser {
@@ -94,19 +98,38 @@ export async function createUser(
   const passwordHash = await hashPassword(password);
   userSeq += 1;
   const email = `${RUN_TAG}-u${userSeq}@example.test`;
+  let centerId = opts.centerId;
+  let provinceId = opts.provinceId;
+  const role = opts.role ?? "teacher";
+  if (role === "teacher" && !opts.incompleteProfile) {
+    if (centerId === undefined && provinceId !== null) {
+      provinceId ??= await createProvince();
+      centerId = await createCenter(provinceId);
+    } else if (centerId != null && provinceId === undefined) {
+      const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId));
+      provinceId = center?.provinceId ?? null;
+    }
+  }
   const [user] = await db
     .insert(usersTable)
     .values({
       name: opts.name ?? `User ${userSeq}`,
       email,
       passwordHash,
-      role: opts.role ?? "teacher",
+      role,
       status: opts.status ?? "active",
-      provinceId: opts.provinceId ?? null,
-      centerId: opts.centerId ?? null,
+      provinceId: provinceId ?? null,
+      centerId: centerId ?? null,
     })
     .returning();
   created.userIds.push(user!.id);
+  const activeYear = await getActiveAcademicYear();
+  if (role === "teacher" && !opts.incompleteProfile && centerId != null && activeYear) {
+    const moduleId = await createModule({ centerId });
+    await createTeachingAssignment({
+      teacherId: user!.id, centerId, moduleId, schoolYear: activeYear,
+    });
+  }
   const token = signToken({
     sub: user!.id,
     role: user!.role,

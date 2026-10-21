@@ -4,7 +4,9 @@ import type { AddressInfo } from "node:net";
 import request from "supertest";
 import { io as ioClient, type Socket } from "socket.io-client";
 import app from "../src/app";
-import { initRealtime } from "../src/lib/realtime";
+import { initRealtime, emitToUser } from "../src/lib/realtime";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { createUser, cleanup, authHeader, trackGroup } from "./helpers";
 
 let server: http.Server;
@@ -35,6 +37,54 @@ function connect(token: string): Socket {
 }
 
 describe("realtime socket auth", () => {
+  it("rejects teachers with an incomplete profile with a recoverable error code", async () => {
+    const teacher = await createUser({ incompleteProfile: true });
+    const socket = connect(teacher.token);
+    try {
+      const err = await new Promise<Error & { data?: { code?: string } }>((resolve) => {
+        socket.on("connect_error", resolve);
+      });
+      expect(err.data?.code).toBe("TEACHING_PROFILE_REQUIRED");
+      expect(socket.connected).toBe(false);
+    } finally {
+      socket.close();
+    }
+  });
+  it("stops delivery and disconnects an existing socket if its profile becomes incomplete", async () => {
+    const teacher = await createUser();
+    const socket = connect(teacher.token);
+    let received = false;
+    socket.on("profile-test-message", () => { received = true; });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.on("connect", resolve);
+        socket.on("connect_error", reject);
+      });
+      await db.update(usersTable).set({ centerId: null }).where(eq(usersTable.id, teacher.user.id));
+      const disconnected = new Promise<void>((resolve) => { socket.on("disconnect", () => resolve()); });
+      await emitToUser(teacher.user.id, "profile-test-message", { private: true });
+      await disconnected;
+      expect(received).toBe(false);
+    } finally {
+      socket.close();
+    }
+  });
+  it("rechecks the profile before accepting packets from an already connected socket", async () => {
+    const teacher = await createUser();
+    const socket = connect(teacher.token);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.on("connect", resolve);
+        socket.on("connect_error", reject);
+      });
+      await db.update(usersTable).set({ provinceId: null }).where(eq(usersTable.id, teacher.user.id));
+      const disconnected = new Promise<void>((resolve) => { socket.on("disconnect", () => resolve()); });
+      socket.emit("join", -1);
+      await disconnected;
+    } finally {
+      socket.close();
+    }
+  });
   it("rejects a connection without a token", async () => {
     const socket = ioClient(baseUrl, {
       path: "/api/socket.io",

@@ -5,6 +5,11 @@ import { db, chatGroupMembersTable, usersTable } from "@workspace/db";
 import { verifyToken } from "./auth";
 import { logger } from "./logger";
 import { isCurrentTokenVersion } from "./sessionVersion";
+import {
+  getTeachingProfileEligibleUserIds,
+  TEACHING_PROFILE_REQUIRED,
+  TEACHING_PROFILE_REQUIRED_MESSAGE,
+} from "./teachingProfileAccess";
 
 let io: IOServer | null = null;
 
@@ -60,7 +65,13 @@ async function activeGroupSockets(
           isNull(usersTable.deletedAt),
         ),
       );
-    const memberIds = new Set(memberships.map((membership) => membership.userId));
+    const eligibleIds = await getTeachingProfileEligibleUserIds(
+      memberships.map((membership) => membership.userId),
+    );
+    const memberIds = new Set(
+      memberships.filter((membership) => eligibleIds.has(membership.userId))
+        .map((membership) => membership.userId),
+    );
     const currentSessions = new Map(
       memberships.map((membership) => [
         membership.userId,
@@ -72,6 +83,10 @@ async function activeGroupSockets(
     );
     const activeSockets: AuthedSocket[] = [];
     for (const socket of sockets) {
+      if (socket.userId != null && !eligibleIds.has(socket.userId)) {
+        socket.disconnect(true);
+        continue;
+      }
       const currentSession =
         socket.userId == null ? undefined : currentSessions.get(socket.userId);
       if (
@@ -152,6 +167,21 @@ export function initRealtime(server: HttpServer): void {
       next(new Error("Token revocado"));
       return;
     }
+    try {
+      const eligible = await getTeachingProfileEligibleUserIds([user.id]);
+      if (!eligible.has(user.id)) {
+        const error = new Error(TEACHING_PROFILE_REQUIRED_MESSAGE) as Error & {
+          data: { code: string };
+        };
+        error.data = { code: TEACHING_PROFILE_REQUIRED };
+        next(error);
+        return;
+      }
+    } catch (err) {
+      logger.error({ err }, "Could not verify realtime profile access");
+      next(new Error("No se pudo comprobar el acceso"));
+      return;
+    }
     socket.userId = user.id;
     socket.userName = user.name;
     socket.tokenVersion = user.tokenVersion;
@@ -165,6 +195,15 @@ export function initRealtime(server: HttpServer): void {
       socket.disconnect(true);
       return;
     }
+    socket.use((_packet, next) => {
+      void getTeachingProfileEligibleUserIds([userId]).then((eligible) => {
+        if (eligible.has(userId)) next();
+        else socket.disconnect(true);
+      }).catch((err) => {
+        logger.error({ err }, "Could not revalidate realtime profile access");
+        socket.disconnect(true);
+      });
+    });
     // Personal room for direct notifications.
     void socket.join(`user:${userId}`);
 
@@ -295,10 +334,21 @@ export function disconnectUserSessions(userId: number): void {
   }
 }
 
-export function emitToUser(
+export async function emitToUser(
   userId: number,
   event: string,
   payload: unknown,
-): void {
-  io?.to(`user:${userId}`).emit(event, payload);
+): Promise<void> {
+  const server = io;
+  if (!server) return;
+  try {
+    const eligible = await getTeachingProfileEligibleUserIds([userId]);
+    if (!eligible.has(userId)) {
+      disconnectUserSessions(userId);
+      return;
+    }
+    server.to(`user:${userId}`).emit(event, payload);
+  } catch (err) {
+    logger.error({ err, userId }, "Could not authorize realtime delivery");
+  }
 }

@@ -26,6 +26,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { Button, Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { getSocket } from "@/lib/socket";
 import { useColors } from "@/hooks/useColors";
 
 export default function PerfilScreen() {
@@ -103,6 +104,7 @@ export default function PerfilScreen() {
   const mustCompleteTeachingProfile =
     isTeacher &&
     (user?.centerId == null ||
+      user?.provinceId == null ||
       (isSavedCenterSelected &&
         (teachingProfileQuery.isPending ||
           teachingProfileQuery.isError ||
@@ -218,6 +220,7 @@ export default function PerfilScreen() {
         data: { centerId: teachingCenterId, moduleIds },
       });
       await updateUser(updated.user as User);
+      getSocket()?.connect();
       setTeachingCenterId(updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);
       setTeachingSuccess("Centro y módulos actualizados.");

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Coordina ADG — Corrección de bloqueos previos a producción</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,sans-serif;color:#17283c;background:#f3f6fa;line-height:1.6}
+    body{max-width:1040px;margin:32px auto;padding:0 20px 40px}
+    header,section{background:white;padding:26px 30px;border-radius:12px;margin:20px 0}
+    header{border-top:6px solid #0758b6}h1{font-size:1.9rem;line-height:1.2}h2{font-size:1.35rem;color:#064895}
+    .note{border-left:4px solid #d49b1b;background:#fff9e9;padding:16px}
+    .ok{color:#17633f;font-weight:700}.muted{color:#56667a}
+    table{width:100%;border-collapse:collapse;margin-top:16px;font-size:.94rem}
+    th,td{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid #dfe5ee}
+    th{background:#f0f4fa}code{font-size:.9em;overflow-wrap:anywhere}a{color:#0758b6}
+    li{margin:7px 0}.table-wrap{overflow-x:auto}@media print{body{background:white;max-width:none;margin:0}section{break-inside:avoid}header,section{padding:16px 0}}
+  </style>
+</head>
+<body>
+<header>
+  <p class="muted">Coordina ADG · 21 de octubre de 2026</p>
+  <h1>Corrección de los bloqueos previos a producción</h1>
+  <p>Actualización de dependencias y aplicación del perfil docente obligatorio en el servidor y el chat en tiempo real.</p>
+  <p class="note"><strong>No se ha publicado la aplicación ni se han ejecutado migraciones en producción.</strong> Los refuerzos descritos están aplicados. Esto no sustituye el ensayo de migración, restauración y configuración del servidor definitivo.</p>
+</header>
+<section>
+  <h2>1. Perfil obligatorio: ya no depende solo de la pantalla</h2>
+  <ul>
+    <li>Los docentes activos necesitan un centro disponible de la familia profesional activa, una provincia que coincida con la del centro y, cuando hay curso académico activo, al menos un módulo válido asignado a ese centro para dicho curso.</li>
+    <li>Las peticiones protegidas se deniegan con <code>403 / TEACHING_PROFILE_REQUIRED</code> mientras falten esos datos. Se comprueban datos actuales, no solamente los identificadores contenidos en la sesión.</li>
+    <li>Se mantiene el acceso a consultar y editar el propio perfil y a la confirmación personal del curso. Estas excepciones permiten completar los datos, sin abrir operaciones de administración.</li>
+    <li>Los catálogos que ya eran públicos siguen disponibles para elegir centro y módulos. El bloqueo no cambia las autorizaciones y ámbitos de los demás roles.</li>
+    <li>Sin curso académico activo no se exigen módulos, pero sí centro y provincia válidos. Si un centro carece de provincia, el servidor rechaza el guardado con una explicación: es necesario que un administrador complete el centro o elegir otro válido.</li>
+    <li>El chat rechaza conexiones incompletas y vuelve a comprobar el acceso al recibir eventos y entregar mensajes. Una conexión anterior no permite conservar el acceso si el perfil pasa a estar incompleto.</li>
+    <li>Al guardar el perfil se reintenta la conexión del chat que pudiera haber sido rechazada durante la entrada, tanto en web como en móvil.</li>
+  </ul>
+</section>
+<section>
+  <h2>2. Dependencias actualizadas</h2>
+  <p>Se han actualizado el generador de API, las dependencias de comunicación en tiempo real, herramientas de construcción, validación, compresión, tratamiento de URI y otras dependencias transitivas con correcciones disponibles. No se ha migrado la versión principal de Expo ni React.</p>
+  <ul>
+    <li>Se conserva la protección de antigüedad mínima de las publicaciones npm.</li>
+    <li>Los clientes y validadores de API se han regenerado. Se han declarado explícitamente los destinos Zod 3 y React Query 5 para evitar una detección incorrecta del generador en el monorepositorio.</li>
+    <li>El decodificador corregido de URI requiere una pequeña adaptación de compatibilidad CommonJS/ESM en su consumidor. Se mantiene como parche reproducible del gestor de paquetes; se han probado Unicode y una URL malformada.</li>
+    <li>SheetJS se ha actualizado a la distribución oficial <strong>0.20.3</strong>, fijada con su integridad en el archivo de dependencias. La distribución npm antigua no contenía las correcciones.</li>
+  </ul>
+  <p id="audit-summary"><strong>Auditoría final: 7 avisos frente a 145 al inicio; 0 críticos, 6 altos y 1 moderado.</strong> Dos avisos son discrepancias conocidas de los metadatos de SheetJS. Los otros cinco afectan a herramientas de desarrollo o compilación, no a las dependencias de producción de la API.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Paquete / avisos</th><th>Situación y tratamiento pendiente</th></tr></thead>
+    <tbody>
+      <tr><td><code>braces 3.0.3</code><br>1 alto</td><code>CVE-2026-93687</code>: desbordamiento de pila con patrones anidados. No hay publicación corregida en el registro consultado. Mantener patrones de construcción de confianza.</td></tr>
+      <tr><td><code>image-size 1.2.1</code><br>2 altos</td><code>CVE-2025-71329</code> y <code>CVE-2025-71330</code>: bloqueo con imágenes manipuladas. La corrección existe en 2.0.3 o posterior, pero requiere adaptar o actualizar el consumidor de Metro. No se ha impuesto una actualización incompatible. Solo construir con recursos de imagen de confianza.</td></tr>
+      <tr><td><code>node-forge 1.4.0</code><br>1 alto</td><code>CVE-2026-85393</code>: verificación RSA incorrecta en un caso concreto. La versión publicada más reciente consultada sigue siendo 1.4.0. Afecta a herramientas de Expo; no debe interpretarse como una validación de la firma y distribución nativas.</td></tr>
+      <tr><td><code>sprintf-js 1.0.3</code><br>1 moderado</td><code>CVE-2026-97058</code>: precisión no acotada en cadenas de formato. La publicación más reciente consultada, 1.1.3, también está afectada. Mantener cadenas de formato de confianza en las herramientas.</td></tr>
+      <tr><td><code>xlsx 0.20.3</code><br>2 altos señalados por el analizador</td>Los rangos de la base de avisos siguen abiertos para todo npm. Los avisos oficiales sitúan las correcciones de <code>CVE-2023-30533</code> en 0.19.3 y <code>CVE-2024-22363</code> en 0.20.2. La versión instalada 0.20.3 supera ambos umbrales. No se han silenciado los avisos.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">El número de avisos no equivale al número de fallos explotables en la aplicación. Los avisos residuales requieren seguimiento y aislamiento de la construcción respecto a datos no fiables; no constituyen una certificación de ausencia de vulnerabilidades.</p>
+</section>
+<section>
+  <h2>3. Pruebas realizadas</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Comprobación</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>API: batería completa</td><td class="ok">197 pruebas correctas en 21 archivos, con PostgreSQL temporal aislado y destruido al terminar.</td></tr>
+      <tr><td>Casos del bloqueo</td><td>Lecturas y escrituras directas denegadas; consulta y reparación personal permitidas; guardado correcto desbloquea; provincia incorrecta, centro eliminado o de otra familia, módulo eliminado y asignación de otro curso no permiten el acceso.</td></tr>
+      <tr><td>Tiempo real</td><td>Denegación inicial con código recuperable; desconexión al quedar incompleto; bloqueo antes de recibir eventos desde una conexión anterior. La batería existente de chat y entrega también pasa.</td></tr>
+      <tr><td>Tipos y generación</td><td class="ok">Generación y comprobación de bibliotecas y aplicaciones correctas.</td></tr>
+      <tr><td>Compilaciones</td><td class="ok">API compilada y arrancada; web de producción y exportación móvil web correctas.</td></tr>
+      <tr><td>Excel y decodificador</td><td class="ok">Exportación y lectura de un libro con texto acentuado y números; decodificación Unicode y consulta malformada sin excepción.</td></tr>
+      <tr><td>Navegador web</td><td class="ok">Entrada incompleta con diálogo no descartable; API 403 antes de completar y 200 después; provincia derivada, guardado, recarga y pantalla de chat correctos; conexión Socket.io aceptada tras completar.</td></tr>
+      <tr><td>Navegador móvil</td><td class="ok">Redirección obligatoria al perfil; navegación directa a chat bloqueada; guardado desbloquea Tablón y Mensajes; reconexión del chat de denegada a aceptada; enlace con consulta malformada sin caída.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Se utilizaron docentes, centro y módulo desechables para comprobar las pantallas. Se eliminaron sus asignaciones, grupo automático de chat y miembros; se verificó la ausencia de referencias y se cerraron las sesiones. No se modificaron usuarios o ajustes existentes ni se enviaron mensajes, notificaciones o llamadas a integraciones externas.</p>
+  <p class="muted">La comprobación opcional de fallo persistente 503 no se ha repetido en esta pasada; la recuperación con reintento ya estaba comprobada en la revisión anterior. Se observaron avisos transitorios de dependencias de las vistas previas al arrancar que desaparecieron al asentarse las vistas. Permanece un pequeño recorte visual del chat web junto al menú lateral, sin bloqueo del flujo.</p>
+</section>
+<section>
+  <h2>4. Antes de la producción definitiva</h2>
+  <ol>
+    <li>Ensayar la migración sobre una copia del destino: compatibilidad del esquema, copia de archivos y restauración conjunta de PostgreSQL y objetos; confirmar que las sesiones antiguas no sobreviven a una restauración.</li>
+    <li>Comprobar dominio, TLS, permisos de almacenamiento y servicios reales de correo, notificaciones, videoconferencia y demás integraciones. No se han validado aquí sus credenciales ni su operación real.</li>
+    <li>Verificar compilaciones y funcionamiento en dispositivos Android e iOS. La pasada móvil de esta revisión utiliza navegador, no dispositivos nativos.</li>
+    <li>Mantener seguimiento de los cinco avisos de herramientas y no exponer servidores de desarrollo como servicio de producción ni construir con contenido no fiable.</li>
+    <li>Revisar los textos y versiones legales antes de sustituir su estado de borrador por una publicación definitiva.</li>
+  </ol>
+  <p><strong>Conclusión:</strong> el perfil obligatorio ya cuenta con control de servidor y tiempo real, y se han eliminado todos los avisos críticos de dependencias. Quedan los riesgos y comprobaciones expresamente señalados; no se ha dado una aprobación incondicional para producción.</p>
+</section>
+<section>
+  <h2>Fuentes de las excepciones de SheetJS</h2>
+  <ul>
+    <li><a href="https://docs.sheetjs.com/docs/getting-started/installation/nodejs/">Distribución e instalación oficial</a></li>
+    <li><a href="https://cdn.sheetjs.com/advisories/CVE-2023-30533">Aviso oficial CVE-2023-30533</a></li>
+    <li><a href="https://cdn.sheetjs.com/advisories/CVE-2024-22363">Aviso oficial CVE-2024-22363</a></li>
+  </ul>
+</section>
+</body>
+</html>

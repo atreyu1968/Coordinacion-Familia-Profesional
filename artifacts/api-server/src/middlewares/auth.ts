@@ -3,6 +3,31 @@ import { eq, and, isNull } from "drizzle-orm";
 import { db, usersTable, moduleMembershipsTable } from "@workspace/db";
 import type { User } from "@workspace/db";
 import { verifyToken } from "../lib/auth";
+import {
+  hasCompleteTeachingProfile,
+  TEACHING_PROFILE_REQUIRED,
+  TEACHING_PROFILE_REQUIRED_MESSAGE,
+} from "../lib/teachingProfileAccess";
+
+function isProfileRepairRequest(req: Request): boolean {
+  const path = req.path.replace(/\/+$/, "");
+  if (path === "/auth/me" || path === "/auth/me/teaching-profile") {
+    return req.method === "GET" || req.method === "PATCH";
+  }
+  // Annual confirmation is another self-profile repair flow; its own guards
+  // still enforce the active year, deadline, current center and module scope.
+  return (req.method === "GET" && path === "/academic-years/my-confirmation") ||
+    (req.method === "POST" && path === "/academic-years/confirm");
+}
+
+async function allowTeachingProfileAccess(req: Request, res: Response, user: User) {
+  if (isProfileRepairRequest(req) || await hasCompleteTeachingProfile(user)) return true;
+  res.status(403).json({
+    code: TEACHING_PROFILE_REQUIRED,
+    message: TEACHING_PROFILE_REQUIRED_MESSAGE,
+  });
+  return false;
+}
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -47,12 +72,13 @@ export async function requireAuth(
   }
 
   req.user = user;
+  if (!await allowTeachingProfileAccess(req, res, user)) return;
   next();
 }
 
 export async function optionalAuth(
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction,
 ): Promise<void> {
   const header = req.headers.authorization;
@@ -78,6 +104,7 @@ export async function optionalAuth(
     user.sessionNonce === payload.sessionNonce
   ) {
     req.user = user;
+    if (!await allowTeachingProfileAccess(req, res, user)) return;
   }
   next();
 }

@@ -27,7 +27,7 @@ The teacher-confirmation list is inherently per-year (backend returns active-yea
 ## Required teacher profile before app access
 **Rule:** a teacher cannot use the application until a center is saved, its derived province matches, and at least one module is saved for the active academic year. When there is no active year, only the center/province pair is required.
 **Why:** the user explicitly requires teachers to complete missing profile information on entry rather than access the app with an incomplete teaching profile.
-**How to apply:** gate navigation in both web and mobile until the teaching-profile endpoint confirms completion; do not offer a dismiss path. Enforce at least one active-year module in the API as well as in the profile form.
+**How to apply:** gate navigation in both web and mobile until the teaching-profile endpoint confirms completion; do not offer a dismiss path. Enforce the obligation for protected API data and realtime, not just the form. Keep self-profile editing and annual confirmation available as repair flows; otherwise the completeness guard can prevent the very confirmation needed to supply current-year modules.
 
 ## "Pasar de curso" transition
 POST /academic-years/transition clones selectable blocks (groups, training offer, assignments) from a source year to a destination year and must be idempotent (re-running doesn't duplicate).

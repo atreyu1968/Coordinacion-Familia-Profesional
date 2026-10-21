@@ -33,3 +33,17 @@ mtime_ms = 1792593497445
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/a96fb5fe-0c0b-44a1-bb7d-6625de4a0c81/29e74041-76fd-475a-8b98-c092fd4c6917"
 storage_version_token = "1792593541652118"
 content_type = "text/html"
+
+[[outputs]]
+id = "uGDoJiQbW7vziK686V1Hm"
+uri = "file://reports/cierre-bloqueos-preproduccion-2026-10-21.html"
+type = "html"
+title = "Informe actualizado de bloqueos previos a producción"
+description = "Perfil obligatorio reforzado en API y chat, 197 pruebas correctas y auditoría reducida de 145 a 7 avisos, sin críticos. Incluye avisos residuales y comprobaciones pendientes."
+logical_id = "b4304531-327d-4f95-84fe-b2263f874b64"
+content_hash = "sha256:aaebe6d77b7ac60c8143529540eadb3e5f97b6764c43cf4dcd2dad3aaddbea32"
+size = 11147
+mtime_ms = 1792595348693
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/b4304531-327d-4f95-84fe-b2263f874b64/9e12e0c5-097e-402e-9961-110a592b7fcc"
+storage_version_token = "1792595487729350"
+content_type = "text/html"
