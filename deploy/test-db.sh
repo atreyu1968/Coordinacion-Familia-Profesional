@@ -119,6 +119,9 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   --command="INSERT INTO public.invitations (code, role, status, expires_at) VALUES ('legacy-consumed-link', 'teacher', 'used', now() + interval '1 day'); ALTER TABLE public.invitations DROP COLUMN max_uses, DROP COLUMN used_count"
 
 echo "==> Applying the upgrade to the existing database"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit"
 migrate_database coordina_upgrade
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
@@ -137,6 +140,46 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT id = 7 AND payload = 'keep-exactly' FROM public.custom_preserve WHERE id = 7" \
+  | grep -qx t
+
+echo "==> Verifying an already upgraded database can be upgraded again"
+migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="INSERT INTO public.collaborative_spaces (name) VALUES ('Preserved independent space'); INSERT INTO public.account_audit (actor_id, actor_name, target_id, action, changes, before_role, after_role) SELECT id, name, id, 'update', '[]'::jsonb, role::text, role::text FROM public.users WHERE email = 'upgrade-preserve@example.test'; ALTER TABLE public.collaborative_spaces DROP COLUMN provisioning_started_at"
+migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT EXISTS (SELECT 1 FROM public.collaborative_spaces WHERE name = 'Preserved independent space' AND provisioning_started_at IS NULL) AND EXISTS (SELECT 1 FROM public.account_audit WHERE actor_name = 'Preserved migration user')" \
+  | grep -qx t
+
+echo "==> Rejecting an incompatible existing additive table before touching other tables"
+create_test_database coordina_invalid_addition
+migrate_database coordina_invalid_addition
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_invalid_addition?host=${SOCKET_DIR}" \
+  --command="ALTER TABLE public.collaborative_spaces ALTER COLUMN name TYPE varchar(160); ALTER TABLE public.users DROP COLUMN token_version"
+if migrate_database coordina_invalid_addition; then
+  echo "Expected rejection of the incompatible collaborative_spaces definition." >&2
+  exit 1
+fi
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_invalid_addition?host=${SOCKET_DIR}" \
+  --command="SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='token_version')" \
+  | grep -qx t
+
+echo "==> Rejecting a name collision with an empty table"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_invalid_addition?host=${SOCKET_DIR}" \
+  --command="ALTER TABLE public.collaborative_spaces ALTER COLUMN name TYPE text; DROP TABLE public.account_audit; CREATE TABLE public.account_audit ()"
+if migrate_database coordina_invalid_addition; then
+  echo "Expected rejection of an existing empty account_audit relation." >&2
+  exit 1
+fi
+
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_invalid_addition?host=${SOCKET_DIR}" \
+  --command="SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='token_version') AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='account_audit')" \
   | grep -qx t
 
 echo "==> Rejecting an incompatible pre-existing session nonce without data changes"

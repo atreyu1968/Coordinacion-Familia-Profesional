@@ -513,6 +513,7 @@ apply_schema() {
     migrate_existing_session_columns
     migrate_existing_invitation_columns
     migrate_existing_legal_acceptance_columns
+    run_psql --file="${SCRIPT_DIR}/migrations/collaboration-and-audit.sql"
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."

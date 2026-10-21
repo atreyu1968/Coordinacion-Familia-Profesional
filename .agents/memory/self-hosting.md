@@ -29,6 +29,14 @@ filesystem instead.
 - A genuinely empty DB can be created from the Drizzle schema, but an existing
   installation must use reviewed additive migrations; never run `push-force`
   against its data.
+- **Rule:** new schema features must include a reviewed self-hosted upgrade path,
+  not only a development schema push or an isolated SQL file.
+  **Why:** older installations were blocked because deployment validation
+  required newly introduced collaboration/audit tables before creating them.
+  **How to apply:** allow only explicitly planned absent additions during
+  preflight, validate existing relations strictly (including empty name
+  collisions), apply additive migrations, then run full validation. Test with
+  the new tables absent and with existing data, not only a fresh current schema.
 - Registration is invitation-only, so a fresh DB has no admin — must run the
   seed (`@workspace/scripts run seed-admin`, reads SEED_ADMIN_*).
 

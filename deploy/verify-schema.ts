@@ -39,6 +39,7 @@ type ExpectedIndex = Omit<IndexInfo, "columns"> & {
 };
 
 type Catalog = {
+  relations: string[];
   columns: ActualColumn[];
   constraints: Key[];
   indexes: IndexInfo[];
@@ -47,6 +48,14 @@ type Catalog = {
 
 const allowMissingUpgradeColumns =
   process.argv.includes("--allow-missing-upgrade-columns");
+// Only these reviewed additive migrations may be absent during preflight.
+// An existing (even empty/incompatible) relation must still pass every check.
+const additiveTables = [
+  "collaborative_spaces",
+  "collaborative_space_members",
+  "collaborative_space_audit",
+  "account_audit",
+];
 const tableNameSymbol = Symbol.for("drizzle:Name");
 const tableColumnsSymbol = Symbol.for("drizzle:Columns");
 const isDrizzleTableSymbol = Symbol.for("drizzle:IsDrizzleTable");
@@ -274,6 +283,12 @@ function getExpectedSchema(): {
 function getActualCatalog(): Catalog {
   const sql = `
     SELECT json_build_object(
+      'relations', COALESCE((
+        SELECT json_agg(c.relname)
+        FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+      ), '[]'::json),
       'columns', COALESCE((
         SELECT json_agg(json_build_object(
           'table', c.table_name,
@@ -402,6 +417,11 @@ function getActualCatalog(): Catalog {
 
 const expected = getExpectedSchema();
 const actual = getActualCatalog();
+const pendingTables = new Set(
+  allowMissingUpgradeColumns
+    ? additiveTables.filter((table) => !actual.relations.includes(table))
+    : [],
+);
 const actualByKey = new Map(
   actual.columns.map((column) => [`${column.table}.${column.column}`, column]),
 );
@@ -413,7 +433,9 @@ for (const column of expected.columns) {
   if (!found) {
     if (
       allowMissingUpgradeColumns &&
-      ((column.table === "users" &&
+      (pendingTables.has(column.table) ||
+       (column.table === "collaborative_spaces" && column.column === "provisioning_started_at") ||
+       (column.table === "users" &&
         ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version"].includes(column.column)) ||
        (column.table === "invitations" &&
         ["max_uses", "used_count"].includes(column.column)))
@@ -475,6 +497,7 @@ function keySignature(key: Key): string {
 
 const actualKeys = new Set(actual.constraints.map(keySignature));
 for (const key of expected.constraints) {
+  if (pendingTables.has(key.table)) continue;
   if (!actualKeys.has(keySignature(key))) {
     problems.push(
       `missing ${key.type} key on ${key.table} (${key.columns.join(", ")})` +
@@ -486,6 +509,7 @@ for (const key of expected.constraints) {
 }
 
 for (const index of expected.indexes) {
+  if (pendingTables.has(index.table)) continue;
   const found = actual.indexes.find(
     (candidate) =>
       candidate.table === index.table && candidate.name === index.name,
