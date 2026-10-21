@@ -11,6 +11,10 @@ description: Decisions and limitations when publishing registration terms, priva
   **Why:** A name and general location alone do not establish a complete postal/privacy contact, actual processors, lawful bases, or retention rules, so a truthful final notice cannot yet be published.
   **How to apply:** Complete and professionally review the notices before a self-hosted rollout; publish a new version and make sure new registrations acknowledge that version. Determine separately how existing draft-version accounts will be informed or asked to reaccept.
 
+- **Rule:** The user explicitly requested that cookies, terms and privacy pages no longer be presented as drafts.
+  **Why:** The user clarified that removing the draft status, rather than only improving the explanation, was the intended change, then extended the request to terms and privacy.
+  **How to apply:** Do not restore draft banners or draft-version labels on these pages. Preserve accurate limitations without implying professional legal validation. Keep new acceptance versions distinct from historical draft acceptances.
+
 - **Rule:** When extending preservation checks in an isolated migration test, reuse the exact validation pattern used by the schema verifier.
   **Why:** A shortened UUID pattern falsely failed a migration test even though the migration and independent verification had both passed.
   **How to apply:** Compare the preservation assertion against the verifier whenever its regex or structural constraints are copied into a test.

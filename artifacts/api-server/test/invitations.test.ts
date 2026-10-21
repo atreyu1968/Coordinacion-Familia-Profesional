@@ -35,7 +35,7 @@ async function register(code: string) {
   const email = `invite-flow-${Date.now()}-${++sequence}@example.test`;
   const response = await request(app).post("/api/auth/register").send({
     token: code, name: "Invitado/a", email, password: DEFAULT_PASSWORD,
-    termsAccepted: true, privacyAcknowledged: true, legalVersion: "borrador-2026-09-30-4",
+    termsAccepted: true, privacyAcknowledged: true, legalVersion: "2026-10-21",
   });
   if (response.status === 200) registeredUserIds.push(response.body.user.id);
   return response;
@@ -47,15 +47,15 @@ describe("shared invitation registration limits", () => {
     const base = { token: invitation.code, email: "legal-test@example.test", password: DEFAULT_PASSWORD };
     expect((await request(app).post("/api/auth/register").send(base)).status).toBe(400);
     expect((await request(app).post("/api/auth/register").send({
-      ...base, termsAccepted: false, privacyAcknowledged: true, legalVersion: "borrador-2026-09-30-4",
+      ...base, termsAccepted: false, privacyAcknowledged: true, legalVersion: "2026-10-21",
     })).status).toBe(400);
     expect((await request(app).post("/api/auth/register").send({
-      ...base, termsAccepted: true, privacyAcknowledged: true, legalVersion: "anterior",
+      ...base, termsAccepted: true, privacyAcknowledged: true, legalVersion: "borrador-2026-09-30-4",
     })).status).toBe(400);
     const [stored] = await db.select().from(invitationsTable).where(eq(invitationsTable.id, invitation.id));
     expect(stored?.usedCount).toBe(0);
     const publicInvitation = await request(app).get(`/api/auth/invitations/${invitation.code}`);
-    expect(publicInvitation.body.legalVersion).toBe("borrador-2026-09-30-4");
+    expect(publicInvitation.body.legalVersion).toBe("2026-10-21");
   });
 
   it("accepts exactly the configured number, then closes the link", async () => {
@@ -64,8 +64,8 @@ describe("shared invitation registration limits", () => {
     expect(first.status).toBe(200);
     const [firstUser] = await db.select().from(usersTable).where(eq(usersTable.id, first.body.user.id));
     expect(firstUser?.legalAcceptedAt).toBeInstanceOf(Date);
-    expect(firstUser?.legalTermsVersion).toBe("borrador-2026-09-30-4");
-    expect(firstUser?.legalPrivacyVersion).toBe("borrador-2026-09-30-4");
+    expect(firstUser?.legalTermsVersion).toBe("2026-10-21");
+    expect(firstUser?.legalPrivacyVersion).toBe("2026-10-21");
     const available = await request(app).get(`/api/auth/invitations/${invitation.code}`);
     expect(available.status).toBe(200);
     expect(available.body.remainingUses).toBe(1);
