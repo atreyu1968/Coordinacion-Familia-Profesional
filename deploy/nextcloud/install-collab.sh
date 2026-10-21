@@ -137,11 +137,8 @@ log "Starting Nextcloud + Collabora (docker compose up -d)"
 # Wait for Nextcloud to finish first-run installation.
 log "Waiting for Nextcloud to become ready"
 occ() { docker compose -f "${SCRIPT_DIR}/docker-compose.yml" exec -T -u www-data nextcloud php occ "$@"; }
-for _ in $(seq 1 60); do
-  if occ status 2>/dev/null | grep -q "installed: true"; then break; fi
-  sleep 5
-done
-occ status | grep -q "installed: true" || { echo "Nextcloud did not become ready in time." >&2; exit 1; }
+source "${SCRIPT_DIR}/readiness.sh"
+wait_for_nextcloud || exit 1
 
 # --- Configure Nextcloud apps + OIDC (idempotent) --------------------------
 log "Configuring Nextcloud apps and OIDC provider"

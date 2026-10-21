@@ -33,6 +33,9 @@ filesystem instead.
   seed (`@workspace/scripts run seed-admin`, reads SEED_ADMIN_*).
 
 ## Installer
+- **Rule:** Do not pipe Docker/PHP readiness output into an early-exiting consumer such as `grep -q` under `pipefail`; capture the complete command output before inspecting it.
+  **Why:** A healthy Nextcloud installation was rejected by the installer; a streaming-producer regression reproduces exit 141 despite a matching installed status.
+  **How to apply:** Preserve the producer exit status, then check installation, maintenance and pending database-upgrade states on captured output. Treat a remote match as evidence of current health, not proof of the exact historical failure.
 - **Rule:** an updater that pulls new source during its own execution may still
   finish using its old deployment logic; a new version on disk afterward does
   not prove the new safety checks ran.
