@@ -986,6 +986,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
  * @summary Paginated user administration, including deactivated accounts within the manager's scope
  */
 export const listManagedUsersQueryStatusDefault = `all`;
+export const listManagedUsersQueryTeachingProfileDefault = `all`;
 export const listManagedUsersQueryPageDefault = 1;
 export const listManagedUsersQueryPageMax = 1000000;
 
@@ -1000,6 +1001,7 @@ export const ListManagedUsersQueryParams = zod.object({
   "centerId": zod.coerce.number().int().optional(),
   "search": zod.coerce.string().optional(),
   "status": zod.enum(['all', 'active', 'inactive']).default(listManagedUsersQueryStatusDefault),
+  "teachingProfile": zod.enum(['all', 'incomplete', 'complete']).default(listManagedUsersQueryTeachingProfileDefault).describe('Teacher profile integrity, independent of account status and annual confirmation'),
   "page": zod.coerce.number().int().min(1).max(listManagedUsersQueryPageMax).default(listManagedUsersQueryPageDefault),
   "pageSize": zod.coerce.number().int().min(1).max(listManagedUsersQueryPageSizeMax).default(listManagedUsersQueryPageSizeDefault)
 })
@@ -1015,11 +1017,17 @@ export const ListManagedUsersResponse = zod.object({
   "centerId": zod.number().int().nullish(),
   "createdAt": zod.coerce.date().optional()
 }).and(zod.object({
-  "canManage": zod.boolean().describe('Whether this caller may edit or change this account\'s access')
+  "canManage": zod.boolean().describe('Whether this caller may edit or change this account\'s access'),
+  "teachingProfile": zod.union([zod.object({
+  "complete": zod.boolean(),
+  "missing": zod.array(zod.enum(['center', 'province', 'modules']))
+}),zod.null()]).describe('Null for non-teachers or accounts the caller cannot manage; contains no assignment identifiers')
 }))),
   "total": zod.number().int(),
   "page": zod.number().int(),
-  "pageSize": zod.number().int()
+  "pageSize": zod.number().int(),
+  "activeYear": zod.string().nullable(),
+  "incompleteTeacherProfiles": zod.number().int().describe('Count within scope and other filters, before the teachingProfile filter and pagination')
 })
 
 

@@ -1023,6 +1023,13 @@ paths:
             type: string
             enum: [all, active, inactive]
             default: all
+        - name: teachingProfile
+          in: query
+          description: Teacher profile integrity, independent of account status and annual confirmation
+          schema:
+            type: string
+            enum: [all, incomplete, complete]
+            default: all
         - name: page
           in: query
           schema:
@@ -4973,7 +4980,23 @@ components:
             canManage:
               type: boolean
               description: Whether this caller may edit or change this account's access
-          required: [canManage]
+            teachingProfile:
+              allOf:
+                - $ref: "#/components/schemas/TeacherProfileIntegrity"
+              nullable: true
+              description: Null for non-teachers or accounts the caller cannot manage; contains no assignment identifiers
+          required: [canManage, teachingProfile]
+    TeacherProfileIntegrity:
+      type: object
+      properties:
+        complete:
+          type: boolean
+        missing:
+          type: array
+          items:
+            type: string
+            enum: [center, province, modules]
+      required: [complete, missing]
     ManagedUserPage:
       type: object
       properties:
@@ -4987,7 +5010,13 @@ components:
           type: integer
         pageSize:
           type: integer
-      required: [users, total, page, pageSize]
+        activeYear:
+          type: string
+          nullable: true
+        incompleteTeacherProfiles:
+          type: integer
+          description: Count within scope and other filters, before the teachingProfile filter and pagination
+      required: [users, total, page, pageSize, activeYear, incompleteTeacherProfiles]
     UpdateUserInput:
       type: object
       properties:

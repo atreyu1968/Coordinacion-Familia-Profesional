@@ -7,6 +7,7 @@
  */
 import type { CenterQueryParameter } from './centerQueryParameter';
 import type { ListManagedUsersStatus } from './listManagedUsersStatus';
+import type { ListManagedUsersTeachingProfile } from './listManagedUsersTeachingProfile';
 import type { ProvinceQueryParameter } from './provinceQueryParameter';
 import type { RoleQueryParameter } from './roleQueryParameter';
 import type { SearchQueryParameter } from './searchQueryParameter';
@@ -17,6 +18,10 @@ provinceId?: ProvinceQueryParameter;
 centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
 status?: ListManagedUsersStatus;
+/**
+ * Teacher profile integrity, independent of account status and annual confirmation
+ */
+teachingProfile?: ListManagedUsersTeachingProfile;
 /**
  * @minimum 1
  * @maximum 1000000

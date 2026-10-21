@@ -76,6 +76,12 @@ import {
 const ALL = "all";
 const PAGE_SIZES = [25, 50, 100];
 type StatusFilter = "all" | "active" | "inactive";
+type ProfileFilter = "all" | "incomplete" | "complete";
+const MISSING_PROFILE_LABELS = {
+  center: "Centro no asignado o no válido para la familia activa",
+  province: "Provincia sin asignar o no coincidente con un centro válido",
+  modules: "Sin módulos válidos en el centro y curso activo",
+};
 
 type PendingAccess = { kind: "deactivate" | "reactivate"; user: ManagedUser } | null;
 
@@ -92,6 +98,7 @@ export default function UsuariosPage() {
   const [provinceId, setProvinceId] = useState<number | null>(null);
   const [centerId, setCenterId] = useState<number | null>(null);
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [teachingProfile, setTeachingProfile] = useState<ProfileFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -122,13 +129,17 @@ export default function UsuariosPage() {
   }, [isManager, user, centers, provinceId]);
 
   // Managed (server-paginated) query
-  const managedParams: ListManagedUsersParams = { status, page, pageSize };
+  const managedParams: ListManagedUsersParams = { status, teachingProfile, page, pageSize };
   if (role) managedParams.role = role;
   if (isSuperadmin && provinceId != null) managedParams.provinceId = provinceId;
   if (centerId != null) managedParams.centerId = centerId;
   if (search) managedParams.search = search;
   const managedQ = useListManagedUsers(managedParams, {
-    query: { enabled: isManager, queryKey: getListManagedUsersQueryKey(managedParams), placeholderData: (prev) => prev },
+    query: {
+      enabled: isManager, queryKey: getListManagedUsersQueryKey(managedParams),
+      placeholderData: (prev) => prev, staleTime: 0, refetchOnMount: "always",
+      refetchOnWindowFocus: true, refetchInterval: 60_000,
+    },
   });
 
   // Read-only fallback for non-managers
@@ -144,7 +155,7 @@ export default function UsuariosPage() {
     if (isManager) {
       return { rows: managedQ.data?.users ?? [], total: managedQ.data?.total ?? 0 };
     }
-    let list = (readQ.data ?? []).map((u) => ({ ...u, canManage: false }) as ManagedUser);
+    let list = (readQ.data ?? []).map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
     if (centerId != null) list = list.filter((u) => u.centerId === centerId);
     return { rows: list.slice((page - 1) * pageSize, page * pageSize), total: list.length };
   }, [isManager, managedQ.data, readQ.data, centerId, page, pageSize]);
@@ -155,7 +166,7 @@ export default function UsuariosPage() {
   }, [page, pageCount, activeQ.isFetching]);
 
   const filtersActive =
-    searchInput !== "" || role != null || provinceId != null || centerId != null || status !== "all";
+    searchInput !== "" || role != null || provinceId != null || centerId != null || status !== "all" || teachingProfile !== "all";
   const clearFilters = () => {
     setSearchInput("");
     setSearch("");
@@ -163,6 +174,7 @@ export default function UsuariosPage() {
     setProvinceId(null);
     setCenterId(null);
     setStatus("all");
+    setTeachingProfile("all");
     setPage(1);
   };
 
@@ -216,7 +228,7 @@ export default function UsuariosPage() {
   };
 
   const showActions = isManager;
-  const colCount = showActions ? 6 : 5;
+  const colCount = showActions ? 7 : 5;
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
@@ -317,7 +329,36 @@ export default function UsuariosPage() {
             </SelectContent>
           </Select>
         )}
+        {isManager && (
+          <Select value={teachingProfile} onValueChange={(v) => { setTeachingProfile(v as ProfileFilter); setPage(1); }}>
+            <SelectTrigger aria-label="Filtrar por integridad del perfil docente" data-testid="select-filter-teaching-profile">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los perfiles</SelectItem>
+              <SelectItem value="incomplete">Docentes con perfil incompleto</SelectItem>
+              <SelectItem value="complete">Docentes con perfil completo</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
+      {isManager && managedQ.data && !managedQ.isError && (
+        <div role="status" aria-live="polite" className="rounded-md border p-3 text-sm space-y-1" data-testid="teaching-profile-summary">
+          <p className="font-medium">
+            {managedQ.data.incompleteTeacherProfiles} docentes con perfil incompleto en tu ámbito y con los demás filtros aplicados.
+          </p>
+          <p className="text-muted-foreground">
+            {managedQ.data.activeYear
+              ? `Curso activo: ${managedQ.data.activeYear}. Se requieren centro, provincia coincidente y al menos un módulo válido de ese curso.`
+              : "No hay curso activo: solo se comprueban centro y provincia; no se exigen módulos."}
+          </p>
+          <p className="text-muted-foreground">
+            La confirmación anual es una obligación independiente. Este indicador no desactiva cuentas.
+          </p>
+          {managedQ.isFetching && <p className="text-muted-foreground">Actualizando datos…</p>}
+        </div>
+      )}
 
       {catalogsError && (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
@@ -352,6 +393,7 @@ export default function UsuariosPage() {
                 <TableHead>Rol</TableHead>
                 <TableHead>Ámbito</TableHead>
                 <TableHead>Estado</TableHead>
+                {isManager && <TableHead>Perfil docente</TableHead>}
                 {showActions && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
@@ -418,6 +460,26 @@ export default function UsuariosPage() {
                           {isActive ? "Activo" : "Desactivado"}
                         </Badge>
                       </TableCell>
+                      {isManager && (
+                        <TableCell data-testid={`teaching-profile-user-${u.id}`}>
+                          {u.teachingProfile ? (
+                            u.teachingProfile.complete ? (
+                              <Badge variant="secondary">Completo</Badge>
+                            ) : (
+                              <details>
+                                <summary className="cursor-pointer text-sm font-medium" aria-label={`Ver datos pendientes de ${u.name}`}>
+                                  Perfil incompleto ({u.teachingProfile.missing.length})
+                                </summary>
+                                <ul className="mt-2 list-disc pl-4 text-sm text-muted-foreground">
+                                  {u.teachingProfile.missing.map((field) => (
+                                    <li key={field}>{MISSING_PROFILE_LABELS[field]}</li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )
+                          ) : <span className="text-muted-foreground">No aplica</span>}
+                        </TableCell>
+                      )}
                       {showActions && (
                         <TableCell className="text-right">
                           {manageable ? (

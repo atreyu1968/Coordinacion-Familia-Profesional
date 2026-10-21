@@ -3,6 +3,7 @@ import request from "supertest";
 import { eq } from "drizzle-orm";
 import {
   db, centersTable, integrationSettingsTable, modulesTable, usersTable,
+  teacherYearConfirmationsTable, teachingAssignmentsTable,
 } from "@workspace/db";
 import app from "../src/app";
 import { getSettings, getActiveFamily } from "../src/lib/settings";
@@ -19,6 +20,141 @@ beforeAll(async () => {
   previousYear = settings.activeAcademicYear;
   await db.update(integrationSettingsTable).set({ activeAcademicYear: year })
     .where(eq(integrationSettingsTable.id, settingsId));
+});
+
+describe("managed teacher profile integrity", () => {
+  const management = (token: string, query: Record<string, string | number> = {}) =>
+    request(app).get("/api/users/management").query(query).set(authHeader(token));
+
+  it("matches the access guard for invalid centers, province mismatches and historical modules", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const teacher = await createUser();
+    const query = { search: teacher.email };
+    const check = async (missing: string[]) => {
+      const result = await management(admin.token, query);
+      expect(result.status).toBe(200);
+      expect(result.body.users[0].teachingProfile).toEqual({ complete: !missing.length, missing });
+      expect(result.body.incompleteTeacherProfiles).toBe(missing.length ? 1 : 0);
+      expect((await groups(teacher.token)).status).toBe(missing.length ? 403 : 200);
+    };
+    await check([]);
+    await db.update(usersTable).set({ provinceId: null }).where(eq(usersTable.id, teacher.user.id));
+    await check(["province"]);
+    await db.update(usersTable).set({ provinceId: await createProvince() }).where(eq(usersTable.id, teacher.user.id));
+    await check(["province"]);
+    await db.update(usersTable).set({ provinceId: teacher.user.provinceId }).where(eq(usersTable.id, teacher.user.id));
+    await db.update(centersTable).set({ families: [] }).where(eq(centersTable.id, teacher.user.centerId!));
+    await check(["center", "province", "modules"]);
+    await db.update(centersTable).set({ families: [await getActiveFamily()], deletedAt: new Date() })
+      .where(eq(centersTable.id, teacher.user.centerId!));
+    await check(["center", "province", "modules"]);
+    await db.update(centersTable).set({ deletedAt: null }).where(eq(centersTable.id, teacher.user.centerId!));
+    await db.update(teachingAssignmentsTable).set({ schoolYear: `${year}-old` })
+      .where(eq(teachingAssignmentsTable.teacherId, teacher.user.id));
+    await check(["modules"]);
+    await db.update(usersTable).set({ centerId: null }).where(eq(usersTable.id, teacher.user.id));
+    await check(["center", "province", "modules"]);
+  });
+
+  it("does not count foreign-center, deleted or unavailable modules as current assignments", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const province = await createProvince();
+    const center = await createCenter(province);
+    const otherCenter = await createCenter(province);
+    const teacher = await createUser({ incompleteProfile: true, centerId: center, provinceId: province });
+    const foreignModule = await createModule({ centerId: otherCenter });
+    await createTeachingAssignment({
+      teacherId: teacher.user.id, centerId: otherCenter, moduleId: foreignModule, schoolYear: year,
+    });
+    const check = async (complete: boolean) => {
+      const result = await management(admin.token, { search: teacher.email });
+      expect(result.status).toBe(200);
+      expect(result.body.users[0].teachingProfile).toEqual({ complete, missing: complete ? [] : ["modules"] });
+    };
+    await check(false);
+    // Even a malformed assignment pointing at the saved center cannot make a
+    // module belonging to another center count toward integrity.
+    await createTeachingAssignment({
+      teacherId: teacher.user.id, centerId: center, moduleId: foreignModule, schoolYear: year,
+    });
+    await check(false);
+    const moduleId = await createModule({ centerId: center });
+    await createTeachingAssignment({ teacherId: teacher.user.id, centerId: center, moduleId, schoolYear: year });
+    await check(true);
+    await db.update(modulesTable).set({ deletedAt: new Date() }).where(eq(modulesTable.id, moduleId));
+    await check(false);
+    await db.update(modulesTable).set({ deletedAt: null }).where(eq(modulesTable.id, moduleId));
+    await db.update(teachingAssignmentsTable).set({ deletedAt: new Date() })
+      .where(eq(teachingAssignmentsTable.moduleId, moduleId));
+    await check(false);
+  });
+
+  it("filters before pagination, summarizes only the scoped set and keeps lifecycle independent", async () => {
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const otherCenter = await createCenter(provinceId);
+    const coordinator = await createUser({ role: "coordinator", provinceId });
+    const head = await createUser({ role: "department_head", centerId, provinceId });
+    const complete = await createUser({ centerId });
+    const incomplete = await createUser({ centerId, provinceId, incompleteProfile: true });
+    const inactive = await createUser({ centerId, provinceId, incompleteProfile: true, status: "inactive" });
+    const other = await createUser({ centerId: otherCenter, provinceId, incompleteProfile: true });
+    const outsider = await createUser({ incompleteProfile: true, provinceId: await createProvince() });
+    await db.insert(teacherYearConfirmationsTable).values([
+      { teacherId: complete.user.id, schoolYear: year, status: "pending", deadline: new Date() },
+      { teacherId: incomplete.user.id, schoolYear: year, status: "confirmed", deadline: new Date(), confirmedAt: new Date() },
+    ]);
+    const result = await management(head.token, { teachingProfile: "incomplete", pageSize: 1, page: 999 });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ total: 2, page: 2, incompleteTeacherProfiles: 2, activeYear: year });
+    expect(result.body.users).toHaveLength(1);
+    expect([incomplete.user.id, inactive.user.id]).toContain(result.body.users[0].id);
+    const all = await management(head.token);
+    expect(all.body.users.find((u: { id: number }) => u.id === head.user.id).teachingProfile).toBeNull();
+    expect(all.body.users.find((u: { id: number }) => u.id === complete.user.id).teachingProfile.complete).toBe(true);
+    expect(all.body.users.map((u: { id: number }) => u.id)).not.toContain(other.user.id);
+    const provinceResult = await management(coordinator.token, { teachingProfile: "incomplete" });
+    expect(provinceResult.body.total).toBe(3);
+    expect(provinceResult.body.incompleteTeacherProfiles).toBe(3);
+    expect(provinceResult.body.users.map((u: { id: number }) => u.id)).not.toContain(outsider.user.id);
+    expect((await management(head.token, { centerId: otherCenter, teachingProfile: "incomplete" })).body.total).toBe(0);
+    const active = await management(head.token, { teachingProfile: "incomplete", status: "active" });
+    expect(active.body).toMatchObject({ total: 1, incompleteTeacherProfiles: 1 });
+    const valid = await management(head.token, { teachingProfile: "complete" });
+    expect(valid.body).toMatchObject({ total: 1, incompleteTeacherProfiles: 2 });
+    expect(valid.body.users[0].id).toBe(complete.user.id);
+    expect((await management(head.token, { role: "coordinator", teachingProfile: "incomplete" })).body.total).toBe(0);
+    const serialized = JSON.stringify(provinceResult.body);
+    for (const privateField of ["moduleIds", "assignments", "passwordHash", "sessionNonce"]) {
+      expect(serialized).not.toContain(`"${privateField}"`);
+    }
+    const [stored] = await db.select().from(usersTable).where(eq(usersTable.id, incomplete.user.id));
+    expect(stored.status).toBe("active");
+    const [confirmation] = await db.select().from(teacherYearConfirmationsTable)
+      .where(eq(teacherYearConfirmationsTable.teacherId, incomplete.user.id));
+    expect(confirmation.status).toBe("confirmed");
+    expect((await management(complete.token)).status).toBe(403);
+    expect((await management(head.token, { teachingProfile: "unknown" })).status).toBe(400);
+  });
+
+  it("requires no modules without an active year, but still requires center and province", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const teacher = await createUser({ incompleteProfile: true, centerId, provinceId });
+    await db.update(integrationSettingsTable).set({ activeAcademicYear: null }).where(eq(integrationSettingsTable.id, settingsId));
+    try {
+      const result = await management(admin.token, { search: teacher.email, teachingProfile: "complete" });
+      expect(result.status).toBe(200);
+      expect(result.body).toMatchObject({ activeYear: null, total: 1, incompleteTeacherProfiles: 0 });
+      expect(result.body.users[0].teachingProfile).toEqual({ complete: true, missing: [] });
+      await db.update(usersTable).set({ provinceId: null }).where(eq(usersTable.id, teacher.user.id));
+      const missing = await management(admin.token, { search: teacher.email });
+      expect(missing.body.users[0].teachingProfile.missing).toEqual(["province"]);
+    } finally {
+      await db.update(integrationSettingsTable).set({ activeAcademicYear: year }).where(eq(integrationSettingsTable.id, settingsId));
+    }
+  });
 });
 afterAll(async () => {
   await db.update(integrationSettingsTable).set({ activeAcademicYear: previousYear })

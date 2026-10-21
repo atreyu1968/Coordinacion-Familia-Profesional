@@ -5,9 +5,12 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TeacherProfileIntegrity } from './teacherProfileIntegrity';
 import type { User } from './user';
 
-export type ManagedUser = User & {
+export type ManagedUser = User & ({
   /** Whether this caller may edit or change this account's access */
   canManage: boolean;
-};
+  /** Null for non-teachers or accounts the caller cannot manage; contains no assignment identifiers */
+  teachingProfile: TeacherProfileIntegrity | null;
+});

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, or, desc, count, sql, type SQL } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, desc, count, sql, not, getTableColumns, type SQL } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -20,7 +20,8 @@ import {
   ListManagedUsersQueryParams,
   ListManagedUsersResponse,
 } from "@workspace/api-zod";
-import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
+import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
+import { teachingProfilePredicates } from "../lib/teachingProfileAccess";
 import {
   requireAuth,
   requireRole,
@@ -72,14 +73,46 @@ router.get("/users/management", requireAuth,
       const term = `%${search.trim().replace(/[\\%_]/g, "\\$&")}%`;
       filters.push(or(ilike(usersTable.name, term), ilike(usersTable.email, term))!);
     }
+    const settings = await getSettings();
+    const activeYear = settings.activeAcademicYear?.trim() || null;
+    const profile = teachingProfilePredicates(professionalFamilyOf(settings), activeYear);
+    // Only teachers lower in the hierarchy and inside the already applied
+    // account scope are diagnosed. Correlated predicates never return rosters.
+    const incomplete = and(eq(usersTable.role, "teacher"), not(profile.complete))!;
+    const profileFilter = query.data.teachingProfile;
     const result = await db.transaction(async (tx) => {
+      const [integritySummary] = await tx.select({ total: count() }).from(usersTable)
+        .where(and(...filters, incomplete));
+      if (profileFilter === "incomplete") filters.push(incomplete);
+      if (profileFilter === "complete") filters.push(and(eq(usersTable.role, "teacher"), profile.complete)!);
       const [summary] = await tx.select({ total: count() }).from(usersTable).where(and(...filters));
       const total = summary.total;
       const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
-      const rows = await tx.select().from(usersTable).where(and(...filters))
+      const rows = await tx.select({
+        ...getTableColumns(usersTable),
+        profileCenter: profile.center,
+        profileProvince: profile.province,
+        profileModules: profile.modules,
+      }).from(usersTable).where(and(...filters))
         .orderBy(desc(usersTable.createdAt), desc(usersTable.id))
         .limit(pageSize).offset((page - 1) * pageSize);
-      return { users: rows.map((target) => ({ ...target, canManage: mayManageAccount(caller, target) })), total, page, pageSize };
+      return {
+        users: rows.map(({ profileCenter, profileProvince, profileModules, ...target }) => {
+          const canManage = mayManageAccount(caller, target);
+          const missing = [
+            ...(!profileCenter ? ["center"] : []),
+            ...(!profileProvince ? ["province"] : []),
+            ...(!profileModules ? ["modules"] : []),
+          ];
+          return {
+            ...target, canManage,
+            teachingProfile: target.role === "teacher" && canManage
+              ? { complete: missing.length === 0, missing } : null,
+          };
+        }),
+        total, page, pageSize, activeYear,
+        incompleteTeacherProfiles: integritySummary.total,
+      };
     }, { isolationLevel: "repeatable read", accessMode: "read only" });
     res.json(ListManagedUsersResponse.parse(result));
   },

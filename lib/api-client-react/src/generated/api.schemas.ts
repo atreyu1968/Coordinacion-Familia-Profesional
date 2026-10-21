@@ -466,16 +466,36 @@ export interface AuthResult {
   user: User;
 }
 
-export type ManagedUser = User & {
+export type TeacherProfileIntegrityMissingItem = typeof TeacherProfileIntegrityMissingItem[keyof typeof TeacherProfileIntegrityMissingItem];
+
+
+export const TeacherProfileIntegrityMissingItem = {
+  center: 'center',
+  province: 'province',
+  modules: 'modules',
+} as const;
+
+export interface TeacherProfileIntegrity {
+  complete: boolean;
+  missing: TeacherProfileIntegrityMissingItem[];
+}
+
+export type ManagedUser = User & ({
   /** Whether this caller may edit or change this account's access */
   canManage: boolean;
-};
+  /** Null for non-teachers or accounts the caller cannot manage; contains no assignment identifiers */
+  teachingProfile: TeacherProfileIntegrity | null;
+});
 
 export interface ManagedUserPage {
   users: ManagedUser[];
   total: number;
   page: number;
   pageSize: number;
+  /** @nullable */
+  activeYear: string | null;
+  /** Count within scope and other filters, before the teachingProfile filter and pagination */
+  incompleteTeacherProfiles: number;
 }
 
 export type UpdateUserInputStatus = typeof UpdateUserInputStatus[keyof typeof UpdateUserInputStatus];
@@ -2460,6 +2480,10 @@ centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
 status?: ListManagedUsersStatus;
 /**
+ * Teacher profile integrity, independent of account status and annual confirmation
+ */
+teachingProfile?: ListManagedUsersTeachingProfile;
+/**
  * @minimum 1
  * @maximum 1000000
  */
@@ -2478,6 +2502,15 @@ export const ListManagedUsersStatus = {
   all: 'all',
   active: 'active',
   inactive: 'inactive',
+} as const;
+
+export type ListManagedUsersTeachingProfile = typeof ListManagedUsersTeachingProfile[keyof typeof ListManagedUsersTeachingProfile];
+
+
+export const ListManagedUsersTeachingProfile = {
+  all: 'all',
+  incomplete: 'incomplete',
+  complete: 'complete',
 } as const;
 
 export type ListIslandsParams = {

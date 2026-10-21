@@ -12,4 +12,8 @@ export interface ManagedUserPage {
   total: number;
   page: number;
   pageSize: number;
+  /** @nullable */
+  activeYear: string | null;
+  /** Count within scope and other filters, before the teachingProfile filter and pagination */
+  incompleteTeacherProfiles: number;
 }
