@@ -466,6 +466,49 @@ export interface AuthResult {
   user: User;
 }
 
+export type UserAuditChangeField = typeof UserAuditChangeField[keyof typeof UserAuditChangeField];
+
+
+export const UserAuditChangeField = {
+  name: 'name',
+  role: 'role',
+  centerId: 'centerId',
+  provinceId: 'provinceId',
+  status: 'status',
+} as const;
+
+export interface UserAuditChange {
+  field: UserAuditChangeField;
+  /** @nullable */
+  before: string | null;
+  /** @nullable */
+  after: string | null;
+}
+
+export type UserAuditEventAction = typeof UserAuditEventAction[keyof typeof UserAuditEventAction];
+
+
+export const UserAuditEventAction = {
+  update: 'update',
+  deactivate: 'deactivate',
+  reactivate: 'reactivate',
+} as const;
+
+export interface UserAuditEvent {
+  id: number;
+  actorId: number;
+  actorName: string;
+  targetId: number;
+  occurredAt: string;
+  action: UserAuditEventAction;
+  changes: UserAuditChange[];
+}
+
+export interface UserAuditPage {
+  events: UserAuditEvent[];
+  hasMore: boolean;
+}
+
 export type TeacherProfileIntegrityMissingItem = typeof TeacherProfileIntegrityMissingItem[keyof typeof TeacherProfileIntegrityMissingItem];
 
 
@@ -2577,6 +2620,14 @@ export const ListManagedUsersTeachingProfile = {
   incomplete: 'incomplete',
   complete: 'complete',
 } as const;
+
+export type ListUserAuditParams = {
+/**
+ * @minimum 1
+ * @maximum 1000000
+ */
+page?: number;
+};
 
 export type ListIslandsParams = {
 provinceId?: ProvinceQueryParameter;

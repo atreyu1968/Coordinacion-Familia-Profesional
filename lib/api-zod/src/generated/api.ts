@@ -1031,6 +1031,37 @@ export const ListManagedUsersResponse = zod.object({
 })
 
 
+export const ListUserAuditParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const listUserAuditQueryPageDefault = 1;
+export const listUserAuditQueryPageMax = 1000000;
+
+
+
+export const ListUserAuditQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).max(listUserAuditQueryPageMax).default(listUserAuditQueryPageDefault)
+})
+
+export const ListUserAuditResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.number().int(),
+  "actorId": zod.number().int(),
+  "actorName": zod.string(),
+  "targetId": zod.number().int(),
+  "occurredAt": zod.coerce.date(),
+  "action": zod.enum(['update', 'deactivate', 'reactivate']),
+  "changes": zod.array(zod.object({
+  "field": zod.enum(['name', 'role', 'centerId', 'provinceId', 'status']),
+  "before": zod.string().nullable(),
+  "after": zod.string().nullable()
+}))
+})),
+  "hasMore": zod.boolean()
+})
+
+
 export const GetUserParams = zod.object({
   "id": zod.coerce.number().int()
 })

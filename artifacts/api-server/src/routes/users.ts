@@ -5,6 +5,7 @@ import {
   usersTable,
   centersTable,
   teacherYearConfirmationsTable,
+  accountAuditTable,
   type User,
 } from "@workspace/db";
 import {
@@ -19,7 +20,11 @@ import {
   ReactivateUserParams,
   ListManagedUsersQueryParams,
   ListManagedUsersResponse,
+  ListUserAuditParams,
+  ListUserAuditQueryParams,
+  ListUserAuditResponse,
 } from "@workspace/api-zod";
+import { changeAccount } from "../lib/accountAudit";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
 import { teachingProfilePredicates } from "../lib/teachingProfileAccess";
 import {
@@ -162,6 +167,45 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
 
   res.json(ListUsersResponse.parse(rows));
 });
+
+router.get("/users/:id/audit", requireAuth,
+  requireRole("superadmin", "coordinator", "department_head"),
+  async (req, res): Promise<void> => {
+    const params = ListUserAuditParams.safeParse(req.params);
+    const query = ListUserAuditQueryParams.safeParse(req.query);
+    if (!params.success || !query.success) {
+      res.status(400).json({ message: "Cuenta o paginación no válida" });
+      return;
+    }
+    const caller = req.user!;
+    const [target] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+    if (!target || !(caller.role === "superadmin" || mayManageAccount(caller, target))) {
+      res.status(404).json({ message: "Usuario no encontrado" });
+      return;
+    }
+    const filters: SQL[] = [eq(accountAuditTable.targetId, target.id)];
+    if (caller.role !== "superadmin") {
+      const scope = caller.role === "coordinator" ? "ProvinceId" : "CenterId";
+      const scopeId = caller.role === "coordinator" ? caller.provinceId : caller.centerId;
+      if (scopeId == null) {
+        res.status(404).json({ message: "Usuario no encontrado" });
+        return;
+      }
+      filters.push(eq(accountAuditTable[`before${scope}`], scopeId), eq(accountAuditTable[`after${scope}`], scopeId));
+      const lowerRoles = (["superadmin", "coordinator", "department_head", "teacher", "prospector"] as const)
+        .filter((role) => roleRank(role) < roleRank(caller.role));
+      filters.push(sql`${accountAuditTable.beforeRole} in (${sql.join(lowerRoles.map((r) => sql`${r}`), sql`, `)})`);
+      filters.push(sql`${accountAuditTable.afterRole} in (${sql.join(lowerRoles.map((r) => sql`${r}`), sql`, `)})`);
+    }
+    const page = query.data.page ?? 1;
+    const rows = await db.select().from(accountAuditTable).where(and(...filters))
+      .orderBy(desc(accountAuditTable.id)).limit(26).offset((page - 1) * 25);
+    res.json(ListUserAuditResponse.parse({
+      events: rows.slice(0, 25).map((row) => ({ ...row, occurredAt: row.occurredAt.toISOString() })),
+      hasMore: rows.length > 25,
+    }));
+  },
+);
 
 router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetUserParams.safeParse(req.params);
@@ -315,11 +359,11 @@ router.patch(
       }
     }
 
-    const [user] = await db
-      .update(usersTable)
-      .set(updates)
-      .where(eq(usersTable.id, params.data.id))
-      .returning();
+    const user = await changeAccount(caller, target, "update", updates);
+    if (!user) {
+      res.status(409).json({ message: "La cuenta ha cambiado. Recarga antes de continuar." });
+      return;
+    }
 
     res.json(UpdateUserResponse.parse(user));
   },
@@ -354,10 +398,13 @@ router.delete(
       return;
     }
 
-    await db
-      .update(usersTable)
-      .set({ status: "inactive", deletedAt: new Date(), tokenVersion: sql`${usersTable.tokenVersion} + 1` })
-      .where(eq(usersTable.id, params.data.id));
+    const updated = await changeAccount(caller, target, "deactivate", {
+      status: "inactive", deletedAt: new Date(), tokenVersion: sql`${usersTable.tokenVersion} + 1`,
+    });
+    if (!updated) {
+      res.status(409).json({ message: "La cuenta ha cambiado. Recarga antes de continuar." });
+      return;
+    }
 
     res.sendStatus(204);
   },
@@ -396,11 +443,9 @@ router.post(
       return;
     }
 
-    const [updated] = await db
-      .update(usersTable)
-      .set({ status: "active", deletedAt: null, tokenVersion: sql`${usersTable.tokenVersion} + 1` })
-      .where(eq(usersTable.id, params.data.id))
-      .returning();
+    const updated = await changeAccount(caller, target, "reactivate", {
+      status: "active", deletedAt: null, tokenVersion: sql`${usersTable.tokenVersion} + 1`,
+    }, async (tx, updated) => {
 
     // Reopen the annual confirmation for the active course so the reactivated
     // teacher gets a fresh window instead of being immediately re-deactivated.
@@ -408,7 +453,7 @@ router.post(
       const year = await getActiveAcademicYear();
       if (year) {
         const deadline = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
-        const [existing] = await db
+        const [existing] = await tx
           .select()
           .from(teacherYearConfirmationsTable)
           .where(
@@ -418,12 +463,12 @@ router.post(
             ),
           );
         if (existing) {
-          await db
+          await tx
             .update(teacherYearConfirmationsTable)
             .set({ status: "pending", deadline, confirmedAt: null })
             .where(eq(teacherYearConfirmationsTable.id, existing.id));
         } else {
-          await db.insert(teacherYearConfirmationsTable).values({
+          await tx.insert(teacherYearConfirmationsTable).values({
             teacherId: updated.id,
             schoolYear: year,
             status: "pending",
@@ -431,6 +476,11 @@ router.post(
           });
         }
       }
+    }
+    });
+    if (!updated) {
+      res.status(409).json({ message: "La cuenta ha cambiado. Recarga antes de continuar." });
+      return;
     }
 
     res.json(UpdateUserResponse.parse(updated));

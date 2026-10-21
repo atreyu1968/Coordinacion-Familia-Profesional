@@ -28,6 +28,7 @@ import {
   scopedCenters,
 } from "@/lib/user-management";
 import { UserEditDialog } from "@/components/user-edit-dialog";
+import { UserAuditDialog } from "@/components/user-audit-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,11 +185,13 @@ export default function UsuariosPage() {
   const anyPending = updateMut.isPending || deactivateMut.isPending || reactivateMut.isPending;
 
   const [editing, setEditing] = useState<ManagedUser | null>(null);
+  const [auditUser, setAuditUser] = useState<ManagedUser | null>(null);
   const [access, setAccess] = useState<PendingAccess>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
 
   const invalidateAll = async (id: number) => {
     await Promise.all([
+      qc.invalidateQueries({ queryKey: ["/api/users", id, "audit"] }),
       qc.invalidateQueries({ queryKey: getListManagedUsersQueryKey() }),
       qc.invalidateQueries({ queryKey: getListUsersQueryKey() }),
       qc.invalidateQueries({ queryKey: getGetUserQueryKey(id) }),
@@ -482,6 +485,11 @@ export default function UsuariosPage() {
                       )}
                       {showActions && (
                         <TableCell className="text-right">
+                          {(manageable || isSuperadmin) && (
+                            <Button variant="ghost" size="sm" onClick={() => setAuditUser(u)} aria-label={`Historial de ${u.name}`}>
+                              Historial
+                            </Button>
+                          )}
                           {manageable ? (
                             <div className="flex flex-wrap justify-end gap-1">
                               <Button
@@ -561,6 +569,7 @@ export default function UsuariosPage() {
         </nav>
       )}
 
+      {auditUser && <UserAuditDialog key={auditUser.id} user={auditUser} onClose={() => setAuditUser(null)} centers={centerName} provinces={provinceName} />}
       <UserEditDialog
         user={editing}
         onOpenChange={(o) => { if (!o) setEditing(null); }}

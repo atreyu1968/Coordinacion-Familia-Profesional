@@ -1057,6 +1057,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /users/{id}/audit:
+    get:
+      operationId: listUserAudit
+      tags: [users]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+            default: 1
+      responses:
+        "200":
+          description: Administrative changes visible within the caller's scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAuditPage"
+        "404":
+          description: Account unavailable or outside authorized scope
+        "400":
+          description: Invalid account identifier or pagination
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrative role required
   /users/{id}:
     get:
       operationId: getUser
@@ -1092,6 +1122,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "409":
+          description: Account changed concurrently; reload before retrying
     delete:
       operationId: deactivateUser
       tags: [users]
@@ -1103,6 +1135,8 @@ paths:
       responses:
         "204":
           description: Deactivated
+        "409":
+          description: Account changed concurrently; reload before retrying
 
   # ---------------------------------------------------------------------------
   # Geo
@@ -4191,6 +4225,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/IdPath"
       responses:
+        "409":
+          description: Account changed concurrently; reload before retrying
         "200":
           description: Reactivated user.
           content:
@@ -5000,6 +5036,49 @@ components:
           type: string
           format: date-time
       required: [id, name, email, role, status]
+    UserAuditChange:
+      type: object
+      properties:
+        field:
+          type: string
+          enum: [name, role, centerId, provinceId, status]
+        before:
+          type: [string, "null"]
+        after:
+          type: [string, "null"]
+      required: [field, before, after]
+    UserAuditEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        actorId:
+          type: integer
+        actorName:
+          type: string
+        targetId:
+          type: integer
+        occurredAt:
+          type: string
+          format: date-time
+        action:
+          type: string
+          enum: [update, deactivate, reactivate]
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAuditChange"
+      required: [id, actorId, actorName, targetId, occurredAt, action, changes]
+    UserAuditPage:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserAuditEvent"
+        hasMore:
+          type: boolean
+      required: [events, hasMore]
     ManagedUser:
       allOf:
         - $ref: "#/components/schemas/User"

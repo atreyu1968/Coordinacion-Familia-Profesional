@@ -140,6 +140,7 @@ import type {
   ListResourcesParams,
   ListSurveysParams,
   ListTeachingAssignmentsParams,
+  ListUserAuditParams,
   ListUsersParams,
   ListWikiPagesParams,
   ListYearConfirmationsParams,
@@ -222,6 +223,7 @@ import type {
   UploadUrlRequest,
   UploadUrlResponse,
   User,
+  UserAuditPage,
   VapidPublicKey,
   WikiAttachmentInput,
   WikiExternalLinkInput,
@@ -4132,6 +4134,116 @@ export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManage
 
 
 
+export const getListUserAuditUrl = (id: number,
+    params?: ListUserAuditParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/${id}/audit?${stringifiedParams}` : `/api/users/${id}/audit`
+}
+
+export const listUserAudit = async (id: number,
+    params?: ListUserAuditParams, options?: Parameters<typeof customFetch>[1]): Promise<UserAuditPage> => {
+
+  return customFetch<UserAuditPage>(getListUserAuditUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserAuditQueryKey = (id: number,
+    params?: ListUserAuditParams,) => {
+    return [
+    `/api/users/${id}/audit`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListUserAuditQueryOptions = <TData = Awaited<ReturnType<typeof listUserAudit>>, TError = ErrorType<void>>(id: number,
+    params?: ListUserAuditParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserAuditQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserAudit>>> = ({ signal }) => listUserAudit(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListUserAuditQueryResult = NonNullable<Awaited<ReturnType<typeof listUserAudit>>>
+export type ListUserAuditQueryError = ErrorType<void>
+
+
+export function useListUserAudit<TData = Awaited<ReturnType<typeof listUserAudit>>, TError = ErrorType<void>>(
+ id: number,
+    params: undefined |  ListUserAuditParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listUserAudit>>,
+          TError,
+          Awaited<ReturnType<typeof listUserAudit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListUserAudit<TData = Awaited<ReturnType<typeof listUserAudit>>, TError = ErrorType<void>>(
+ id: number,
+    params?: ListUserAuditParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listUserAudit>>,
+          TError,
+          Awaited<ReturnType<typeof listUserAudit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListUserAudit<TData = Awaited<ReturnType<typeof listUserAudit>>, TError = ErrorType<void>>(
+ id: number,
+    params?: ListUserAuditParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListUserAudit<TData = Awaited<ReturnType<typeof listUserAudit>>, TError = ErrorType<void>>(
+ id: number,
+    params?: ListUserAuditParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUserAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListUserAuditQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetUserUrl = (id: number,) => {
 
 
@@ -4267,7 +4379,7 @@ return customFetch<User>(getUpdateUserUrl(id),
 
 export const getUpdateUserMutationKey = () => ['updateUser'] as const;
 
-export const getUpdateUserMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateUserMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext> => {
 
@@ -4296,10 +4408,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateUser>>>
     export type UpdateUserMutationBody = BodyType<UpdateUserInput>
-    export type UpdateUserMutationError = ErrorType<unknown>
+    export type UpdateUserMutationError = ErrorType<void>
     export type UpdateUserMutationVariables = {id: number;data: BodyType<UpdateUserInput>}
 
-    export const useUpdateUser = <TError = ErrorType<unknown>,
+    export const useUpdateUser = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateUser>>,
@@ -4338,7 +4450,7 @@ export const deactivateUser = async (id: number, options?: Parameters<typeof cus
 
 export const getDeactivateUserMutationKey = () => ['deactivateUser'] as const;
 
-export const getDeactivateUserMutationOptions = <TError = ErrorType<unknown>,
+export const getDeactivateUserMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext> => {
 
@@ -4367,13 +4479,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeactivateUserMutationResult = NonNullable<Awaited<ReturnType<typeof deactivateUser>>>
 
-    export type DeactivateUserMutationError = ErrorType<unknown>
+    export type DeactivateUserMutationError = ErrorType<void>
     export type DeactivateUserMutationVariables = {id: number}
 
     /**
  * @summary Deactivate a user (soft delete)
  */
-export const useDeactivateUser = <TError = ErrorType<unknown>,
+export const useDeactivateUser = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deactivateUser>>,
@@ -16604,7 +16716,7 @@ export const reactivateUser = async (id: number, options?: Parameters<typeof cus
 
 export const getReactivateUserMutationKey = () => ['reactivateUser'] as const;
 
-export const getReactivateUserMutationOptions = <TError = ErrorType<ErrorResponse>,
+export const getReactivateUserMutationOptions = <TError = ErrorType<ErrorResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,ReactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,ReactivateUserMutationVariables, TContext> => {
 
@@ -16633,13 +16745,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type ReactivateUserMutationResult = NonNullable<Awaited<ReturnType<typeof reactivateUser>>>
 
-    export type ReactivateUserMutationError = ErrorType<ErrorResponse>
+    export type ReactivateUserMutationError = ErrorType<ErrorResponse | void>
     export type ReactivateUserMutationVariables = {id: number}
 
     /**
  * @summary Reactivate a deactivated user and reopen their year confirmation
  */
-export const useReactivateUser = <TError = ErrorType<ErrorResponse>,
+export const useReactivateUser = <TError = ErrorType<ErrorResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reactivateUser>>, TError,ReactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof reactivateUser>>,

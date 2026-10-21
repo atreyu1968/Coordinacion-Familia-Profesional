@@ -58,3 +58,4 @@
 - [Configurable professional family](professional-family-setting.md) — familia profesional is a branding value; all identity texts + the Centros default filter must derive from it, never a hardcoded "Administración y Gestión".
 - [Academic year management](academic-year-management.md) — managed curso académico; active year is the DEFAULT app filter (never ALL); annual teacher confirmation + 15-day auto-deactivation; transition wizard; school_year stays free TEXT.
 - [Inactive direct chats](inactive-direct-chats.md) — hide and block chats with inactive counterparts, but retain their history unless deletion is explicitly requested.
+- [Account audit privacy](account-audit-scope.md) — historical before/after scopes and current management rights both restrict audit visibility after transfers.
