@@ -434,6 +434,29 @@ router.get(
       res.status(loaded.status).json({ message: loaded.message });
       return;
     }
+    const caller = req.user!;
+    let canReadAttendees =
+      caller.role === "superadmin" ||
+      (caller.role === "coordinator" &&
+        caller.provinceId != null &&
+        loaded.event.provinceId === caller.provinceId);
+    if (!canReadAttendees) {
+      const [staff] = await db
+        .select({ id: eventStaffTable.id })
+        .from(eventStaffTable)
+        .where(
+          and(
+            eq(eventStaffTable.eventId, loaded.event.id),
+            eq(eventStaffTable.userId, caller.id),
+          ),
+        )
+        .limit(1);
+      canReadAttendees = Boolean(staff);
+    }
+    if (!canReadAttendees) {
+      res.status(403).json({ message: "No puedes consultar los asistentes de este evento" });
+      return;
+    }
     const rows = await db
       .select()
       .from(eventAccreditationsTable)

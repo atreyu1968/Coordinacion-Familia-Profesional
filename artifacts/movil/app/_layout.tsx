@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
-import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -25,7 +25,7 @@ import {
 
 import { AppLock } from "@/components/AppLock";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Loading } from "@/components/ui";
+import { Button, Loading } from "@/components/ui";
 import { AuthProvider, getAuthToken, useAuth } from "@/contexts/AuthContext";
 import { BadgesProvider } from "@/contexts/BadgesContext";
 import {
@@ -48,7 +48,8 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { token, user, isLoading, locked } = useAuth();
+  const { token, user, isLoading, locked, signOut } = useAuth();
+  const colors = useColors();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -61,6 +62,11 @@ function RootLayoutNav() {
           targetCenterId: user?.centerId ?? undefined,
         }),
         enabled: isTeacher && !locked,
+        retry: false,
+        // Failed queries with no data use retryOnMount, independently of
+        // refetchOnMount. Recovery must be explicit for this blocking query.
+        retryOnMount: false,
+        refetchOnMount: false,
       },
     },
   );
@@ -133,12 +139,22 @@ function RootLayoutNav() {
 
   useNotificationDeepLinks(!!token && !isLoading);
 
-  if (isLoading || (isTeacher && !locked && teachingProfileQuery.isPending)) {
+  if (isLoading) {
     return <Loading />;
   }
+  const blockForTeachingProfile =
+    isTeacher &&
+    !locked &&
+    (teachingProfileQuery.isPending || teachingProfileQuery.isError);
 
   return (
-    <>
+    <View style={styles.navigator}>
+      <View
+        style={styles.navigator}
+        pointerEvents={blockForTeachingProfile ? "none" : "auto"}
+        accessibilityElementsHidden={blockForTeachingProfile}
+        importantForAccessibility={blockForTeachingProfile ? "no-hide-descendants" : "auto"}
+      >
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="recuperar" />
@@ -162,8 +178,34 @@ function RootLayoutNav() {
         <Stack.Screen name="lms" />
         <Stack.Screen name="lms/[id]" />
       </Stack>
+      </View>
+      {blockForTeachingProfile ? (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.profileGate,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          {teachingProfileQuery.isError ? (
+            <>
+              <Text
+                accessibilityRole="alert"
+                style={[styles.profileGateMessage, { color: colors.foreground }]}
+              >
+                No se pudieron cargar tus datos docentes. Reintenta para poder completar o comprobar tu perfil.
+              </Text>
+              <Button
+                label="Reintentar"
+                onPress={() => void teachingProfileQuery.refetch()}
+              />
+              <Button label="Cerrar sesión" variant="ghost" onPress={() => void signOut()} />
+            </>
+          ) : <Loading />}
+        </View>
+      ) : null}
       {token && locked ? <AppLock /> : null}
-    </>
+    </View>
   );
 }
 
@@ -201,6 +243,19 @@ function WebMobileFrame({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  navigator: {
+    flex: 1,
+  },
+  profileGate: {
+    justifyContent: "center",
+    padding: 24,
+    gap: 16,
+  },
+  profileGateMessage: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 16,
+    textAlign: "center",
+  },
   webBackdrop: {
     flex: 1,
     alignItems: "center",

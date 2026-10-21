@@ -9,9 +9,10 @@ import {
   trainingOfferTable,
   usersTable,
   integrationSettingsTable,
+  centersTable,
 } from "@workspace/db";
 import app from "../src/app";
-import { getSettings } from "../src/lib/settings";
+import { getSettings, getActiveFamily } from "../src/lib/settings";
 import { deactivateOverdueTeachers } from "../src/lib/scheduler";
 import {
   createUser,
@@ -99,7 +100,7 @@ describe("POST /api/academic-years/transition", () => {
     await createAcademicYear(TO_YEAR);
 
     // Seed source-year data.
-    await createGroup({
+    const sourceGroupId = await createGroup({
       centerId,
       name: `Grupo ${TAG}`,
       cycleName: `Ciclo ${TAG}`,
@@ -115,6 +116,7 @@ describe("POST /api/academic-years/transition", () => {
       teacherId: teacher.id,
       moduleId,
       centerId,
+      groupId: sourceGroupId,
       schoolYear: FROM_YEAR,
     });
 
@@ -155,6 +157,8 @@ describe("POST /api/academic-years/transition", () => {
         ),
       );
     expect(clonedAssignments).toHaveLength(1);
+    expect(clonedAssignments[0]!.groupId).toBe(clonedGroups[0]!.id);
+    expect(clonedAssignments[0]!.groupId).not.toBe(sourceGroupId);
 
     // Re-running copies nothing more (idempotent) and leaves no duplicates.
     const second = await request(app)
@@ -238,10 +242,47 @@ describe("POST /api/academic-years/open-confirmation", () => {
   });
 });
 
+describe("transition assignment integrity", () => {
+  for (const withDestinationGroup of [true, false]) {
+    it(`uses only destination-year groups when copying groups is disabled (${withDestinationGroup})`, async () => {
+      const fromYear = `vitest-map-from-${withDestinationGroup}-${TAG}`;
+      const toYear = `vitest-map-to-${withDestinationGroup}-${TAG}`;
+      const { token } = await createUser({ role: "superadmin" });
+      const provinceId = await createProvince();
+      const centerId = await createCenter(provinceId);
+      const moduleId = await createModule({ centerId });
+      const { user: teacher } = await createUser({ role: "teacher", provinceId, centerId });
+      await createAcademicYear(toYear);
+      const name = `Mapped group ${TAG}`;
+      const sourceGroupId = await createGroup({ centerId, name, schoolYear: fromYear });
+      const destinationGroupId = withDestinationGroup
+        ? await createGroup({ centerId, name, schoolYear: toYear })
+        : null;
+      await createTeachingAssignment({
+        teacherId: teacher.id, moduleId, centerId, groupId: sourceGroupId, schoolYear: fromYear,
+      });
+      const results = await Promise.all(Array.from({ length: 2 }, () =>
+        request(app).post("/api/academic-years/transition").set(authHeader(token)).send({
+          fromYear, toYear, copyGroups: false, copyTrainingOffer: false, copyAssignments: true,
+        }),
+      ));
+      expect(results.map((result) => result.status)).toEqual([200, 200]);
+      expect(results.reduce((sum, result) => sum + result.body.assignmentsCopied, 0)).toBe(1);
+      const copied = await db.select().from(teachingAssignmentsTable).where(
+        and(eq(teachingAssignmentsTable.teacherId, teacher.id), eq(teachingAssignmentsTable.schoolYear, toYear)),
+      );
+      expect(copied).toHaveLength(1);
+      expect(copied[0]!.groupId).toBe(destinationGroupId);
+    });
+  }
+});
+
 describe("POST /api/academic-years/confirm", () => {
   it("generates teaching assignments and confirms the row (idempotent)", async () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
+    await db.update(centersTable).set({ families: [await getActiveFamily()] })
+      .where(eq(centersTable.id, centerId));
     const moduleId = await createModule({ centerId });
     const { user: teacher, token } = await createUser({
       role: "teacher",
@@ -320,6 +361,8 @@ describe("deactivateOverdueTeachers (scheduler)", () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
     const overdueYear = `vitest-overdue-${TAG}`;
+    await createAcademicYear(overdueYear);
+    await setActiveYear(overdueYear);
     const past = new Date(Date.now() - DAY_MS);
     const future = new Date(Date.now() + 15 * DAY_MS);
 

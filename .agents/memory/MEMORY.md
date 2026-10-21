@@ -19,6 +19,7 @@
 - [API contract changes need codegen](api-contract-codegen.md) — change a response/request shape via openapi → orval → zod + react client.
 - [orval-generated api client](api-client-orval.md) — how @workspace/api-client-react exposes hooks/functions; naming gotcha + mutation variable shapes.
 - [react-query orval queryKey requirement](react-query-orval-querykey.md) — custom query options to generated useGetX hooks require queryKey.
+- [Blocking query recovery](blocking-query-recovery.md) — keep navigation mounted during profile checks; failed no-data queries retry on mount independently of stale-data refetch settings.
 - [API Server dev needs restart for new routes](api-server-dev-restart.md) — new Express routes 404 until the workflow restarts.
 - [api-server testing harness](api-server-testing.md) — how automated tests run (Vitest + supertest + real Postgres).
 - [lib/db dist declarations](lib-db-dist.md) — why api-server typecheck misses @workspace/db exports after schema edits.

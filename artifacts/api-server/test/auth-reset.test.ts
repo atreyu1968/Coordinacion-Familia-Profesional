@@ -135,6 +135,24 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.status).toBe(400);
   });
 
+  it("reserves at most five attempts even when wrong codes arrive concurrently", async () => {
+    const { email, user } = await createUser({ role: "teacher" });
+    await seedToken(user.id, "654321");
+    const results = await Promise.all(
+      Array.from({ length: 9 }, () =>
+        request(app).post("/api/auth/reset-password").send({
+          email, code: "000000", newPassword: "Whatever123",
+        }),
+      ),
+    );
+    expect(results.every((result) => result.status === 400)).toBe(true);
+    expect((await latestToken(user.id))!.attempts).toBe(5);
+    const exhausted = await request(app).post("/api/auth/reset-password").send({
+      email, code: "654321", newPassword: "Whatever123",
+    });
+    expect(exhausted.status).toBe(400);
+  });
+
   it("rejects a code that has exhausted its attempts", async () => {
     const { email, user } = await createUser({ role: "teacher" });
     await seedToken(user.id, "333333", { attempts: 5 });

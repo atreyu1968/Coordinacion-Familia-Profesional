@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { copyAcademicYearData } from "../lib/academicYearTransition";
 import {
   and,
   eq,
@@ -247,130 +248,10 @@ router.post(
     const copyTrainingOffer = parsed.data.copyTrainingOffer ?? true;
     const copyAssignments = parsed.data.copyAssignments ?? true;
 
-    let groupsCopied = 0;
-    let offerCopied = 0;
-    let assignmentsCopied = 0;
-
-    if (copyGroups) {
-      const source = await db
-        .select()
-        .from(groupsTable)
-        .where(
-          and(
-            eq(groupsTable.schoolYear, fromYear),
-            isNull(groupsTable.deletedAt),
-          ),
-        );
-      const existing = await db
-        .select({ centerId: groupsTable.centerId, name: groupsTable.name })
-        .from(groupsTable)
-        .where(
-          and(
-            eq(groupsTable.schoolYear, toYear),
-            isNull(groupsTable.deletedAt),
-          ),
-        );
-      const seen = new Set(
-        existing.map((r) => `${r.centerId}|${r.name}`),
-      );
-      for (const g of source) {
-        const key = `${g.centerId}|${g.name}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        await db.insert(groupsTable).values({
-          centerId: g.centerId,
-          name: g.name,
-          cycleName: g.cycleName,
-          schoolYear: toYear,
-        });
-        groupsCopied += 1;
-      }
-    }
-
-    if (copyTrainingOffer) {
-      const source = await db
-        .select()
-        .from(trainingOfferTable)
-        .where(
-          and(
-            eq(trainingOfferTable.schoolYear, fromYear),
-            isNull(trainingOfferTable.deletedAt),
-          ),
-        );
-      const existing = await db
-        .select({
-          centerId: trainingOfferTable.centerId,
-          cycleName: trainingOfferTable.cycleName,
-          shift: trainingOfferTable.shift,
-        })
-        .from(trainingOfferTable)
-        .where(
-          and(
-            eq(trainingOfferTable.schoolYear, toYear),
-            isNull(trainingOfferTable.deletedAt),
-          ),
-        );
-      const seen = new Set(
-        existing.map((r) => `${r.centerId}|${r.cycleName}|${r.shift ?? ""}`),
-      );
-      for (const o of source) {
-        const key = `${o.centerId}|${o.cycleName}|${o.shift ?? ""}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        await db.insert(trainingOfferTable).values({
-          centerId: o.centerId,
-          cycleId: o.cycleId,
-          cycleName: o.cycleName,
-          level: o.level,
-          shift: o.shift,
-          schoolYear: toYear,
-        });
-        offerCopied += 1;
-      }
-    }
-
-    const touchedModuleIds = new Set<number>();
-    if (copyAssignments) {
-      const source = await db
-        .select()
-        .from(teachingAssignmentsTable)
-        .where(
-          and(
-            eq(teachingAssignmentsTable.schoolYear, fromYear),
-            isNull(teachingAssignmentsTable.deletedAt),
-          ),
-        );
-      const existing = await db
-        .select({
-          teacherId: teachingAssignmentsTable.teacherId,
-          moduleId: teachingAssignmentsTable.moduleId,
-          centerId: teachingAssignmentsTable.centerId,
-        })
-        .from(teachingAssignmentsTable)
-        .where(
-          and(
-            eq(teachingAssignmentsTable.schoolYear, toYear),
-            isNull(teachingAssignmentsTable.deletedAt),
-          ),
-        );
-      const seen = new Set(
-        existing.map((r) => `${r.teacherId}|${r.moduleId}|${r.centerId}`),
-      );
-      for (const a of source) {
-        const key = `${a.teacherId}|${a.moduleId}|${a.centerId}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        await db.insert(teachingAssignmentsTable).values({
-          teacherId: a.teacherId,
-          moduleId: a.moduleId,
-          groupId: a.groupId,
-          centerId: a.centerId,
-          schoolYear: toYear,
-        });
-        assignmentsCopied += 1;
-        touchedModuleIds.add(a.moduleId);
-      }
-    }
+    const { groupsCopied, offerCopied, assignmentsCopied, touchedModuleIds } =
+      await copyAcademicYearData({
+        fromYear, toYear, copyGroups, copyTrainingOffer, copyAssignments,
+      });
 
     for (const moduleId of touchedModuleIds) {
       try {

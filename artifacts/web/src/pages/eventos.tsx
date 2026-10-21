@@ -467,7 +467,14 @@ function AccreditationsTab({
   canManage: boolean;
 }) {
   const qc = useQueryClient();
-  const { data: accreditations = [] } = useListAccreditations(event.id);
+  const {
+    data: accreditations = [],
+    error,
+    isLoading,
+    refetch,
+  } = useListAccreditations(event.id, {
+    query: { queryKey: getListAccreditationsQueryKey(event.id), retry: false },
+  });
   const createMut = useCreateAccreditation();
   const checkInMut = useCheckInAccreditation();
 
@@ -543,6 +550,25 @@ function AccreditationsTab({
       });
     }
   };
+
+  if (isLoading) {
+    return <p role="status">Cargando acreditaciones...</p>;
+  }
+  if (error) {
+    const forbidden = (error as { status?: number }).status === 403;
+    return (
+      <div className="space-y-3">
+        <p role="status" className="text-sm text-muted-foreground">
+          {forbidden
+            ? "Las acreditaciones están reservadas a la organización y al personal autorizado de este evento."
+            : "No se pudieron cargar las acreditaciones."}
+        </p>
+        {!forbidden && (
+          <Button variant="outline" onClick={() => void refetch()}>Reintentar</Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1079,7 +1105,11 @@ function EventDetailView({
   const { user } = useAuth();
   const { data: event, isLoading } = useGetEvent(eventId);
   const deleteMut = useDeleteEvent();
-  const canManage = canManageEvents(user?.role);
+  const canManage =
+    user?.role === "superadmin" ||
+    (user?.role === "coordinator" &&
+      user.provinceId != null &&
+      event?.provinceId === user.provinceId);
 
   if (isLoading || !event) {
     return (

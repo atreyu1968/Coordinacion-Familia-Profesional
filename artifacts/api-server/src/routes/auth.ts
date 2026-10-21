@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ne, desc, sql, inArray, or } from "drizzle-orm";
+import { eq, and, isNull, ne, desc, sql, inArray, or, lt, gt } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -776,12 +776,26 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
     return;
   }
 
-  const codeOk = await verifyPassword(parsed.data.code, token.codeHash);
+  // Reserve an attempt before doing expensive verification. Concurrent requests
+  // must not all verify against the same stale attempt count.
+  const [reservedToken] = await db
+    .update(passwordResetTokensTable)
+    .set({ attempts: sql`${passwordResetTokensTable.attempts} + 1` })
+    .where(
+      and(
+        eq(passwordResetTokensTable.id, token.id),
+        isNull(passwordResetTokensTable.usedAt),
+        lt(passwordResetTokensTable.attempts, RESET_MAX_ATTEMPTS),
+        gt(passwordResetTokensTable.expiresAt, new Date()),
+      ),
+    )
+    .returning();
+  if (!reservedToken) {
+    res.status(400).json({ message: invalid });
+    return;
+  }
+  const codeOk = await verifyPassword(parsed.data.code, reservedToken.codeHash);
   if (!codeOk) {
-    await db
-      .update(passwordResetTokensTable)
-      .set({ attempts: token.attempts + 1 })
-      .where(eq(passwordResetTokensTable.id, token.id));
     res.status(400).json({ message: invalid });
     return;
   }
@@ -800,6 +814,7 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
           and(
             eq(passwordResetTokensTable.id, token.id),
             isNull(passwordResetTokensTable.usedAt),
+            gt(passwordResetTokensTable.expiresAt, new Date()),
           ),
         )
         .returning({ id: passwordResetTokensTable.id });

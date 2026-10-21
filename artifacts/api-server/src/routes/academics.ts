@@ -693,6 +693,20 @@ router.get(
       return;
     }
     const activeFamily = await getActiveFamily();
+    const [visibleCycle] = await db
+      .select({ id: cyclesTable.id })
+      .from(cyclesTable)
+      .where(
+        and(
+          eq(cyclesTable.id, params.data.id),
+          isNull(cyclesTable.deletedAt),
+          cycleFamilyFilter(activeFamily),
+        ),
+      );
+    if (!visibleCycle) {
+      res.json(ListCycleModulesResponse.parse([]));
+      return;
+    }
     const rows = await db
       .select()
       .from(modulesTable)
@@ -701,7 +715,6 @@ router.get(
           eq(modulesTable.cycleId, params.data.id),
           isNull(modulesTable.deletedAt),
           moduleFamilyFilter(activeFamily),
-          cycleFamilyFilter(activeFamily),
         ),
       )
       .orderBy(modulesTable.name);

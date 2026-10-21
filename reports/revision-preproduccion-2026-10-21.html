@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coordina ADG · Revisión previa a producción</title>
+<style>
+:root{color-scheme:light;font:16px/1.6 system-ui,sans-serif;color:#172b43;background:#eef2f7}
+body{max-width:1060px;margin:auto;padding:32px 20px 70px}main{background:white;padding:36px;border-radius:12px}
+h1{font-size:30px;line-height:1.2}h2{font-size:22px;margin-top:36px}h3{font-size:18px}
+.muted{color:#56687c}.verdict{border-left:5px solid #b42318;background:#fff2ef;padding:18px 22px}
+.ok{color:#176447}.pending{color:#a14613}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;border-bottom:1px solid #dbe3ed;padding:12px 10px;vertical-align:top}
+th{background:#eef3fa}code{font-size:13px;overflow-wrap:anywhere}li{margin:8px 0}
+.note{background:#f3f6fa;padding:16px;border-radius:6px}footer{font-size:13px;color:#56687c;margin-top:36px}
+@media(max-width:650px){body{padding:12px}main{padding:20px}h1{font-size:25px}table{display:block;overflow-x:auto}}
+@media print{body{background:white;padding:0}main{padding:0}h2,h3{break-after:avoid}tr{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<p class="muted">COORDINA ADG · 21 de octubre de 2026 · Entorno de desarrollo</p>
+<h1>Revisión previa a la publicación definitiva</h1>
+<div class="verdict">
+<strong>Conclusión: no recomiendo todavía la publicación definitiva.</strong>
+<p>Se han corregido cinco problemas verificables y las comprobaciones automatizadas descritas abajo pasan.
+Quedan pendientes el cierre de riesgos de dependencias, el refuerzo del requisito de perfil completo en el servidor
+y un ensayo sobre el entorno de despliegue definitivo. No se ha publicado la aplicación.</p>
+</div>
+
+<h2>1. Alcance y límites</h2>
+<p>La revisión comprende código de la API y sus permisos, autenticación y recuperación de contraseña,
+eventos, cambio de curso, almacenamiento, integraciones, configuración de despliegue, compilación de la web
+y exportación web de la aplicación móvil. Incluye análisis estático, análisis de dependencias,
+pruebas de API con PostgreSQL temporal y comprobación con navegador del acceso de un docente.</p>
+<p>Es una revisión amplia, no una comprobación exhaustiva de todas las combinaciones de pantallas, datos,
+roles y dispositivos. Las pruebas masivas no se han ejecutado contra la base de datos compartida ni contra producción.
+Los recorridos de navegador usan registros de prueba identificables, no cuentas de usuarios existentes.</p>
+
+<h2>2. Problemas corregidos</h2>
+<table>
+<thead><tr><th>Problema</th><th>Corrección</th><th>Comprobación</th></tr></thead>
+<tbody>
+<tr><td><strong>Confidencialidad en eventos.</strong> Un docente que podía ver un evento también podía obtener el listado de asistentes, correos y códigos QR.</td>
+<td>El listado de acreditaciones queda limitado a superadministración, coordinación de la provincia del evento o personal explícitamente asignado. La web muestra un mensaje de acceso restringido, no un listado vacío que oculte el error.</td>
+<td>Pruebas de rechazo a docentes y coordinación de otra provincia; acceso permitido a superadministración, coordinación propia y personal del evento.</td></tr>
+<tr><td><strong>Referencias incorrectas al pasar de curso.</strong> Las nuevas asignaciones conservaban el identificador del grupo del curso anterior.</td>
+<td>Se resuelven los grupos del curso de destino. Si no existe un grupo equivalente y no se copian grupos, la asignación queda sin grupo, nunca ligada al anterior. La copia se confirma en una transacción y se serializa por curso de destino para evitar duplicados concurrentes.</td>
+<td>Pruebas de mapeo de identificadores, repetición idempotente y dos solicitudes concurrentes con copia de grupos desactivada, con y sin grupo de destino.</td></tr>
+<tr><td><strong>Error al listar módulos de un ciclo.</strong> El filtro hacía referencia a la tabla de ciclos sin incluirla en la consulta.</td>
+<td>Se comprueba primero que el ciclo pertenece a la familia activa y después se consultan sus módulos con su filtro de familia.</td>
+<td>La prueba de catálogo, que antes recibía HTTP 500, pasa y sigue excluyendo los ciclos de otras familias.</td></tr>
+<tr><td><strong>Intentos de recuperación de contraseña.</strong> Varias solicitudes simultáneas podían consumir el mismo contador antiguo y eludir el límite de intentos.</td>
+<td>Se reserva cada intento de forma atómica antes de verificar el código. La reserva exige un código vigente, no usado y por debajo del límite. El consumo final vuelve a comprobar la caducidad.</td>
+<td>Nueve solicitudes erróneas concurrentes dejan exactamente cinco intentos consumidos; el código correcto ya no se acepta después del agotamiento.</td></tr>
+<tr><td><strong>Carga infinita del perfil móvil ante un error.</strong> Una respuesta 503 provocaba un bucle de peticiones y dejaba una pantalla de carga sin recuperación.</td>
+<td>El navegador de pantallas permanece montado bajo el bloqueo visual. Los errores muestran un mensaje, «Reintentar» y «Cerrar sesión». Se desactivan los reintentos automáticos al montar observadores de la consulta fallida.</td>
+<td>La reproducción final con 503 persistente muestra el error y ambos botones. El contador se mantuvo en una petición durante el intervalo inactivo comprobado. Restaurar la respuesta y pulsar «Reintentar» recupera el formulario obligatorio.</td></tr>
+</tbody></table>
+<p class="note">No se han reparado de forma masiva datos reales de transiciones anteriores.
+Si ya se utilizó el cambio de curso con la versión anterior, debe comprobarse el historial de asignaciones antes del lanzamiento.
+La nueva transición puede corregir la asociación antigua concreta al repetirse, sin sustituir grupos elegidos posteriormente en el destino.</p>
+
+<h2>3. Resultados de las comprobaciones</h2>
+<table>
+<thead><tr><th>Comprobación</th><th>Resultado</th><th>Observaciones</th></tr></thead>
+<tbody>
+<tr><td>Tipos del monorepo</td><td class="ok">Correcto</td><td><code>pnpm run typecheck</code>, incluidas bibliotecas compartidas, API, web y móvil.</td></tr>
+<tr><td>API con PostgreSQL aislado</td><td class="ok">190 pruebas correctas · 20 archivos</td><td>La primera pasada detectó tres fallos. Uno correspondía a la consulta del catálogo y dos a datos de prueba desactualizados: centro sin familia y año de confirmación no activo. Se corrigió el catálogo y se ajustaron esas pruebas, sin retirar las validaciones de producción.</td></tr>
+<tr><td>Compilación web</td><td class="ok">Correcta</td><td>Compilada con las variables de puerto y ruta base requeridas. Hay advertencias de tamaño de fragmentos; el fragmento de exportación supera 500 kB. No es un error de compilación.</td></tr>
+<tr><td>Compilación API</td><td class="ok">Correcta</td><td>Bundle generado y servicio reiniciado tras los cambios.</td></tr>
+<tr><td>Exportación móvil web/PWA</td><td class="ok">Correcta</td><td><code>expo export --platform web</code> con ruta base. No equivale a compilar ni probar una aplicación nativa iOS/Android.</td></tr>
+<tr><td>Instalación y compatibilidad de esquema</td><td class="ok">Pruebas aisladas correctas</td><td><code>deploy/test-db.sh</code>: instalación vacía, actualizaciones compatibles y rechazo de esquemas incompatibles sin alterar sus tablas. Incluye otra ejecución de cinco pruebas de invitaciones; no se suman como pruebas únicas a las 190.</td></tr>
+<tr><td>Scripts y diferencias</td><td class="ok">Correcto</td><td>Validación sintáctica de los scripts de despliegue y <code>git diff --check</code>.</td></tr>
+<tr><td>Servicios de desarrollo</td><td class="ok">Arranque correcto</td><td>Web y API reiniciadas. La captura posterior muestra la pantalla de acceso sin errores de ejecución en el navegador.</td></tr>
+</tbody></table>
+
+<h2>4. Comprobación funcional del perfil docente</h2>
+<h3>Web: verificada con una cuenta temporal</h3>
+<ul>
+<li>El acceso con credenciales incorrectas muestra un error claro.</li>
+<li>Un docente sin centro, provincia ni módulos queda ante «Completa tu perfil docente».</li>
+<li>Escape, pulsar fuera del formulario y navegar directamente a otra página no permiten evitarlo.</li>
+<li>Seleccionar centro deriva la provincia. Guardar los módulos del curso activo cierra el formulario.</li>
+<li>La base de datos confirma centro, provincia y asignación del curso activo. Tras recargar, el formulario obligatorio no reaparece.</li>
+<li>Se recorrieron sin escribir contenido: inicio, usuarios, centros, académica, anuncios, chat, documentación/wiki, foros, encuestas, formularios, eventos y formación autodirigida. No se observaron fallos persistentes de carga.</li>
+<li>Cerrar sesión vuelve al acceso y elimina el token del navegador.</li>
+</ul>
+<p><strong>Observación menor:</strong> en algunas capturas el menú lateral expandido recorta parte del contenido principal. No impidió el recorrido; conviene revisarlo antes de la entrega visual definitiva.</p>
+<h3>Móvil</h3>
+<ul id="mobile-result">
+<li>Verificado en la vista web de Expo a 402 × 874 píxeles. El docente incompleto llega al perfil obligatorio antes de poder utilizar las pestañas. La navegación directa a inicio o chat vuelve al perfil.</li>
+<li>Centro, provincia derivada y módulo se guardan correctamente. Tras recargar, se conserva la selección y aparece el perfil en modo de edición normal. El inicio carga después de completar los datos.</li>
+<li>La simulación de un fallo 503 detectó el bucle descrito arriba. Tras corregirlo y repetir solo ese recorrido, el mensaje y el reintento son visibles, no hay peticiones continuas en reposo y el reintento recupera el formulario.</li>
+<li>Se verificó la retirada de todas las cuentas y registros temporales de los recorridos, incluidos el centro, módulo, oferta, asignaciones y grupo de chat de prueba con sus miembros. Las sesiones temporales quedaron cerradas o eliminadas.</li>
+</ul>
+<p class="note"><strong>Límites visuales y de accesibilidad:</strong> el título largo se recorta en la cabecera estrecha.
+En la última prueba, la instantánea de accesibilidad todavía incluía elementos del perfil bajo el bloqueo visual;
+no se intentó activarlos ni se verificó el bloqueo con un lector de pantalla. Esta parte requiere comprobación adicional.</p>
+
+<h2>5. Pendientes antes de dar el visto bueno</h2>
+<ol>
+<li><strong>Dependencias y disponibilidad del servicio.</strong> El análisis inicial registra 145 alertas: 12 críticas, 81 altas, 42 moderadas y 10 bajas.
+Son coincidencias de paquetes/versiones con avisos, no 145 fallos explotables demostrados en esta aplicación. No se han actualizado dependencias en esta revisión.
+Prioridad: <code>engine.io 6.6.8</code>, <code>socket.io-parser 4.2.6</code> y <code>ws 8.20.1</code>, con avisos de denegación de servicio en componentes de tiempo real.
+El analizador propone respectivamente <code>6.6.10</code>, <code>4.2.7</code> y <code>8.21.0</code>; hay que comprobar disponibilidad y compatibilidad y repetir las pruebas después de actualizar.</li>
+<li><strong>Obligación de completar el perfil en el servidor.</strong> Está comprobada en la interfaz web, pero la API acepta al docente activo aunque su perfil docente esté incompleto.
+Un cliente directo puede omitir la obligación de completar datos. No es, por sí solo, una elevación de rol ni elimina los demás controles de acceso.
+Para que la obligación sea integral hay que aplicarla en el servidor con excepciones limitadas para consultar y reparar el perfil, y comprobar también el acceso en tiempo real.</li>
+<li><strong>Ensayo del despliegue definitivo.</strong> La prueba aislada del instalador no demuestra que la base de datos real sea compatible.
+El actualizador rechaza huecos de esquema no contemplados; no es un migrador universal para versiones antiguas.
+Se requiere comprobar el esquema de destino, preparar las migraciones necesarias y ensayar con una copia aislada, incluidos los archivos externos.</li>
+<li><strong>Validación operativa.</strong> Comprobar TLS, dominio, cabeceras y límites antiabuso del acceso, permisos del almacenamiento persistente, copias de seguridad y una restauración completa.
+No se han ejecutado estas operaciones sobre el servidor definitivo.</li>
+<li><strong>Revisión jurídica y de configuración.</strong> Los textos legales siguen identificados con una versión de borrador.
+No deben considerarse revisados jurídicamente por pasar pruebas técnicas. Confirmar los avisos, sus responsables y el curso académico activo antes de publicar; no se ha cambiado la configuración compartida.</li>
+</ol>
+
+<h2>6. Interpretación de los análisis de seguridad</h2>
+<ul>
+<li><strong>Críticas del inventario:</strong> once corresponden a <code>orval 8.9.1</code>, una herramienta de generación que procesa el contrato del repositorio, no directamente documentos de usuarios.
+La otra afecta a <code>proxy-addr 2.0.7</code> bajo determinadas configuraciones de subredes de confianza del proxy. No se ha demostrado explotación de esas doce alertas en el despliegue de esta aplicación.</li>
+<li><strong>SheetJS:</strong> <code>xlsx 0.18.5</code> genera alertas y carece de mantenimiento en npm. El uso inspeccionado es de exportación, no lectura de hojas arbitrarias; el aviso de contaminación de prototipos excluye expresamente ese flujo de exportación.
+Debe planificarse su actualización o sustitución, sin confundir la alerta con un fallo de importación actualmente disponible.</li>
+<li><strong>Análisis estático:</strong> cinco señales sobre rutas de archivos móviles y redirecciones/cookie OIDC.
+La revisión del código no ha demostrado una ruta de petición explotable: las plataformas móviles están limitadas a iOS/Android y las redirecciones OIDC están restringidas al origen de Nextcloud configurado.
+Quedan mejoras defensivas posibles en contención de rutas y coincidencia exacta de callbacks; no se ha realizado una prueba de explotación en vivo.</li>
+<li><strong>Análisis especializado de privacidad:</strong> no pudo completarse por un fallo de validación del formato de respuesta del analizador (<code>HOUNDDOG_SCHEMA_MISMATCH</code>).
+Este análisis figura como no realizado, no como superado.</li>
+</ul>
+
+<h2>7. Qué no se ha verificado</h2>
+<p>No se han probado dispositivos nativos iOS/Android, biometría, notificaciones push reales, entrega efectiva de correo,
+videollamadas con proveedores reales, Nextcloud/OIDC en el servidor definitivo,
+carga concurrente de producción ni recuperación completa ante pérdida de base de datos y almacenamiento.
+Tampoco se ha ejecutado cada operación de crear, editar y borrar de cada módulo y rol.
+Los servicios externos usados en pruebas automatizadas se simulan cuando corresponde.</p>
+<p><strong>Orden recomendado:</strong> cerrar dependencias y obligación de perfil en la API;
+ensayar migración y restauración en una copia aislada del destino; comprobar integraciones y dispositivos reales;
+revisar la configuración y los avisos legales; publicar solo después de una nueva decisión explícita.</p>
+<footer>Informe técnico de la sesión del 21/10/2026. No es una certificación de seguridad ni garantiza ausencia de fallos.
+No se ha ejecutado una publicación ni una migración sobre producción.</footer>
+</main></body>
+</html>

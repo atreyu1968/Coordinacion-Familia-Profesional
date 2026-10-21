@@ -19,3 +19,17 @@ mtime_ms = 1790754964034
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/b84593b9-385d-40b4-8c96-4fb6ca6da155/16637859-3104-48bd-8a03-7048cb2bd6e9"
 storage_version_token = "1790755035566831"
 content_type = "text/html"
+
+[[outputs]]
+id = "NUERowTRZur7irBxnRvqy"
+uri = "file://reports/revision-preproduccion-2026-10-21.html"
+type = "html"
+title = "Informe de revisión previa a producción"
+description = "Fallos corregidos, 190 pruebas de API correctas, comprobaciones web y móvil, y bloqueos pendientes antes de publicar Coordina ADG."
+logical_id = "a96fb5fe-0c0b-44a1-bb7d-6625de4a0c81"
+content_hash = "sha256:4da9e8498c976a415d35872d504e5a9e90ddf170b244e43a0fde4885182eb105"
+size = 15444
+mtime_ms = 1792593497445
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/a96fb5fe-0c0b-44a1-bb7d-6625de4a0c81/29e74041-76fd-475a-8b98-c092fd4c6917"
+storage_version_token = "1792593541652118"
+content_type = "text/html"

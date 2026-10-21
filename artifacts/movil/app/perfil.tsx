@@ -71,6 +71,11 @@ export default function PerfilScreen() {
           targetCenterId: teachingCenterId ?? undefined,
         }),
         enabled: isTeacher,
+        retry: false,
+        // Recovery is explicit through Reintentar. Automatic mount retries
+        // would repeatedly trigger the root layout's blocking loading state.
+        retryOnMount: false,
+        refetchOnMount: false,
       },
     },
   );
