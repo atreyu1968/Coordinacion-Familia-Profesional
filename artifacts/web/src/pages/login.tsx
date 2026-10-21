@@ -151,7 +151,7 @@ export default function LoginPage() {
 
           <div className="pt-2 text-center">
             <a
-              href="https://www.fpcanarias.org/"
+              href="https://www.coordinacionfp.org/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-primary hover:underline"
