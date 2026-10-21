@@ -1,0 +1,30 @@
+==> Ensuring Docker is installed
+Synchronizing state of docker.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable docker
+
+==> Gathering configuration
+Main application domain (e.g. adg.example.org) [coordinacionag.iesmmg.org]: coordinacionfp.org
+    Main domain        : coordinacionfp.org
+    Nextcloud (Drive)  : https://coordinacionfp.org/nextcloud
+    Collabora (Office) : https://coordinacionfp.org/collabora
+
+==> Writing /root/Coordinacion-Familia-Profesional/deploy/nextcloud/.env
+
+==> Starting Nextcloud + Collabora (docker compose up -d)
+[+] pull 7/7
+ ✔ Image collabora/code:latest Pulled                                                                                                                                 25.8s
+ ✔ Image postgres:16-alpine    Pulled                                                                                                                                 1.5ss
+ ✔ Image redis:7-alpine        Pulled                                                                                                                                 1.5ss
+ ✔ Image nextcloud:30-apache   Pulled                                                                                                                                 1.4ss
+[+] up 4/4
+ ✔ Container nextcloud-nextcloud-redis-1 Running                                                                                                                       0.0s
+ ✔ Container nextcloud-nextcloud-db-1    Healthy                                                                                                                       2.2s
+ ✔ Container nextcloud-nextcloud-1       Running                                                                                                                       0.0s
+ ✔ Container nextcloud-collabora-1       Recreated                                                                                                                     1.7s
+
+==> Waiting for Nextcloud to become ready
+Nextcloud did not become ready in time.
+WARNING: collaborative space update failed; re-run deploy/nextcloud/install-collab.sh
+==> Leaving Outline untouched (set INSTALL_WIKI=yes to explicitly install/update it).
+==> Done. Logs: journalctl -u coordina-adg -f
+root@Coordinacion:~/Coordinacion-Familia-Profesional# 
