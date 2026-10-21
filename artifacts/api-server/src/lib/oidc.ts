@@ -227,6 +227,7 @@ export type OidcTarget = "nextcloud";
 interface TicketRecord extends Expiring {
   userId: number;
   moduleId: number;
+  spaceId?: number;
   target: OidcTarget;
 }
 const tickets = new Map<string, TicketRecord>();
@@ -253,6 +254,12 @@ export function consumeTicket(t: string): TicketRecord | null {
   if (!rec) return null;
   tickets.delete(t);
   return rec;
+}
+
+export function createIndependentSpaceTicket(userId: number, spaceId: number): string {
+  const ticket = createTicket(userId, 0);
+  tickets.get(ticket)!.spaceId = spaceId;
+  return ticket;
 }
 
 const sessions = new Map<string, AccessRecord>();

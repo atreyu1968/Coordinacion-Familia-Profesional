@@ -47,3 +47,59 @@ mtime_ms = 1792595348693
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/b4304531-327d-4f95-84fe-b2263f874b64/9e12e0c5-097e-402e-9961-110a592b7fcc"
 storage_version_token = "1792595487729350"
 content_type = "text/html"
+
+[[outputs]]
+id = "0mXuSM66ylilAYcpqNvxy"
+uri = "file://generated-artifacts/email-invitacion.html"
+type = "html"
+title = "Vista previa: correo de invitación"
+description = "Nuevo diseño con el logo configurado y datos de ejemplo. El enlace no permite registros reales."
+logical_id = "9aad6555-d696-4866-a990-2c6ee667b61c"
+content_hash = "sha256:3bf1e0ebdfe2a79100798dd07165218f7393dee117fc245d6d916529d52e2ea9"
+size = 501347
+mtime_ms = 1792607435741
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/9aad6555-d696-4866-a990-2c6ee667b61c/ae8daa18-4bfc-4143-a4de-bb1ec5098506"
+storage_version_token = "1792607537033155"
+content_type = "text/html"
+
+[[outputs]]
+id = "WL05UzTkbKk71bd-Cfc0Q"
+uri = "file://generated-artifacts/email-recuperacion.html"
+type = "html"
+title = "Vista previa: recuperación de contraseña"
+description = "Correo con logo y código de ejemplo, sin validez para acceder a ninguna cuenta."
+logical_id = "a42c2376-6282-4a95-bfbd-e68401f622f6"
+content_hash = "sha256:0b32823792d07fe0700b28ec620fa111c9580c7b493e564b69f1ff76c28e0191"
+size = 501371
+mtime_ms = 1792607435741
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/a42c2376-6282-4a95-bfbd-e68401f622f6/13bd2270-94d6-4e0c-b20f-636b5d2ffa35"
+storage_version_token = "1792607537608398"
+content_type = "text/html"
+
+[[outputs]]
+id = "RQtcMIPmxVbvLOfRPnjx6"
+uri = "file://generated-artifacts/manual-red/Manual_funcionamiento_red_FP.docx"
+type = "word_document"
+title = "Manual de funcionamiento de la red — Word editable"
+description = "Manual operativo con 18 capítulos, procedimientos, responsabilidades, listas de comprobación y modelos de trabajo."
+logical_id = "bad6ee1e-a03b-4a4f-bda2-c2e4c6bde7e5"
+content_hash = "sha256:38d11469295c9d0525f2ae85446bf0e3782279a02704d6a410d5b293a25f5076"
+size = 425154
+mtime_ms = 1792610455042
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/bad6ee1e-a03b-4a4f-bda2-c2e4c6bde7e5/213e41f4-2984-4ba9-a8f7-627b87de6310"
+storage_version_token = "1792610529138405"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "s-Nsit8ceHgPj-69EKgGF"
+uri = "file://generated-artifacts/manual-red/Manual_funcionamiento_red_FP.pdf"
+type = "pdf"
+title = "Manual de funcionamiento de la red — PDF"
+description = "Documento de 20 páginas, con el logo de la aplicación, índice navegable y formato preparado para compartir o imprimir."
+logical_id = "ae3b5303-3996-4380-b270-ffa13f98a929"
+content_hash = "sha256:abb489b4e6c4a4f595546b8a792357706711a3bfad08577f024f35c808dcad4a"
+size = 510222
+mtime_ms = 1792610455522
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/ae3b5303-3996-4380-b270-ffa13f98a929/264d7b71-82d5-4268-8fbb-94c93edd7d61"
+storage_version_token = "1792610530044330"
+content_type = "application/pdf"

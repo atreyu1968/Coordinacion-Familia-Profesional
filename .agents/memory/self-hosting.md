@@ -58,6 +58,14 @@ filesystem instead.
   pulls+rebuilds+restarts. Must stay **idempotent**: preserve existing
   DB password, JWT_SECRET, and optional JAAS_*/RESEND_*/PUBLIC_APP_URL on rerun
   (read them back from the existing `.env`), never rotate them silently.
+- **Nextcloud/Collabora maintenance policy:** the user requires that a working
+  installation is simply reported as working and is not updated. If it is
+  incorrect or a major update exists, ask whether to update.
+  **Why:** the user explicitly requested preserving a working installation,
+  rather than refreshing it whenever the main application is installed/updated.
+  **How to apply:** apply this consistently to all installer entry points;
+  inspect without changing the stack and default to no maintenance without
+  explicit approval. Missing checks are not proof that replacement is safe.
 - nginx needs the `map $http_upgrade $connection_upgrade` block (http context,
   in conf.d) for Socket.io websocket upgrades; the app's socket path is
   `/api/socket.io`.

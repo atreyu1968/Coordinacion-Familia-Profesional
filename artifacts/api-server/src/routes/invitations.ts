@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, desc, or, lt } from "drizzle-orm";
+import { eq, and, isNull, desc, or, lt, gt, lte, sql } from "drizzle-orm";
 import {
   db,
   invitationsTable,
@@ -13,24 +13,29 @@ import {
   ResendInvitationParams,
   ResendInvitationResponse,
 } from "@workspace/api-zod";
-import { requireAuth, canInvite, hasScopeOver } from "../middlewares/auth";
+import { requireAuth, requireRole, canInvite, hasScopeOver } from "../middlewares/auth";
 import { generateInvitationCode, getAppBaseUrl } from "../lib/auth";
 import { toInvitation } from "../lib/mappers";
+import { getActiveFamily } from "../lib/settings";
 
 const router: IRouter = Router();
 
-router.get("/invitations", requireAuth, async (req, res): Promise<void> => {
+router.get("/invitations", requireAuth, requireRole("superadmin", "coordinator", "department_head"), async (req, res): Promise<void> => {
   const query = ListInvitationsQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.message });
     return;
   }
 
-  const filters = [isNull(invitationsTable.deletedAt)];
+  const filters = [or(isNull(invitationsTable.deletedAt), eq(invitationsTable.status, "revoked"))!];
   if (req.user!.role !== "superadmin") {
     filters.push(eq(invitationsTable.invitedBy, req.user!.id));
   }
-  if (query.data.status) {
+  if (query.data.status === "expired") {
+    filters.push(eq(invitationsTable.status, "pending"), lte(invitationsTable.expiresAt, new Date()));
+  } else if (query.data.status === "pending") {
+    filters.push(eq(invitationsTable.status, "pending"), gt(invitationsTable.expiresAt, new Date()));
+  } else if (query.data.status) {
     filters.push(eq(invitationsTable.status, query.data.status));
   }
 
@@ -40,7 +45,10 @@ router.get("/invitations", requireAuth, async (req, res): Promise<void> => {
     .where(and(...filters))
     .orderBy(desc(invitationsTable.createdAt));
 
-  res.json(ListInvitationsResponse.parse(rows.map(toInvitation)));
+  res.json(ListInvitationsResponse.parse(rows.map((row) => ({
+    ...toInvitation(row),
+    status: row.status === "pending" && row.expiresAt <= new Date() ? "expired" : row.status,
+  }))));
 });
 
 router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
@@ -65,11 +73,28 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
   if (isSuper) {
     provinceId = parsed.data.provinceId ?? null;
     centerId = parsed.data.centerId ?? null;
+    if (centerId != null) {
+      const family = await getActiveFamily();
+      const [center] = await db.select().from(centersTable).where(and(
+        eq(centersTable.id, centerId), isNull(centersTable.deletedAt),
+        sql`${centersTable.families} @> ${JSON.stringify([family])}::jsonb`,
+      ));
+      if (!center) {
+        res.status(400).json({ message: "Centro no disponible" });
+        return;
+      }
+      provinceId = center.provinceId;
+    }
   } else if (inviter.role === "coordinator") {
     // Tenant boundary: province is forced to the coordinator's own province.
     provinceId = inviter.provinceId ?? null;
+    if (provinceId == null) {
+      res.status(403).json({ message: "Tu cuenta necesita una provincia asignada para crear invitaciones" });
+      return;
+    }
     // A center may be targeted but must belong to the coordinator's province.
     if (parsed.data.centerId != null) {
+      const family = await getActiveFamily();
       const [center] = await db
         .select()
         .from(centersTable)
@@ -77,6 +102,7 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
           and(
             eq(centersTable.id, parsed.data.centerId),
             isNull(centersTable.deletedAt),
+            sql`${centersTable.families} @> ${JSON.stringify([family])}::jsonb`,
           ),
         );
       if (!center || center.provinceId !== provinceId) {
@@ -91,6 +117,20 @@ router.post("/invitations", requireAuth, async (req, res): Promise<void> => {
     // department_head: scope is fully forced to the inviter's own center.
     provinceId = inviter.provinceId ?? null;
     centerId = inviter.centerId ?? null;
+    if (centerId == null) {
+      res.status(403).json({ message: "Tu cuenta necesita un centro asignado para crear invitaciones" });
+      return;
+    }
+    const family = await getActiveFamily();
+    const [center] = await db.select().from(centersTable).where(and(
+      eq(centersTable.id, centerId), isNull(centersTable.deletedAt),
+      sql`${centersTable.families} @> ${JSON.stringify([family])}::jsonb`,
+    ));
+    if (!center) {
+      res.status(403).json({ message: "Tu centro ya no está disponible para crear invitaciones" });
+      return;
+    }
+    provinceId = center.provinceId;
   }
 
   const code = generateInvitationCode();

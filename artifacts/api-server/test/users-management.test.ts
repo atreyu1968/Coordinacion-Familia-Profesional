@@ -30,6 +30,11 @@ describe("scoped user administration", () => {
     const reactivated = await request(app).post(`/api/users/${teacher.user.id}/reactivate`).set(headers);
     expect(reactivated.status).toBe(200);
     expect(reactivated.body.status).toBe("active");
+    const freshLogin = await request(app).post("/api/auth/login")
+      .send({ email: teacher.email, password: teacher.password });
+    expect(freshLogin.status).toBe(200);
+    expect(freshLogin.body.token).toBeTruthy();
+    expect((await request(app).get("/api/auth/me").set(authHeader(freshLogin.body.token))).status).toBe(200);
     const [stored] = await db.select().from(usersTable).where(eq(usersTable.id, teacher.user.id));
     expect(stored.deletedAt).toBeNull();
     // Reactivation must not resurrect bearer tokens from before deactivation.

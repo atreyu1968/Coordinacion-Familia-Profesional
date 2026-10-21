@@ -70,6 +70,7 @@ import {
   toCalendarEntry,
 } from "../lib/mappers";
 import { sendEmail, buildAccreditationEmail } from "../lib/email";
+import { escapeEmailHtml } from "../lib/email-layout";
 import { generateQrDataUrl, generateCertificatePdfBase64 } from "../lib/documents";
 import { getSettings, professionalFamilyOf } from "../lib/settings";
 import { notifyUsers, resolveProvinceAudience } from "../lib/notify";
@@ -917,9 +918,10 @@ router.post(
           to: attendee.email,
           subject: `Certificado de asistencia · ${loaded.event.name}`,
           html: `<div style="font-family: Arial, sans-serif; max-width:560px;margin:0 auto;">
-            <h2>Coordina ADG</h2>
-            <p>Hola ${attendee.fullName}, adjuntamos tu certificado de asistencia a
-            <strong>${loaded.event.name}</strong>.</p></div>`,
+            <h2>Tu certificado de asistencia</h2>
+            <p>Hola ${escapeEmailHtml(attendee.fullName)}, adjuntamos tu certificado de asistencia a
+            <strong>${escapeEmailHtml(loaded.event.name)}</strong>.</p>
+            <p>Encontrarás el documento PDF adjunto a este correo. Guárdalo para futuras consultas.</p></div>`,
           attachments: [
             {
               filename: `certificado-${loaded.event.id}.pdf`,

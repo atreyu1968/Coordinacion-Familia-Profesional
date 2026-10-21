@@ -47,6 +47,11 @@ import type {
   CheckInInput,
   CheckInResult,
   CollabStatus,
+  CollaborativeSpace,
+  CollaborativeSpaceCandidates,
+  CollaborativeSpaceDetail,
+  CollaborativeSpaceInfoInput,
+  CollaborativeSpaceMembersInput,
   CommitLmsScormSessionParams,
   CompanyAlert,
   CompanyAlertCreated,
@@ -57,6 +62,7 @@ import type {
   CreateCalendarEntryInput,
   CreateCenterInput,
   CreateChatGroupInput,
+  CreateCollaborativeSpaceInput,
   CreateCompanyAlertInput,
   CreateCycleInput,
   CreateDocumentFormInput,
@@ -13200,6 +13206,725 @@ export const useOpenModuleSpace = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getOpenModuleSpaceMutationOptions(options), queryClient);
+    }
+
+export const getListCollaborativeSpacesUrl = () => {
+
+
+
+
+  return `/api/collab/spaces`
+}
+
+/**
+ * @summary List independent spaces visible to the caller
+ */
+export const listCollaborativeSpaces = async ( options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpace[]> => {
+
+  return customFetch<CollaborativeSpace[]>(getListCollaborativeSpacesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCollaborativeSpacesQueryKey = () => {
+    return [
+    `/api/collab/spaces`
+    ] as const;
+    }
+
+
+export const getListCollaborativeSpacesQueryOptions = <TData = Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCollaborativeSpacesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCollaborativeSpaces>>> = ({ signal }) => listCollaborativeSpaces({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCollaborativeSpacesQueryResult = NonNullable<Awaited<ReturnType<typeof listCollaborativeSpaces>>>
+export type ListCollaborativeSpacesQueryError = ErrorType<void>
+
+
+export function useListCollaborativeSpaces<TData = Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCollaborativeSpaces>>,
+          TError,
+          Awaited<ReturnType<typeof listCollaborativeSpaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCollaborativeSpaces<TData = Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCollaborativeSpaces>>,
+          TError,
+          Awaited<ReturnType<typeof listCollaborativeSpaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCollaborativeSpaces<TData = Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List independent spaces visible to the caller
+ */
+
+export function useListCollaborativeSpaces<TData = Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCollaborativeSpaces>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCollaborativeSpacesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCollaborativeSpaceUrl = () => {
+
+
+
+
+  return `/api/collab/spaces`
+}
+
+/**
+ * @summary Administrator creates an independent space with optional initial members
+ */
+export const createCollaborativeSpace = async (createCollaborativeSpaceInput: CreateCollaborativeSpaceInput, options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CollaborativeSpace>(getCreateCollaborativeSpaceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createCollaborativeSpaceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCollaborativeSpaceMutationKey = () => ['createCollaborativeSpace'] as const;
+
+export const getCreateCollaborativeSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollaborativeSpace>>, TError,CreateCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCollaborativeSpace>>, TError,CreateCollaborativeSpaceMutationVariables, TContext> => {
+
+const mutationKey = getCreateCollaborativeSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCollaborativeSpace>>, CreateCollaborativeSpaceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCollaborativeSpace(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCollaborativeSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof createCollaborativeSpace>>>
+    export type CreateCollaborativeSpaceMutationBody = BodyType<CreateCollaborativeSpaceInput>
+    export type CreateCollaborativeSpaceMutationError = ErrorType<void>
+    export type CreateCollaborativeSpaceMutationVariables = {data: BodyType<CreateCollaborativeSpaceInput>}
+
+    /**
+ * @summary Administrator creates an independent space with optional initial members
+ */
+export const useCreateCollaborativeSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollaborativeSpace>>, TError,CreateCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCollaborativeSpace>>,
+        TError,
+        CreateCollaborativeSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCollaborativeSpaceMutationOptions(options), queryClient);
+    }
+
+export const getGetCollaborativeSpaceCandidatesUrl = () => {
+
+
+
+
+  return `/api/collab/candidates`
+}
+
+/**
+ * @summary Administrator-only active users and available centers for manual selection
+ */
+export const getCollaborativeSpaceCandidates = async ( options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpaceCandidates> => {
+
+  return customFetch<CollaborativeSpaceCandidates>(getGetCollaborativeSpaceCandidatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCollaborativeSpaceCandidatesQueryKey = () => {
+    return [
+    `/api/collab/candidates`
+    ] as const;
+    }
+
+
+export const getGetCollaborativeSpaceCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCollaborativeSpaceCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>> = ({ signal }) => getCollaborativeSpaceCandidates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCollaborativeSpaceCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>>
+export type GetCollaborativeSpaceCandidatesQueryError = ErrorType<void>
+
+
+export function useGetCollaborativeSpaceCandidates<TData = Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpaceCandidates<TData = Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpaceCandidates<TData = Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Administrator-only active users and available centers for manual selection
+ */
+
+export function useGetCollaborativeSpaceCandidates<TData = Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceCandidates>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCollaborativeSpaceCandidatesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCollaborativeSpaceUrl = (id: number,) => {
+
+
+
+
+  return `/api/collab/spaces/${id}`
+}
+
+/**
+ * @summary Administrator reads a space and its membership
+ */
+export const getCollaborativeSpace = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpaceDetail> => {
+
+  return customFetch<CollaborativeSpaceDetail>(getGetCollaborativeSpaceUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCollaborativeSpaceQueryKey = (id: number,) => {
+    return [
+    `/api/collab/spaces/${id}`
+    ] as const;
+    }
+
+
+export const getGetCollaborativeSpaceQueryOptions = <TData = Awaited<ReturnType<typeof getCollaborativeSpace>>, TError = ErrorType<void>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCollaborativeSpaceQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCollaborativeSpace>>> = ({ signal }) => getCollaborativeSpace(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCollaborativeSpaceQueryResult = NonNullable<Awaited<ReturnType<typeof getCollaborativeSpace>>>
+export type GetCollaborativeSpaceQueryError = ErrorType<void>
+
+
+export function useGetCollaborativeSpace<TData = Awaited<ReturnType<typeof getCollaborativeSpace>>, TError = ErrorType<void>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpace>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpace<TData = Awaited<ReturnType<typeof getCollaborativeSpace>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpace>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpace<TData = Awaited<ReturnType<typeof getCollaborativeSpace>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Administrator reads a space and its membership
+ */
+
+export function useGetCollaborativeSpace<TData = Awaited<ReturnType<typeof getCollaborativeSpace>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCollaborativeSpaceQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCollaborativeSpaceUrl = (id: number,) => {
+
+
+
+
+  return `/api/collab/spaces/${id}`
+}
+
+/**
+ * @summary Administrator edits the name and description without moving files
+ */
+export const updateCollaborativeSpace = async (id: number,
+    collaborativeSpaceInfoInput: CollaborativeSpaceInfoInput, options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CollaborativeSpace>(getUpdateCollaborativeSpaceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(collaborativeSpaceInfoInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCollaborativeSpaceMutationKey = () => ['updateCollaborativeSpace'] as const;
+
+export const getUpdateCollaborativeSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollaborativeSpace>>, TError,UpdateCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCollaborativeSpace>>, TError,UpdateCollaborativeSpaceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCollaborativeSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCollaborativeSpace>>, UpdateCollaborativeSpaceMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCollaborativeSpace(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCollaborativeSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof updateCollaborativeSpace>>>
+    export type UpdateCollaborativeSpaceMutationBody = BodyType<CollaborativeSpaceInfoInput>
+    export type UpdateCollaborativeSpaceMutationError = ErrorType<void>
+    export type UpdateCollaborativeSpaceMutationVariables = {id: number;data: BodyType<CollaborativeSpaceInfoInput>}
+
+    /**
+ * @summary Administrator edits the name and description without moving files
+ */
+export const useUpdateCollaborativeSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollaborativeSpace>>, TError,UpdateCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCollaborativeSpace>>,
+        TError,
+        UpdateCollaborativeSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCollaborativeSpaceMutationOptions(options), queryClient);
+    }
+
+export const getAddCollaborativeSpaceMembersUrl = (id: number,) => {
+
+
+
+
+  return `/api/collab/spaces/${id}/members`
+}
+
+/**
+ * @summary Add selected users and current active users of selected centers, without duplicates
+ */
+export const addCollaborativeSpaceMembers = async (id: number,
+    collaborativeSpaceMembersInput: CollaborativeSpaceMembersInput, options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CollaborativeSpace>(getAddCollaborativeSpaceMembersUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(collaborativeSpaceMembersInput)
+  }
+);}
+
+
+
+
+
+export const getAddCollaborativeSpaceMembersMutationKey = () => ['addCollaborativeSpaceMembers'] as const;
+
+export const getAddCollaborativeSpaceMembersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>, TError,AddCollaborativeSpaceMembersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>, TError,AddCollaborativeSpaceMembersMutationVariables, TContext> => {
+
+const mutationKey = getAddCollaborativeSpaceMembersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>, AddCollaborativeSpaceMembersMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addCollaborativeSpaceMembers(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddCollaborativeSpaceMembersMutationResult = NonNullable<Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>>
+    export type AddCollaborativeSpaceMembersMutationBody = BodyType<CollaborativeSpaceMembersInput>
+    export type AddCollaborativeSpaceMembersMutationError = ErrorType<void>
+    export type AddCollaborativeSpaceMembersMutationVariables = {id: number;data: BodyType<CollaborativeSpaceMembersInput>}
+
+    /**
+ * @summary Add selected users and current active users of selected centers, without duplicates
+ */
+export const useAddCollaborativeSpaceMembers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>, TError,AddCollaborativeSpaceMembersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addCollaborativeSpaceMembers>>,
+        TError,
+        AddCollaborativeSpaceMembersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddCollaborativeSpaceMembersMutationOptions(options), queryClient);
+    }
+
+export const getRemoveCollaborativeSpaceMemberUrl = (id: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/collab/spaces/${id}/members/${userId}`
+}
+
+/**
+ * @summary Remove a member without deleting their account or files
+ */
+export const removeCollaborativeSpaceMember = async (id: number,
+    userId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRemoveCollaborativeSpaceMemberUrl(id,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveCollaborativeSpaceMemberMutationKey = () => ['removeCollaborativeSpaceMember'] as const;
+
+export const getRemoveCollaborativeSpaceMemberMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>, TError,RemoveCollaborativeSpaceMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>, TError,RemoveCollaborativeSpaceMemberMutationVariables, TContext> => {
+
+const mutationKey = getRemoveCollaborativeSpaceMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>, RemoveCollaborativeSpaceMemberMutationVariables> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  removeCollaborativeSpaceMember(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveCollaborativeSpaceMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>>
+
+    export type RemoveCollaborativeSpaceMemberMutationError = ErrorType<void>
+    export type RemoveCollaborativeSpaceMemberMutationVariables = {id: number;userId: number}
+
+    /**
+ * @summary Remove a member without deleting their account or files
+ */
+export const useRemoveCollaborativeSpaceMember = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>, TError,RemoveCollaborativeSpaceMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeCollaborativeSpaceMember>>,
+        TError,
+        RemoveCollaborativeSpaceMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveCollaborativeSpaceMemberMutationOptions(options), queryClient);
+    }
+
+export const getOpenCollaborativeSpaceUrl = (id: number,) => {
+
+
+
+
+  return `/api/collab/spaces/${id}/open`
+}
+
+/**
+ * @summary Open an independent space as administrator or explicit member
+ */
+export const openCollaborativeSpace = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ModuleSpaceAccess> => {
+
+  return customFetch<ModuleSpaceAccess>(getOpenCollaborativeSpaceUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getOpenCollaborativeSpaceMutationKey = () => ['openCollaborativeSpace'] as const;
+
+export const getOpenCollaborativeSpaceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openCollaborativeSpace>>, TError,OpenCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof openCollaborativeSpace>>, TError,OpenCollaborativeSpaceMutationVariables, TContext> => {
+
+const mutationKey = getOpenCollaborativeSpaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof openCollaborativeSpace>>, OpenCollaborativeSpaceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  openCollaborativeSpace(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OpenCollaborativeSpaceMutationResult = NonNullable<Awaited<ReturnType<typeof openCollaborativeSpace>>>
+
+    export type OpenCollaborativeSpaceMutationError = ErrorType<void>
+    export type OpenCollaborativeSpaceMutationVariables = {id: number}
+
+    /**
+ * @summary Open an independent space as administrator or explicit member
+ */
+export const useOpenCollaborativeSpace = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof openCollaborativeSpace>>, TError,OpenCollaborativeSpaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof openCollaborativeSpace>>,
+        TError,
+        OpenCollaborativeSpaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getOpenCollaborativeSpaceMutationOptions(options), queryClient);
     }
 
 export const getListWikiPagesUrl = (params?: ListWikiPagesParams,) => {

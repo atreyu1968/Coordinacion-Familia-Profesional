@@ -78,6 +78,7 @@ import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
 import { sendPushToUsers } from "../lib/push";
 import { buildChatPushPayload } from "../lib/chatPushPayload";
 import { sendEmail } from "../lib/email";
+import { escapeEmailHtml } from "../lib/email-layout";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -1518,7 +1519,7 @@ router.post(
             ),
           );
         if (recipients.length > 0) {
-          const html = `<h2>${created.title}</h2><p>${created.body.replace(/\n/g, "<br/>")}</p><p style="color:#666">— ${caller.name}, Coordina ADG</p>`;
+          const html = `<h2>${escapeEmailHtml(created.title)}</h2><p>${escapeEmailHtml(created.body).replace(/\n/g, "<br/>")}</p><p style="color:#64748b">Publicado por ${escapeEmailHtml(caller.name)}.</p><p>Consulta el tablón de la aplicación para ver el aviso y sus archivos adjuntos.</p>`;
           const results = await Promise.allSettled(
             recipients.map((r) =>
               sendEmail({ to: r.email, subject: created.title, html }),

@@ -12,6 +12,7 @@
 - [Announcements audience + attachments](announcements-audience.md) — Tablón uses shared audience model (not legacy provinceId) + ACL-bound downloadable attachments; backfill or province rows leak.
 - [Module membership & meeting access authz](module-membership-authz.md) — module coordinator can manage roster but not designate; /meetings/token must gate by roomName (IDOR).
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500, not OCS 102; guard before re-provision.
+- [Independent collaborative spaces](independent-collaborative-spaces.md) — manual enrollment, stable remote folders and confirmed revocation without deleting accounts or files.
 - [Black Nextcloud iframe on self-host](nextcloud-iframe-sso-https.md) — usually Mixed Content; fix overwriteprotocol+PUBLIC_APP_URL; DB nextcloud_url overrides env.
 - [Backup & restore (server migration)](backup-restore-migration.md) — fail-closed DB restore needs matching external object bytes and fresh session IDs.
 - [SCORM certificate policy](scorm-certificate-policy.md) — browser CMI is self-reported; no automatic academic certificate without trusted verification.

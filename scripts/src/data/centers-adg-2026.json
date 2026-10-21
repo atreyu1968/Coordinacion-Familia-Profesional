@@ -2,6 +2,11 @@
   "family": "Administración y Gestión",
   "updatedAt": "2026-10-21",
   "columns": ["code", "name", "phone"],
+  "withdrawnFromFamily": [
+    "38002065", "35004130", "38011583", "35006187",
+    "38005789", "35001748", "38011339", "35010129",
+    "35008391", "38011303", "35006370", "38011546"
+  ],
   "centers": [
     ["35002923", "IES ISABEL DE ESPAÑA", "928 479 632"],
     ["35002972", "IES ALONSO QUESADA", "928 599 260"],

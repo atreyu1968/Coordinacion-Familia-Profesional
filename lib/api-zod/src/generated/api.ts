@@ -3106,6 +3106,198 @@ export const OpenModuleSpaceResponse = zod.object({
 
 
 /**
+ * @summary List independent spaces visible to the caller
+ */
+export const ListCollaborativeSpacesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "memberCount": zod.number().int(),
+  "canManage": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCollaborativeSpacesResponse = zod.array(ListCollaborativeSpacesResponseItem)
+
+
+/**
+ * @summary Administrator creates an independent space with optional initial members
+ */
+export const createCollaborativeSpaceBodyOneNameMax = 160;
+
+export const createCollaborativeSpaceBodyOneDescriptionMax = 2000;
+
+
+export const createCollaborativeSpaceBodyTwoUserIdsMax = 1000;
+
+
+export const createCollaborativeSpaceBodyTwoCenterIdsMax = 200;
+
+
+
+export const CreateCollaborativeSpaceBody = zod.object({
+  "name": zod.string().min(1).max(createCollaborativeSpaceBodyOneNameMax),
+  "description": zod.string().max(createCollaborativeSpaceBodyOneDescriptionMax).optional()
+}).and(zod.object({
+  "userIds": zod.array(zod.number().int().min(1)).max(createCollaborativeSpaceBodyTwoUserIdsMax).optional(),
+  "centerIds": zod.array(zod.number().int().min(1)).max(createCollaborativeSpaceBodyTwoCenterIdsMax).optional()
+}))
+
+export const CreateCollaborativeSpaceResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "memberCount": zod.number().int(),
+  "canManage": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Administrator-only active users and available centers for manual selection
+ */
+export const GetCollaborativeSpaceCandidatesResponse = zod.object({
+  "users": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "status": zod.string(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string().nullable()
+})),
+  "centers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}))
+})
+
+
+/**
+ * @summary Administrator reads a space and its membership
+ */
+
+
+
+export const GetCollaborativeSpaceParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const GetCollaborativeSpaceResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "memberCount": zod.number().int(),
+  "canManage": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "status": zod.string(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string().nullable()
+}))
+}))
+
+
+/**
+ * @summary Administrator edits the name and description without moving files
+ */
+
+
+
+export const UpdateCollaborativeSpaceParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateCollaborativeSpaceBodyNameMax = 160;
+
+export const updateCollaborativeSpaceBodyDescriptionMax = 2000;
+
+
+
+export const UpdateCollaborativeSpaceBody = zod.object({
+  "name": zod.string().min(1).max(updateCollaborativeSpaceBodyNameMax),
+  "description": zod.string().max(updateCollaborativeSpaceBodyDescriptionMax).optional()
+})
+
+export const UpdateCollaborativeSpaceResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "memberCount": zod.number().int(),
+  "canManage": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Add selected users and current active users of selected centers, without duplicates
+ */
+
+
+
+export const AddCollaborativeSpaceMembersParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+export const addCollaborativeSpaceMembersBodyUserIdsMax = 1000;
+
+
+export const addCollaborativeSpaceMembersBodyCenterIdsMax = 200;
+
+
+
+export const AddCollaborativeSpaceMembersBody = zod.object({
+  "userIds": zod.array(zod.number().int().min(1)).max(addCollaborativeSpaceMembersBodyUserIdsMax).optional(),
+  "centerIds": zod.array(zod.number().int().min(1)).max(addCollaborativeSpaceMembersBodyCenterIdsMax).optional()
+})
+
+export const AddCollaborativeSpaceMembersResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "memberCount": zod.number().int(),
+  "canManage": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a member without deleting their account or files
+ */
+
+
+
+
+export const RemoveCollaborativeSpaceMemberParams = zod.object({
+  "id": zod.coerce.number().int().min(1),
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const RemoveCollaborativeSpaceMemberResponse = zod.void()
+
+
+/**
+ * @summary Open an independent space as administrator or explicit member
+ */
+
+
+
+export const OpenCollaborativeSpaceParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const OpenCollaborativeSpaceResponse = zod.object({
+  "url": zod.string().describe('Single-use URL that establishes SSO and opens the module space.'),
+  "nextcloudUrl": zod.string()
+})
+
+
+/**
  * @summary Search and filter authenticated wiki pages
  */
 export const ListWikiPagesQueryParams = zod.object({

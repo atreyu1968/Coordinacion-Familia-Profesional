@@ -3,7 +3,9 @@ import {
   useListModules,
   useGetCollabStatus,
   useOpenModuleSpace,
+  useOpenCollaborativeSpace,
   type Module,
+  type CollaborativeSpace,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useModuleParam } from "@/lib/use-module-param";
@@ -20,6 +22,7 @@ import {
   Search,
 } from "lucide-react";
 import { Link } from "wouter";
+import { IndependentSpacesSection } from "@/components/collab/independent-spaces-section";
 
 // ---------------------------------------------------------------------------
 // Fullscreen Nextcloud/Collabora space overlay (same pattern as the
@@ -74,13 +77,14 @@ export default function EspacioColaborativoPage() {
   const { data: status, isLoading: statusLoading } = useGetCollabStatus();
   const { data: modules = [], isLoading: modulesLoading } = useListModules();
   const openMut = useOpenModuleSpace();
+  const openSpaceMut = useOpenCollaborativeSpace();
 
   const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<{
     title: string;
     url: string;
-    moduleId: Module["id"];
+    target: { kind: "module"; moduleId: Module["id"] } | { kind: "space"; spaceId: number };
   } | null>(null);
   const [didAutoOpen, setDidAutoOpen] = useState(false);
 
@@ -98,7 +102,7 @@ export default function EspacioColaborativoPage() {
     try {
       const access = await openMut.mutateAsync({ moduleId: module.id });
       const label = module.code ? `${module.code} · ${module.name}` : module.name;
-      setActive({ title: label, url: access.url, moduleId: module.id });
+      setActive({ title: label, url: access.url, target: { kind: "module", moduleId: module.id } });
     } catch (err) {
       // Surface the server's specific message (e.g. "Espacio colaborativo no
       // configurado", "No se pudo preparar el espacio colaborativo") instead of a
@@ -113,6 +117,26 @@ export default function EspacioColaborativoPage() {
           typeof serverMessage === "string" && serverMessage.trim()
             ? serverMessage
             : "Comprueba que tienes acceso al módulo y que el espacio colaborativo está configurado.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onOpenSpace = async (space: CollaborativeSpace) => {
+    try {
+      const access = await openSpaceMut.mutateAsync({ id: space.id });
+      setActive({ title: space.name, url: access.url, target: { kind: "space", spaceId: space.id } });
+    } catch (err) {
+      const serverMessage =
+        err && typeof err === "object" && "data" in err
+          ? (err as { data?: { message?: unknown } }).data?.message
+          : undefined;
+      toast({
+        title: "No se pudo abrir el espacio",
+        description:
+          typeof serverMessage === "string" && serverMessage.trim()
+            ? serverMessage
+            : "Comprueba que sigues siendo miembro y que el espacio colaborativo está configurado.",
         variant: "destructive",
       });
     }
@@ -134,7 +158,11 @@ export default function EspacioColaborativoPage() {
     if (!active) return;
     const win = window.open("", "_blank");
     try {
-      const access = await openMut.mutateAsync({ moduleId: active.moduleId });
+      const t = active.target;
+      const access =
+        t.kind === "module"
+          ? await openMut.mutateAsync({ moduleId: t.moduleId })
+          : await openSpaceMut.mutateAsync({ id: t.spaceId });
       if (win) win.location.href = access.url;
       else window.open(access.url, "_blank", "noreferrer");
     } catch {
@@ -237,6 +265,13 @@ export default function EspacioColaborativoPage() {
           </CardContent>
         </Card>
       )}
+
+      <IndependentSpacesSection
+        isAdmin={user?.role === "superadmin"}
+        configured={!statusLoading && !!status?.configured}
+        opening={openSpaceMut.isPending}
+        onOpen={(s) => void onOpenSpace(s)}
+      />
 
       {active && (
         <SpaceOverlay

@@ -12,6 +12,7 @@ export * from "./modules";
 export * from "./learningOutcomes";
 export * from "./moduleMemberships";
 export * from "./groups";
+export * from "./collaborativeSpaces";
 export * from "./teachingAssignments";
 export * from "./academicYears";
 export * from "./teacherYearConfirmations";

@@ -12,6 +12,11 @@ shared link for mass email. A shared link has no representative recipient email.
 
 ## Rules that must hold
 
+- **No pedir la provincia al generar códigos de invitación.**
+  **Why:** el usuario lo ha pedido expresamente.
+  **How to apply:** mantener la generación sin selector de provincia; no confundir
+  esa simplificación con una autorización para ampliar el ámbito de quien invita.
+
 - **Renew/resend** must reject `used` and `revoked` invitations; only `pending`
   (including expired-but-pending) may have its expiry extended. Guard the update itself,
   not just a prior read.

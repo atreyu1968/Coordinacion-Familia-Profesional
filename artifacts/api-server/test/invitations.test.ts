@@ -4,7 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db, invitationsTable, usersTable } from "@workspace/db";
 import app from "../src/app";
 import { generateInvitationCode } from "../src/lib/auth";
-import { authHeader, cleanup, createUser, DEFAULT_PASSWORD } from "./helpers";
+import { authHeader, cleanup, createUser, createCenter, createProvince, DEFAULT_PASSWORD } from "./helpers";
 
 const invitationIds: number[] = [];
 const registeredUserIds: number[] = [];
@@ -42,6 +42,70 @@ async function register(code: string) {
 }
 
 describe("shared invitation registration limits", () => {
+  it("creates a general code without province and derives province when targeting a center", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const province = await createProvince();
+    const center = await createCenter(province);
+    const general = await request(app).post("/api/invitations").set(authHeader(admin.token))
+      .send({ role: "teacher", maxUses: 2 });
+    expect(general.status).toBe(201);
+    invitationIds.push(general.body.invitation.id);
+    expect(general.body.invitation).toMatchObject({ provinceId: null, centerId: null });
+    const targeted = await request(app).post("/api/invitations").set(authHeader(admin.token))
+      .send({ role: "teacher", centerId: center });
+    expect(targeted.status).toBe(201);
+    invitationIds.push(targeted.body.invitation.id);
+    expect(targeted.body.invitation).toMatchObject({ provinceId: province, centerId: center });
+    const invalid = await request(app).post("/api/invitations").set(authHeader(admin.token))
+      .send({ role: "teacher", centerId: 2147483647 });
+    expect(invalid.status).toBe(400);
+  });
+
+  it("keeps coordinator and department-head scopes without requesting province", async () => {
+    const province = await createProvince();
+    const center = await createCenter(province);
+    const otherProvince = await createProvince();
+    const otherCenter = await createCenter(otherProvince);
+    const coordinator = await createUser({ role: "coordinator", provinceId: province });
+    const created = await request(app).post("/api/invitations").set(authHeader(coordinator.token))
+      .send({ role: "department_head", centerId: center });
+    expect(created.status).toBe(201);
+    invitationIds.push(created.body.invitation.id);
+    expect(created.body.invitation.provinceId).toBe(province);
+    expect((await request(app).post("/api/invitations").set(authHeader(coordinator.token))
+      .send({ role: "department_head", centerId: otherCenter })).status).toBe(403);
+    const head = await createUser({ role: "department_head", provinceId: province, centerId: center });
+    const teacher = await request(app).post("/api/invitations").set(authHeader(head.token))
+      .send({ role: "teacher", centerId: otherCenter, provinceId: otherProvince });
+    expect(teacher.status).toBe(201);
+    invitationIds.push(teacher.body.invitation.id);
+    expect(teacher.body.invitation).toMatchObject({ provinceId: province, centerId: center });
+    const unassigned = await createUser({ role: "coordinator" });
+    expect((await request(app).post("/api/invitations").set(authHeader(unassigned.token))
+      .send({ role: "department_head" })).status).toBe(403);
+  });
+
+  it("lists revoked history and expired codes, renews expiry, and prevents unauthorized management", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const expired = await seedInvitation(2);
+    await db.update(invitationsTable).set({ expiresAt: new Date(Date.now() - 60_000), invitedBy: admin.user.id })
+      .where(eq(invitationsTable.id, expired.id));
+    const before = await request(app).get("/api/invitations?status=expired").set(authHeader(admin.token));
+    expect(before.status).toBe(200);
+    expect(before.body.find((i: { id: number }) => i.id === expired.id)?.status).toBe("expired");
+    const teacher = await createUser({ role: "teacher" });
+    expect((await request(app).get("/api/invitations").set(authHeader(teacher.token))).status).toBe(403);
+    expect((await request(app).post(`/api/invitations/${expired.id}/resend`).set(authHeader(teacher.token))).status).toBe(403);
+    expect((await request(app).post(`/api/invitations/${expired.id}/resend`).set(authHeader(admin.token))).status).toBe(200);
+    const pending = await request(app).get("/api/invitations?status=pending").set(authHeader(admin.token));
+    expect(pending.body.some((i: { id: number }) => i.id === expired.id)).toBe(true);
+    expect((await request(app).delete(`/api/invitations/${expired.id}`).set(authHeader(admin.token))).status).toBe(204);
+    const history = await request(app).get("/api/invitations?status=revoked").set(authHeader(admin.token));
+    expect(history.body.find((i: { id: number }) => i.id === expired.id)?.status).toBe("revoked");
+    expect((await request(app).post(`/api/invitations/${expired.id}/resend`).set(authHeader(admin.token))).status).toBe(404);
+    expect((await request(app).get(`/api/auth/invitations/${expired.code}`)).status).toBe(404);
+  });
+
   it("rejects missing, refused, or outdated legal acknowledgments without using the invitation", async () => {
     const invitation = await seedInvitation(1);
     const base = { token: invitation.code, email: "legal-test@example.test", password: DEFAULT_PASSWORD };

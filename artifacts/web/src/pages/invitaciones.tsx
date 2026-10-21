@@ -5,7 +5,6 @@ import {
   useCreateInvitation,
   useRevokeInvitation,
   useResendInvitation,
-  useListProvinces,
   useListCenters,
   getListInvitationsQueryKey,
   type ListInvitationsParams,
@@ -81,7 +80,6 @@ function inviteRoleOptions(callerRole: string | undefined): Role[] {
 
 interface FormState {
   role: Role;
-  provinceId: number | null;
   centerId: number | null;
   expiresInHours: string;
   maxUses: string;
@@ -91,13 +89,11 @@ interface FormState {
 function CreateInvitationDialog() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const isSuperadmin = user?.role === "superadmin";
   const roleOptions = inviteRoleOptions(user?.role);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>({
     role: roleOptions[0],
-    provinceId: user?.provinceId ?? null,
     centerId: null,
     expiresInHours: "168",
     maxUses: "1",
@@ -106,7 +102,6 @@ function CreateInvitationDialog() {
   const [error, setError] = useState<string | null>(null);
 
   const createMut = useCreateInvitation();
-  const { data: provinces = [] } = useListProvinces();
   const { data: centers = [] } = useListCenters();
 
   const set = (patch: Partial<FormState>) =>
@@ -115,7 +110,6 @@ function CreateInvitationDialog() {
   const reset = () =>
     setForm({
       role: roleOptions[0],
-      provinceId: user?.provinceId ?? null,
       centerId: null,
       expiresInHours: "168",
       maxUses: "1",
@@ -132,8 +126,7 @@ function CreateInvitationDialog() {
     }
     const payload: CreateInvitationInput = {
       role: form.role,
-      provinceId: form.provinceId,
-      centerId: form.centerId,
+      centerId: user?.role === "department_head" ? user.centerId : form.centerId,
       expiresInHours: form.expiresInHours.trim()
         ? Number(form.expiresInHours)
         : undefined,
@@ -165,11 +158,16 @@ function CreateInvitationDialog() {
   };
 
   const centerOptions = centers.filter(
-    (c) => form.provinceId == null || c.provinceId === form.provinceId,
+    (c) => user?.role === "superadmin" ||
+      (user?.role === "department_head" ? c.id === user.centerId :
+        user?.provinceId != null && c.provinceId === user.provinceId),
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => {
+      if (next) { reset(); setError(null); }
+      setOpen(next);
+    }}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
@@ -249,33 +247,7 @@ function CreateInvitationDialog() {
             </p>
           </div>
 
-          {isSuperadmin && (
-            <div className="space-y-2">
-              <Label>Provincia</Label>
-              <Select
-                value={form.provinceId ? String(form.provinceId) : NONE}
-                onValueChange={(v) =>
-                  set({
-                    provinceId: v === NONE ? null : Number(v),
-                    centerId: null,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {provinces.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
+          {user?.role !== "department_head" && (
           <div className="space-y-2">
             <Label>Centro (opcional)</Label>
             <Select
@@ -297,6 +269,13 @@ function CreateInvitationDialog() {
               </SelectContent>
             </Select>
           </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            No es necesario indicar una provincia. El ámbito se obtiene del
+            centro seleccionado o de tus permisos. Los códigos generales no
+            asignan una provincia; el ámbito de los roles de gestión se puede
+            completar desde Usuarios.
+          </p>
 
           {error && (
             <p className="text-sm font-medium text-destructive">{error}</p>
@@ -323,11 +302,16 @@ export default function InvitacionesPage() {
   );
 
   const [status, setStatus] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [revoking, setRevoking] = useState<{ id: number; code: string } | null>(null);
 
   const params: ListInvitationsParams = {};
   if (status != null) params.status = status;
 
-  const { data: invitations = [], isLoading } = useListInvitations(params);
+  const { data: invitations = [], isLoading, isError, refetch } = useListInvitations(params, {
+    query: { queryKey: getListInvitationsQueryKey(params), enabled: canManage, refetchInterval: 30_000 },
+  });
+  const visibleInvitations = invitations.filter((inv) => inv.code.toLowerCase().includes(search.trim().toLowerCase()));
   const revokeMut = useRevokeInvitation();
   const resendMut = useResendInvitation();
 
@@ -335,6 +319,7 @@ export default function InvitacionesPage() {
     try {
       await revokeMut.mutateAsync({ id });
       await qc.invalidateQueries({ queryKey: getListInvitationsQueryKey() });
+      setRevoking(null);
       toast({ title: "Invitación revocada", description: code });
     } catch {
       toast({
@@ -417,6 +402,7 @@ export default function InvitacionesPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Input aria-label="Buscar código de invitación" placeholder="Buscar código de invitación…" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select
           value={status ?? ALL}
           onValueChange={(v) => setStatus(v === ALL ? null : v)}
@@ -438,8 +424,14 @@ export default function InvitacionesPage() {
       <p className="text-sm text-muted-foreground">
         {isLoading
           ? "Cargando invitaciones..."
-          : `${invitations.length} ${invitations.length === 1 ? "invitación" : "invitaciones"}`}
+          : `${visibleInvitations.length} ${visibleInvitations.length === 1 ? "invitación" : "invitaciones"}`}
       </p>
+      {isError && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+          No se han podido cargar las invitaciones.
+          <Button variant="outline" onClick={() => void refetch()}>Reintentar</Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -457,7 +449,7 @@ export default function InvitacionesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!isLoading && invitations.length === 0 && (
+              {!isLoading && !isError && visibleInvitations.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={canManage ? 6 : 5}
@@ -467,8 +459,8 @@ export default function InvitacionesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {invitations.map((inv) => {
-                const isPending = inv.status === "pending";
+              {visibleInvitations.map((inv) => {
+                const isAvailable = ["pending", "expired"].includes(inv.status) && inviteRoleOptions(user?.role).includes(inv.role);
                 return (
                   <TableRow key={inv.id}>
                     <TableCell className="font-medium">
@@ -498,12 +490,13 @@ export default function InvitacionesPage() {
                     </TableCell>
                     {canManage && (
                       <TableCell className="text-right">
-                        {isPending && (
+                        {isAvailable && (
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               className="gap-1.5"
+                              disabled={inv.status === "expired"}
                               onClick={() => onCopyLink(inv.code)}
                             >
                               <Copy className="h-4 w-4" />
@@ -524,7 +517,7 @@ export default function InvitacionesPage() {
                               size="sm"
                               className="gap-1.5 text-destructive hover:text-destructive"
                               disabled={revokeMut.isPending}
-                              onClick={() => onRevoke(inv.id, inv.code)}
+                              onClick={() => setRevoking({ id: inv.id, code: inv.code })}
                             >
                               <Ban className="h-4 w-4" />
                               Revocar
@@ -540,6 +533,23 @@ export default function InvitacionesPage() {
           </Table>
         </CardContent>
       </Card>
+      <Dialog open={revoking !== null} onOpenChange={(next) => { if (!next && !revokeMut.isPending) setRevoking(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revocar código de invitación</DialogTitle>
+            <DialogDescription>
+              El código {revoking?.code} dejará de permitir registros. Las cuentas
+              que ya se hayan creado se conservarán. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" disabled={revokeMut.isPending} onClick={() => setRevoking(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={revokeMut.isPending} onClick={() => revoking && void onRevoke(revoking.id, revoking.code)}>
+              {revokeMut.isPending ? "Revocando…" : "Revocar código"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

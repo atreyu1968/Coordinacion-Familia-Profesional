@@ -22,6 +22,9 @@
 # Non-interactive: pass just the main domain, e.g.
 #   sudo APP_DOMAIN=adg.example.org \
 #        bash deploy/nextcloud/install-collab.sh
+# Existing healthy installations are left untouched. Repairs/major upgrades
+# require confirmation (default NO). For explicit unattended approval only,
+# set COLLAB_APPROVE_UPDATE=yes. Back up the database and files first.
 # ===========================================================================
 set -euo pipefail
 
@@ -55,6 +58,12 @@ main_env_get() { [[ -f "${APP_DIR}/.env" ]] || return 0; grep "^$1=" "${APP_DIR}
 # Extract the bare host from a URL (drop scheme and any path).
 url_host() { printf '%s' "$1" | sed -E 's#^https?://##; s#/.*$##'; }
 rand() { openssl rand -hex 16; }
+
+# Inspect before enabling Docker, generating secrets, writing .env/nginx,
+# downloading images or restarting anything.
+source "${SCRIPT_DIR}/preflight.sh"
+collab_preflight
+if [[ "${COLLAB_SKIP}" == 1 ]]; then exit 0; fi
 
 # --- Docker (install once) -------------------------------------------------
 log "Ensuring Docker is installed"
@@ -116,6 +125,10 @@ log "Writing ${ENV_FILE}"
 umask 077
 cat > "${ENV_FILE}" <<EOF
 APP_DOMAIN=${APP_DOMAIN}
+NEXTCLOUD_IMAGE=${NEXTCLOUD_IMAGE:-nextcloud:30-apache}
+NEXTCLOUD_DB_IMAGE=${NEXTCLOUD_DB_IMAGE:-postgres:16-alpine}
+NEXTCLOUD_REDIS_IMAGE=${NEXTCLOUD_REDIS_IMAGE:-redis:7-alpine}
+COLLABORA_IMAGE=${COLLABORA_IMAGE:-collabora/code:latest}
 NEXTCLOUD_PORT=${NEXTCLOUD_PORT}
 COLLABORA_PORT=${COLLABORA_PORT}
 NEXTCLOUD_DB_NAME=${NEXTCLOUD_DB_NAME}
@@ -132,7 +145,19 @@ umask 022
 
 # --- Bring up the stack ----------------------------------------------------
 log "Starting Nextcloud + Collabora (docker compose up -d)"
-( cd "${SCRIPT_DIR}" && docker compose pull && docker compose up -d )
+(
+  cd "${SCRIPT_DIR}"
+  if [[ "${COLLAB_EXISTING}" == 1 ]]; then
+    if [[ -n "${COLLAB_PULL_SERVICES}" ]]; then
+      read -r -a pull_services <<< "${COLLAB_PULL_SERVICES}"
+      docker compose pull "${pull_services[@]}"
+    fi
+    docker compose up -d --pull never
+  else
+    docker compose pull
+    docker compose up -d
+  fi
+)
 
 # Wait for Nextcloud to finish first-run installation.
 log "Waiting for Nextcloud to become ready"
@@ -158,6 +183,11 @@ occ config:system:set overwritewebroot --value="/nextcloud" >/dev/null || true
 occ config:system:set overwrite.cli.url --value="${NEXTCLOUD_URL_PUBLIC}" >/dev/null || true
 occ config:system:set trusted_proxies 0 --value="127.0.0.1" >/dev/null || true
 occ app:install groupfolders >/dev/null 2>&1 || true
+if [[ "${COLLAB_EXISTING}" == 1 && "${COLLAB_PULL_SERVICES}" == *nextcloud* ]]; then
+  for app in groupfolders user_oidc richdocuments; do
+    occ app:update "${app}" >/dev/null 2>&1 || note "No se pudo actualizar ${app}; se comprobará al terminar."
+  done
+fi
 occ app:enable  groupfolders >/dev/null 2>&1 || true
 occ app:install user_oidc    >/dev/null 2>&1 || true
 occ app:enable  user_oidc    >/dev/null 2>&1 || true
@@ -311,6 +341,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+if command -v python3 >/dev/null 2>&1; then
+  log "Comprobando el resultado de Nextcloud y Collabora"
+  if ! result="$(python3 "${SCRIPT_DIR}/preflight.py" --directory "${SCRIPT_DIR}" --domain "${APP_DOMAIN}" --no-updates)"; then
+    echo "No se pudo validar el resultado. Revisa los servicios; no se han eliminado volúmenes." >&2
+    exit 1
+  fi
+  if ! python3 -c '
+import json,sys
+r=json.load(sys.stdin)
+for issue in r["issues"]: print("  - "+issue)
+sys.exit(0 if r["healthy"] else 1)
+' <<< "${result}"; then
+    echo "La instalación no ha superado todas las comprobaciones. No se indicará que funciona correctamente." >&2
+    exit 1
+  fi
+fi
 if [[ "${INTEGRATED}" -eq 1 ]]; then
   log "Done! The collaborative space is installed and integrated automatically."
   note "No manual step needed. For reference (also in ${ENV_FILE}, root-only):"

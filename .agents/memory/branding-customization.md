@@ -25,3 +25,16 @@ validation is required so a bad/legacy DB value can never be exposed either.
 **How to apply:** guard with `^/objects/uploads/[A-Za-z0-9._-]+$`. Upload ids are
 `randomUUID()` so they always match. Cache-bust public branding images with
 `?v=<version>` where version derives from `integration_settings.updatedAt`.
+
+## Outgoing email identity
+
+Emails must include the application's configured identity without depending on
+the frontend's public asset URL. Custom-brand storage failures must not prevent
+essential messages such as password recovery: warn and use the built-in logo.
+
+**Why:** the user requested the application logo in improved email templates;
+self-hosted installations may lack a usable public frontend URL, and email clients
+do not reliably display data-URI images.
+
+**How to apply:** keep logos and QR images embedded as CID attachments, preserve
+existing document attachments, and retain a plain-text alternative.

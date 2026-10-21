@@ -348,13 +348,18 @@ async function addUserToGroup(
 async function getGroupMembers(
   config: NextcloudConfig,
   groupId: string,
+  strict = false,
 ): Promise<string[]> {
   const res = (await ocs(
     config,
     "GET",
     `/ocs/v2.php/cloud/groups/${encodeURIComponent(groupId)}/users?format=json`,
   )) as { ocs?: { data?: { users?: string[] } } };
-  return res?.ocs?.data?.users ?? [];
+  const users = res?.ocs?.data?.users;
+  if (strict && (!Array.isArray(users) || users.some((uid) => typeof uid !== "string"))) {
+    throw new Error("Nextcloud returned an invalid group membership list");
+  }
+  return users ?? [];
 }
 
 /** Remove a user from a group (idempotent: ignores "not a member"). */
@@ -539,6 +544,45 @@ export async function provisionModuleSpace(
       "Failed to reconcile Nextcloud group membership",
     );
   }
+}
+
+/** Independent spaces deliberately use a different namespace from modules. */
+export const independentSpaceGroupId = (id: number): string => `coordina-space-${id}`;
+// Stable under renames: never create a different remote folder or lose files.
+export const independentSpaceFolderName = (id: number): string => `Espacio específico ${id}`;
+
+export async function provisionIndependentSpace(
+  config: NextcloudConfig,
+  opts: { spaceId: number; members: ProvisionMember[] },
+): Promise<void> {
+  const groupId = independentSpaceGroupId(opts.spaceId);
+  await ensureGroup(config, groupId);
+  await ensureGroupFolder(config, { mount: independentSpaceFolderName(opts.spaceId), groupId });
+  const desired = new Set(opts.members.map((member) => nextcloudUid(member.userId)));
+  // Strict reconciliation: do not issue an SSO ticket after a failed removal.
+  for (const uid of await getGroupMembers(config, groupId, true)) {
+    if (!desired.has(uid)) await removeUserFromGroup(config, uid, groupId);
+  }
+  for (const member of opts.members) {
+    const uid = nextcloudUid(member.userId);
+    await ensureUser(config, { uid, displayName: member.name, email: member.email });
+    await addUserToGroup(config, uid, groupId);
+  }
+}
+
+export async function revokeIndependentSpaceMember(
+  config: NextcloudConfig, spaceId: number, userId: number,
+): Promise<void> {
+  const groupId = independentSpaceGroupId(spaceId);
+  let current: string[];
+  try {
+    current = await getGroupMembers(config, groupId, true);
+  } catch (error) {
+    if (error instanceof OcsError && (error.status === 404 || error.ocsCode === 102)) return;
+    throw error;
+  }
+  const uid = nextcloudUid(userId);
+  if (current.includes(uid)) await removeUserFromGroup(config, uid, groupId);
 }
 
 export { OcsError };

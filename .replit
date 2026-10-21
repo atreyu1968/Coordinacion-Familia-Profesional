@@ -46,3 +46,4 @@ JAAS_APP_ID = "vpaas-magic-cookie-e59392d6d00048ea90ea3027a421f6ea"
 
 [nix]
 channel = "stable-25_05"
+packages = ["freetype", "glibcLocales", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "xcbuild"]

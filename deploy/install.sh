@@ -163,6 +163,9 @@ if [[ "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then DEFAULT_COLLAB="
 # Keep INSTALL_COLLAB empty unless explicitly set via env, otherwise prompt_default
 # would see a value and skip the question entirely (it returns when the var is set).
 INSTALL_COLLAB="${INSTALL_COLLAB:-}"
+if [[ -z "${INSTALL_COLLAB}" && -f "${SCRIPT_DIR}/nextcloud/.env" ]]; then
+  INSTALL_COLLAB=yes  # The sub-installer inspects it and asks only if needed.
+fi
 prompt_default INSTALL_COLLAB "Install the collaborative space (Nextcloud + Collabora)? [yes/no]" "${DEFAULT_COLLAB}"
 # Documentation wiki (Outline) is optional and is never installed unless
 # explicitly requested. It needs its own subdomain because it cannot be served
@@ -212,6 +215,7 @@ log "Installing system packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y --no-install-recommends \
+  python3 \
   ca-certificates curl gnupg git build-essential openssl \
   nginx postgresql postgresql-contrib
 
@@ -666,7 +670,7 @@ fi
 
 # ---------------------------------------------------------------------------
 if [[ "${INSTALL_COLLAB}" =~ ^[yY]([eE][sS])?$ ]]; then
-  log "Installing the collaborative space (Nextcloud + Collabora)"
+  log "Checking/installing the collaborative space (Nextcloud + Collabora)"
   APP_DOMAIN="${DOMAIN}" LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL}" \
     bash "${SCRIPT_DIR}/nextcloud/install-collab.sh" || \
     note "Collaborative space install failed — the main app still works. Re-run later: sudo bash deploy/nextcloud/install-collab.sh"

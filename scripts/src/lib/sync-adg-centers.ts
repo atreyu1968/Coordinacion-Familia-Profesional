@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { centersTable, provincesTable, type db } from "@workspace/db";
 
 type Database = Pick<typeof db, "select" | "insert" | "update" | "execute">;
-type Snapshot = { family: string; updatedAt: string; centers: [string, string, string][] };
+type Snapshot = { family: string; updatedAt: string; centers: [string, string, string][]; withdrawnFromFamily: string[] };
 const snapshot = JSON.parse(readFileSync(new URL("../data/centers-adg-2026.json", import.meta.url), "utf8")) as Snapshot;
 const reference = JSON.parse(readFileSync(new URL("../data/centers.json", import.meta.url), "utf8")) as { code: string | null }[];
 const normalize = (name: string) => name.normalize("NFD").replace(/\p{M}/gu, "").trim().replace(/\s+/g, " ").toUpperCase();
@@ -23,11 +23,15 @@ export async function syncAdgCenters(tx: Database, apply: boolean) {
     }
     codes.add(code);
   }
+  const withdrawnCodes = new Set(snapshot.withdrawnFromFamily);
+  if (withdrawnCodes.size !== 12 || [...withdrawnCodes].some((code) => !/^(35|38)\d{6}$/.test(code) || codes.has(code))) {
+    throw new Error("Invalid or overlapping withdrawn center codes");
+  }
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('coordina:adg-center-directory'))`);
   const rows = await tx.select().from(centersTable);
   const provinces = await tx.select().from(provincesTable);
   const knownCodes = new Set(reference.map((c) => c.code).filter(Boolean));
-  const stats = { listed: 65, inserted: 0, updated: 0, unchanged: 0, correctedCodes: 0, inactive: 0, absentCodes: [] as string[] };
+  const stats = { listed: 65, inserted: 0, updated: 0, unchanged: 0, correctedCodes: 0, inactive: 0, withdrawnFromFamily: 0, absentCodes: [] as string[] };
   const changes: { existingId: number | null; values: typeof centersTable.$inferInsert }[] = [];
 
   // Validate ALL matches before writing anything. Ambiguity is an error, not
@@ -71,12 +75,27 @@ export async function syncAdgCenters(tx: Database, apply: boolean) {
     }
   }
   stats.absentCodes = rows.filter((c) =>
-    c.deletedAt == null && c.code != null && c.families.includes(snapshot.family) && !codes.has(c.code),
+    c.deletedAt == null && c.code != null && c.families.includes(snapshot.family) &&
+    !codes.has(c.code) && !withdrawnCodes.has(c.code),
   ).map((c) => c.code!);
+  // Only these twelve explicitly authorized codes are withdrawn. Do not
+  // infer that future manually added centers should also lose membership.
+  const withdrawals = [];
+  for (const code of withdrawnCodes) {
+    const matches = rows.filter((c) => c.code === code);
+    if (matches.length > 1) throw new Error(`Multiple centers use withdrawn code ${code}`);
+    if (matches[0]?.families.includes(snapshot.family)) withdrawals.push(matches[0]);
+  }
+  stats.withdrawnFromFamily = withdrawals.length;
   if (apply) {
     for (const change of changes) {
       if (change.existingId == null) await tx.insert(centersTable).values(change.values);
       else await tx.update(centersTable).set(change.values).where(eq(centersTable.id, change.existingId));
+    }
+    for (const center of withdrawals) {
+      await tx.update(centersTable)
+        .set({ families: center.families.filter((family) => family !== snapshot.family) })
+        .where(eq(centersTable.id, center.id));
     }
   }
   return stats;

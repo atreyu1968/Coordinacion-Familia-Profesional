@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, readFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -19,6 +19,11 @@ async function buildAll() {
     platform: "node",
     bundle: true,
     format: "esm",
+    define: {
+      __EMAIL_DEFAULT_LOGO_BASE64__: JSON.stringify(
+        (await readFile(path.resolve(artifactDir, "../web/src/assets/logo.png"))).toString("base64"),
+      ),
+    },
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",

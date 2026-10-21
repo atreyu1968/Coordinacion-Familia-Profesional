@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListUsers,
@@ -221,11 +222,18 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
         <h1 className="text-2xl font-bold tracking-tight">Usuarios</h1>
         <p className="text-muted-foreground">
           Personas con acceso a la plataforma {appName}.
         </p>
+        </div>
+        {["superadmin", "coordinator", "department_head"].includes(user?.role ?? "") && (
+          <Button variant="outline" asChild>
+            <Link href="/invitaciones">Gestionar invitaciones</Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

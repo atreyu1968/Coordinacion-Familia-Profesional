@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, usersTable, modulesTable } from "@workspace/db";
+import { db, usersTable, modulesTable, collaborativeSpacesTable, collaborativeSpaceMembersTable } from "@workspace/db";
 import type { User } from "@workspace/db";
 import {
   buildDiscovery,
@@ -23,6 +23,7 @@ import {
   resolveNextcloudUrl,
   nextcloudUid,
   moduleFolderName,
+  independentSpaceFolderName,
 } from "../lib/nextcloud";
 import type { OidcTarget } from "../lib/oidc";
 import { getAppBaseUrl, readCookie } from "../lib/appUrl";
@@ -179,10 +180,24 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
     res.status(503).send("Espacio colaborativo no configurado");
     return;
   }
+  if (rec.spaceId != null) {
+    const [space] = await db.select().from(collaborativeSpacesTable).where(eq(collaborativeSpacesTable.id, rec.spaceId));
+    const [membership] = await db.select().from(collaborativeSpaceMembersTable).where(and(
+      eq(collaborativeSpaceMembersTable.spaceId, rec.spaceId),
+      eq(collaborativeSpaceMembersTable.userId, user.id),
+    ));
+    if (!space || (user.role !== "superadmin" && !membership)) {
+      res.status(403).send("Ya no tienes acceso a este espacio");
+      return;
+    }
+  }
   setSsoCookie();
 
   // Where the user should land inside Nextcloud after SSO completes.
   let target = "/apps/files";
+  if (rec.spaceId != null) {
+    target = `/apps/files/?dir=/${encodeURIComponent(independentSpaceFolderName(rec.spaceId))}`;
+  } else {
   const [mod] = await db
     .select()
     .from(modulesTable)
@@ -194,6 +209,7 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
       code: mod.code,
     });
     target = `/apps/files/?dir=/${encodeURIComponent(mount)}`;
+  }
   }
 
   // Provider id is assigned by Nextcloud when the OIDC provider is registered

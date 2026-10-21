@@ -23,6 +23,7 @@ import meetingsRouter from "./meetings";
 import forumsRouter from "./forums";
 import oidcRouter from "./oidc";
 import collabRouter from "./collab";
+import collaborativeSpacesRouter from "./collaborativeSpaces";
 import wikiRouter from "./nativeWiki";
 import lmsRouter from "./lms";
 
@@ -52,6 +53,7 @@ router.use(meetingsRouter);
 router.use(forumsRouter);
 router.use(oidcRouter);
 router.use(collabRouter);
+router.use(collaborativeSpacesRouter);
 router.use(wikiRouter);
 router.use(lmsRouter);
 

@@ -3308,6 +3308,177 @@ paths:
         "503":
           description: Collaborative space not configured
 
+  /collab/spaces:
+    get:
+      operationId: listCollaborativeSpaces
+      tags: [collab]
+      summary: List independent spaces visible to the caller
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CollaborativeSpace"
+        "401": { description: Authentication required }
+    post:
+      operationId: createCollaborativeSpace
+      tags: [collab]
+      summary: Administrator creates an independent space with optional initial members
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCollaborativeSpaceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpace"
+        "400": { description: Invalid input or unavailable users or centers }
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+  /collab/candidates:
+    get:
+      operationId: getCollaborativeSpaceCandidates
+      tags: [collab]
+      summary: Administrator-only active users and available centers for manual selection
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Selection lists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpaceCandidates"
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+  /collab/spaces/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getCollaborativeSpace
+      tags: [collab]
+      summary: Administrator reads a space and its membership
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Space and members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpaceDetail"
+        "400": { description: Invalid identifier }
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+        "404": { description: Space not found }
+    patch:
+      operationId: updateCollaborativeSpace
+      tags: [collab]
+      summary: Administrator edits the name and description without moving files
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollaborativeSpaceInfoInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpace"
+        "400": { description: Invalid input }
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+        "404": { description: Space not found }
+  /collab/spaces/{id}/members:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: addCollaborativeSpaceMembers
+      tags: [collab]
+      summary: Add selected users and current active users of selected centers, without duplicates
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollaborativeSpaceMembersInput"
+      responses:
+        "200":
+          description: Updated space
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpace"
+        "400": { description: Invalid or unavailable selection }
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+        "404": { description: Space not found }
+  /collab/spaces/{id}/members/{userId}:
+    delete:
+      operationId: removeCollaborativeSpaceMember
+      tags: [collab]
+      summary: Remove a member without deleting their account or files
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204": { description: Membership removed }
+        "400": { description: Invalid identifiers }
+        "401": { description: Authentication required }
+        "403": { description: Administrator required }
+        "404": { description: Space or membership not found }
+        "502": { description: Nextcloud access could not be revoked; membership was not removed }
+        "503": { description: Cannot revoke existing remote access until Nextcloud is configured }
+  /collab/spaces/{id}/open:
+    post:
+      operationId: openCollaborativeSpace
+      tags: [collab]
+      summary: Open an independent space as administrator or explicit member
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Fresh single-use SSO URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleSpaceAccess"
+        "400": { description: Invalid identifier }
+        "401": { description: Authentication required }
+        "403": { description: Not a member }
+        "404": { description: Space not found }
+        "502": { description: Remote provisioning failed }
+        "503": { description: Collaborative service not configured }
   /wiki/pages:
     get:
       operationId: listWikiPages
@@ -7456,6 +7627,74 @@ components:
           items:
             type: integer
       required: [user, activeYear, moduleIds]
+    CollaborativeSpace:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        memberCount: { type: integer }
+        canManage: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, description, memberCount, canManage, createdAt]
+    CollaborativeSpacePerson:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string }
+        status: { type: string }
+        centerId: { type: integer, nullable: true }
+        centerName: { type: string, nullable: true }
+      required: [id, name, email, role, status, centerId, centerName]
+    CollaborativeSpaceDetail:
+      allOf:
+        - $ref: "#/components/schemas/CollaborativeSpace"
+        - type: object
+          properties:
+            members:
+              type: array
+              items:
+                $ref: "#/components/schemas/CollaborativeSpacePerson"
+          required: [members]
+    CollaborativeSpaceCandidates:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollaborativeSpacePerson"
+        centers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+            required: [id, name]
+      required: [users, centers]
+    CollaborativeSpaceMembersInput:
+      type: object
+      properties:
+        userIds:
+          type: array
+          maxItems: 1000
+          items: { type: integer, minimum: 1 }
+        centerIds:
+          type: array
+          maxItems: 200
+          items: { type: integer, minimum: 1 }
+    CollaborativeSpaceInfoInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        description: { type: string, maxLength: 2000 }
+      required: [name]
+    CreateCollaborativeSpaceInput:
+      allOf:
+        - $ref: "#/components/schemas/CollaborativeSpaceInfoInput"
+        - $ref: "#/components/schemas/CollaborativeSpaceMembersInput"
     ConfirmYearInput:
       type: object
       properties:

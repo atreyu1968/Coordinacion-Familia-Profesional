@@ -2300,6 +2300,66 @@ export interface MyTeachingProfileUpdateResult {
   moduleIds: number[];
 }
 
+export interface CollaborativeSpace {
+  id: number;
+  name: string;
+  description: string;
+  memberCount: number;
+  canManage: boolean;
+  createdAt: string;
+}
+
+export interface CollaborativeSpacePerson {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  /** @nullable */
+  centerId: number | null;
+  /** @nullable */
+  centerName: string | null;
+}
+
+export type CollaborativeSpaceDetail = CollaborativeSpace & {
+  members: CollaborativeSpacePerson[];
+};
+
+export type CollaborativeSpaceCandidatesCentersItem = {
+  id: number;
+  name: string;
+};
+
+export interface CollaborativeSpaceCandidates {
+  users: CollaborativeSpacePerson[];
+  centers: CollaborativeSpaceCandidatesCentersItem[];
+}
+
+export interface CollaborativeSpaceMembersInput {
+  /**
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  userIds?: number[];
+  /**
+     * @maxItems 200
+     * @items.minimum 1
+     */
+  centerIds?: number[];
+}
+
+export interface CollaborativeSpaceInfoInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  /** @maxLength 2000 */
+  description?: string;
+}
+
+export type CreateCollaborativeSpaceInput = CollaborativeSpaceInfoInput & CollaborativeSpaceMembersInput;
+
 export interface ConfirmYearInput {
   centerId: number;
   moduleIds: number[];

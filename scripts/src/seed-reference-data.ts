@@ -263,7 +263,8 @@ async function main(): Promise<void> {
     }
 
     // Apply the explicitly supplied, newer ADG contact directory after the
-    // broad historical reference catalog. Never remove absent centers.
+    // broad historical reference catalog. Withdraw only the twelve explicitly
+    // authorized codes from ADG membership; never delete their records.
     const adg = await syncAdgCenters(tx, true);
     stats.inserted += adg.inserted;
     stats.updated += adg.updated;

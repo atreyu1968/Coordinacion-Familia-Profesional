@@ -14,7 +14,14 @@ El importador conserva los identificadores y las relaciones de los centros
 existentes, así como sus otros datos y familias. Una coincidencia inequívoca
 por nombre permite corregir un código antiguo que no figure en el catálogo
 oficial; los conflictos de identidad abortan la transacción. No se eliminan
-centros ausentes ni se reactivan centros desactivados.
+centros ni se reactivan centros desactivados.
+
+El usuario autorizó retirar de esta familia los doce códigos recogidos en
+`withdrawnFromFamily`. Solo se elimina la pertenencia a Administración y Gestión:
+se conservan el centro, sus otras familias y todos los datos relacionados.
+No se retiran automáticamente otros centros que se incorporen manualmente
+en el futuro. La misma regla se aplica después del catálogo histórico para
+evitar que posteriores actualizaciones vuelvan a incluir esos doce centros.
 
 Vista previa, sin cambios:
 

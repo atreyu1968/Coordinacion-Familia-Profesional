@@ -402,14 +402,16 @@ fi
 rm -rf -- "${WEB_PREVIOUS}"
 PUBLISH_STARTED=0
 
-# Collaborative space (Nextcloud + Collabora). install-collab.sh is idempotent.
-#  - If it was already installed (its .env exists), refresh it.
+# Collaborative space (Nextcloud + Collabora).
+#  - Existing installations are inspected without changes; maintenance asks.
 #  - If it was never installed but we now have a real domain, install it (default
 #    yes, matching install.sh). Opt out with INSTALL_COLLAB=no.
 COLLAB_DIR="${SCRIPT_DIR}/nextcloud"
 COLLAB_ENV="${COLLAB_DIR}/.env"
-if [[ -f "${COLLAB_ENV}" ]]; then
-  echo "==> Updating the collaborative space (Nextcloud + Collabora)"
+if [[ "${INSTALL_COLLAB:-yes}" =~ ^([nN][oO]|[nN])$ ]]; then
+  echo "==> Skipping Nextcloud/Collabora (INSTALL_COLLAB=no)."
+elif [[ -f "${COLLAB_ENV}" ]]; then
+  echo "==> Checking the collaborative space (Nextcloud + Collabora)"
   bash "${COLLAB_DIR}/install-collab.sh" || \
     echo "WARNING: collaborative space update failed; re-run deploy/nextcloud/install-collab.sh" >&2
 elif [[ -n "${MOBILE_HOST}" ]]; then
