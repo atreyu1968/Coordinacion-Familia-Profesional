@@ -3242,6 +3242,65 @@ export const UpdateCollaborativeSpaceResponse = zod.object({
 
 
 /**
+ * @summary Superadministrator-only paginated audit history with immutable name snapshots
+ */
+
+
+
+export const GetCollaborativeSpaceHistoryParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const getCollaborativeSpaceHistoryQueryPageDefault = 1;
+export const getCollaborativeSpaceHistoryQueryPageMax = 1000000;
+
+export const getCollaborativeSpaceHistoryQueryPageSizeDefault = 20;
+export const getCollaborativeSpaceHistoryQueryPageSizeMax = 100;
+
+
+
+export const GetCollaborativeSpaceHistoryQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).max(getCollaborativeSpaceHistoryQueryPageMax).default(getCollaborativeSpaceHistoryQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getCollaborativeSpaceHistoryQueryPageSizeMax).default(getCollaborativeSpaceHistoryQueryPageSizeDefault)
+})
+
+export const GetCollaborativeSpaceHistoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "spaceId": zod.number().int(),
+  "spaceName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "actorId": zod.number().int(),
+  "actorName": zod.string(),
+  "actorRole": zod.string(),
+  "action": zod.enum(['created', 'updated', 'members_added', 'member_removed', 'member_removal_failed']),
+  "summary": zod.string(),
+  "details": zod.object({
+  "selectedUsers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "selectedCenters": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "affectedUsers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "changedFields": zod.array(zod.enum(['name', 'description'])),
+  "revocation": zod.enum(['not_applicable', 'not_required', 'completed', 'failed', 'configuration_missing']),
+  "previousName": zod.string().optional(),
+  "newName": zod.string().optional()
+})
+})),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+/**
  * @summary Add selected users and current active users of selected centers, without duplicates
  */
 

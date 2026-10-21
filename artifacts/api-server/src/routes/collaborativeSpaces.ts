@@ -1,12 +1,14 @@
 import { Router, type Request, type Response } from "express";
-import { and, eq, inArray, isNull, or, sql, asc } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, asc, desc, count } from "drizzle-orm";
 import {
   db, collaborativeSpacesTable as spaces, collaborativeSpaceMembersTable as members,
   usersTable as users, centersTable as centers,
+  collaborativeSpaceAuditTable as audit,
 } from "@workspace/db";
 import {
   CreateCollaborativeSpaceBody, UpdateCollaborativeSpaceBody, AddCollaborativeSpaceMembersBody,
   ListCollaborativeSpacesResponse, GetCollaborativeSpaceResponse, GetCollaborativeSpaceCandidatesResponse,
+  GetCollaborativeSpaceHistoryQueryParams, GetCollaborativeSpaceHistoryResponse,
 } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getSettings, getActiveFamily } from "../lib/settings";
@@ -18,6 +20,7 @@ import { createIndependentSpaceTicket } from "../lib/oidc";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
 import { notifyUsers } from "../lib/notify";
+import { recordSpaceAudit, selectionSnapshot } from "../lib/collaborativeSpaceAudit";
 
 const router = Router();
 // Run only after membership commits: notification failures must never roll it back.
@@ -128,6 +131,9 @@ router.post("/collab/spaces", requireAuth, requireRole("superadmin"), handle(asy
       name: parsed.data.name.trim(), description: parsed.data.description?.trim() ?? "", createdBy: req.user!.id,
     }).returning();
     if (userIds.length) await tx.insert(members).values(userIds.map((userId) => ({ spaceId: space!.id, userId })));
+    await recordSpaceAudit(tx, req.user!, space!, "created",
+      `Espacio creado con ${userIds.length} participantes.`,
+      await selectionSnapshot(tx, parsed.data, userIds));
     return { space: await info(tx, space!.id), addedUserIds: userIds };
   });
   await notifyNewMembers(result.addedUserIds, result.space);
@@ -148,9 +154,19 @@ router.patch("/collab/spaces/:id", requireAuth, requireRole("superadmin"), handl
   const parsed = UpdateCollaborativeSpaceBody.safeParse(req.body);
   if (!parsed.success || !parsed.data.name.trim()) throw new SpaceError(400, "Indica un nombre y una descripción válidos");
   const result = await db.transaction(async (tx) => {
-    await lock(tx, id); await load(tx, id);
-    await tx.update(spaces).set({ name: parsed.data.name.trim(), ...(parsed.data.description !== undefined ? { description: parsed.data.description.trim() } : {}) })
+    await lock(tx, id);
+    const before = await load(tx, id);
+    const name = parsed.data.name.trim(), description = parsed.data.description?.trim() ?? before.description;
+    await tx.update(spaces).set({ name, description })
       .where(eq(spaces.id, id));
+    const details = await selectionSnapshot(tx, {}, []);
+    if (name !== before.name) {
+      details.changedFields.push("name");
+      details.previousName = before.name; details.newName = name;
+    }
+    if (description !== before.description) details.changedFields.push("description");
+    if (details.changedFields.length) await recordSpaceAudit(tx, req.user!, { id, name }, "updated",
+      `Datos modificados: ${details.changedFields.map((f) => f === "name" ? "nombre" : "descripción").join(", ")}.`, details);
     return info(tx, id);
   });
   res.json(result);
@@ -161,13 +177,15 @@ router.post("/collab/spaces/:id/members", requireAuth, requireRole("superadmin")
   const parsed = AddCollaborativeSpaceMembersBody.safeParse(req.body);
   if (!parsed.success) throw new SpaceError(400, "Selección inválida");
   const result = await db.transaction(async (tx) => {
-    await lock(tx, id); await load(tx, id);
+    await lock(tx, id);
+    const space = await load(tx, id);
     const userIds = await resolveSelection(tx, parsed.data);
-    const inserted = userIds.length
-      ? await tx.insert(members).values(userIds.map((userId) => ({ spaceId: id, userId })))
-        .onConflictDoNothing().returning({ userId: members.userId })
-      : [];
-    return { space: await info(tx, id), addedUserIds: inserted.map((row) => row.userId) };
+    const added = userIds.length ? await tx.insert(members).values(userIds.map((userId) => ({ spaceId: id, userId })))
+      .onConflictDoNothing().returning({ userId: members.userId }) : [];
+    await recordSpaceAudit(tx, req.user!, space, "members_added",
+      `${added.length} participantes añadidos; selección de ${new Set(parsed.data.centerIds ?? []).size} centros.`,
+      await selectionSnapshot(tx, parsed.data, added.map((row) => row.userId)));
+    return { space: await info(tx, id), addedUserIds: added.map((row) => row.userId) };
   });
   await notifyNewMembers(result.addedUserIds, result.space);
   res.json(result.space);
@@ -175,22 +193,54 @@ router.post("/collab/spaces/:id/members", requireAuth, requireRole("superadmin")
 
 router.delete("/collab/spaces/:id/members/:userId", requireAuth, requireRole("superadmin"), handle(async (req, res) => {
   const id = idOf(req.params["id"]), userId = idOf(req.params["userId"]);
-  await db.transaction(async (tx) => {
+  const failure = await db.transaction(async (tx) => {
     await lock(tx, id);
     const space = await load(tx, id);
     if (!await member(tx, id, userId)) throw new SpaceError(404, "Participante no encontrado");
+    const details = await selectionSnapshot(tx, {}, [userId]);
+    details.revocation = "not_required";
     if (space.provisioningStartedAt) {
       const settings = await getSettings();
-      if (!isNextcloudConfigured(settings)) throw new SpaceError(503, "Configura Nextcloud para retirar también el acceso a los archivos. No se ha eliminado al participante.");
+      if (!isNextcloudConfigured(settings)) {
+        details.revocation = "configuration_missing";
+        await recordSpaceAudit(tx, req.user!, space, "member_removal_failed",
+          "Retirada no completada: Nextcloud no está configurado. Se conserva al participante.", details);
+        return new SpaceError(503, "Configura Nextcloud para retirar también el acceso a los archivos. No se ha eliminado al participante.");
+      }
       try { await revokeIndependentSpaceMember(resolveNextcloudConfig(settings)!, id, userId); }
       catch (error) {
         logger.error({ err: error, spaceId: id }, "Unable to revoke independent space membership");
-        throw new SpaceError(502, "No se pudo retirar el acceso en Nextcloud. El participante se conserva; vuelve a intentarlo.");
+        details.revocation = "failed";
+        await recordSpaceAudit(tx, req.user!, space, "member_removal_failed",
+          "Retirada no completada: no se pudo confirmar la revocación en Nextcloud. Se conserva al participante.", details);
+        return new SpaceError(502, "No se pudo retirar el acceso en Nextcloud. El participante se conserva; vuelve a intentarlo.");
       }
+      details.revocation = "completed";
     }
     await tx.delete(members).where(and(eq(members.spaceId, id), eq(members.userId, userId)));
+    await recordSpaceAudit(tx, req.user!, space, "member_removed",
+      details.revocation === "completed" ? "Participante retirado; revocación en Nextcloud completada."
+        : "Participante retirado; no había acceso remoto que revocar.", details);
+    return null;
   });
+  // Throw only AFTER commit: a failed remote revocation is itself an audit event.
+  if (failure) throw failure;
   res.sendStatus(204);
+}));
+
+router.get("/collab/spaces/:id/history", requireAuth, requireRole("superadmin"), handle(async (req, res) => {
+  const id = idOf(req.params["id"]);
+  const parsed = GetCollaborativeSpaceHistoryQueryParams.safeParse(req.query);
+  if (!parsed.success) throw new SpaceError(400, "Paginación inválida");
+  const { page = 1, pageSize = 20 } = parsed.data;
+  const result = await db.transaction(async (tx) => {
+    await load(tx, id);
+    const [total] = await tx.select({ value: count() }).from(audit).where(eq(audit.spaceId, id));
+    const items = await tx.select().from(audit).where(eq(audit.spaceId, id))
+      .orderBy(desc(audit.createdAt), desc(audit.id)).limit(pageSize).offset((page - 1) * pageSize);
+    return { items, total: total!.value, page, pageSize };
+  }, { isolationLevel: "repeatable read", accessMode: "read only" });
+  res.json(GetCollaborativeSpaceHistoryResponse.parse(result));
 }));
 
 router.post("/collab/spaces/:id/open", requireAuth, handle(async (req, res) => {

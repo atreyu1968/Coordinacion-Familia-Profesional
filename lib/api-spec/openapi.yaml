@@ -3411,6 +3411,34 @@ paths:
         "401": { description: Authentication required }
         "403": { description: Administrator required }
         "404": { description: Space not found }
+  /collab/spaces/{id}/history:
+    get:
+      operationId: getCollaborativeSpaceHistory
+      tags: [collab]
+      summary: Superadministrator-only paginated audit history with immutable name snapshots
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: History ordered by date and identifier, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborativeSpaceHistory"
+        "400": { description: Invalid identifier or pagination }
+        "401": { description: Authentication required }
+        "403": { description: Superadministrator required }
+        "404": { description: Space not found }
   /collab/spaces/{id}/members:
     parameters:
       - name: id
@@ -7656,6 +7684,60 @@ components:
           items:
             type: integer
       required: [user, activeYear, moduleIds]
+    CollaborativeSpaceAuditReference:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    CollaborativeSpaceHistoryEvent:
+      type: object
+      required: [id, spaceId, spaceName, createdAt, actorId, actorName, actorRole, action, summary, details]
+      properties:
+        id: { type: integer }
+        spaceId: { type: integer }
+        spaceName: { type: string }
+        createdAt: { type: string, format: date-time }
+        actorId: { type: integer }
+        actorName: { type: string }
+        actorRole: { type: string }
+        action:
+          type: string
+          enum: [created, updated, members_added, member_removed, member_removal_failed]
+        summary: { type: string }
+        details:
+          $ref: "#/components/schemas/CollaborativeSpaceAuditDetails"
+    CollaborativeSpaceAuditDetails:
+      type: object
+      required: [selectedUsers, selectedCenters, affectedUsers, changedFields, revocation]
+      properties:
+        selectedUsers:
+          type: array
+          items: { $ref: "#/components/schemas/CollaborativeSpaceAuditReference" }
+        selectedCenters:
+          type: array
+          items: { $ref: "#/components/schemas/CollaborativeSpaceAuditReference" }
+        affectedUsers:
+          type: array
+          items: { $ref: "#/components/schemas/CollaborativeSpaceAuditReference" }
+        changedFields:
+          type: array
+          items: { type: string, enum: [name, description] }
+        revocation:
+          type: string
+          enum: [not_applicable, not_required, completed, failed, configuration_missing]
+        previousName: { type: string }
+        newName: { type: string }
+    CollaborativeSpaceHistory:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CollaborativeSpaceHistoryEvent" }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
     CollaborativeSpace:
       type: object
       properties:

@@ -2320,6 +2320,71 @@ export interface MyTeachingProfileUpdateResult {
   moduleIds: number[];
 }
 
+export interface CollaborativeSpaceAuditReference {
+  id: number;
+  name: string;
+}
+
+export type CollaborativeSpaceHistoryEventAction = typeof CollaborativeSpaceHistoryEventAction[keyof typeof CollaborativeSpaceHistoryEventAction];
+
+
+export const CollaborativeSpaceHistoryEventAction = {
+  created: 'created',
+  updated: 'updated',
+  members_added: 'members_added',
+  member_removed: 'member_removed',
+  member_removal_failed: 'member_removal_failed',
+} as const;
+
+export type CollaborativeSpaceAuditDetailsChangedFieldsItem = typeof CollaborativeSpaceAuditDetailsChangedFieldsItem[keyof typeof CollaborativeSpaceAuditDetailsChangedFieldsItem];
+
+
+export const CollaborativeSpaceAuditDetailsChangedFieldsItem = {
+  name: 'name',
+  description: 'description',
+} as const;
+
+export type CollaborativeSpaceAuditDetailsRevocation = typeof CollaborativeSpaceAuditDetailsRevocation[keyof typeof CollaborativeSpaceAuditDetailsRevocation];
+
+
+export const CollaborativeSpaceAuditDetailsRevocation = {
+  not_applicable: 'not_applicable',
+  not_required: 'not_required',
+  completed: 'completed',
+  failed: 'failed',
+  configuration_missing: 'configuration_missing',
+} as const;
+
+export interface CollaborativeSpaceAuditDetails {
+  selectedUsers: CollaborativeSpaceAuditReference[];
+  selectedCenters: CollaborativeSpaceAuditReference[];
+  affectedUsers: CollaborativeSpaceAuditReference[];
+  changedFields: CollaborativeSpaceAuditDetailsChangedFieldsItem[];
+  revocation: CollaborativeSpaceAuditDetailsRevocation;
+  previousName?: string;
+  newName?: string;
+}
+
+export interface CollaborativeSpaceHistoryEvent {
+  id: number;
+  spaceId: number;
+  spaceName: string;
+  createdAt: string;
+  actorId: number;
+  actorName: string;
+  actorRole: string;
+  action: CollaborativeSpaceHistoryEventAction;
+  summary: string;
+  details: CollaborativeSpaceAuditDetails;
+}
+
+export interface CollaborativeSpaceHistory {
+  items: CollaborativeSpaceHistoryEvent[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface CollaborativeSpace {
   id: number;
   name: string;
@@ -2621,6 +2686,19 @@ provinceId?: ProvinceQueryParameter;
 
 export type GetDashboardStatisticsParams = {
 provinceId?: ProvinceQueryParameter;
+};
+
+export type GetCollaborativeSpaceHistoryParams = {
+/**
+ * @minimum 1
+ * @maximum 1000000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };
 
 export type ListWikiPagesParams = {

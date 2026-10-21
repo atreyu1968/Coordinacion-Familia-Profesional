@@ -44,3 +44,14 @@ and repeated administrator selections not to produce duplicate notices.
 selection. If reliable eventual delivery is later needed, use a separate delivery
 retry mechanism rather than replaying enrollment. A notice must never act as an
 access grant after removal.
+
+Audit history is an administrative record of space and membership decisions, not
+a record of document activity. Historical identities must not be rewritten to
+match later account, center or space names; do not invent events for changes
+made before auditing existed.
+
+**Why:** the user wants to attribute past decisions, including unsuccessful
+remote revocations, without retaining document content, credentials or SSO links.
+
+**How to apply:** restrict history to superadministrators, retain original identity
+snapshots, and distinguish an unsuccessful removal from a completed one.

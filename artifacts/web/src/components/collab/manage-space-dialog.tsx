@@ -9,6 +9,7 @@ import {
   getGetCollaborativeSpaceQueryKey,
   getGetCollaborativeSpaceCandidatesQueryKey,
   getListCollaborativeSpacesQueryKey,
+  getGetCollaborativeSpaceHistoryQueryKey,
   type CollaborativeSpacePerson,
 } from "@workspace/api-client-react";
 import {
@@ -43,6 +44,7 @@ import {
   resolveSelection,
   type MemberSelection,
 } from "./member-picker";
+import { SpaceHistory } from "./space-history";
 
 export function ManageSpaceDialog({
   spaceId,
@@ -101,6 +103,7 @@ export function ManageSpaceDialog({
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListCollaborativeSpacesQueryKey() });
     qc.invalidateQueries({ queryKey: getGetCollaborativeSpaceQueryKey(id) });
+    qc.invalidateQueries({ queryKey: getGetCollaborativeSpaceHistoryQueryKey(id) });
   };
   const fail = (title: string) => (err: unknown) =>
     toast({ title, description: errorMessage(err, "Inténtalo de nuevo."), variant: "destructive" });
@@ -148,7 +151,10 @@ export function ManageSpaceDialog({
           toast({ title: `${person.name} ya no es miembro` });
         },
         onError: fail("No se pudo quitar al miembro"),
-        onSettled: () => setToRemove(null),
+        onSettled: () => {
+          qc.invalidateQueries({ queryKey: getGetCollaborativeSpaceHistoryQueryKey(id) });
+          setToRemove(null);
+        },
       },
     );
   };
@@ -180,14 +186,18 @@ export function ManageSpaceDialog({
               </Button>
             </div>
           ) : (
-            <Tabs defaultValue="members" className="min-w-0 w-full">
-              <TabsList className="grid min-w-0 w-full grid-cols-3 [&>button]:min-w-0 [&>button]:px-2">
+            <Tabs key={id} defaultValue="members" className="min-w-0 w-full">
+              <TabsList className="grid min-w-0 w-full grid-cols-4 [&>button]:min-w-0 [&>button]:px-1">
                 <TabsTrigger value="members" data-testid="tab-members">
                   Miembros ({space.members.length})
                 </TabsTrigger>
                 <TabsTrigger value="add" data-testid="tab-add-members">Añadir</TabsTrigger>
                 <TabsTrigger value="info" data-testid="tab-space-info">Datos</TabsTrigger>
+                <TabsTrigger value="history" data-testid="tab-space-history">Historial</TabsTrigger>
               </TabsList>
+              <TabsContent value="history" className="min-w-0 pt-2">
+                <SpaceHistory key={id} spaceId={id} />
+              </TabsContent>
 
               <TabsContent value="members" className="min-w-0 space-y-3 pt-2">
                 <p className="text-xs text-muted-foreground" data-testid="text-superadmin-access-note">

@@ -50,6 +50,7 @@ import type {
   CollaborativeSpace,
   CollaborativeSpaceCandidates,
   CollaborativeSpaceDetail,
+  CollaborativeSpaceHistory,
   CollaborativeSpaceInfoInput,
   CollaborativeSpaceMembersInput,
   CommitLmsScormSessionParams,
@@ -106,6 +107,7 @@ import type {
   ForwardMessageInput,
   GdcanResource,
   GenerateReportInput,
+  GetCollaborativeSpaceHistoryParams,
   GetDashboardStatisticsParams,
   GetDashboardSummaryParams,
   GetLmsScormSessionParams,
@@ -13687,6 +13689,122 @@ export const useUpdateCollaborativeSpace = <TError = ErrorType<void>,
       > => {
       return useMutation(getUpdateCollaborativeSpaceMutationOptions(options), queryClient);
     }
+
+export const getGetCollaborativeSpaceHistoryUrl = (id: number,
+    params?: GetCollaborativeSpaceHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/collab/spaces/${id}/history?${stringifiedParams}` : `/api/collab/spaces/${id}/history`
+}
+
+/**
+ * @summary Superadministrator-only paginated audit history with immutable name snapshots
+ */
+export const getCollaborativeSpaceHistory = async (id: number,
+    params?: GetCollaborativeSpaceHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<CollaborativeSpaceHistory> => {
+
+  return customFetch<CollaborativeSpaceHistory>(getGetCollaborativeSpaceHistoryUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCollaborativeSpaceHistoryQueryKey = (id: number,
+    params?: GetCollaborativeSpaceHistoryParams,) => {
+    return [
+    `/api/collab/spaces/${id}/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCollaborativeSpaceHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError = ErrorType<void>>(id: number,
+    params?: GetCollaborativeSpaceHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCollaborativeSpaceHistoryQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>> = ({ signal }) => getCollaborativeSpaceHistory(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCollaborativeSpaceHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>>
+export type GetCollaborativeSpaceHistoryQueryError = ErrorType<void>
+
+
+export function useGetCollaborativeSpaceHistory<TData = Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError = ErrorType<void>>(
+ id: number,
+    params: undefined |  GetCollaborativeSpaceHistoryParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpaceHistory<TData = Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError = ErrorType<void>>(
+ id: number,
+    params?: GetCollaborativeSpaceHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCollaborativeSpaceHistory<TData = Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError = ErrorType<void>>(
+ id: number,
+    params?: GetCollaborativeSpaceHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Superadministrator-only paginated audit history with immutable name snapshots
+ */
+
+export function useGetCollaborativeSpaceHistory<TData = Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError = ErrorType<void>>(
+ id: number,
+    params?: GetCollaborativeSpaceHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCollaborativeSpaceHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCollaborativeSpaceHistoryQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getAddCollaborativeSpaceMembersUrl = (id: number,) => {
 
