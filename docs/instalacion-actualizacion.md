@@ -107,9 +107,16 @@ pero no las borra físicamente; no se deben prometer plazos de eliminación sin
 implementarlos. Antes de eliminar la marca de borrador hace falta revisión profesional.
 El formulario registra la versión que cada nuevo usuario aceptó, pero aceptar
 un borrador no acredita cumplimiento legal. Al publicar una versión definitiva,
-cambiar la versión legal en API y web de forma coordinada. Si Nextcloud ya está
-instalado, el actualizador intentará refrescarlo también: `INSTALL_COLLAB=no`
-solo evita la instalación inicial, no ese refresco.
+cambiar la versión legal en API y web de forma coordinada.
+
+Nextcloud + Collabora se comprueban antes de cualquier cambio. Si funcionan y no
+hay una actualización mayor, el actualizador informa y conserva imágenes,
+contenedores y configuración. Si detecta un fallo o una actualización mayor,
+pregunta antes de modificar; la respuesta predeterminada es **No**, también sin
+terminal interactivo. Deja `INSTALL_COLLAB` sin definir para que se ejecute esta
+comprobación: establecerlo a `no` omite por completo la revisión. Antes de aprobar
+una reparación o actualización, respalda aparte la base de datos y los archivos
+de Nextcloud.
 
 ```bash
 sudo SEED_TEST_TEACHERS=yes bash deploy/update.sh
