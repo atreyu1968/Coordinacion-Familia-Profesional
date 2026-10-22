@@ -11,3 +11,7 @@ Al convertir enlaces HTML a Word, solo se crean hipervínculos para URL absoluta
 
 **Why:** el usuario pidió que todas las descargas HTML de la aplicación permitan también descargar DOCX.
 **How to apply:** al añadir otra superficie de descarga de adjuntos, comprobar la extensión y reutilizar el conversor común; mantener intacto el archivo original y los HTML que se ejecutan como parte de un paquete SCORM.
+
+Al conservar imágenes, aceptar solo datos rasterizados validados o recursos del mismo origen, con tamaño limitado; omitir SVG y recursos externos. Seguir excluyendo scripts, iframes, formularios y controles.
+**Why:** renderizar imágenes remotas contactaría sitios de terceros, y SVG/contenido activo puede ejecutar código o introducir contenido no previsto en el documento.
+**How to apply:** mantener este límite de confianza al ampliar formatos de imagen o la carga de recursos del conversor.

@@ -1009,7 +1009,7 @@ export default function DocumentacionPage() {
                                     { headers: authHeaders() },
                                   );
                                   if (!response.ok) throw new Error("No se pudo descargar el archivo");
-                                  return response.blob();
+                                  return { blob: await response.blob(), baseUrl: response.url, imageHeaders: authHeaders() };
                                 }}
                               />
                             )}

@@ -237,9 +237,14 @@ function AttachmentView({ message }: { message: Message }) {
           disabled={!blobUrl}
           loadHtml={async () => {
             if (!blobUrl) throw new Error("El archivo todavía no está disponible");
+            const token = localStorage.getItem(TOKEN_KEY);
             const response = await fetch(blobUrl);
             if (!response.ok) throw new Error("No se pudo descargar el archivo");
-            return response.blob();
+            return {
+              blob: await response.blob(),
+              baseUrl: new URL(`${import.meta.env.BASE_URL}api/${message.attachmentUrl}`, window.location.href).href,
+              imageHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
+            };
           }}
         />
       )}

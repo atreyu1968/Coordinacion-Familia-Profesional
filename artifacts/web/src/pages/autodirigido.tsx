@@ -249,7 +249,7 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
               const result = await download.mutateAsync({ lessonId: lesson.id });
               const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
               if (!response.ok) throw new Error("No se pudo descargar el archivo");
-              return response.blob();
+              return { blob: await response.blob(), baseUrl: response.url };
             }}
           />}
         </div>}

@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 
 type Props = {
   fileName: string;
-  loadHtml: () => Promise<Blob>;
+  loadHtml: () => Promise<Blob | { blob: Blob; baseUrl?: string; imageHeaders?: Record<string, string> }>;
   testId: string;
   disabled?: boolean;
   variant?: "outline" | "ghost";
@@ -30,9 +30,12 @@ export function HtmlDocxDownloadButton({
     if (busy || disabled) return;
     setBusy(true);
     try {
-      const source = await loadHtml();
+      const loaded = await loadHtml();
+      const source = loaded instanceof Blob ? loaded : loaded.blob;
+      const imageBaseUrl = loaded instanceof Blob ? undefined : loaded.baseUrl;
+      const imageHeaders = loaded instanceof Blob ? undefined : loaded.imageHeaders;
       const { createHtmlDocx } = await import("@/lib/html-docx");
-      const docx = await createHtmlDocx(await source.text(), fileName);
+      const docx = await createHtmlDocx(await source.text(), fileName, imageBaseUrl, imageHeaders);
       const url = URL.createObjectURL(docx);
       const anchor = document.createElement("a");
       anchor.href = url;
