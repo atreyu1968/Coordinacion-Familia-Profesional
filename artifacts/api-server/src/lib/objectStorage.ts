@@ -1,6 +1,7 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Readable, type Writable } from "stream";
 import { randomUUID, createHmac, timingSafeEqual } from "crypto";
+import { pipeline } from "node:stream/promises";
 import { promises as fs, createReadStream } from "fs";
 import path from "path";
 import {
@@ -186,6 +187,41 @@ export class ObjectStorageService {
 
   isLocal(): boolean {
     return isLocalStorage();
+  }
+
+  async savePrivateObjectBytes(
+    bytes: Buffer,
+    contentType: string,
+    owner: string,
+  ): Promise<string> {
+    if (bytes.length < 1 || bytes.length > MAX_UPLOAD_BYTES) {
+      throw new ObjectNotFoundError();
+    }
+    const id = randomUUID();
+    const key = `uploads/${id}`;
+    const entityPath = `/objects/${key}`;
+    let stored: StoredObject | null = null;
+    try {
+      if (this.isLocal()) {
+        const absPath = this.resolveLocalUploadPath(key);
+        await fs.mkdir(path.dirname(absPath), { recursive: true });
+        await fs.writeFile(absPath, bytes, { flag: "wx", mode: 0o600 });
+        stored = { kind: "local", absPath };
+      } else {
+        const writer = this.createPrivateUploadWriteStream(key, contentType);
+        await pipeline(Readable.from([bytes]), writer);
+        stored = { kind: "gcs", file: this.privateUploadFile(key) };
+      }
+      await setObjectAclPolicy(stored, { owner, visibility: "private" });
+      return entityPath;
+    } catch (error) {
+      if (stored) {
+        await this.deleteObjectEntity(entityPath).catch(() => undefined);
+      } else if (!this.isLocal()) {
+        await this.discardPrivateUpload(key).catch(() => undefined);
+      }
+      throw error;
+    }
   }
 
   // Absolute path on disk where a local PUT upload for `key` should be written.

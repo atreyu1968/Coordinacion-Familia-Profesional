@@ -419,6 +419,263 @@ export interface VapidPublicKey {
   key?: string;
 }
 
+export interface CoordinatorMailSettingsUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  clientId: string;
+  /** @maxLength 4096 */
+  clientSecret?: string;
+  clearClientSecret?: boolean;
+  /** @maxLength 500 */
+  redirectUri: string;
+}
+
+export interface CoordinatorMailAdminSettings {
+  /** @nullable */
+  clientId: string | null;
+  clientSecretConfigured: boolean;
+  /** @nullable */
+  redirectUri: string | null;
+  ready: boolean;
+}
+
+export type CoordinatorMailConnectionStatus = typeof CoordinatorMailConnectionStatus[keyof typeof CoordinatorMailConnectionStatus];
+
+
+export const CoordinatorMailConnectionStatus = {
+  idle: 'idle',
+  queued: 'queued',
+  syncing: 'syncing',
+  error: 'error',
+  needs_reauthorization: 'needs_reauthorization',
+  needs_configuration: 'needs_configuration',
+} as const;
+
+export interface CoordinatorMailConnection {
+  connected: boolean;
+  /** @nullable */
+  email: string | null;
+  status: CoordinatorMailConnectionStatus;
+  /** @nullable */
+  syncError: string | null;
+  /** @nullable */
+  lastSyncAt: string | null;
+  messagesImported: number;
+  oauthAvailable: boolean;
+}
+
+export type CoordinatorMailAttachmentStatus = typeof CoordinatorMailAttachmentStatus[keyof typeof CoordinatorMailAttachmentStatus];
+
+
+export const CoordinatorMailAttachmentStatus = {
+  queued: 'queued',
+  ready: 'ready',
+  error: 'error',
+} as const;
+
+export interface CoordinatorMailAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+  status: CoordinatorMailAttachmentStatus;
+  /** @nullable */
+  error: string | null;
+}
+
+export type CoordinatorMailMessageDirection = typeof CoordinatorMailMessageDirection[keyof typeof CoordinatorMailMessageDirection];
+
+
+export const CoordinatorMailMessageDirection = {
+  received: 'received',
+  sent: 'sent',
+} as const;
+
+export interface CoordinatorMailMessage {
+  id: number;
+  direction: CoordinatorMailMessageDirection;
+  senderEmail: string;
+  senderName: string;
+  toEmails: string;
+  ccEmails: string;
+  subject: string;
+  bodyText: string;
+  bodyTruncated: boolean;
+  receivedAt: string;
+  attachments: CoordinatorMailAttachment[];
+}
+
+export type CoordinatorMailCaseNoteKind = typeof CoordinatorMailCaseNoteKind[keyof typeof CoordinatorMailCaseNoteKind];
+
+
+export const CoordinatorMailCaseNoteKind = {
+  note: 'note',
+  status: 'status',
+  draft: 'draft',
+  ai_draft: 'ai_draft',
+  sent: 'sent',
+} as const;
+
+export interface CoordinatorMailCaseNote {
+  id: number;
+  kind: CoordinatorMailCaseNoteKind;
+  content: string;
+  author: string;
+  createdAt: string;
+}
+
+export type CoordinatorMailCaseStatus = typeof CoordinatorMailCaseStatus[keyof typeof CoordinatorMailCaseStatus];
+
+
+export const CoordinatorMailCaseStatus = {
+  open: 'open',
+  waiting: 'waiting',
+  closed: 'closed',
+} as const;
+
+export type CoordinatorMailCaseAiStatus = typeof CoordinatorMailCaseAiStatus[keyof typeof CoordinatorMailCaseAiStatus];
+
+
+export const CoordinatorMailCaseAiStatus = {
+  idle: 'idle',
+  queued: 'queued',
+  processing: 'processing',
+  error: 'error',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CoordinatorMailCaseOutboxStatus = typeof CoordinatorMailCaseOutboxStatus[keyof typeof CoordinatorMailCaseOutboxStatus] | null;
+
+
+export const CoordinatorMailCaseOutboxStatus = {
+  queued: 'queued',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export interface CoordinatorMailCase {
+  id: number;
+  title: string;
+  status: CoordinatorMailCaseStatus;
+  /** @nullable */
+  dueAt: string | null;
+  revision: number;
+  lastActivityAt: string;
+  messageCount: number;
+  attachmentCount: number;
+  /** @nullable */
+  latestSubject: string | null;
+  /** @nullable */
+  latestSender: string | null;
+  aiStatus: CoordinatorMailCaseAiStatus;
+  /** @nullable */
+  aiError: string | null;
+  draftTo: string;
+  draftSubject: string;
+  draftBody: string;
+  /** @nullable */
+  outboxStatus: CoordinatorMailCaseOutboxStatus;
+}
+
+export interface CoordinatorMailCaseSummary {
+  ownerId: number;
+  page: number;
+  pageSize: number;
+  total: number;
+  connection: CoordinatorMailConnection;
+  aiAvailable: boolean;
+  items: CoordinatorMailCase[];
+}
+
+export interface CoordinatorMailMessages {
+  items: CoordinatorMailMessage[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export type CoordinatorMailCaseDetail = CoordinatorMailCase & {
+  notes: CoordinatorMailCaseNote[];
+  messages: CoordinatorMailMessages;
+};
+
+export interface CoordinatorMailNoteInput {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  content: string;
+}
+
+export type CoordinatorMailCaseUpdateStatus = typeof CoordinatorMailCaseUpdateStatus[keyof typeof CoordinatorMailCaseUpdateStatus];
+
+
+export const CoordinatorMailCaseUpdateStatus = {
+  open: 'open',
+  waiting: 'waiting',
+  closed: 'closed',
+} as const;
+
+export interface CoordinatorMailCaseUpdate {
+  /** @minimum 1 */
+  revision: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  status?: CoordinatorMailCaseUpdateStatus;
+  /** @nullable */
+  dueAt?: string | null;
+  /** @maxLength 254 */
+  draftTo?: string;
+  /** @maxLength 998 */
+  draftSubject?: string;
+  /** @maxLength 25000 */
+  draftBody?: string;
+}
+
+export interface CoordinatorMailAiDraftInput {
+  /** @minimum 1 */
+  revision: number;
+  /** @maxLength 10000 */
+  instructions: string;
+  consent: true;
+}
+
+export interface CoordinatorMailSendInput {
+  /** @minimum 1 */
+  revision: number;
+  confirmed: true;
+}
+
+export type CoordinatorMailOutboxItemStatus = typeof CoordinatorMailOutboxItemStatus[keyof typeof CoordinatorMailOutboxItemStatus];
+
+
+export const CoordinatorMailOutboxItemStatus = {
+  queued: 'queued',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export interface CoordinatorMailOutboxItem {
+  id: number;
+  status: CoordinatorMailOutboxItemStatus;
+  createdAt: string;
+  /** @nullable */
+  sentAt: string | null;
+  /** @nullable */
+  error: string | null;
+}
+
 export interface Error {
   message: string;
   code?: string;
@@ -1475,6 +1732,7 @@ export type EventType = typeof EventType[keyof typeof EventType];
 export const EventType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;
 
@@ -1494,6 +1752,346 @@ export interface Event {
   endAt?: string | null;
   status?: string;
   createdAt?: string;
+}
+
+export interface MinutesSaveInput {
+  /** @minimum 0 */
+  revision: number;
+  enabled?: boolean;
+  /** @maxLength 120000 */
+  draftText?: string;
+}
+
+export type MinutesSourceInputPurpose = typeof MinutesSourceInputPurpose[keyof typeof MinutesSourceInputPurpose];
+
+
+export const MinutesSourceInputPurpose = {
+  evidence: 'evidence',
+  instruction: 'instruction',
+} as const;
+
+export interface MinutesSourceInput {
+  /** @maxLength 300 */
+  objectPath: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fileName: string;
+  /** @maxLength 150 */
+  contentType: string;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  size: number;
+  purpose: MinutesSourceInputPurpose;
+  consent: true;
+}
+
+export interface MinutesGenerateInput {
+  /** @minimum 0 */
+  revision: number;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  instructions: string;
+  consent: true;
+}
+
+export interface MinutesPublishInput {
+  /** @minimum 0 */
+  revision: number;
+  publish: boolean;
+  reviewed: boolean;
+}
+
+export interface MeetingAiSettingsInput {
+  /** @maxLength 500 */
+  apiKey?: string;
+  clearApiKey?: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  transcriptionModel?: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  visionModel?: string;
+}
+
+export interface MeetingAiSettings {
+  apiKeyConfigured: boolean;
+  managedAvailable: boolean;
+  writingConfigured: boolean;
+  processingAvailable: boolean;
+  transcriptionModel: string;
+  visionModel: string;
+}
+
+export type MinutesSourcePurpose = typeof MinutesSourcePurpose[keyof typeof MinutesSourcePurpose];
+
+
+export const MinutesSourcePurpose = {
+  evidence: 'evidence',
+  instruction: 'instruction',
+} as const;
+
+export type MinutesSourceStatus = typeof MinutesSourceStatus[keyof typeof MinutesSourceStatus];
+
+
+export const MinutesSourceStatus = {
+  queued: 'queued',
+  processing: 'processing',
+  ready: 'ready',
+  error: 'error',
+} as const;
+
+export interface MinutesSource {
+  id: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+  purpose: MinutesSourcePurpose;
+  status: MinutesSourceStatus;
+  extractedText: string;
+  /** @nullable */
+  error: string | null;
+  createdAt: string;
+}
+
+export type MinutesMessageRole = typeof MinutesMessageRole[keyof typeof MinutesMessageRole];
+
+
+export const MinutesMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface MinutesMessage {
+  id: number;
+  role: MinutesMessageRole;
+  content: string;
+  createdAt: string;
+}
+
+export type EventMinutesGenerationStatus = typeof EventMinutesGenerationStatus[keyof typeof EventMinutesGenerationStatus];
+
+
+export const EventMinutesGenerationStatus = {
+  idle: 'idle',
+  queued: 'queued',
+  processing: 'processing',
+  error: 'error',
+} as const;
+
+export interface EventMinutes {
+  eventId: number;
+  enabled: boolean;
+  canManage: boolean;
+  revision: number;
+  /** @nullable */
+  draftText: string | null;
+  /** @nullable */
+  publishedText: string | null;
+  /** @nullable */
+  publishedAt: string | null;
+  generationStatus: EventMinutesGenerationStatus;
+  /** @nullable */
+  generationError: string | null;
+  writingConfigured: boolean;
+  multimediaConfigured: boolean;
+  processingAvailable: boolean;
+  sources: MinutesSource[];
+  messages: MinutesMessage[];
+}
+
+export interface AttendanceCertificateNotificationResult {
+  ok: boolean;
+  issued: number;
+  failed: number;
+}
+
+export interface IssueOwnAttendanceCertificateInput {
+  /** @minimum 1 */
+  eventId: number;
+}
+
+export interface OwnAttendancePendingEvent {
+  eventId: number;
+  eventName: string;
+}
+
+export interface AttendanceCsvInput {
+  /**
+     * @minLength 1
+     * @maxLength 250000
+     */
+  csv: string;
+}
+
+export type AttendanceCsvPreviewRowsItemStatus = typeof AttendanceCsvPreviewRowsItemStatus[keyof typeof AttendanceCsvPreviewRowsItemStatus];
+
+
+export const AttendanceCsvPreviewRowsItemStatus = {
+  ready: 'ready',
+  duplicate: 'duplicate',
+  error: 'error',
+} as const;
+
+export type AttendanceCsvPreviewRowsItem = {
+  line: number;
+  fullName: string;
+  email: string;
+  status: AttendanceCsvPreviewRowsItemStatus;
+  /** @nullable */
+  message: string | null;
+};
+
+export interface AttendanceCsvPreview {
+  rows: AttendanceCsvPreviewRowsItem[];
+  errors: number;
+  duplicates: number;
+  ready: number;
+}
+
+export interface MyAttendanceCertificate {
+  id: number;
+  code: string;
+  eventName: string;
+  attendeeName: string;
+  issuedAt: string;
+  /** @nullable */
+  revokedAt: string | null;
+}
+
+export type EventAttendanceSettingsInputModality = typeof EventAttendanceSettingsInputModality[keyof typeof EventAttendanceSettingsInputModality];
+
+
+export const EventAttendanceSettingsInputModality = {
+  presencial: 'presencial',
+  videoconferencia: 'videoconferencia',
+  hibrida: 'hibrida',
+} as const;
+
+export interface EventAttendanceSettingsInput {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  signerName: string;
+  /**
+     * @minLength 2
+     * @maxLength 300
+     */
+  signerRole: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  issuePlace: string;
+  /** @nullable */
+  issueDate?: string | null;
+  modality: EventAttendanceSettingsInputModality;
+  /**
+     * @minimum 1
+     * @maximum 100000
+     * @nullable
+     */
+  durationMinutes?: number | null;
+  /** @maxLength 1000 */
+  additionalText: string;
+  registrationOpen: boolean;
+}
+
+export type EventAttendanceSettings = EventAttendanceSettingsInput & ({
+  /** @nullable */
+  registrationUrl: string | null;
+  /** @nullable */
+  qrDataUrl: string | null;
+});
+
+export type EventAttendanceStatus = typeof EventAttendanceStatus[keyof typeof EventAttendanceStatus];
+
+
+export const EventAttendanceStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export interface EventAttendance {
+  id: number;
+  fullName: string;
+  email: string;
+  status: EventAttendanceStatus;
+  registeredAt: string;
+  /** @nullable */
+  confirmedAt: string | null;
+  /** @nullable */
+  certificateId: number | null;
+  /** @nullable */
+  certificateCode: string | null;
+}
+
+export interface EventAttendancePage {
+  items: EventAttendance[];
+  total: number;
+}
+
+/**
+ * @nullable
+ */
+export type AttendanceRegistrationInfoAttendanceStatus = typeof AttendanceRegistrationInfoAttendanceStatus[keyof typeof AttendanceRegistrationInfoAttendanceStatus] | null;
+
+
+export const AttendanceRegistrationInfoAttendanceStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export interface AttendanceRegistrationInfo {
+  eventId: number;
+  eventName: string;
+  /** @nullable */
+  location: string | null;
+  /** @nullable */
+  startAt: string | null;
+  /** @nullable */
+  endAt: string | null;
+  open: boolean;
+  /** @nullable */
+  attendanceStatus: AttendanceRegistrationInfoAttendanceStatus;
+}
+
+export interface AttendanceCertificatePdf {
+  filename: string;
+  contentBase64: string;
+  /** @nullable */
+  certificateId: number | null;
+}
+
+export interface AttendanceCertificateVerification {
+  code: string;
+  valid: boolean;
+  attendeeName: string;
+  eventName: string;
+  startAt: string;
+  endAt: string;
+  modality: string;
+  /** @nullable */
+  location: string | null;
+  durationMinutes: number;
+  signerName: string;
+  signerRole: string;
+  issueDate: string;
+  issuedAt: string;
+  /** @nullable */
+  revokedAt: string | null;
 }
 
 export interface EventSpace {
@@ -1517,6 +2115,7 @@ export type CreateEventInputType = typeof CreateEventInputType[keyof typeof Crea
 export const CreateEventInputType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;
 
@@ -1541,6 +2140,7 @@ export type UpdateEventInputType = typeof UpdateEventInputType[keyof typeof Upda
 export const UpdateEventInputType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;
 
@@ -2494,6 +3094,11 @@ export interface ConfirmYearInput {
 }
 
 /**
+ * Invalid input (400), sign-in required (401), forbidden (403), not found (404), state conflict (409), closed registration (410), throttled (429) or email unavailable (503)
+ */
+export type AttendanceErrorResponse = Error;
+
+/**
  * Error
  */
 export type ErrorResponse = Error;
@@ -2513,6 +3118,34 @@ export type MunicipalityQueryParameter = number;
 export type CenterQueryParameter = number;
 
 export type SearchQueryParameter = string;
+
+export type GetCoordinatorMailWorkspaceParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type GetCoordinatorMailCaseParams = {
+/**
+ * @minimum 1
+ */
+messagePage?: number;
+};
+
+export type StartCoordinatorGmailOAuth200 = {
+  authorizationUrl: string;
+};
+
+export type FinishCoordinatorGmailOAuthParams = {
+code?: string;
+state?: string;
+error?: string;
+};
+
+export type DisconnectCoordinatorGmail200 = {
+  disconnected: boolean;
+};
 
 export type ListDocumentFormsParams = {
 status?: ListDocumentFormsStatus;
@@ -2714,8 +3347,62 @@ export type ListEventsType = typeof ListEventsType[keyof typeof ListEventsType];
 export const ListEventsType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;
+
+export type ListEventAttendanceParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type UpdateEventAttendanceBodyStatus = typeof UpdateEventAttendanceBodyStatus[keyof typeof UpdateEventAttendanceBodyStatus];
+
+
+export const UpdateEventAttendanceBodyStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  rejected: 'rejected',
+} as const;
+
+export type UpdateEventAttendanceBody = {
+  status: UpdateEventAttendanceBodyStatus;
+};
+
+export type RevokeEventAttendanceCertificateBody = {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+};
+
+export type ImportEventAttendanceCsvBody = AttendanceCsvInput & {
+  confirmAttendance: true;
+};
+
+export type ImportEventAttendanceCsv200 = {
+  imported: number;
+  duplicates: number;
+};
+
+export type ListMyAttendanceCertificates200 = {
+  emailVerified: boolean;
+  items: MyAttendanceCertificate[];
+  pendingEvents: OwnAttendancePendingEvent[];
+};
+
+export type VerifyAttendanceEmailBody = {
+  /** @pattern ^[0-9]{6}$ */
+  code: string;
+};
 
 export type ListCalendarEventsParams = {
 provinceId?: ProvinceQueryParameter;

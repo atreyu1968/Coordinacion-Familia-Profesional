@@ -514,6 +514,10 @@ apply_schema() {
     migrate_existing_invitation_columns
     migrate_existing_legal_acceptance_columns
     run_psql --file="${SCRIPT_DIR}/migrations/collaboration-and-audit.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/event-attendance-certificates.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/meeting-minutes.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/coordinator-mail.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/ai-knowledge.sql"
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."

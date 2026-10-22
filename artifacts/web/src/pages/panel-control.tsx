@@ -4,6 +4,8 @@ import {
   useUpdateIntegrationSettings,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { MeetingAiSettingsCard } from "@/components/meeting-ai-settings";
+import { CoordinatorGmailAdminSettings } from "@/components/coordinator-mail/coordinator-mail";
 import {
   Card,
   CardContent,
@@ -350,6 +352,9 @@ export default function PanelControlPage() {
         </Card>
 
       </div>
+
+      <MeetingAiSettingsCard />
+      <CoordinatorGmailAdminSettings />
 
       <Card>
         <CardHeader>

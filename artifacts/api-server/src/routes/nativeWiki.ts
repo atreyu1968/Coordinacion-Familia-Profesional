@@ -28,6 +28,7 @@ import {
 } from "@workspace/api-zod";
 import {
   db,
+  centersTable,
   modulesTable,
   moduleMembershipsTable,
   usersTable,
@@ -39,10 +40,12 @@ import {
   wikiPermissionGroupsTable,
   wikiUploadIntentsTable,
 } from "@workspace/db";
+import type { User } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { getAppBaseUrl } from "../lib/appUrl";
-import { requireAuth } from "../middlewares/auth";
+import { hasScopeOver, requireAuth } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { getActiveFamily } from "../lib/settings";
 
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
@@ -200,6 +203,36 @@ async function getSectionPermissions(
     return user.role === "superadmin"
       ? { ...ALL_WIKI_PERMISSIONS }
       : { ...NO_WIKI_PERMISSIONS };
+  }
+  if (user.role === "coordinator") {
+    const activeFamily = await getActiveFamily();
+    const [scopeUser] = await db
+      .select()
+      .from(usersTable)
+      .where(and(eq(usersTable.id, user.id), isNull(usersTable.deletedAt)));
+    const [module] = await db
+      .select({
+        centerId: modulesTable.centerId,
+        provinceId: centersTable.provinceId,
+      })
+      .from(modulesTable)
+      .leftJoin(centersTable, eq(centersTable.id, modulesTable.centerId))
+      .where(
+        and(
+          eq(modulesTable.id, moduleId),
+          isNull(modulesTable.deletedAt),
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ),
+      );
+    if (
+      module?.centerId != null &&
+      module.provinceId != null &&
+      scopeUser?.role === "coordinator" &&
+      hasScopeOver(scopeUser, { centerId: module.centerId, provinceId: module.provinceId })
+    ) {
+      return { ...ALL_WIKI_PERMISSIONS };
+    }
   }
   const permissions = await getModulePermissionsForUser(user, [moduleId]);
   return permissions.get(moduleId) ?? { ...NO_WIKI_PERMISSIONS };

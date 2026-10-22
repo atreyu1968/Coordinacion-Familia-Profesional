@@ -215,7 +215,7 @@ log "Installing system packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y --no-install-recommends \
-  python3 \
+  python3 ffmpeg poppler-utils \
   ca-certificates curl gnupg git build-essential openssl \
   nginx postgresql postgresql-contrib
 

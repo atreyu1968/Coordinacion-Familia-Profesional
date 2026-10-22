@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm, readFile } from "node:fs/promises";
+import { rm, readFile, cp } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -20,6 +20,7 @@ async function buildAll() {
     bundle: true,
     format: "esm",
     define: {
+      __CERTIFICATE_ASSETS_PATH__: JSON.stringify("./assets/fonts/"),
       __EMAIL_DEFAULT_LOGO_BASE64__: JSON.stringify(
         (await readFile(path.resolve(artifactDir, "../web/src/assets/logo.png"))).toString("base64"),
       ),
@@ -125,7 +126,13 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
+// Font files ship with the built server; no network/font service is required
+// when issuing certificates on a self-hosted installation.
+const buildWithFonts = async () => {
+  await buildAll();
+  await cp(path.join(artifactDir, "assets", "fonts"), path.join(artifactDir, "dist", "assets", "fonts"), { recursive: true });
+};
+buildWithFonts().catch((err) => {
   console.error(err);
   process.exit(1);
 });

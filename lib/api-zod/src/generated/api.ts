@@ -9,6 +9,479 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Get the authenticated coordinator's private mail workspace and connection status
+ */
+export const getCoordinatorMailWorkspaceQueryPageDefault = 1;
+
+
+
+export const GetCoordinatorMailWorkspaceQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(getCoordinatorMailWorkspaceQueryPageDefault)
+})
+
+export const GetCoordinatorMailWorkspaceResponse = zod.object({
+  "ownerId": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int(),
+  "connection": zod.object({
+  "connected": zod.boolean(),
+  "email": zod.string().nullable(),
+  "status": zod.enum(['idle', 'queued', 'syncing', 'error', 'needs_reauthorization', 'needs_configuration']),
+  "syncError": zod.string().nullable(),
+  "lastSyncAt": zod.coerce.date().nullable(),
+  "messagesImported": zod.number().int(),
+  "oauthAvailable": zod.boolean()
+}),
+  "aiAvailable": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}))
+})
+
+
+/**
+ * @summary Get one private mail case
+ */
+export const GetCoordinatorMailCaseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getCoordinatorMailCaseQueryMessagePageDefault = 1;
+
+
+
+export const GetCoordinatorMailCaseQueryParams = zod.object({
+  "messagePage": zod.coerce.number().int().min(1).default(getCoordinatorMailCaseQueryMessagePageDefault)
+})
+
+export const GetCoordinatorMailCaseResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+}))
+
+
+/**
+ * @summary Update case, status or reviewed reply draft with optimistic revision
+ */
+export const UpdateCoordinatorMailCaseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const updateCoordinatorMailCaseBodyTitleMax = 200;
+
+export const updateCoordinatorMailCaseBodyDraftToMax = 254;
+
+export const updateCoordinatorMailCaseBodyDraftSubjectMax = 998;
+
+export const updateCoordinatorMailCaseBodyDraftBodyMax = 25000;
+
+
+
+export const UpdateCoordinatorMailCaseBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "title": zod.string().min(1).max(updateCoordinatorMailCaseBodyTitleMax).optional(),
+  "status": zod.enum(['open', 'waiting', 'closed']).optional(),
+  "dueAt": zod.coerce.date().nullish(),
+  "draftTo": zod.string().max(updateCoordinatorMailCaseBodyDraftToMax).optional(),
+  "draftSubject": zod.string().max(updateCoordinatorMailCaseBodyDraftSubjectMax).optional(),
+  "draftBody": zod.string().max(updateCoordinatorMailCaseBodyDraftBodyMax).optional()
+})
+
+export const UpdateCoordinatorMailCaseResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+}))
+
+
+/**
+ * @summary Add a private case note to its chronological history
+ */
+export const AddCoordinatorMailCaseNoteParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const addCoordinatorMailCaseNoteBodyContentMax = 5000;
+
+
+
+export const AddCoordinatorMailCaseNoteBody = zod.object({
+  "content": zod.string().min(1).max(addCoordinatorMailCaseNoteBodyContentMax)
+})
+
+export const AddCoordinatorMailCaseNoteResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+}))
+
+
+/**
+ * @summary Queue an authorized AI reply draft without sending email
+ */
+export const GenerateCoordinatorMailReplyDraftParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const generateCoordinatorMailReplyDraftBodyInstructionsMax = 10000;
+
+
+
+export const GenerateCoordinatorMailReplyDraftBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "instructions": zod.string().max(generateCoordinatorMailReplyDraftBodyInstructionsMax),
+  "consent": zod.literal(true)
+})
+
+export const GenerateCoordinatorMailReplyDraftResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+}))
+
+
+/**
+ * @summary Explicitly queue the coordinator-reviewed Gmail reply
+ */
+export const SendCoordinatorMailReplyParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const SendCoordinatorMailReplyBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "confirmed": zod.literal(true)
+})
+
+export const SendCoordinatorMailReplyResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['queued', 'sending', 'sent', 'failed', 'unknown']),
+  "createdAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Download an attachment only if its parent email belongs to the caller
+ */
+export const DownloadCoordinatorMailAttachmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DownloadCoordinatorMailAttachmentResponse = zod.unknown()
+
+
+/**
+ * @summary Begin Google authorization for the current coordinator's dedicated mailbox
+ */
+export const StartCoordinatorGmailOAuthResponse = zod.object({
+  "authorizationUrl": zod.string().url()
+})
+
+
+/**
+ * @summary One-time Google OAuth callback protected by state and browser cookie
+ */
+export const FinishCoordinatorGmailOAuthQueryParams = zod.object({
+  "code": zod.coerce.string().optional(),
+  "state": zod.coerce.string().optional(),
+  "error": zod.coerce.string().optional()
+})
+
+export const FinishCoordinatorGmailOAuthResponse = zod.unknown()
+
+
+/**
+ * @summary Disconnect only this coordinator's Gmail account and preserve saved cases
+ */
+export const DisconnectCoordinatorGmailResponse = zod.object({
+  "disconnected": zod.boolean()
+})
+
+
+/**
+ * @summary Queue a deduplicated mailbox sync for the current coordinator
+ */
+export const SyncCoordinatorGmailResponse = zod.object({
+  "ownerId": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int(),
+  "connection": zod.object({
+  "connected": zod.boolean(),
+  "email": zod.string().nullable(),
+  "status": zod.enum(['idle', 'queued', 'syncing', 'error', 'needs_reauthorization', 'needs_configuration']),
+  "syncError": zod.string().nullable(),
+  "lastSyncAt": zod.coerce.date().nullable(),
+  "messagesImported": zod.number().int(),
+  "oauthAvailable": zod.boolean()
+}),
+  "aiAvailable": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+}))
+})
+
+
+/**
+ * @summary Read non-secret Google OAuth configuration status
+ */
+export const GetCoordinatorMailAdminSettingsResponse = zod.object({
+  "clientId": zod.string().nullable(),
+  "clientSecretConfigured": zod.boolean(),
+  "redirectUri": zod.string().nullable(),
+  "ready": zod.boolean()
+})
+
+
+/**
+ * @summary Configure the self-hostable Google OAuth web app from superadmin control panel
+ */
+export const updateCoordinatorMailAdminSettingsBodyClientIdMax = 254;
+
+export const updateCoordinatorMailAdminSettingsBodyClientSecretMax = 4096;
+
+export const updateCoordinatorMailAdminSettingsBodyRedirectUriMax = 500;
+
+
+
+export const UpdateCoordinatorMailAdminSettingsBody = zod.object({
+  "clientId": zod.string().min(1).max(updateCoordinatorMailAdminSettingsBodyClientIdMax),
+  "clientSecret": zod.string().max(updateCoordinatorMailAdminSettingsBodyClientSecretMax).optional(),
+  "clearClientSecret": zod.boolean().optional(),
+  "redirectUri": zod.string().url().max(updateCoordinatorMailAdminSettingsBodyRedirectUriMax)
+})
+
+export const UpdateCoordinatorMailAdminSettingsResponse = zod.object({
+  "clientId": zod.string().nullable(),
+  "clientSecretConfigured": zod.boolean(),
+  "redirectUri": zod.string().nullable(),
+  "ready": zod.boolean()
+})
+
+
+/**
  * Returns a presigned URL for direct upload. The client sends JSON
  * metadata here, then uploads the file directly to the returned URL.
  * @summary Request a presigned URL for file upload
@@ -2202,14 +2675,14 @@ export const GetSurveyResultsResponse = zod.object({
 
 
 export const ListEventsQueryParams = zod.object({
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']).optional(),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']).optional(),
   "provinceId": zod.coerce.number().int().optional()
 })
 
 export const ListEventsResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2223,7 +2696,7 @@ export const ListEventsResponse = zod.array(ListEventsResponseItem)
 
 export const CreateEventBody = zod.object({
   "name": zod.string(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2234,7 +2707,7 @@ export const CreateEventBody = zod.object({
 export const CreateEventResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2252,7 +2725,7 @@ export const GetEventParams = zod.object({
 export const GetEventResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2279,7 +2752,7 @@ export const UpdateEventParams = zod.object({
 
 export const UpdateEventBody = zod.object({
   "name": zod.string().optional(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']).optional(),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']).optional(),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2290,7 +2763,7 @@ export const UpdateEventBody = zod.object({
 export const UpdateEventResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
-  "type": zod.enum(['canarias_skills', 'jornada', 'other']),
+  "type": zod.enum(['canarias_skills', 'jornada', 'coordination_meeting', 'other']),
   "description": zod.string().nullish(),
   "location": zod.string().nullish(),
   "provinceId": zod.number().int().nullish(),
@@ -2465,14 +2938,700 @@ export const RsvpEventResponse = zod.object({
 
 
 /**
- * @summary Generate and send attendance certificates (PDF) to attendees
+ * @summary Issue confirmed attendance certificates and notify recipients of protected app downloads
  */
 export const IssueCertificatesParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
 export const IssueCertificatesResponse = zod.object({
+  "ok": zod.boolean(),
+  "issued": zod.number().int(),
+  "failed": zod.number().int()
+})
+
+
+export const GetEventMinutesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetEventMinutesResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+export const SaveEventMinutesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const saveEventMinutesBodyRevisionMin = 0;
+
+export const saveEventMinutesBodyDraftTextMax = 120000;
+
+
+
+export const SaveEventMinutesBody = zod.object({
+  "revision": zod.number().int().min(saveEventMinutesBodyRevisionMin),
+  "enabled": zod.boolean().optional(),
+  "draftText": zod.string().max(saveEventMinutesBodyDraftTextMax).optional()
+})
+
+export const SaveEventMinutesResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+export const AddEventMinutesSourceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const addEventMinutesSourceBodyObjectPathMax = 300;
+
+export const addEventMinutesSourceBodyFileNameMax = 200;
+
+export const addEventMinutesSourceBodyContentTypeMax = 150;
+
+export const addEventMinutesSourceBodySizeMax = 104857600;
+
+
+
+export const AddEventMinutesSourceBody = zod.object({
+  "objectPath": zod.string().max(addEventMinutesSourceBodyObjectPathMax),
+  "fileName": zod.string().min(1).max(addEventMinutesSourceBodyFileNameMax),
+  "contentType": zod.string().max(addEventMinutesSourceBodyContentTypeMax),
+  "size": zod.number().int().min(1).max(addEventMinutesSourceBodySizeMax),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "consent": zod.literal(true)
+})
+
+export const AddEventMinutesSourceResponse = zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const DeleteEventMinutesSourceParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "sourceId": zod.coerce.number().int()
+})
+
+export const DeleteEventMinutesSourceResponse = zod.object({
   "ok": zod.boolean()
+})
+
+
+export const RetryEventMinutesSourceParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "sourceId": zod.coerce.number().int()
+})
+
+export const RetryEventMinutesSourceResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const GenerateEventMinutesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const generateEventMinutesBodyRevisionMin = 0;
+
+export const generateEventMinutesBodyInstructionsMax = 12000;
+
+
+
+export const GenerateEventMinutesBody = zod.object({
+  "revision": zod.number().int().min(generateEventMinutesBodyRevisionMin),
+  "instructions": zod.string().min(1).max(generateEventMinutesBodyInstructionsMax),
+  "consent": zod.literal(true)
+})
+
+export const GenerateEventMinutesResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+export const PublishEventMinutesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const publishEventMinutesBodyRevisionMin = 0;
+
+
+
+export const PublishEventMinutesBody = zod.object({
+  "revision": zod.number().int().min(publishEventMinutesBodyRevisionMin),
+  "publish": zod.boolean(),
+  "reviewed": zod.boolean()
+})
+
+export const PublishEventMinutesResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+export const GetMeetingAiSettingsResponse = zod.object({
+  "apiKeyConfigured": zod.boolean(),
+  "managedAvailable": zod.boolean(),
+  "writingConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "transcriptionModel": zod.string(),
+  "visionModel": zod.string()
+})
+
+
+export const updateMeetingAiSettingsBodyApiKeyMax = 500;
+
+export const updateMeetingAiSettingsBodyTranscriptionModelMax = 100;
+
+export const updateMeetingAiSettingsBodyVisionModelMax = 100;
+
+
+
+export const UpdateMeetingAiSettingsBody = zod.object({
+  "apiKey": zod.string().max(updateMeetingAiSettingsBodyApiKeyMax).optional(),
+  "clearApiKey": zod.boolean().optional(),
+  "transcriptionModel": zod.string().min(1).max(updateMeetingAiSettingsBodyTranscriptionModelMax).optional(),
+  "visionModel": zod.string().min(1).max(updateMeetingAiSettingsBodyVisionModelMax).optional()
+})
+
+export const UpdateMeetingAiSettingsResponse = zod.object({
+  "apiKeyConfigured": zod.boolean(),
+  "managedAvailable": zod.boolean(),
+  "writingConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "transcriptionModel": zod.string(),
+  "visionModel": zod.string()
+})
+
+
+export const GetEventAttendanceSettingsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getEventAttendanceSettingsResponseOneSignerNameMin = 2;
+export const getEventAttendanceSettingsResponseOneSignerNameMax = 200;
+
+export const getEventAttendanceSettingsResponseOneSignerRoleMin = 2;
+export const getEventAttendanceSettingsResponseOneSignerRoleMax = 300;
+
+export const getEventAttendanceSettingsResponseOneIssuePlaceMin = 2;
+export const getEventAttendanceSettingsResponseOneIssuePlaceMax = 150;
+
+export const getEventAttendanceSettingsResponseOneDurationMinutesMax = 100000;
+
+export const getEventAttendanceSettingsResponseOneAdditionalTextMax = 1000;
+
+
+
+export const GetEventAttendanceSettingsResponse = zod.object({
+  "signerName": zod.string().min(getEventAttendanceSettingsResponseOneSignerNameMin).max(getEventAttendanceSettingsResponseOneSignerNameMax),
+  "signerRole": zod.string().min(getEventAttendanceSettingsResponseOneSignerRoleMin).max(getEventAttendanceSettingsResponseOneSignerRoleMax),
+  "issuePlace": zod.string().min(getEventAttendanceSettingsResponseOneIssuePlaceMin).max(getEventAttendanceSettingsResponseOneIssuePlaceMax),
+  "issueDate": zod.coerce.date().nullish(),
+  "modality": zod.enum(['presencial', 'videoconferencia', 'hibrida']),
+  "durationMinutes": zod.number().int().min(1).max(getEventAttendanceSettingsResponseOneDurationMinutesMax).nullish(),
+  "additionalText": zod.string().max(getEventAttendanceSettingsResponseOneAdditionalTextMax),
+  "registrationOpen": zod.boolean()
+}).and(zod.object({
+  "registrationUrl": zod.string().nullable(),
+  "qrDataUrl": zod.string().nullable()
+}))
+
+
+export const UpdateEventAttendanceSettingsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateEventAttendanceSettingsBodySignerNameMin = 2;
+export const updateEventAttendanceSettingsBodySignerNameMax = 200;
+
+export const updateEventAttendanceSettingsBodySignerRoleMin = 2;
+export const updateEventAttendanceSettingsBodySignerRoleMax = 300;
+
+export const updateEventAttendanceSettingsBodyIssuePlaceMin = 2;
+export const updateEventAttendanceSettingsBodyIssuePlaceMax = 150;
+
+export const updateEventAttendanceSettingsBodyDurationMinutesMax = 100000;
+
+export const updateEventAttendanceSettingsBodyAdditionalTextMax = 1000;
+
+
+
+export const UpdateEventAttendanceSettingsBody = zod.object({
+  "signerName": zod.string().min(updateEventAttendanceSettingsBodySignerNameMin).max(updateEventAttendanceSettingsBodySignerNameMax),
+  "signerRole": zod.string().min(updateEventAttendanceSettingsBodySignerRoleMin).max(updateEventAttendanceSettingsBodySignerRoleMax),
+  "issuePlace": zod.string().min(updateEventAttendanceSettingsBodyIssuePlaceMin).max(updateEventAttendanceSettingsBodyIssuePlaceMax),
+  "issueDate": zod.coerce.date().nullish(),
+  "modality": zod.enum(['presencial', 'videoconferencia', 'hibrida']),
+  "durationMinutes": zod.number().int().min(1).max(updateEventAttendanceSettingsBodyDurationMinutesMax).nullish(),
+  "additionalText": zod.string().max(updateEventAttendanceSettingsBodyAdditionalTextMax),
+  "registrationOpen": zod.boolean()
+})
+
+export const updateEventAttendanceSettingsResponseOneSignerNameMin = 2;
+export const updateEventAttendanceSettingsResponseOneSignerNameMax = 200;
+
+export const updateEventAttendanceSettingsResponseOneSignerRoleMin = 2;
+export const updateEventAttendanceSettingsResponseOneSignerRoleMax = 300;
+
+export const updateEventAttendanceSettingsResponseOneIssuePlaceMin = 2;
+export const updateEventAttendanceSettingsResponseOneIssuePlaceMax = 150;
+
+export const updateEventAttendanceSettingsResponseOneDurationMinutesMax = 100000;
+
+export const updateEventAttendanceSettingsResponseOneAdditionalTextMax = 1000;
+
+
+
+export const UpdateEventAttendanceSettingsResponse = zod.object({
+  "signerName": zod.string().min(updateEventAttendanceSettingsResponseOneSignerNameMin).max(updateEventAttendanceSettingsResponseOneSignerNameMax),
+  "signerRole": zod.string().min(updateEventAttendanceSettingsResponseOneSignerRoleMin).max(updateEventAttendanceSettingsResponseOneSignerRoleMax),
+  "issuePlace": zod.string().min(updateEventAttendanceSettingsResponseOneIssuePlaceMin).max(updateEventAttendanceSettingsResponseOneIssuePlaceMax),
+  "issueDate": zod.coerce.date().nullish(),
+  "modality": zod.enum(['presencial', 'videoconferencia', 'hibrida']),
+  "durationMinutes": zod.number().int().min(1).max(updateEventAttendanceSettingsResponseOneDurationMinutesMax).nullish(),
+  "additionalText": zod.string().max(updateEventAttendanceSettingsResponseOneAdditionalTextMax),
+  "registrationOpen": zod.boolean()
+}).and(zod.object({
+  "registrationUrl": zod.string().nullable(),
+  "qrDataUrl": zod.string().nullable()
+}))
+
+
+export const ListEventAttendanceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const listEventAttendanceQueryPageDefault = 1;
+
+export const listEventAttendanceQueryPageSizeDefault = 50;
+export const listEventAttendanceQueryPageSizeMax = 100;
+
+
+
+export const ListEventAttendanceQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(listEventAttendanceQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listEventAttendanceQueryPageSizeMax).default(listEventAttendanceQueryPageSizeDefault)
+})
+
+export const ListEventAttendanceResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['pending', 'confirmed', 'rejected']),
+  "registeredAt": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullable(),
+  "certificateId": zod.number().int().nullable(),
+  "certificateCode": zod.string().nullable()
+})),
+  "total": zod.number().int()
+})
+
+
+
+
+
+export const UpdateEventAttendanceParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "attendanceId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateEventAttendanceBody = zod.object({
+  "status": zod.enum(['pending', 'confirmed', 'rejected'])
+})
+
+export const UpdateEventAttendanceResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+
+
+
+export const GenerateEventAttendanceCertificateParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "attendanceId": zod.coerce.number().int().min(1)
+})
+
+export const GenerateEventAttendanceCertificateResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
+})
+
+
+
+
+
+export const RevokeEventAttendanceCertificateParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "certificateId": zod.coerce.number().int().min(1)
+})
+
+export const revokeEventAttendanceCertificateBodyReasonMin = 3;
+export const revokeEventAttendanceCertificateBodyReasonMax = 500;
+
+
+
+export const RevokeEventAttendanceCertificateBody = zod.object({
+  "reason": zod.string().min(revokeEventAttendanceCertificateBodyReasonMin).max(revokeEventAttendanceCertificateBodyReasonMax)
+})
+
+export const RevokeEventAttendanceCertificateResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+
+
+
+export const DownloadEventAttendanceCertificateParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "certificateId": zod.coerce.number().int().min(1)
+})
+
+export const DownloadEventAttendanceCertificateResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
+})
+
+
+export const PreviewEventAttendanceCertificateParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const previewEventAttendanceCertificateBodySignerNameMin = 2;
+export const previewEventAttendanceCertificateBodySignerNameMax = 200;
+
+export const previewEventAttendanceCertificateBodySignerRoleMin = 2;
+export const previewEventAttendanceCertificateBodySignerRoleMax = 300;
+
+export const previewEventAttendanceCertificateBodyIssuePlaceMin = 2;
+export const previewEventAttendanceCertificateBodyIssuePlaceMax = 150;
+
+export const previewEventAttendanceCertificateBodyDurationMinutesMax = 100000;
+
+export const previewEventAttendanceCertificateBodyAdditionalTextMax = 1000;
+
+
+
+export const PreviewEventAttendanceCertificateBody = zod.object({
+  "signerName": zod.string().min(previewEventAttendanceCertificateBodySignerNameMin).max(previewEventAttendanceCertificateBodySignerNameMax),
+  "signerRole": zod.string().min(previewEventAttendanceCertificateBodySignerRoleMin).max(previewEventAttendanceCertificateBodySignerRoleMax),
+  "issuePlace": zod.string().min(previewEventAttendanceCertificateBodyIssuePlaceMin).max(previewEventAttendanceCertificateBodyIssuePlaceMax),
+  "issueDate": zod.coerce.date().nullish(),
+  "modality": zod.enum(['presencial', 'videoconferencia', 'hibrida']),
+  "durationMinutes": zod.number().int().min(1).max(previewEventAttendanceCertificateBodyDurationMinutesMax).nullish(),
+  "additionalText": zod.string().max(previewEventAttendanceCertificateBodyAdditionalTextMax),
+  "registrationOpen": zod.boolean()
+})
+
+export const PreviewEventAttendanceCertificateResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
+})
+
+
+export const getAttendanceRegistrationPathTokenMin = 43;
+export const getAttendanceRegistrationPathTokenMax = 43;
+
+
+
+export const GetAttendanceRegistrationParams = zod.object({
+  "token": zod.coerce.string().min(getAttendanceRegistrationPathTokenMin).max(getAttendanceRegistrationPathTokenMax)
+})
+
+export const GetAttendanceRegistrationResponse = zod.object({
+  "eventId": zod.number().int(),
+  "eventName": zod.string(),
+  "location": zod.string().nullable(),
+  "startAt": zod.coerce.date().nullable(),
+  "endAt": zod.coerce.date().nullable(),
+  "open": zod.boolean(),
+  "attendanceStatus": zod.union([zod.literal('pending'),zod.literal('confirmed'),zod.literal('rejected'),zod.literal(null)]).nullable()
+})
+
+
+export const registerEventAttendancePathTokenMin = 43;
+export const registerEventAttendancePathTokenMax = 43;
+
+
+
+export const RegisterEventAttendanceParams = zod.object({
+  "token": zod.coerce.string().min(registerEventAttendancePathTokenMin).max(registerEventAttendancePathTokenMax)
+})
+
+export const RegisterEventAttendanceResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+export const verifyAttendanceCertificatePathTokenMin = 43;
+export const verifyAttendanceCertificatePathTokenMax = 43;
+
+
+
+export const VerifyAttendanceCertificateParams = zod.object({
+  "token": zod.coerce.string().min(verifyAttendanceCertificatePathTokenMin).max(verifyAttendanceCertificatePathTokenMax)
+})
+
+export const VerifyAttendanceCertificateResponse = zod.object({
+  "code": zod.string(),
+  "valid": zod.boolean(),
+  "attendeeName": zod.string(),
+  "eventName": zod.string(),
+  "startAt": zod.coerce.date(),
+  "endAt": zod.coerce.date(),
+  "modality": zod.string(),
+  "location": zod.string().nullable(),
+  "durationMinutes": zod.number().int(),
+  "signerName": zod.string(),
+  "signerRole": zod.string(),
+  "issueDate": zod.string(),
+  "issuedAt": zod.coerce.date(),
+  "revokedAt": zod.coerce.date().nullable()
+})
+
+
+export const PreviewEventAttendanceCsvParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const previewEventAttendanceCsvBodyCsvMax = 250000;
+
+
+
+export const PreviewEventAttendanceCsvBody = zod.object({
+  "csv": zod.string().min(1).max(previewEventAttendanceCsvBodyCsvMax)
+})
+
+export const PreviewEventAttendanceCsvResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "line": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['ready', 'duplicate', 'error']),
+  "message": zod.string().nullable()
+})),
+  "errors": zod.number().int(),
+  "duplicates": zod.number().int(),
+  "ready": zod.number().int()
+})
+
+
+export const ImportEventAttendanceCsvParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const importEventAttendanceCsvBodyOneCsvMax = 250000;
+
+
+
+export const ImportEventAttendanceCsvBody = zod.object({
+  "csv": zod.string().min(1).max(importEventAttendanceCsvBodyOneCsvMax)
+}).and(zod.object({
+  "confirmAttendance": zod.literal(true)
+}))
+
+export const ImportEventAttendanceCsvResponse = zod.object({
+  "imported": zod.number().int(),
+  "duplicates": zod.number().int()
+})
+
+
+export const GenerateEventAttendanceZipParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GenerateEventAttendanceZipResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
+})
+
+
+export const ListMyAttendanceCertificatesResponse = zod.object({
+  "emailVerified": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "code": zod.string(),
+  "eventName": zod.string(),
+  "attendeeName": zod.string(),
+  "issuedAt": zod.coerce.date(),
+  "revokedAt": zod.coerce.date().nullable()
+})),
+  "pendingEvents": zod.array(zod.object({
+  "eventId": zod.number().int(),
+  "eventName": zod.string()
+}))
+})
+
+
+export const SendAttendanceEmailCodeResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+
+
+
+export const IssueMyAttendanceCertificateBody = zod.object({
+  "eventId": zod.number().int().min(1)
+})
+
+export const IssueMyAttendanceCertificateResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
+})
+
+
+export const verifyAttendanceEmailBodyCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
+export const VerifyAttendanceEmailBody = zod.object({
+  "code": zod.string().regex(verifyAttendanceEmailBodyCodeRegExp)
+})
+
+export const VerifyAttendanceEmailResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+
+
+
+export const DownloadMyAttendanceCertificateParams = zod.object({
+  "certificateId": zod.coerce.number().int().min(1)
+})
+
+export const DownloadMyAttendanceCertificateResponse = zod.object({
+  "filename": zod.string(),
+  "contentBase64": zod.string(),
+  "certificateId": zod.number().int().nullable()
 })
 
 

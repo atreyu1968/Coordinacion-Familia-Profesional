@@ -12,5 +12,6 @@ export type UpdateEventInputType = typeof UpdateEventInputType[keyof typeof Upda
 export const UpdateEventInputType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;

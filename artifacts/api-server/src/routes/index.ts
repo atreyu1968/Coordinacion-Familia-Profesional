@@ -1,5 +1,9 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import eventAttendanceRouter from "./eventAttendance";
+import meetingMinutesRouter from "./meetingMinutes";
+import coordinatorMailRouter from "./coordinatorMail";
+import attendanceAccessRouter from "./attendanceAccess";
 import authRouter from "./auth";
 import invitationsRouter from "./invitations";
 import usersRouter from "./users";
@@ -30,6 +34,10 @@ import lmsRouter from "./lms";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(eventAttendanceRouter);
+router.use(meetingMinutesRouter);
+router.use(coordinatorMailRouter);
+router.use(attendanceAccessRouter);
 router.use(authRouter);
 router.use(invitationsRouter);
 router.use(usersRouter);

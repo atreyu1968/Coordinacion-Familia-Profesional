@@ -12,5 +12,6 @@ export type CreateEventInputType = typeof CreateEventInputType[keyof typeof Crea
 export const CreateEventInputType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;

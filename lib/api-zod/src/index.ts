@@ -4,4 +4,12 @@ export * from "./generated/types";
 // operation name. Prefer the runtime schema at the package root.
 export { ListGroupMessagesParams } from "./generated/api";
 export { GetCollaborativeSpaceHistoryParams } from "./generated/api";
+export { GetCoordinatorMailCaseParams } from "./generated/api";
 export { ListUserAuditParams } from "./generated/api";
+export {
+  ImportEventAttendanceCsvBody,
+  ListEventAttendanceParams,
+  RevokeEventAttendanceCertificateBody,
+  UpdateEventAttendanceBody,
+  VerifyAttendanceEmailBody,
+} from "./generated/api";

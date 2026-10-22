@@ -2,6 +2,9 @@ import http from "node:http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
+import { startMeetingMinutesWorker } from "./lib/meetingMinutesWorker";
+import { startCoordinatorMailWorker } from "./lib/coordinatorMailWorker";
+import { startAiKnowledgeWorker } from "./lib/aiKnowledge";
 import { seedIntegrationSettingsFromEnv } from "./lib/settings";
 import { seedAcademicYears } from "./routes/academicYears";
 import { startConfirmationScheduler } from "./lib/scheduler";
@@ -45,6 +48,9 @@ async function start(): Promise<void> {
   }
   startConfirmationScheduler();
   startWikiIndexing();
+  startMeetingMinutesWorker();
+  startCoordinatorMailWorker();
+  startAiKnowledgeWorker();
   server.listen(port, () => {
     logger.info({ port }, "Server listening");
   });

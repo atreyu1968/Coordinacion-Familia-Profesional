@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { useCheckInAccreditation } from "@workspace/api-client-react";
@@ -19,9 +20,17 @@ export default function ScanScreen() {
   const [scanned, setScanned] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const checkIn = useCheckInAccreditation();
+  const router = useRouter();
 
   const handleScan = (qrToken: string) => {
     if (scanned) return;
+    // Attendance-registration QR codes carry a /asistencia/TOKEN link.
+    const attendance = /\/asistencia\/([A-Za-z0-9_-]+)/.exec(qrToken);
+    if (attendance) {
+      setScanned(true);
+      router.replace({ pathname: "/asistencia", params: { token: attendance[1] } });
+      return;
+    }
     setScanned(true);
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -56,7 +65,7 @@ export default function ScanScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Escanear QR" subtitle="Control de acceso a eventos" showBack />
+      <AppHeader title="Escanear QR" subtitle="Acreditaciones y registro de asistencia" showBack />
       <View style={styles.body}>
         {result ? (
           <ResultView colors={colors} result={result} onReset={reset} />

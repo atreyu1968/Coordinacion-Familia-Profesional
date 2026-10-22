@@ -12,5 +12,6 @@ export type ListEventsType = typeof ListEventsType[keyof typeof ListEventsType];
 export const ListEventsType = {
   canarias_skills: 'canarias_skills',
   jornada: 'jornada',
+  coordination_meeting: 'coordination_meeting',
   other: 'other',
 } as const;

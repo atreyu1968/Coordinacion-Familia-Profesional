@@ -35,6 +35,7 @@ import {
   PinOff,
   Menu,
   X,
+  Award,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
@@ -123,6 +124,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Coord. Académica", path: "/academica", icon: GraduationCap, visible: true },
     { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: false },
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
+    { label: "Asuntos de correo", path: "/asuntos-correo", icon: Mail, visible: ["coordinator", "superadmin"].includes(role) },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
     { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
     { label: "Mensajes", path: "/chat", icon: MessageCircle, visible: true },
@@ -136,6 +138,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: role === "superadmin" },
     { label: "Sugerencias", path: "/sugerencias", icon: MessageSquarePlus, visible: true },
     { label: "App Móvil", path: "/app-movil", icon: Smartphone, visible: true },
+    { label: "Mis certificados", path: "/mis-certificados", icon: Award, visible: true },
     { label: "Autodirigido", path: "/autodirigido", icon: LearningIcon, visible: true },
     { label: "Configuración", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
   ];

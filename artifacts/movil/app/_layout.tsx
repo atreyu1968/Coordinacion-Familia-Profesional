@@ -6,7 +6,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, usePathname, useRouter, useSegments } from "expo-router";
+import { Stack, useGlobalSearchParams, usePathname, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -71,17 +71,37 @@ function RootLayoutNav() {
     },
   );
   const profileWasForced = useRef(false);
+  const globalParams = useGlobalSearchParams<{ token?: string | string[] }>();
+  const routeToken = Array.isArray(globalParams.token)
+    ? globalParams.token[0]
+    : globalParams.token;
+  // Attendance token opened while signed out; restored right after login.
+  // Only an opaque token is kept (never a full URL) so the return is safe.
+  const pendingAttendanceToken = useRef<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
     const isPublicAuthRoute =
       segments[0] === "login" || segments[0] === "recuperar";
     if (!token && !isPublicAuthRoute) {
+      if (
+        (segments[0] as string) === "asistencia" &&
+        typeof routeToken === "string" &&
+        /^[A-Za-z0-9_-]{8,200}$/.test(routeToken)
+      ) {
+        pendingAttendanceToken.current = routeToken;
+      }
       router.replace("/login");
     } else if (token && isPublicAuthRoute) {
-      router.replace("/(tabs)");
+      const pending = pendingAttendanceToken.current;
+      pendingAttendanceToken.current = null;
+      if (pending) {
+        router.replace({ pathname: "/asistencia", params: { token: pending } });
+      } else {
+        router.replace("/(tabs)");
+      }
     }
-  }, [token, isLoading, segments, router]);
+  }, [token, isLoading, segments, router, routeToken]);
 
   useEffect(() => {
     if (
@@ -173,8 +193,12 @@ function RootLayoutNav() {
         <Stack.Screen name="foros/tema/[id]" />
         <Stack.Screen name="wiki/index" />
         <Stack.Screen name="wiki/[id]" />
+        <Stack.Screen name="actas" />
+        <Stack.Screen name="acta/[id]" />
         <Stack.Screen name="feedback" />
         <Stack.Screen name="perfil" />
+        <Stack.Screen name="mis-certificados" />
+        <Stack.Screen name="asistencia" />
         <Stack.Screen name="confirmar-curso" />
         <Stack.Screen name="lms" />
         <Stack.Screen name="lms/[id]" />

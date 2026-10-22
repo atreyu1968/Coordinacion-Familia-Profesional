@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
+import { safeReturnPath } from "@/components/events/certificate-utils";
 import heroImage from "@/assets/login-hero.png";
 import logo from "@/assets/logo.png";
 
@@ -28,7 +29,9 @@ export default function LoginPage() {
         data: { email, password },
       });
       login(result.token, result.user);
-      setLocation("/");
+      setLocation(
+        safeReturnPath(new URLSearchParams(window.location.search).get("next")) ?? "/",
+      );
     } catch {
       setError("Correo o contraseña incorrectos. Inténtalo de nuevo.");
     }

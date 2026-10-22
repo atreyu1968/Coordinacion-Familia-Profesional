@@ -39,6 +39,10 @@ const SugerenciasPage = lazy(() => import("@/pages/sugerencias"));
 const MemoriasPage = lazy(() => import("@/pages/memorias"));
 const AsistenteIaPage = lazy(() => import("@/pages/asistente-ia"));
 const AppMovilPage = lazy(() => import("@/pages/app-movil"));
+const MisCertificadosPage = lazy(() => import("@/pages/mis-certificados"));
+const CoordinatorMailPage = lazy(() => import("@/components/coordinator-mail/coordinator-mail"));
+const AsistenciaPage = lazy(() => import("@/pages/asistencia"));
+const VerificarCertificadoPage = lazy(() => import("@/pages/verificar-certificado"));
 const AutodirigidoPage = lazy(() => import("@/pages/autodirigido"));
 const ScormPlayerPage = lazy(() =>
   import("@/pages/autodirigido").then((module) => ({
@@ -84,6 +88,9 @@ function AuthedRoutes() {
           <Route path="/asistente-ia" component={AsistenteIaPage} />
           <Route path="/app-movil" component={AppMovilPage} />
           <Route path="/autodirigido" component={AutodirigidoPage} />
+          <Route path="/mis-certificados" component={MisCertificadosPage} />
+          <Route path="/asuntos-correo" component={CoordinatorMailPage} />
+          <Route path="/asuntos-correo/:id" component={CoordinatorMailPage} />
           <Route path="/panel-control" component={ConfiguracionPage} />
           <Route component={NotFound} />
         </Switch>
@@ -103,6 +110,8 @@ function Router() {
         <Route path="/cookies" component={CookiesPage} />
         <Route path="/recuperar" component={RecuperarPage} />
         <Route path="/scorm-player" component={ScormPlayerPage} />
+        <Route path="/verificar-certificado/:token" component={VerificarCertificadoPage} />
+        <Route path="/asistencia/:token" component={AsistenciaPage} />
         <Route component={AuthedRoutes} />
       </Switch>
     </Suspense>

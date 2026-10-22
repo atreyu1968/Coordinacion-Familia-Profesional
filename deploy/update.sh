@@ -158,6 +158,11 @@ run_db_helper() {
 echo "==> Pulling latest code"
 run_as_user "cd '${APP_DIR}' && git pull --ff-only"
 
+echo "==> Checking meeting audio/video processing tools"
+if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v pdftotext >/dev/null 2>&1; then
+  apt-get update -y
+  apt-get install -y --no-install-recommends ffmpeg poppler-utils
+fi
 echo "==> Installing dependencies"
 run_as_user "cd '${APP_DIR}' && pnpm install --frozen-lockfile"
 

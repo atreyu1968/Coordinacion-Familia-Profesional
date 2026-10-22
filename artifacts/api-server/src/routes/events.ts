@@ -125,7 +125,7 @@ function resolveCreateProvinceId(
 }
 
 // Load an event by id (excluding soft-deleted) and enforce the caller's scope.
-async function loadAccessibleEvent(
+export async function loadAccessibleEvent(
   id: number,
   caller: User,
 ): Promise<
@@ -825,129 +825,8 @@ router.post(
 );
 
 // ---------------------------------------------------------------------------
-// Issue attendance certificates (PDF) to confirmed attendees
-// ---------------------------------------------------------------------------
-router.post(
-  "/events/:id/certificates",
-  requireAuth,
-  requireRole("superadmin", "coordinator"),
-  async (req, res): Promise<void> => {
-    const params = IssueCertificatesParams.safeParse(req.params);
-    if (!params.success) {
-      res.status(400).json({ message: params.error.message });
-      return;
-    }
-    const caller = req.user!;
-    const loaded = await loadAccessibleEvent(params.data.id, caller);
-    if (!loaded.ok) {
-      res.status(loaded.status).json({ message: loaded.message });
-      return;
-    }
-    if (
-      caller.role === "coordinator" &&
-      loaded.event.provinceId !== caller.provinceId
-    ) {
-      res.status(403).json({ message: "Permiso denegado" });
-      return;
-    }
-
-    // A positive RSVP is not proof of attendance. Only issue to users whose
-    // registered email matches a checked-in accreditation for this event.
-    const candidates = await db
-      .select({ rsvpId: eventRsvpsTable.id })
-      .from(eventRsvpsTable)
-      .where(
-        and(
-          eq(eventRsvpsTable.eventId, loaded.event.id),
-          eq(eventRsvpsTable.status, "yes"),
-          isNull(eventRsvpsTable.certificateIssuedAt),
-        ),
-      );
-
-    const professionalFamily = professionalFamilyOf(await getSettings());
-
-    let issued = 0;
-    for (const candidate of candidates) {
-      // Lock and re-check each RSVP while sending so two concurrent manager
-      // requests cannot issue the same certificate twice. The transaction
-      // commits the issued timestamp only after the mail provider accepts it.
-      const sent = await db.transaction(async (tx) => {
-        const [attendee] = await tx
-          .select({
-            rsvpId: eventRsvpsTable.id,
-            email: usersTable.email,
-            fullName: usersTable.name,
-          })
-          .from(eventRsvpsTable)
-          .innerJoin(usersTable, eq(usersTable.id, eventRsvpsTable.userId))
-          .where(
-            and(
-              eq(eventRsvpsTable.id, candidate.rsvpId),
-              eq(eventRsvpsTable.eventId, loaded.event.id),
-              eq(eventRsvpsTable.status, "yes"),
-              isNull(eventRsvpsTable.certificateIssuedAt),
-              exists(
-                tx
-                  .select({ id: eventAccreditationsTable.id })
-                  .from(eventAccreditationsTable)
-                  .where(
-                    and(
-                      eq(
-                        eventAccreditationsTable.eventId,
-                        eventRsvpsTable.eventId,
-                      ),
-                      isNotNull(eventAccreditationsTable.checkedInAt),
-                      sql`lower(trim(${eventAccreditationsTable.holderEmail})) = lower(trim(${usersTable.email}))`,
-                    ),
-                  ),
-              ),
-            ),
-          )
-          .for("update");
-
-        if (!attendee?.email || !attendee.fullName) return false;
-
-        const pdfBase64 = await generateCertificatePdfBase64({
-          attendeeName: attendee.fullName,
-          eventName: loaded.event.name,
-          location: loaded.event.location,
-          date: loaded.event.startAt,
-          professionalFamily,
-        });
-        const result = await sendEmail({
-          to: attendee.email,
-          subject: `Certificado de asistencia · ${loaded.event.name}`,
-          html: `<div style="font-family: Arial, sans-serif; max-width:560px;margin:0 auto;">
-            <h2>Tu certificado de asistencia</h2>
-            <p>Hola ${escapeEmailHtml(attendee.fullName)}, adjuntamos tu certificado de asistencia a
-            <strong>${escapeEmailHtml(loaded.event.name)}</strong>.</p>
-            <p>Encontrarás el documento PDF adjunto a este correo. Guárdalo para futuras consultas.</p></div>`,
-          attachments: [
-            {
-              filename: `certificado-${loaded.event.id}.pdf`,
-              content: pdfBase64,
-            },
-          ],
-        });
-        if (!result.sent) return false;
-
-        await tx
-          .update(eventRsvpsTable)
-          .set({ certificateIssuedAt: new Date() })
-          .where(
-            and(
-              eq(eventRsvpsTable.id, attendee.rsvpId),
-              isNull(eventRsvpsTable.certificateIssuedAt),
-            ),
-          );
-        return true;
-      });
-      if (sent) issued += 1;
-    }
-
-    res.json({ ok: true, issued });
-  },
-);
+// Certificate issuance lives in eventAttendance.ts. RSVP is intention only;
+// registered/confirmed attendance and immutable verification records are used.
 
 // ---------------------------------------------------------------------------
 // Unified provincial calendar

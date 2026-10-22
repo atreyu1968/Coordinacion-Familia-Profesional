@@ -210,6 +210,44 @@ Se registrarán los acuerdos y las tareas. Las decisiones que requieran un proce
 
 > La disponibilidad de videoconferencia depende del servicio configurado. No se presupone grabación automática, certificación de asistencia ni autorización para grabar. Cualquier grabación exige el procedimiento y la información que correspondan.
 
+## Actas de reuniones de coordinación
+
+Crear el evento con tipo **Reunión de coordinación**. En su sección **Acta**,
+la coordinación con permiso sobre ese evento puede activar o desactivar la
+elaboración del acta. Desactivarla conserva el material privado y oculta lo publicado.
+
+1. Revisar que se dispone de autorización para procesar los documentos y grabaciones con proveedores externos de IA y marcar la autorización antes de subirlos.
+2. Añadir documentos, imágenes, audios o vídeos como evidencias. Esperar al estado **Procesado** o corregir/reintentar los errores. En los vídeos se transcribe el audio y se analizan imágenes de muestra; no se garantiza recoger todos los cambios de diapositiva.
+3. Escribir instrucciones o pulsar **Dictar instrucciones**. Autorizar el micrófono, hablar y detener la grabación. La transcripción se puede corregir antes de enviarla. El dictado aporta ideas e instrucciones, no prueba de acuerdos.
+4. Solicitar la redacción o revisión por IA. El trabajo continúa en segundo plano y se puede volver a abrir la reunión para consultar su resultado.
+5. Revisar los hechos, asistentes, acuerdos, responsables y plazos. Corregir y guardar el borrador. La IA no acredita por sí sola la veracidad de lo redactado.
+6. Marcar que se ha revisado y publicar. Solo se comparte esa versión con las personas autenticadas que pueden acceder al evento. Los archivos, el borrador y la conversación siguen siendo privados. Se puede copiar el enlace o retirar la publicación.
+
+Los usuarios móviles encuentran las versiones compartidas en **Más → Actas de coordinación**.
+Los borradores y sus fuentes no se comparten automáticamente. Guardar cambios no
+modifica el acta publicada hasta una nueva publicación expresa.
+
+El panel de control configura los servicios: DeepSeek, si está configurado, redacta
+el acta; si no, se utiliza OpenAI, que también transcribe el audio y analiza imágenes.
+En servidores propios se necesita configurar
+la clave de OpenAI y disponer de `ffmpeg` y `poppler-utils`; el instalador y actualizador
+incluyen estas herramientas. Se admiten hasta 20 fuentes de 100 MB cada una,
+grabaciones de hasta 120 minutos y PDF de hasta 40 páginas. Los archivos de mayor
+tamaño deben dividirse o comprimirse antes de subirlos.
+
+## Certificados de asistencia a eventos
+
+La persona organizadora configura el certificado desde **Eventos → evento → Asistencia**:
+firmante, cargo, modalidad, lugar y fecha de expedición, duración y texto adicional.
+El nombre del evento, las fechas y el horario se toman de ese evento; se expresan en hora de Canarias.
+
+- **Registro por QR:** guardar la configuración y abrir el registro. El QR conduce a la aplicación. Se exige sesión y se usa el perfil del asistente sin otro formulario de identidad. El registro queda pendiente de validación por la organización; «Asistiré» no acredita presencia.
+- **Listado CSV:** utilizar la plantilla `nombre,email`, revisar la vista previa y confirmar expresamente que se ha comprobado la asistencia. Se admiten hasta 500 personas y 250 KB por archivo. Las filas erróneas bloquean la importación y los correos duplicados no se sobrescriben ni se vuelven a añadir; las asistencias pendientes ya existentes se revisan desde el listado.
+- **Emisión:** una vez finalizado el evento y validada la asistencia, generar el PDF individual o el ZIP del evento. Una vista previa está marcada como borrador y carece de validez.
+- **Descarga personal:** cada persona entra en **Mis certificados**, en escritorio o en el menú **Más** de la app móvil. Debe usar el correo incluido en el listado y verificarlo con el código enviado a ese mismo correo. Si no tiene cuenta, necesita una invitación para registrarse con esa dirección. Puede emitir su certificado de una asistencia ya validada aunque la organización no haya generado el lote.
+- **Autenticidad:** el QR de cada PDF abre un registro público con sus datos originales y su estado vigente o anulado, sin mostrar correos ni el listado de asistentes. Se deben comparar nombre, evento y fechas con el documento presentado. No constituye una firma electrónica cualificada.
+- **Correcciones y anulación:** anular un certificado conserva su registro de verificación como anulado y devuelve la asistencia a pendiente. La organización debe revisarla de nuevo antes de permitir otra emisión. Los cambios posteriores en un evento o perfil no alteran certificados ya emitidos.
+
 # 09. Equipos de trabajo por módulos
 
 Los equipos de módulo vinculan el trabajo común con las asignaciones docentes y la organización académica. Antes de incorporar a una persona, se comprobarán el módulo correcto, el centro y el curso académico.

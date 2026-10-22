@@ -48,6 +48,223 @@ tags:
     description: Autodirigido learning courses and certificates
 
 paths:
+  /coordinator-mail/workspace:
+    get:
+      operationId: getCoordinatorMailWorkspace
+      tags: [coordinator-mail]
+      summary: Get the authenticated coordinator's private mail workspace and connection status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        "200":
+          description: Owner-private mail cases.
+          content:
+            application/json:
+                schema: { $ref: "#/components/schemas/CoordinatorMailCaseSummary" }
+        "403": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}:
+    get:
+      operationId: getCoordinatorMailCase
+      tags: [coordinator-mail]
+      summary: Get one private mail case
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: messagePage, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Case details, recent messages and private notes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateCoordinatorMailCase
+      tags: [coordinator-mail]
+      summary: Update case, status or reviewed reply draft with optimistic revision
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailCaseUpdate" }
+      responses:
+        "200":
+          description: Updated private case.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}/notes:
+    post:
+      operationId: addCoordinatorMailCaseNote
+      tags: [coordinator-mail]
+      summary: Add a private case note to its chronological history
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailNoteInput" }
+      responses:
+        "201":
+          description: Saved note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "404": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}/ai-draft:
+    post:
+      operationId: generateCoordinatorMailReplyDraft
+      tags: [coordinator-mail]
+      summary: Queue an authorized AI reply draft without sending email
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailAiDraftInput" }
+      responses:
+        "202":
+          description: Drafting queued for this case revision.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}/send:
+    post:
+      operationId: sendCoordinatorMailReply
+      tags: [coordinator-mail]
+      summary: Explicitly queue the coordinator-reviewed Gmail reply
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailSendInput" }
+      responses:
+        "202":
+          description: Queued for Gmail.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailOutboxItem" }
+        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/attachments/{id}:
+    get:
+      operationId: downloadCoordinatorMailAttachment
+      tags: [coordinator-mail]
+      summary: Download an attachment only if its parent email belongs to the caller
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      responses:
+        "200":
+          description: Private attachment bytes.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/gmail/connect:
+    post:
+      operationId: startCoordinatorGmailOAuth
+      tags: [coordinator-mail]
+      summary: Begin Google authorization for the current coordinator's dedicated mailbox
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Google authorization URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { authorizationUrl: { type: string, format: uri } }
+                required: [authorizationUrl]
+        "503": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/gmail/callback:
+    get:
+      operationId: finishCoordinatorGmailOAuth
+      tags: [coordinator-mail]
+      summary: One-time Google OAuth callback protected by state and browser cookie
+      security: []
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Completes connection and redirects to the app.
+          content:
+            text/html:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/gmail:
+    delete:
+      operationId: disconnectCoordinatorGmail
+      tags: [coordinator-mail]
+      summary: Disconnect only this coordinator's Gmail account and preserve saved cases
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Account disconnected; local case history retained.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { disconnected: { type: boolean } }
+                required: [disconnected]
+  /coordinator-mail/gmail/sync:
+    post:
+      operationId: syncCoordinatorGmail
+      tags: [coordinator-mail]
+      summary: Queue a deduplicated mailbox sync for the current coordinator
+      security: [{ bearerAuth: [] }]
+      responses:
+        "202":
+          description: Synchronization queued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseSummary" }
+        "403": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/admin-settings:
+    get:
+      operationId: getCoordinatorMailAdminSettings
+      tags: [coordinator-mail]
+      summary: Read non-secret Google OAuth configuration status
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Never returns the Google OAuth client secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailAdminSettings" }
+        "403": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateCoordinatorMailAdminSettings
+      tags: [coordinator-mail]
+      summary: Configure the self-hostable Google OAuth web app from superadmin control panel
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailSettingsUpdate" }
+      responses:
+        "200":
+          description: Saved, masked OAuth configuration.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailAdminSettings" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -2435,7 +2652,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [canarias_skills, jornada, other]
+            enum: [canarias_skills, jornada, coordination_meeting, other]
         - $ref: "#/components/parameters/ProvinceQuery"
       responses:
         "200":
@@ -2672,7 +2889,7 @@ paths:
     post:
       operationId: issueCertificates
       tags: [events]
-      summary: Generate and send attendance certificates (PDF) to attendees
+      summary: Issue confirmed attendance certificates and notify recipients of protected app downloads
       security:
         - bearerAuth: []
       parameters:
@@ -2683,7 +2900,144 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OkResult"
+                $ref: "#/components/schemas/AttendanceCertificateNotificationResult"
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      operationId: getEventMinutes
+      tags: [Events]
+      responses:
+        "200":
+          description: Private workspace for scoped managers; only published minutes for event readers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+    put:
+      operationId: saveEventMinutes
+      tags: [Events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MinutesSaveInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/sources:
+    post:
+      operationId: addEventMinutesSource
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MinutesSourceInput" }
+      responses:
+        "201":
+          description: Queued private source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MinutesSource" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/sources/{sourceId}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+      - { name: sourceId, in: path, required: true, schema: { type: integer } }
+    delete:
+      operationId: deleteEventMinutesSource
+      tags: [Events]
+      responses:
+        "200":
+          description: Detached and deleted private source
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/sources/{sourceId}/retry:
+    post:
+      operationId: retryEventMinutesSource
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: sourceId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/generate:
+    post:
+      operationId: generateEventMinutes
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MinutesGenerateInput" }
+      responses:
+        "202":
+          description: Generation queued; poll the workspace
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/publish:
+    post:
+      operationId: publishEventMinutes
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MinutesPublishInput" }
+      responses:
+        "200":
+          description: Published or withdrawn; private sources never shared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /settings/meeting-ai:
+    get:
+      operationId: getMeetingAiSettings
+      tags: [Settings]
+      responses:
+        "200":
+          description: Superadmin-only configuration status; no secret values
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeetingAiSettings" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+    put:
+      operationId: updateMeetingAiSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MeetingAiSettingsInput" }
+      responses:
+        "200":
+          description: Saved configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeetingAiSettings" }
+        default: { $ref: "#/components/responses/AttendanceError" }
   /events/{id}/attendance-settings:
     get:
       operationId: getEventAttendanceSettings
@@ -2866,6 +3220,152 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AttendanceCertificateVerification" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance/csv-preview:
+    post:
+      operationId: previewEventAttendanceCsv
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttendanceCsvInput" }
+      responses:
+        "200":
+          description: Validated CSV rows; no changes made
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCsvPreview" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance/csv-import:
+    post:
+      operationId: importEventAttendanceCsv
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: "#/components/schemas/AttendanceCsvInput" }
+                - type: object
+                  properties:
+                    confirmAttendance: { type: boolean, enum: [true] }
+                  required: [confirmAttendance]
+      responses:
+        "200":
+          description: Imported as organizer-confirmed attendance; no certificates sent automatically
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported: { type: integer }
+                  duplicates: { type: integer }
+                required: [imported, duplicates]
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance/certificates-zip:
+    post:
+      operationId: generateEventAttendanceZip
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      responses:
+        "200":
+          description: Up to 500 confirmed attendees as individual PDFs in one ZIP
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /me/attendance-certificates:
+    get:
+      operationId: listMyAttendanceCertificates
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Certificates bound to the authenticated and verified email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emailVerified: { type: boolean }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MyAttendanceCertificate" }
+                  pendingEvents:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnAttendancePendingEvent" }
+                required: [emailVerified, items, pendingEvents]
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /me/attendance-certificates/email-code:
+    post:
+      operationId: sendAttendanceEmailCode
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Verification code sent to the account's own email
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /me/attendance-certificates/issue:
+    post:
+      operationId: issueMyAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IssueOwnAttendanceCertificateInput" }
+      responses:
+        "200":
+          description: Own confirmed attendance issued; verified matching email required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /me/attendance-certificates/verify-email:
+    post:
+      operationId: verifyAttendanceEmail
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string, pattern: "^[0-9]{6}$" }
+              required: [code]
+      responses:
+        "200":
+          description: Email ownership verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /me/attendance-certificates/{certificateId}/pdf:
+    get:
+      operationId: downloadMyAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Own non-revoked certificate PDF; verified matching email required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
         default: { $ref: "#/components/responses/AttendanceError" }
   /calendar:
     get:
@@ -4688,6 +5188,11 @@ components:
       schema:
         type: string
   responses:
+    AttendanceError:
+      description: Invalid input (400), sign-in required (401), forbidden (403), not found (404), state conflict (409), closed registration (410), throttled (429) or email unavailable (503)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Error:
       description: Error
       content:
@@ -5152,6 +5657,159 @@ components:
           type: string
           description: Base64url VAPID public key, absent when web push is disabled
       required: []
+    CoordinatorMailSettingsUpdate:
+      type: object
+      properties:
+        clientId: { type: string, minLength: 1, maxLength: 254 }
+        clientSecret: { type: string, maxLength: 4096 }
+        clearClientSecret: { type: boolean }
+        redirectUri: { type: string, format: uri, maxLength: 500 }
+      required: [clientId, redirectUri]
+    CoordinatorMailAdminSettings:
+      type: object
+      properties:
+        clientId: { type: ["string", "null"] }
+        clientSecretConfigured: { type: boolean }
+        redirectUri: { type: ["string", "null"] }
+        ready: { type: boolean }
+      required: [clientId, clientSecretConfigured, redirectUri, ready]
+    CoordinatorMailConnection:
+      type: object
+      properties:
+        connected: { type: boolean }
+        email: { type: ["string", "null"] }
+        status: { type: string, enum: [idle, queued, syncing, error, needs_reauthorization, needs_configuration] }
+        syncError: { type: ["string", "null"] }
+        lastSyncAt: { type: ["string", "null"], format: date-time }
+        messagesImported: { type: integer }
+        oauthAvailable: { type: boolean }
+      required: [connected, email, status, syncError, lastSyncAt, messagesImported, oauthAvailable]
+    CoordinatorMailAttachment:
+      type: object
+      properties:
+        id: { type: integer }
+        fileName: { type: string }
+        contentType: { type: string }
+        size: { type: integer }
+        status: { type: string, enum: [queued, ready, error] }
+        error: { type: ["string", "null"] }
+      required: [id, fileName, contentType, size, status, error]
+    CoordinatorMailMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        direction: { type: string, enum: [received, sent] }
+        senderEmail: { type: string }
+        senderName: { type: string }
+        toEmails: { type: string }
+        ccEmails: { type: string }
+        subject: { type: string }
+        bodyText: { type: string }
+        bodyTruncated: { type: boolean }
+        receivedAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/CoordinatorMailAttachment" }
+      required: [id, direction, senderEmail, senderName, toEmails, ccEmails, subject, bodyText, bodyTruncated, receivedAt, attachments]
+    CoordinatorMailCaseNote:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [note, status, draft, ai_draft, sent] }
+        content: { type: string }
+        author: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, kind, content, author, createdAt]
+    CoordinatorMailCase:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string, enum: [open, waiting, closed] }
+        dueAt: { type: ["string", "null"], format: date-time }
+        revision: { type: integer }
+        lastActivityAt: { type: string, format: date-time }
+        messageCount: { type: integer }
+        attachmentCount: { type: integer }
+        latestSubject: { type: ["string", "null"] }
+        latestSender: { type: ["string", "null"] }
+        aiStatus: { type: string, enum: [idle, queued, processing, error] }
+        aiError: { type: ["string", "null"] }
+        draftTo: { type: string }
+        draftSubject: { type: string }
+        draftBody: { type: string }
+        outboxStatus: { type: ["string", "null"], enum: [queued, sending, sent, failed, unknown, null] }
+      required: [id, title, status, dueAt, revision, lastActivityAt, messageCount, attachmentCount, latestSubject, latestSender, aiStatus, aiError, draftTo, draftSubject, draftBody, outboxStatus]
+    CoordinatorMailCaseSummary:
+      type: object
+      properties:
+        ownerId: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        connection: { $ref: "#/components/schemas/CoordinatorMailConnection" }
+        aiAvailable: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CoordinatorMailCase" }
+      required: [ownerId, page, pageSize, total, connection, aiAvailable, items]
+    CoordinatorMailMessages:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CoordinatorMailMessage" }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+      required: [items, page, pageSize, total]
+    CoordinatorMailCaseDetail:
+      allOf:
+        - $ref: "#/components/schemas/CoordinatorMailCase"
+        - type: object
+          properties:
+            notes:
+              type: array
+              items: { $ref: "#/components/schemas/CoordinatorMailCaseNote" }
+            messages: { $ref: "#/components/schemas/CoordinatorMailMessages" }
+          required: [notes, messages]
+    CoordinatorMailNoteInput:
+      type: object
+      properties: { content: { type: string, minLength: 1, maxLength: 5000 } }
+      required: [content]
+    CoordinatorMailCaseUpdate:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        status: { type: string, enum: [open, waiting, closed] }
+        dueAt: { type: ["string", "null"], format: date-time }
+        draftTo: { type: string, maxLength: 254 }
+        draftSubject: { type: string, maxLength: 998 }
+        draftBody: { type: string, maxLength: 25000 }
+      required: [revision]
+    CoordinatorMailAiDraftInput:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 1 }
+        instructions: { type: string, maxLength: 10000 }
+        consent: { type: boolean, enum: [true] }
+      required: [revision, instructions, consent]
+    CoordinatorMailSendInput:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 1 }
+        confirmed: { type: boolean, enum: [true] }
+      required: [revision, confirmed]
+    CoordinatorMailOutboxItem:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [queued, sending, sent, failed, unknown] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: ["string", "null"], format: date-time }
+        error: { type: ["string", "null"] }
+      required: [id, status, createdAt, sentAt, error]
     Error:
       type: object
       properties:
@@ -6614,7 +7272,7 @@ components:
           type: string
         type:
           type: string
-          enum: [canarias_skills, jornada, other]
+          enum: [canarias_skills, jornada, coordination_meeting, other]
         description:
           type: string
           nullable: true
@@ -6638,6 +7296,148 @@ components:
           type: string
           format: date-time
       required: [id, name, type]
+    MinutesSaveInput:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 0 }
+        enabled: { type: boolean }
+        draftText: { type: string, maxLength: 120000 }
+      required: [revision]
+    MinutesSourceInput:
+      type: object
+      properties:
+        objectPath: { type: string, maxLength: 300 }
+        fileName: { type: string, minLength: 1, maxLength: 200 }
+        contentType: { type: string, maxLength: 150 }
+        size: { type: integer, minimum: 1, maximum: 104857600 }
+        purpose: { type: string, enum: [evidence, instruction] }
+        consent: { type: boolean, enum: [true] }
+      required: [objectPath, fileName, contentType, size, purpose, consent]
+    MinutesGenerateInput:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 0 }
+        instructions: { type: string, minLength: 1, maxLength: 12000 }
+        consent: { type: boolean, enum: [true] }
+      required: [revision, instructions, consent]
+    MinutesPublishInput:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 0 }
+        publish: { type: boolean }
+        reviewed: { type: boolean }
+      required: [revision, publish, reviewed]
+    MeetingAiSettingsInput:
+      type: object
+      properties:
+        apiKey: { type: string, maxLength: 500 }
+        clearApiKey: { type: boolean }
+        transcriptionModel: { type: string, minLength: 1, maxLength: 100 }
+        visionModel: { type: string, minLength: 1, maxLength: 100 }
+    MeetingAiSettings:
+      type: object
+      properties:
+        apiKeyConfigured: { type: boolean }
+        managedAvailable: { type: boolean }
+        writingConfigured: { type: boolean }
+        processingAvailable: { type: boolean }
+        transcriptionModel: { type: string }
+        visionModel: { type: string }
+      required: [apiKeyConfigured, managedAvailable, writingConfigured, processingAvailable, transcriptionModel, visionModel]
+    MinutesSource:
+      type: object
+      properties:
+        id: { type: integer }
+        fileName: { type: string }
+        contentType: { type: string }
+        size: { type: integer }
+        purpose: { type: string, enum: [evidence, instruction] }
+        status: { type: string, enum: [queued, processing, ready, error] }
+        extractedText: { type: string }
+        error: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+      required: [id, fileName, contentType, size, purpose, status, extractedText, error, createdAt]
+    MinutesMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, role, content, createdAt]
+    EventMinutes:
+      type: object
+      properties:
+        eventId: { type: integer }
+        enabled: { type: boolean }
+        canManage: { type: boolean }
+        revision: { type: integer }
+        draftText: { type: string, nullable: true }
+        publishedText: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        generationStatus: { type: string, enum: [idle, queued, processing, error] }
+        generationError: { type: string, nullable: true }
+        writingConfigured: { type: boolean }
+        multimediaConfigured: { type: boolean }
+        processingAvailable: { type: boolean }
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/MinutesSource" }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/MinutesMessage" }
+      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, sources, messages]
+    AttendanceCertificateNotificationResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        issued: { type: integer }
+        failed: { type: integer }
+      required: [ok, issued, failed]
+    IssueOwnAttendanceCertificateInput:
+      type: object
+      properties:
+        eventId: { type: integer, minimum: 1 }
+      required: [eventId]
+    OwnAttendancePendingEvent:
+      type: object
+      properties:
+        eventId: { type: integer }
+        eventName: { type: string }
+      required: [eventId, eventName]
+    AttendanceCsvInput:
+      type: object
+      properties:
+        csv: { type: string, minLength: 1, maxLength: 250000 }
+      required: [csv]
+    AttendanceCsvPreview:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer }
+              fullName: { type: string }
+              email: { type: string }
+              status: { type: string, enum: [ready, duplicate, error] }
+              message: { type: string, nullable: true }
+            required: [line, fullName, email, status, message]
+        errors: { type: integer }
+        duplicates: { type: integer }
+        ready: { type: integer }
+      required: [rows, errors, duplicates, ready]
+    MyAttendanceCertificate:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        eventName: { type: string }
+        attendeeName: { type: string }
+        issuedAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time, nullable: true }
+      required: [id, code, eventName, attendeeName, issuedAt, revokedAt]
     EventAttendanceSettingsInput:
       type: object
       properties:
@@ -6734,7 +7534,7 @@ components:
           type: string
         type:
           type: string
-          enum: [canarias_skills, jornada, other]
+          enum: [canarias_skills, jornada, coordination_meeting, other]
         description:
           type: string
           nullable: true
@@ -6760,7 +7560,7 @@ components:
           type: string
         type:
           type: string
-          enum: [canarias_skills, jornada, other]
+          enum: [canarias_skills, jornada, coordination_meeting, other]
         description:
           type: string
           nullable: true

@@ -14,7 +14,6 @@ import {
   useListEventSpaces,
   useCreateEventSpace,
   useRsvpEvent,
-  useIssueCertificates,
   useListCalendarEvents,
   useCreateCalendarEntry,
   useListProvinces,
@@ -34,6 +33,9 @@ import {
   type RsvpInputStatus,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
+import { EventMinutesSection } from "@/components/events/event-minutes";
+import { useSearch, useLocation } from "wouter";
+import { AttendanceManager } from "@/components/events/attendance-manager";
 import { useBranding } from "@/lib/branding";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,6 +99,7 @@ const GLOBAL = "global";
 const EVENT_TYPE_LABELS: Record<CreateEventInputType, string> = {
   canarias_skills: "Canarias Skills",
   jornada: "Jornada",
+  coordination_meeting: "Reunión de coordinación",
   other: "Otro",
 };
 
@@ -990,41 +993,23 @@ function AttendanceTab({
   canManage: boolean;
 }) {
   const rsvpMut = useRsvpEvent();
-  const certMut = useIssueCertificates();
 
   const onRsvp = async (status: RsvpInputStatus) => {
     try {
       await rsvpMut.mutateAsync({ id: event.id, data: { status } });
       toast({
-        title: "Asistencia registrada",
+        title: "Intención guardada",
         description:
           status === "yes"
-            ? "Has confirmado tu asistencia."
+            ? "Has indicado que tienes previsto asistir."
             : status === "no"
               ? "Has indicado que no asistirás."
-              : "Asistencia marcada como tentativa.",
+              : "Has indicado que quizás asistas.",
       });
     } catch {
       toast({
         title: "Error",
-        description: "No se pudo registrar tu asistencia.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const onIssue = async () => {
-    try {
-      await certMut.mutateAsync({ id: event.id });
-      toast({
-        title: "Certificados generados",
-        description:
-          "Se han enviado por email a quienes confirmaron asistencia. Si no llegan, revisa la configuración de Resend.",
-      });
-    } catch {
-      toast({
-        title: "Error",
-        description: "No se pudieron generar los certificados.",
+        description: "No se pudo guardar tu respuesta.",
         variant: "destructive",
       });
     }
@@ -1035,34 +1020,23 @@ function AttendanceTab({
       <Card>
         <CardContent className="p-4 space-y-3">
           <h3 className="font-semibold flex items-center gap-2 text-sm">
-            <CheckCircle2 className="w-4 h-4" /> Confirma tu asistencia
+            <CheckCircle2 className="w-4 h-4" /> ¿Tienes previsto asistir?
           </h3>
           <p className="text-xs text-muted-foreground">
-            Tu confirmación habilita la expedición automática del certificado de
-            asistencia.
+            Solo sirve para que la organización haga previsiones. No acredita tu
+            asistencia ni da derecho a certificado: para ello, regístrate con el
+            QR de asistencia durante el evento y espera a que la organización la
+            valide. Tus certificados aparecerán en{" "}
+            <a href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/mis-certificados`} className="text-primary underline">Mis certificados</a>.
           </p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => onRsvp("yes")}
-              disabled={rsvpMut.isPending}
-            >
-              Asistiré
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => onRsvp("yes")} disabled={rsvpMut.isPending}>
+              Tengo previsto asistir
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => onRsvp("maybe")}
-              disabled={rsvpMut.isPending}
-            >
+            <Button size="sm" variant="secondary" onClick={() => onRsvp("maybe")} disabled={rsvpMut.isPending}>
               Quizás
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onRsvp("no")}
-              disabled={rsvpMut.isPending}
-            >
+            <Button size="sm" variant="outline" onClick={() => onRsvp("no")} disabled={rsvpMut.isPending}>
               No asistiré
             </Button>
           </div>
@@ -1070,22 +1044,12 @@ function AttendanceTab({
       </Card>
 
       {canManage && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold flex items-center gap-2 text-sm">
-              <Award className="w-4 h-4" /> Certificados de asistencia
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Genera y envía por email un PDF de certificado a cada persona que
-              haya confirmado su asistencia.
-            </p>
-            <Button size="sm" onClick={onIssue} disabled={certMut.isPending}>
-              {certMut.isPending
-                ? "Generando..."
-                : "Generar y enviar certificados"}
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-3">
+          <h3 className="font-semibold flex items-center gap-2 text-sm">
+            <Award className="w-4 h-4" /> Asistencia real y certificados
+          </h3>
+          <AttendanceManager eventId={event.id} />
+        </div>
       )}
     </div>
   );
@@ -1097,9 +1061,11 @@ function AttendanceTab({
 function EventDetailView({
   eventId,
   onBack,
+  initialTab,
 }: {
   eventId: number;
   onBack: () => void;
+  initialTab?: string;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -1151,11 +1117,11 @@ function EventDetailView({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0 flex-1 basis-full sm:basis-auto">
           <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" /> Volver
           </Button>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex flex-wrap items-center gap-2 break-words">
             {event.name}
             <Badge variant="outline">{EVENT_TYPE_LABELS[event.type]}</Badge>
           </h1>
@@ -1174,7 +1140,7 @@ function EventDetailView({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
           <Button variant="outline" size="sm" className="gap-2" onClick={onAddToCalendar}>
             <Download className="w-4 h-4" /> .ics
           </Button>
@@ -1246,13 +1212,27 @@ function EventDetailView({
         <p className="text-sm text-muted-foreground">{event.description}</p>
       )}
 
-      <Tabs defaultValue="accreditations">
+      <Tabs
+        defaultValue={
+          initialTab === "acta" && event.type === "coordination_meeting"
+            ? "acta"
+            : "accreditations"
+        }
+      >
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="accreditations">Acreditaciones</TabsTrigger>
           <TabsTrigger value="staff">Personal</TabsTrigger>
           <TabsTrigger value="spaces">Espacios</TabsTrigger>
           <TabsTrigger value="attendance">Asistencia</TabsTrigger>
+          {event.type === "coordination_meeting" && (
+            <TabsTrigger value="acta" data-testid="tab-acta">Acta</TabsTrigger>
+          )}
         </TabsList>
+        {event.type === "coordination_meeting" && (
+          <TabsContent value="acta" className="pt-4">
+            <EventMinutesSection eventId={event.id} />
+          </TabsContent>
+        )}
         <TabsContent value="accreditations" className="pt-4">
           <AccreditationsTab event={event} canManage={canManage} />
         </TabsContent>
@@ -1683,17 +1663,28 @@ export default function EventosPage() {
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const { data: events = [], isLoading } = useListEvents();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const rawId = Number(params.get("evento"));
+  const selectedId = Number.isInteger(rawId) && rawId > 0 ? rawId : null;
+  const initialTab = params.get("seccion") === "acta" ? "acta" : undefined;
+  const setSelectedId = (id: number | null) =>
+    navigate(id == null ? "/eventos" : `/eventos?evento=${id}`);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [view, setView] = useState<"cards" | "calendar">("cards");
   const canManage = canManageEvents(user?.role);
 
   if (selectedId != null) {
     return (
       <div className="p-4 md:p-8 max-w-5xl mx-auto">
-        <EventDetailView eventId={selectedId} onBack={() => setSelectedId(null)} />
+        <EventDetailView key={`${selectedId}-${initialTab ?? ""}`} eventId={selectedId} initialTab={initialTab} onBack={() => setSelectedId(null)} />
       </div>
     );
   }
+
+  const shownEvents =
+    typeFilter === "all" ? events : events.filter((e) => e.type === typeFilter);
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -1730,22 +1721,39 @@ export default function EventosPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por tipo">
+        {(["all", ...Object.keys(EVENT_TYPE_LABELS)] as string[]).map((t) => (
+          <Button
+            key={t}
+            type="button"
+            size="sm"
+            variant={typeFilter === t ? "secondary" : "ghost"}
+            className="h-8"
+            aria-pressed={typeFilter === t}
+            onClick={() => setTypeFilter(t)}
+            data-testid={`filter-type-${t}`}
+          >
+            {t === "all" ? "Todos" : EVENT_TYPE_LABELS[t as CreateEventInputType]}
+          </Button>
+        ))}
+      </div>
+
       {isLoading ? (
         <p className="text-muted-foreground py-12 text-center">
           Cargando eventos...
         </p>
-      ) : events.length === 0 ? (
+      ) : shownEvents.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            No hay eventos todavía.
-            {canManage && " Crea el primero con el botón «Nuevo evento»."}
+            {events.length === 0 ? "No hay eventos todavía." : "No hay eventos de este tipo."}
+            {events.length === 0 && canManage && " Crea el primero con el botón «Nuevo evento»."}
           </CardContent>
         </Card>
       ) : view === "calendar" ? (
-        <EventsCalendarView events={events} onSelect={setSelectedId} />
+        <EventsCalendarView events={shownEvents} onSelect={setSelectedId} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {events.map((e: Event) => (
+          {shownEvents.map((e: Event) => (
             <Card
               key={e.id}
               className="cursor-pointer transition-colors hover:border-primary"

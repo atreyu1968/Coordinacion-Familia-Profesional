@@ -59,3 +59,7 @@
 - [Academic year management](academic-year-management.md) — managed curso académico; active year is the DEFAULT app filter (never ALL); annual teacher confirmation + 15-day auto-deactivation; transition wizard; school_year stays free TEXT.
 - [Inactive direct chats](inactive-direct-chats.md) — hide and block chats with inactive counterparts, but retain their history unless deletion is explicitly requested.
 - [Account audit privacy](account-audit-scope.md) — historical before/after scopes and current management rights both restrict audit visibility after transfers.
+- [Certificados de asistencia](attendance-certificates.md) — QR solo con sesión; CSV ligado a correo verificado, descarga personal móvil/web y anulación sin autoexpedición.
+- [Actas de coordinación](coordination-minutes.md) — borrador y fuentes privados; publicación revisada, vídeo con audio e imágenes y dictado de instrucciones.
+- [Correo privado de coordinación](coordinator-mail.md) — OAuth de Google se configura en la app; cada coordinador autoriza y conserva aislados sus propios asuntos y tokens.
+- [Fuentes de consulta de la IA](ai-knowledge-scope.md) — debe poder consultar todo el material subido y los correos recibidos, respetando los permisos de cada usuario.
