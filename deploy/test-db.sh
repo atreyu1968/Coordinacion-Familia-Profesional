@@ -66,6 +66,14 @@ if [[ "${1:-}" == "--ai-knowledge-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--invitations-only" ]]; then
+  create_test_database coordina_invitation_registration
+  migrate_database coordina_invitation_registration
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_invitation_registration?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/invitations.test.ts
+  exit 0
+fi
+
 run_test_teacher_cleanup_tests() {
   create_test_database coordina_test_teacher_cleanup
   migrate_database coordina_test_teacher_cleanup

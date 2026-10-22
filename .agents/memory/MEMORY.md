@@ -30,7 +30,7 @@
 - [Scope-based delete affordances](scope-delete-affordances.md) — client delete/manage buttons must align with backend role+scope authz.
 - [Express per-route auth guards](express-auth-guards.md) — why router.use(requireAuth) in path-less sub-routers breaks siblings.
 - [Self-service profile editing](self-service-profile.md) — profile edits use /auth/me, not the admin user-update route.
-- [Invitation token lifecycle](invitation-token-lifecycle.md) — single-use tokens; creation by role, renew guards, atomic consumption.
+- [Invitation token lifecycle](invitation-token-lifecycle.md) — atomic use limits and renewal guards; invitations must not override account deactivation.
 - [Legal acceptance and cookie policy](legal-acceptance.md) — separate terms/privacy from optional cookies; version each acceptance; do not publish drafts as compliance.
 - [Password reset OTP flow](password-reset-otp.md) — email-based recovery and the single-use atomicity constraint.
 - [Jefe de Departamento model](jefe-departamento-model.md) — modeled as a role, not an entity.

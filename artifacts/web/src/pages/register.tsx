@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import { LEGAL_VERSION } from "@/lib/legal-content";
+import { getRegistrationErrorMessage, isInvalidRegistrationInvitation } from "@/lib/registration-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ export default function RegisterPage() {
     data: invitation,
     isLoading: invitationLoading,
     isError: invitationError,
+    refetch: refetchInvitation,
   } = useGetInvitationByToken(token, {
     query: {
       queryKey: getGetInvitationByTokenQueryKey(token),
@@ -61,12 +63,15 @@ export default function RegisterPage() {
     }
     try {
       const result = await registerMutation.mutateAsync({
-        data: { token, name: name || undefined, email, password, termsAccepted, privacyAcknowledged, legalVersion: LEGAL_VERSION },
+        data: { token, name: name.trim() || undefined, email: email.trim(), password, termsAccepted, privacyAcknowledged, legalVersion: LEGAL_VERSION },
       });
       login(result.token, result.user);
       setLocation("/");
-    } catch {
-      setError("No se pudo completar el registro. Revisa los datos.");
+    } catch (cause) {
+      setError(getRegistrationErrorMessage(cause));
+      // A code may expire or exhaust its places after this form was opened.
+      // Recheck it rather than continuing to advertise cached availability.
+      if (isInvalidRegistrationInvitation(cause)) void refetchInvitation();
     }
   };
 
@@ -161,7 +166,7 @@ export default function RegisterPage() {
         </div>
         <fieldset className="space-y-3 rounded-md border p-4 text-sm">
           <legend className="px-1 font-medium">Información legal</legend>
-          <p className="text-amber-800">Estos textos son un borrador pendiente de completar por la entidad responsable.</p>
+          <p className="text-muted-foreground">Consulta los documentos vigentes antes de crear tu cuenta. Versión: {LEGAL_VERSION}.</p>
           <label className="flex items-start gap-3">
             <input type="checkbox" required checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-1 size-4" />
             <span>He leído y acepto los <Link href="/terminos" target="_blank" className="text-primary underline">términos de uso</Link>.</span>
@@ -228,6 +233,11 @@ export default function RegisterPage() {
           </div>
 
           {content()}
+
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+            <Link href="/login" className="text-primary underline">Ya tengo cuenta: iniciar sesión</Link>
+            <Link href="/recuperar" className="text-primary underline">Recuperar contraseña</Link>
+          </div>
 
           <div className="pt-2 text-center">
             <a

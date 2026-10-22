@@ -42,6 +42,43 @@ async function register(code: string) {
 }
 
 describe("shared invitation registration limits", () => {
+  it.each([false, true])("explains disabled accounts without reactivating them (soft deleted: %s)", async (softDeleted) => {
+    const existing = await createUser({ role: "teacher" });
+    const [disabled] = await db.update(usersTable).set({
+      status: "inactive", deletedAt: softDeleted ? new Date() : null,
+    }).where(eq(usersTable.id, existing.user.id)).returning();
+    const invitation = await seedInvitation(2);
+    const response = await request(app).post("/api/auth/register").send({
+      token: invitation.code, email: existing.email, password: `${DEFAULT_PASSWORD}-different`,
+      termsAccepted: true, privacyAcknowledged: true, legalVersion: "2026-10-21",
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("La cuenta asociada a este correo está desactivada. Contacta con coordinación para revisar su reactivación.");
+    const [storedUser] = await db.select().from(usersTable).where(eq(usersTable.id, existing.user.id));
+    expect(storedUser).toMatchObject({
+      status: "inactive", deletedAt: disabled.deletedAt,
+      passwordHash: disabled.passwordHash, tokenVersion: disabled.tokenVersion,
+      sessionNonce: disabled.sessionNonce,
+    });
+    const [storedInvitation] = await db.select().from(invitationsTable).where(eq(invitationsTable.id, invitation.id));
+    expect(storedInvitation).toMatchObject({ usedCount: 0, status: "pending" });
+  });
+
+  it("explains an existing account without consuming the invitation or replacing its password", async () => {
+    const existing = await createUser({ role: "teacher" });
+    const invitation = await seedInvitation(2);
+    const response = await request(app).post("/api/auth/register").send({
+      token: invitation.code, email: existing.email.toUpperCase(), password: `${DEFAULT_PASSWORD}-different`,
+      termsAccepted: true, privacyAcknowledged: true, legalVersion: "2026-10-21",
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Ya existe una cuenta con este correo");
+    const [storedInvitation] = await db.select().from(invitationsTable).where(eq(invitationsTable.id, invitation.id));
+    expect(storedInvitation).toMatchObject({ usedCount: 0, status: "pending" });
+    const [storedUser] = await db.select().from(usersTable).where(eq(usersTable.id, existing.user.id));
+    expect(storedUser.passwordHash).toBe(existing.user.passwordHash);
+  });
+
   it("creates a general code without province and derives province when targeting a center", async () => {
     const admin = await createUser({ role: "superadmin" });
     const province = await createProvince();

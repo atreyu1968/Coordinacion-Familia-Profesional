@@ -12,6 +12,14 @@ shared link for mass email. A shared link has no representative recipient email.
 
 ## Rules that must hold
 
+- **An invitation must not reactivate an existing disabled account.**
+  **Why:** a new-registration link must not bypass an administrative access
+  revocation or annual-confirmation deactivation, or replace the account's
+  existing credentials and history.
+  **How to apply:** explain the disabled state instead of returning a generic
+  sign-up error; direct the person to coordination. Reactivation uses the
+  separately authorized user-management action, not another registration.
+
 - **No pedir la provincia al generar códigos de invitación.**
   **Why:** el usuario lo ha pedido expresamente.
   **How to apply:** mantener la generación sin selector de provincia; no confundir

@@ -696,6 +696,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         .from(usersTable)
         .where(eq(usersTable.email, email));
       if (existing) {
+        if (existing.status !== "active" || existing.deletedAt !== null) {
+          throw new RegisterError(400, "La cuenta asociada a este correo está desactivada. Contacta con coordinación para revisar su reactivación.");
+        }
         throw new RegisterError(400, "Ya existe una cuenta con este correo");
       }
 
