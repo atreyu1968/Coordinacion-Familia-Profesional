@@ -3,7 +3,7 @@ name: Messaging groups and mobile notifications
 description: User requirements for voluntary groups and mobile activity notices.
 ---
 
-Los usuarios deben poder crear grupos nuevos y salir de ellos. Los avisos de eventos deben llegar también al móvil.
+Los usuarios deben poder crear grupos nuevos y salir de ellos. Los avisos de eventos y los anuncios del Tablón deben llegar también al móvil.
 
 **Why:** El usuario lo pidió expresamente.
 

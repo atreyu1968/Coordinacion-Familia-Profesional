@@ -86,7 +86,7 @@ if [[ "${1:-}" == "--messaging-only" ]]; then
   create_test_database coordina_messaging
   migrate_database coordina_messaging
   DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_messaging?host=${SOCKET_DIR}" \
-    pnpm --filter @workspace/api-server exec vitest run test/messaging.test.ts test/forums.test.ts test/teaching-profile-access.test.ts test/event-notifications.test.ts
+    pnpm --filter @workspace/api-server exec vitest run test/messaging.test.ts test/forums.test.ts test/teaching-profile-access.test.ts test/event-notifications.test.ts test/announcement-notifications.test.ts
   exit 0
 fi
 
