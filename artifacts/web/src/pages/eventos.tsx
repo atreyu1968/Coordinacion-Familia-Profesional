@@ -1230,7 +1230,12 @@ function EventDetailView({
         </TabsList>
         {event.type === "coordination_meeting" && (
           <TabsContent value="acta" className="pt-4">
-            <EventMinutesSection eventId={event.id} />
+            <EventMinutesSection
+              eventId={event.id}
+              eventName={event.name}
+              eventStartAt={event.startAt}
+              eventLocation={event.location}
+            />
           </TabsContent>
         )}
         <TabsContent value="accreditations" className="pt-4">

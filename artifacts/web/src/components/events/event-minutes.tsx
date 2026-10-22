@@ -121,21 +121,24 @@ export function SafeMarkdown({ text }: { text: string }) {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const out: ReactNode[] = [];
   let list: string[] = [];
+  let orderedList = false;
   const flush = (k: number) => {
     if (list.length) {
-      out.push(
-        <ul key={`ul-${k}`} className="list-disc pl-6 space-y-1 my-2">
-          {list.map((l, i) => <li key={i}>{inline(l, `li-${k}-${i}`)}</li>)}
-        </ul>,
-      );
+      const List = orderedList ? "ol" : "ul";
+      out.push(<List key={`list-${k}`} className={`${orderedList ? "list-decimal" : "list-disc"} pl-6 space-y-1.5 my-3`}>
+        {list.map((l, i) => <li key={i}>{inline(l, `li-${k}-${i}`)}</li>)}
+      </List>);
       list = [];
     }
   };
   lines.forEach((raw, i) => {
     const line = raw.trimEnd();
-    const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+    const bullet = line.match(/^\s*(?:([-*])|(\d+)\.)\s+(.*)$/);
     if (bullet) {
-      list.push(bullet[1]);
+      const currentOrdered = !!bullet[2];
+      if (list.length && currentOrdered !== orderedList) flush(i);
+      orderedList = currentOrdered;
+      list.push(bullet[3]);
       return;
     }
     flush(i);
@@ -143,33 +146,58 @@ export function SafeMarkdown({ text }: { text: string }) {
     if (h) {
       const lvl = h[1].length;
       out.push(
-        <p
+        <h2
           key={i}
           className={
             lvl === 1
-              ? "font-serif text-xl font-semibold mt-5 mb-2 tracking-tight"
+              ? "font-serif text-2xl sm:text-3xl font-semibold mt-7 mb-3 tracking-tight text-slate-900"
               : lvl === 2
-                ? "font-semibold text-base mt-4 mb-1.5"
-                : "font-semibold text-sm uppercase tracking-wider text-muted-foreground mt-3 mb-1"
+                ? "font-serif font-semibold text-xl mt-6 mb-2 text-slate-900"
+                : "font-semibold text-sm uppercase tracking-[0.12em] text-slate-600 mt-5 mb-2"
           }
         >
           {h[2]}
-        </p>,
+        </h2>,
       );
     } else if (!line.trim()) {
-      out.push(<div key={i} className="h-2" />);
+      out.push(<div key={i} className="h-1.5" />);
     } else {
-      out.push(<p key={i} className="leading-relaxed">{inline(line, `p-${i}`)}</p>);
+      out.push(<p key={i} className="leading-7 text-slate-700 my-2">{inline(line, `p-${i}`)}</p>);
     }
   });
   flush(lines.length);
-  return <div className="text-sm text-foreground break-words">{out}</div>;
+  return <div className="text-[15px] break-words">{out}</div>;
+}
+
+type MinutesDocumentContext = { eventName?: string; eventStartAt?: string | null; eventLocation?: string | null };
+
+function MinutesDocument({ text, context = {} }: { text: string; context?: MinutesDocumentContext }) {
+  return (
+    <div className="mx-auto max-w-[820px] min-h-[560px] bg-white px-6 py-8 sm:px-12 sm:py-12 text-slate-800 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
+      <header className="border-b-2 border-primary/70 pb-6 mb-7 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">Coordinación educativa</p>
+        <p className="mt-3 font-serif text-xl sm:text-2xl font-semibold tracking-wide text-slate-900">ACTA DE REUNIÓN</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">Reunión de coordinación</p>
+      </header>
+      {(context.eventName || context.eventStartAt || context.eventLocation) && (
+        <dl className="grid gap-x-5 gap-y-2 sm:grid-cols-2 mb-8 border-b border-slate-200 pb-5 text-sm">
+          {context.eventName && <div className="sm:col-span-2"><dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Evento</dt><dd className="mt-0.5 font-medium text-slate-800">{context.eventName}</dd></div>}
+          {context.eventStartAt && <div><dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Fecha y hora</dt><dd className="mt-0.5 text-slate-700">{formatDateTime(context.eventStartAt)}</dd></div>}
+          {context.eventLocation && <div><dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Lugar</dt><dd className="mt-0.5 text-slate-700">{context.eventLocation}</dd></div>}
+        </dl>
+      )}
+      {text.trim() ? <SafeMarkdown text={text} /> : <p className="py-16 text-center text-sm italic text-slate-400">El borrador aparecerá aquí con el formato del acta.</p>}
+      <footer className="mt-12 border-t border-slate-200 pt-4 text-center text-[10px] uppercase tracking-wider text-slate-400">
+        Documento de trabajo · Requiere revisión y aprobación de la coordinación
+      </footer>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Published (reader) view
 // ---------------------------------------------------------------------------
-function PublishedActa({ minutes, eventId }: { minutes: EventMinutes; eventId: number }) {
+function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; eventId: number; context?: MinutesDocumentContext }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(minutesLink(eventId));
@@ -196,8 +224,8 @@ function PublishedActa({ minutes, eventId }: { minutes: EventMinutes; eventId: n
           <Copy className="w-3.5 h-3.5" /> Copiar enlace
         </Button>
       </header>
-      <div className="px-6 py-5">
-        <SafeMarkdown text={minutes.publishedText ?? ""} />
+      <div className="bg-slate-50 px-3 py-6 sm:px-6">
+        <MinutesDocument text={minutes.publishedText ?? ""} context={context} />
       </div>
     </article>
   );
@@ -219,9 +247,11 @@ function pickMime(): string | undefined {
 
 function Recorder({
   disabled,
+  disabledReason,
   onRecorded,
 }: {
   disabled: boolean;
+  disabledReason?: string;
   onRecorded: (file: File) => void;
 }) {
   const [recording, setRecording] = useState(false);
@@ -272,6 +302,10 @@ function Recorder({
   const start = async () => {
     if (requesting.current || disabledRef.current) return;
     setError(null);
+    if (!window.isSecureContext) {
+      setError("El navegador solo permite usar el micrófono en una conexión segura (HTTPS).");
+      return;
+    }
     if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setError("Este navegador no permite grabar audio. Sube un archivo de audio en su lugar.");
       return;
@@ -285,7 +319,12 @@ function Recorder({
       }
       streamRef.current = stream;
       const mime = pickMime();
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      let rec: MediaRecorder;
+      try {
+        rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      } catch {
+        rec = new MediaRecorder(stream);
+      }
       chunks.current = [];
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.current.push(e.data);
@@ -313,9 +352,19 @@ function Recorder({
           return s + 1;
         });
       }, 1000);
-    } catch {
+    } catch (err) {
       release();
-      if (alive.current) setError("No se pudo acceder al micrófono. Revisa los permisos del navegador.");
+      if (alive.current) {
+        const name = (err as DOMException | undefined)?.name;
+        const message = name === "NotAllowedError" || name === "SecurityError"
+          ? "El navegador ha bloqueado el micrófono. Autoriza el permiso para este sitio y vuelve a intentarlo."
+          : name === "NotFoundError"
+            ? "No se ha encontrado un micrófono disponible en este dispositivo."
+            : name === "NotReadableError"
+              ? "El micrófono está ocupado por otra aplicación o pestaña."
+              : "No se pudo iniciar la grabación. Comprueba los permisos y el dispositivo de audio.";
+        setError(message);
+      }
     } finally {
       requesting.current = false;
     }
@@ -341,6 +390,7 @@ function Recorder({
           <span className="inline-block w-2 h-2 rounded-full bg-destructive animate-pulse" /> Grabando. Máximo 2 minutos.
         </p>
       )}
+      {disabled && disabledReason && <p className="text-xs text-muted-foreground">{disabledReason}</p>}
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     </div>
   );
@@ -366,7 +416,7 @@ function Banner({ tone, children }: { tone: "warn" | "info" | "error"; children:
   );
 }
 
-function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinutes }) {
+function Workspace({ eventId, minutes, context }: { eventId: number; minutes: EventMinutes; context: MinutesDocumentContext }) {
   const qc = useQueryClient();
   const key = getGetEventMinutesQueryKey(eventId);
   const saveMut = useSaveEventMinutes();
@@ -384,6 +434,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
   const [instructions, setInstructions] = useState("");
   const [consent, setConsent] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [draftView, setDraftView] = useState<"preview" | "edit">(minutes.draftText?.trim() ? "preview" : "edit");
   const [purpose, setPurpose] = useState<MinutesSourceInputPurpose>("evidence");
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [openSource, setOpenSource] = useState<number | null>(null);
@@ -402,6 +453,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
       setBaseline(serverDraft);
       setBaseRevision(minutes.revision);
       setConflict(false);
+      if (serverDraft.trim()) setDraftView("preview");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes.revision, serverDraft]);
@@ -515,6 +567,14 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
       toast({ title: "Formato no admitido", description: file.name, variant: "destructive" });
       return;
     }
+    if ([".pdf", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.processingAvailable) {
+      toast({ title: "Procesamiento no disponible", description: "Este servidor no tiene instaladas todas las herramientas necesarias para procesar PDF, audio o vídeo.", variant: "destructive" });
+      return;
+    }
+    if ([".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.multimediaConfigured) {
+      toast({ title: "Proveedor multimedia no configurado", description: "La superadministración debe configurar OpenAI para analizar imágenes, audio y vídeo.", variant: "destructive" });
+      return;
+    }
     if (file.size <= 0 || file.size > MAX_BYTES) {
       toast({ title: "Archivo demasiado grande", description: `${file.name}: máximo 100 MB.`, variant: "destructive" });
       return;
@@ -533,7 +593,10 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
         headers: { "Content-Type": contentType },
         signal: abort.signal,
       });
-      if (!res.ok) throw new Error("upload");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null) as { message?: string } | null;
+        throw new Error(payload?.message || `El servidor rechazó la subida (HTTP ${res.status}).`);
+      }
       const updated = await addMut.mutateAsync({
         id: eventId,
         data: { objectPath, fileName: file.name.slice(0, 200), contentType, size: file.size, purpose: p, consent: true },
@@ -546,7 +609,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
       } else {
         toast({
           title: "No se pudo subir",
-          description: `${file.name}: ${apiErrorMessage(err, "error de red o almacenamiento.")}`,
+          description: `${file.name}: ${err instanceof Error ? err.message : apiErrorMessage(err, "error de red o almacenamiento.")}`,
           variant: "destructive",
         });
       }
@@ -586,7 +649,16 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
 
   const generating = minutes.generationStatus === "queued" || minutes.generationStatus === "processing";
   const sourcesBusy = minutes.sources.some((s) => s.status === "queued" || s.status === "processing");
-  const canUpload = consent && minutes.processingAvailable && minutes.sources.length + uploads.length < MAX_SOURCES;
+  const canUpload = consent && minutes.sources.length + uploads.length < MAX_SOURCES;
+  const micDisabledReason = !consent
+    ? "Autoriza el tratamiento para habilitar la grabación."
+    : !minutes.multimediaConfigured
+      ? "Falta configurar el proveedor multimedia en el panel de control."
+      : !minutes.processingAvailable
+        ? "Faltan herramientas de audio en el servidor."
+        : minutes.sources.length + uploads.length >= MAX_SOURCES
+          ? "Se alcanzó el límite de fuentes."
+          : undefined;
   const publishedDiffers = minutes.publishedText != null && minutes.publishedText !== serverDraft;
 
   return (
@@ -669,16 +741,31 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
                       </div>
                     </Banner>
                   )}
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    rows={18}
-                    disabled={generating}
-                    className="font-mono text-[13px] leading-relaxed"
-                    placeholder={"# Acta de la reunión\n\n## Asistentes\n- ...\n\n## Acuerdos\n- ..."}
-                    aria-label="Borrador del acta"
-                    data-testid="input-minutes-draft"
-                  />
+                  <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Modo de edición del acta">
+                    <Button size="sm" variant={draftView === "preview" ? "default" : "outline"} onClick={() => setDraftView("preview")} data-testid="button-preview-minutes">
+                      Vista previa
+                    </Button>
+                    <Button size="sm" variant={draftView === "edit" ? "default" : "outline"} onClick={() => setDraftView("edit")} data-testid="button-edit-minutes">
+                      Editar texto
+                    </Button>
+                    {draftView === "edit" && <span className="text-xs text-muted-foreground">Puedes escribir en texto normal o Markdown.</span>}
+                  </div>
+                  {draftView === "edit" ? (
+                    <Textarea
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      rows={18}
+                      disabled={generating}
+                      className="font-mono text-[13px] leading-relaxed"
+                      placeholder={"# Acta de la reunión\n\n## Asistentes\n- ...\n\n## Acuerdos\n- ..."}
+                      aria-label="Borrador del acta"
+                      data-testid="input-minutes-draft"
+                    />
+                  ) : (
+                    <div className="rounded-xl bg-slate-100 p-2 sm:p-5" data-testid="preview-minutes-draft">
+                      <MinutesDocument text={draft} context={context} />
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={() => void onSave()} disabled={!dirty || saveMut.isPending || generating} data-testid="button-save-draft">
                       {saveMut.isPending ? "Guardando..." : "Guardar borrador"}
@@ -726,7 +813,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
                 </CardContent>
               </Card>
 
-              {minutes.publishedText != null && <PublishedActa minutes={minutes} eventId={eventId} />}
+              {minutes.publishedText != null && <PublishedActa minutes={minutes} eventId={eventId} context={context} />}
             </div>
 
             {/* AI side */}
@@ -740,6 +827,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
                       Autorizo enviar los documentos, grabaciones e instrucciones a proveedores externos de IA (DeepSeek y OpenAI) para generar el acta. Los archivos permanecen privados en la plataforma.
                     </span>
                   </label>
+                  {!consent && <p className="text-xs text-amber-800">Para subir evidencias o usar el micrófono, marca primero esta autorización. Sin ella, no se enviarán archivos a proveedores externos de IA.</p>}
 
                   {minutes.messages.length > 0 && (
                     <div className="max-h-64 overflow-y-auto space-y-2 rounded-md bg-muted/40 p-2" data-testid="list-minutes-messages">
@@ -777,6 +865,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
                     </Button>
                     <Recorder
                       disabled={!consent || !minutes.processingAvailable || !minutes.multimediaConfigured || minutes.sources.length + uploads.length >= MAX_SOURCES}
+                      disabledReason={micDisabledReason}
                       onRecorded={(f) => void uploadFile(f, "instruction")}
                     />
                   </div>
@@ -810,6 +899,13 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
                   <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => fileRef.current?.click()} disabled={!canUpload} data-testid="button-add-source">
                     <Upload className="w-3.5 h-3.5" /> Añadir archivos
                   </Button>
+                  {!consent ? (
+                    <p className="text-xs text-amber-800">Marca la autorización de tratamiento en el panel del asistente para habilitar la subida.</p>
+                  ) : minutes.sources.length + uploads.length >= MAX_SOURCES ? (
+                    <p className="text-xs text-muted-foreground">Has alcanzado el máximo de {MAX_SOURCES} fuentes.</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Los documentos de texto pueden subirse sin herramientas multimedia. PDF, audio, vídeo e imágenes requieren la configuración correspondiente del servidor.</p>
+                  )}
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     Documentos, imágenes, audio o vídeo. Máximo {MAX_SOURCES} fuentes y 100 MB por archivo; audio y vídeo hasta 120 minutos. Del vídeo se analizan hasta 40 fotogramas de muestra (no es exhaustivo) y de los PDF escaneados, hasta 40 páginas.
                   </p>
@@ -886,7 +982,7 @@ function Workspace({ eventId, minutes }: { eventId: number; minutes: EventMinute
 // ---------------------------------------------------------------------------
 // Entry
 // ---------------------------------------------------------------------------
-export function EventMinutesSection({ eventId }: { eventId: number }) {
+export function EventMinutesSection({ eventId, eventName, eventStartAt, eventLocation }: { eventId: number; eventName?: string; eventStartAt?: string | null; eventLocation?: string | null }) {
   const q = useGetEventMinutes(eventId, {
     query: {
       queryKey: getGetEventMinutesQueryKey(eventId),
@@ -912,8 +1008,9 @@ export function EventMinutesSection({ eventId }: { eventId: number }) {
       </div>
     );
   }
-  if (content.canManage) return <Workspace eventId={eventId} minutes={content} />;
-  if (content.enabled && content.publishedText) return <PublishedActa minutes={content} eventId={eventId} />;
+  const context: MinutesDocumentContext = { eventName, eventStartAt, eventLocation };
+  if (content.canManage) return <Workspace eventId={eventId} minutes={content} context={context} />;
+  if (content.enabled && content.publishedText) return <PublishedActa minutes={content} eventId={eventId} context={context} />;
   return (
     <div className="rounded-xl border border-dashed py-12 text-center px-6" data-testid="status-no-minutes">
       <FileText className="w-8 h-8 mx-auto text-muted-foreground/60" />
