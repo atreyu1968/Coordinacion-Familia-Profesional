@@ -63,12 +63,17 @@ export async function exchangeGoogleCode(code: string, verifier: string, config:
   });
   const response = await timedFetch(GOOGLE_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
   const data = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (!response.ok || typeof data.access_token !== "string" || typeof data.refresh_token !== "string") {
+  if (!response.ok || typeof data.access_token !== "string") {
     throw new Error("Google no autorizó la conexión. Comprueba el consentimiento de Gmail y la URI de retorno.");
   }
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    // Google may omit a refresh token when the user has already granted
+    // offline access to this OAuth client. The callback reuses the account's
+    // encrypted refresh token when one is already stored.
+    refreshToken: typeof data.refresh_token === "string" && data.refresh_token
+      ? data.refresh_token
+      : null,
     expiresAt: new Date(Date.now() + Math.max(60, Number(data.expires_in) || 3600) * 1000),
   };
 }

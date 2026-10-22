@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gmailOAuthErrorMessage } from "./oauth-errors";
+import { gmailOAuthCallbackErrorMessage, gmailOAuthErrorMessage } from "./oauth-errors";
 
 describe("Gmail OAuth configuration errors", () => {
   const fallback = "No se pudo guardar la configuración.";
@@ -19,5 +19,11 @@ describe("Gmail OAuth configuration errors", () => {
     expect(gmailOAuthErrorMessage(new Error("network failure"), fallback)).toBe(fallback);
     expect(gmailOAuthErrorMessage(null, fallback)).toBe(fallback);
     expect(gmailOAuthErrorMessage({ status: 400, data: { message: "" } }, fallback)).toBe(fallback);
+  });
+
+  it("explains the safe Gmail callback failure categories", () => {
+    expect(gmailOAuthCallbackErrorMessage("refresh_token")).toContain("acceso sin conexión");
+    expect(gmailOAuthCallbackErrorMessage("save")).toContain("no se pudo guardar");
+    expect(gmailOAuthCallbackErrorMessage("unknown")).toContain("código de error");
   });
 });

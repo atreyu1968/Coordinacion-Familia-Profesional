@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import "./coordinator-mail.css";
 import { KnowledgeCoveragePanel } from "./knowledge-coverage";
-import { gmailOAuthErrorMessage } from "./oauth-errors";
+import { gmailOAuthCallbackErrorMessage, gmailOAuthErrorMessage } from "./oauth-errors";
 
 const PAGE_SIZE = 20;
 const TOKEN_KEY = "coordina_adg_token";
@@ -77,7 +77,22 @@ function ConnectionPanel() {
   const connect = useStartCoordinatorGmailOAuth();
   const disconnect = useDisconnectCoordinatorGmail();
   const [actionError, setActionError] = useState("");
+  const [oauthResult, setOauthResult] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const conn = query.data?.connection;
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const result = url.searchParams.get("gmail");
+    if (result !== "connected" && result !== "error") return;
+    if (result === "connected") {
+      setOauthResult({ kind: "success", message: "Google autorizó la cuenta. Comprobando la conexión con Gmail…" });
+      void qc.invalidateQueries({ queryKey: getGetCoordinatorMailWorkspaceQueryKey() });
+    } else {
+      setOauthResult({ kind: "error", message: gmailOAuthCallbackErrorMessage(url.searchParams.get("reason")) });
+    }
+    url.searchParams.delete("gmail");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [qc]);
   const doSync = async () => {
     setActionError("");
     try {
@@ -119,6 +134,7 @@ function ConnectionPanel() {
         : "Conecta la cuenta de correo dedicada para importar y gestionar asuntos."}</p>
       {conn?.syncError && <p className="mail-safe-error" role="alert" data-testid="status-mail-sync-error"><CircleAlert /> No se pudo completar la última sincronización. Puedes reintentarlo; el historial guardado sigue disponible.</p>}
       {actionError && <p className="mail-safe-error" role="alert" data-testid="status-mail-action-error"><CircleAlert /> {actionError}</p>}
+      {oauthResult && <p className={oauthResult.kind === "error" ? "mail-safe-error" : "mail-success"} role={oauthResult.kind === "error" ? "alert" : "status"} data-testid="status-gmail-oauth-callback">{oauthResult.message}</p>}
     </div>
     <div className="mail-connection__actions">
       {conn?.connected ? <>

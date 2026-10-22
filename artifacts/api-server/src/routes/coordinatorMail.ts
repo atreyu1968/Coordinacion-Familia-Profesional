@@ -334,12 +334,21 @@ router.get("/coordinator-mail/gmail/callback", wrap(async (req, res) => {
   const code = typeof req.query.code === "string" ? req.query.code : "";
   const state = typeof req.query.state === "string" ? req.query.state : "";
   const cookie = readCookie(req, OAuthCookie) ?? "";
+  let failureReason:
+    | "google"
+    | "state"
+    | "configuration"
+    | "token"
+    | "mailbox"
+    | "refresh_token"
+    | "save" = req.query.error ? "google" : "state";
   // Never retain the short-lived OAuth code or state in request logs.
   req.url = "/coordinator-mail/gmail/callback";
   req.originalUrl = `${req.baseUrl}${req.url}`;
   oauthCookie(res, req, "", true);
   try {
     if (!/^[A-Za-z0-9._~+\/-]{1,2048}$/.test(code) || state.length < 32 || cookie.length < 32) throw new Error("Invalid OAuth callback.");
+    failureReason = "configuration";
     const config = await getGmailConfiguration();
     if (!config) throw new Error("Gmail OAuth configuration is unavailable.");
     const stateHash = sha256(state);
@@ -362,16 +371,26 @@ router.get("/coordinator-mail/gmail/callback", wrap(async (req, res) => {
       eq(coordinatorMailAccountsTable.oauthCookieHash, cookieHash),
     )).returning();
     if (!consumed) throw new Error("OAuth state has already been used.");
+    failureReason = "token";
     const token = await exchangeGoogleCode(code, decryptMailSecret(account.oauthVerifierEncrypted), config);
+    failureReason = "mailbox";
     const profileResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
       headers: { Authorization: `Bearer ${token.accessToken}` }, signal: AbortSignal.timeout(25_000), redirect: "error",
     });
     if (!profileResponse.ok) throw new Error("Google did not confirm the Gmail mailbox.");
     const profile = await profileResponse.json() as { emailAddress?: unknown };
     if (typeof profile.emailAddress !== "string" || !safeEmail(profile.emailAddress)) throw new Error("Google returned an invalid mailbox identity.");
+    const refreshTokenEncrypted = token.refreshToken
+      ? encryptMailSecret(token.refreshToken)
+      : account.refreshTokenEncrypted;
+    if (!refreshTokenEncrypted) {
+      failureReason = "refresh_token";
+      throw new Error("Google did not return a refresh token for this Gmail account.");
+    }
+    failureReason = "save";
     const [saved] = await db.update(coordinatorMailAccountsTable).set({
       email: profile.emailAddress.toLowerCase(), accessTokenEncrypted: encryptMailSecret(token.accessToken),
-      refreshTokenEncrypted: encryptMailSecret(token.refreshToken), accessTokenExpiresAt: token.expiresAt,
+      refreshTokenEncrypted, accessTokenExpiresAt: token.expiresAt,
       syncStatus: "queued", syncError: null, syncPageToken: null,
       syncQuery: null, nextSyncAt: new Date(), lastSyncAt: null, syncMessagesImported: 0,
       updatedAt: new Date(),
@@ -379,7 +398,8 @@ router.get("/coordinator-mail/gmail/callback", wrap(async (req, res) => {
     if (!saved) throw new Error("Could not save the Gmail connection.");
     res.redirect(303, "/asuntos-correo?gmail=connected");
   } catch {
-    res.redirect(303, "/asuntos-correo?gmail=error");
+    req.log.warn({ reason: failureReason }, "Gmail OAuth callback did not connect the mailbox");
+    res.redirect(303, `/asuntos-correo?gmail=error&reason=${failureReason}`);
   }
 }));
 
