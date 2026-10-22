@@ -6,6 +6,8 @@ export default defineConfig({
     // Silence application logging noise during the test run.
     env: { LOG_LEVEL: "silent" },
     include: ["test/**/*.test.ts"],
+    // This destructive fixture suite is only allowed in our temporary cluster.
+    exclude: ["test/ai-knowledge-isolation.test.ts", "**/node_modules/**"],
     // The realtime layer keeps a module-level Socket.io singleton and all tests
     // share one Postgres database, so run files sequentially to avoid cross-test
     // interference.

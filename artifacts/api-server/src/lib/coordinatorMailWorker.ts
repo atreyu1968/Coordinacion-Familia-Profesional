@@ -276,8 +276,9 @@ async function draftReply(caseId: number, leaseToken: string): Promise<boolean> 
   if (!row || !row.aiRequestedBy || !await coordinatorIsActive(row.ownerId)) throw new Error("Se canceló el trabajo porque el coordinador ya no está activo.");
   if (!row.aiConsentAt) throw new Error("Autoriza el tratamiento con IA antes de crear el borrador.");
   const recent = await db.select().from(coordinatorMailMessagesTable)
-    .where(eq(coordinatorMailMessagesTable.caseId, caseId))
+    .where(and(eq(coordinatorMailMessagesTable.caseId, caseId), eq(coordinatorMailMessagesTable.ownerId, row.ownerId)))
     .orderBy(desc(coordinatorMailMessagesTable.receivedAt), desc(coordinatorMailMessagesTable.id)).limit(8);
+  if (!recent.length) throw new Error("El asunto ya no contiene correos de su propietario.");
   const notes = await db.select().from(coordinatorMailCaseNotesTable)
     .where(eq(coordinatorMailCaseNotesTable.caseId, caseId))
     .orderBy(desc(coordinatorMailCaseNotesTable.createdAt), desc(coordinatorMailCaseNotesTable.id)).limit(8);
@@ -369,7 +370,7 @@ async function claimAiDraft() {
   });
 }
 
-async function workAiDraft(): Promise<boolean> {
+export async function processOneCoordinatorMailDraft(): Promise<boolean> {
   const job = await claimAiDraft();
   if (!job) return false;
   const heartbeat = setInterval(() => {
@@ -486,7 +487,7 @@ export function startCoordinatorMailWorker(): void {
   const tick = async () => {
     if (!active) return;
     try {
-      if (!(await workAiDraft()) && !(await workOutbox()) && !(await processPendingAttachment())) {
+      if (!(await processOneCoordinatorMailDraft()) && !(await workOutbox()) && !(await processPendingAttachment())) {
         await syncOneMessage();
       }
     } catch (error) {

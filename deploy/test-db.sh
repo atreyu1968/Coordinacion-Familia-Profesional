@@ -51,6 +51,23 @@ migrate_database() {
   bash "${SCRIPT_DIR}/db.sh" migrate
 }
 
+# A fast, independently runnable security regression suite. Both the URL and
+# server identity are checked by the test before it creates any fixtures.
+run_ai_knowledge_tests() {
+  create_test_database coordina_ai_knowledge
+  migrate_database coordina_ai_knowledge
+  COORDINA_AI_TEST_ROOT="${TEST_ROOT}" \
+    DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_ai_knowledge?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run --config vitest.ai-knowledge.config.ts
+}
+
+if [[ "${1:-}" == "--ai-knowledge-only" ]]; then
+  run_ai_knowledge_tests
+  exit 0
+fi
+
+run_ai_knowledge_tests
+
 echo "==> Testing an empty self-hosted database"
 create_test_database coordina_empty
 migrate_database coordina_empty

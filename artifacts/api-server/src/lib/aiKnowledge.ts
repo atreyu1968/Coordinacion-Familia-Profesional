@@ -298,7 +298,7 @@ async function collect(user: User) {
     .where(eq(chatGroupMembersTable.userId, user.id));
   const groups = [...new Set(memberships.map(m => m.id))];
   const chats = await db.select().from(messagesTable).where(and(isNull(messagesTable.deletedAt), or(
-    eq(messagesTable.senderId, user.id), eq(messagesTable.recipientId, user.id),
+    and(isNull(messagesTable.groupId), or(eq(messagesTable.senderId, user.id), eq(messagesTable.recipientId, user.id))),
     groups.length ? inArray(messagesTable.groupId, groups) : undefined,
   )));
   for (const m of chats) {
@@ -356,7 +356,11 @@ async function recordCandidate(userId: number, item: Candidate, retryFailures = 
 }
 export async function synchronizeAiKnowledge(userId: number, retryFailures = false) {
   const [user] = await db.select().from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.status, "active")));
-  if (!user) return { status: "consent_required", pending: 0, ready: 0, errors: 0, sources: [], warnings: [] as string[] };
+  if (!user) {
+    candidateSnapshots.delete(userId);
+    await db.delete(aiKnowledgeEntriesTable).where(eq(aiKnowledgeEntriesTable.userId, userId));
+    return { status: "consent_required", pending: 0, ready: 0, errors: 0, sources: [], warnings: [] as string[] };
+  }
   const accounts = await db.insert(aiKnowledgeAccountsTable).values({ userId, consentAt: new Date() })
     .onConflictDoUpdate({ target: aiKnowledgeAccountsTable.userId, set: { consentAt: new Date(), scanError: null } }).returning();
   let collected: Awaited<ReturnType<typeof collect>>;
@@ -470,6 +474,9 @@ export function startAiKnowledgeWorker() {
 export async function getAiKnowledgeContext(userId: number, prompt: string) {
   const [account] = await db.select().from(aiKnowledgeAccountsTable).where(eq(aiKnowledgeAccountsTable.userId, userId));
   if (!account?.consentAt) return { context: "", sources: [] as string[], warnings: ["Activa la consulta de materiales de la plataforma antes de usar esta función de IA."] };
+  // Retrieval is a security boundary, including callers other than the chat
+  // route. Never trust a previous scan after a transfer or membership removal.
+  await synchronizeAiKnowledge(userId);
   const rows = await db.select().from(aiKnowledgeEntriesTable).where(and(eq(aiKnowledgeEntriesTable.userId, userId), eq(aiKnowledgeEntriesTable.status, "ready")));
   const queryTerms = [...new Set(terms(prompt))];
   const scored: Array<{ score: number; title: string; url: string; excerpt: string; warning: string | null }> = [];

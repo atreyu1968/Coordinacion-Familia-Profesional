@@ -246,11 +246,11 @@ router.post("/coordinator-mail/cases/:id/ai-draft", requireAuth, wrap(async (req
   if (row.revision !== body.revision) throw new AttendanceError(409, "El asunto cambió. Recarga la página antes de solicitar otro borrador.");
   if (!row.aiConsentAt && row.aiStatus === "processing") throw new AttendanceError(409, "Ya se está preparando un borrador de este asunto.");
   const [{ total }] = await db.select({ total: sql<number>`count(*)::int` })
-    .from(coordinatorMailMessagesTable).where(eq(coordinatorMailMessagesTable.caseId, id));
+    .from(coordinatorMailMessagesTable).where(and(eq(coordinatorMailMessagesTable.caseId, id), eq(coordinatorMailMessagesTable.ownerId, user.id)));
   if (!total) throw new AttendanceError(400, "Añade un correo al asunto antes de generar una respuesta.");
   const [updated] = await db.update(coordinatorMailCasesTable).set({
     aiStatus: "queued", aiError: null, aiConsentAt: new Date(), aiInstructions: body.instructions ?? "",
-    aiRevision: body.revision, aiRequestedBy: user.id, aiLeaseToken: null, aiLeaseUntil: null,
+    aiRevision: body.revision + 1, aiRequestedBy: user.id, aiLeaseToken: null, aiLeaseUntil: null,
     revision: sql`${coordinatorMailCasesTable.revision} + 1`, updatedAt: new Date(),
   }).where(and(eq(coordinatorMailCasesTable.id, id), eq(coordinatorMailCasesTable.ownerId, user.id), eq(coordinatorMailCasesTable.revision, body.revision))).returning();
   if (!updated) throw new AttendanceError(409, "El asunto cambió. Recarga la página antes de iniciar el borrador.");

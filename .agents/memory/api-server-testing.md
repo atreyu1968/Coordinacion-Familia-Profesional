@@ -22,3 +22,11 @@ Tests live in `artifacts/api-server/test/`, run with `pnpm --filter @workspace/a
 **Cleanup must cover any new fixture table.** `cleanup()` deletes academic years, teacher confirmations, teaching assignments, groups and training offer by tracked user/center ids and `schoolYears`. Route fixtures that fan out (e.g. open-confirmation inserts a row per active teacher) are cleaned by school year, so always use a unique per-run year for them.
 
 **Don't run cleanup `npx vitest run` in a backgrounded shell here** — the process gets SIGTERM'd between tool polls and the log stays empty. Run a single file (≈12-20s cold start) synchronously instead; multiple files can exceed the 120s tool timeout.
+
+## Isolated suite configuration
+
+Never use Vite/Vitest `mergeConfig` to narrow a general test configuration to a security suite: it concatenates `include`/`exclude` arrays rather than replacing them.
+
+**Why:** concatenation can silently broaden a specialized run to unrelated suites or exclude its intended tests.
+
+**How to apply:** explicitly replace test selection arrays in specialized configurations. Destructive fixtures must also verify the temporary server's identity before their first write; an environment flag alone is not proof of isolation.
