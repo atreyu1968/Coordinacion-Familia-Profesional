@@ -75,7 +75,13 @@ const additiveTables = [
   "collaborative_space_members",
   "collaborative_space_audit",
   "account_audit",
+  "coordinator_tasks",
+  "coordinator_task_source_scans",
 ];
+const coordinatorTaskTables = new Set([
+  "coordinator_tasks",
+  "coordinator_task_source_scans",
+]);
 const tableNameSymbol = Symbol.for("drizzle:Name");
 const tableColumnsSymbol = Symbol.for("drizzle:Columns");
 const isDrizzleTableSymbol = Symbol.for("drizzle:IsDrizzleTable");
@@ -524,6 +530,13 @@ const coordinatorMailGroupingPending =
 for (const key of expected.constraints) {
   if (pendingTables.has(key.table)) continue;
   if (
+    allowMissingUpgradeColumns &&
+    coordinatorTaskTables.has(key.table) &&
+    !actualKeys.has(keySignature(key))
+  ) {
+    continue;
+  }
+  if (
     coordinatorMailGroupingPending &&
     key.type === "foreign" &&
     key.table === "coordinator_mail_cases" &&
@@ -557,6 +570,12 @@ for (const index of expected.indexes) {
       candidate.table === index.table && candidate.name === index.name,
   );
   if (!found) {
+    if (
+      allowMissingUpgradeColumns &&
+      coordinatorTaskTables.has(index.table)
+    ) {
+      continue;
+    }
     problems.push(`missing index ${index.name} on ${index.table}`);
     continue;
   }

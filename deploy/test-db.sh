@@ -173,6 +173,50 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   --command="SELECT EXISTS (SELECT 1 FROM public.collaborative_spaces WHERE name = 'Preserved independent space' AND provisioning_started_at IS NULL) AND EXISTS (SELECT 1 FROM public.account_audit WHERE actor_name = 'Preserved migration user')" \
   | grep -qx t
 
+echo "==> Repairing missing coordinator task keys and indexes without losing rows"
+create_test_database coordina_task_constraints_upgrade
+migrate_database coordina_task_constraints_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_task_constraints_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    INSERT INTO public.users (name, email, password_hash, role)
+      VALUES ('Preserved task owner', 'task-constraints@example.test', 'test-only-hash', 'teacher');
+    INSERT INTO public.coordinator_tasks
+      (owner_id, title, source_type, source_id, source_fingerprint)
+      SELECT id, 'Preserve this task', 'minutes', 'source-1', 'fingerprint-1'
+      FROM public.users WHERE email = 'task-constraints@example.test';
+    INSERT INTO public.coordinator_task_source_scans
+      (owner_id, source_type, source_id, content_hash)
+      SELECT id, 'minutes', 'source-1', 'hash-1'
+      FROM public.users WHERE email = 'task-constraints@example.test';
+    ALTER TABLE public.coordinator_tasks
+      DROP CONSTRAINT coordinator_tasks_pkey,
+      DROP CONSTRAINT coordinator_tasks_owner_id_fkey;
+    ALTER TABLE public.coordinator_task_source_scans
+      DROP CONSTRAINT coordinator_task_source_scans_pkey,
+      DROP CONSTRAINT coordinator_task_source_scans_owner_id_fkey;
+    DROP INDEX public.coordinator_tasks_owner_status_idx;
+    DROP INDEX public.coordinator_tasks_owner_review_idx;
+    DROP INDEX public.coordinator_tasks_source_fingerprint_uq;
+    DROP INDEX public.coordinator_task_source_scan_owner_source_uq;
+  "
+migrate_database coordina_task_constraints_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_task_constraints_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    SELECT
+      EXISTS (SELECT 1 FROM public.coordinator_tasks WHERE title = 'Preserve this task')
+      AND EXISTS (SELECT 1 FROM public.coordinator_task_source_scans WHERE content_hash = 'hash-1')
+      AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.coordinator_tasks'::regclass AND conname = 'coordinator_tasks_pkey' AND contype = 'p')
+      AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.coordinator_tasks'::regclass AND conname = 'coordinator_tasks_owner_id_users_id_fk' AND contype = 'f')
+      AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.coordinator_task_source_scans'::regclass AND conname = 'coordinator_task_source_scans_pkey' AND contype = 'p')
+      AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.coordinator_task_source_scans'::regclass AND conname = 'coordinator_task_source_scans_owner_id_users_id_fk' AND contype = 'f')
+      AND to_regclass('public.coordinator_tasks_owner_status_idx') IS NOT NULL
+      AND to_regclass('public.coordinator_tasks_owner_review_idx') IS NOT NULL
+      AND to_regclass('public.coordinator_tasks_source_fingerprint_uq') IS NOT NULL
+      AND to_regclass('public.coordinator_task_source_scan_owner_source_uq') IS NOT NULL
+  " | grep -qx t
+
 echo "==> Upgrading the mail grouping schema without changing existing mail records"
 create_test_database coordina_mail_group_upgrade
 migrate_database coordina_mail_group_upgrade
