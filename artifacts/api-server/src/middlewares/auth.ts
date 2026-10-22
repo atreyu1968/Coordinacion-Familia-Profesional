@@ -14,6 +14,9 @@ function isProfileRepairRequest(req: Request): boolean {
   if (path === "/auth/me" || path === "/auth/me/teaching-profile") {
     return req.method === "GET" || req.method === "PATCH";
   }
+  // Teachers must retain center discovery while repairing an incomplete
+  // profile; dashboard-specific reads still apply their own role scope.
+  if (path === "/centers" && req.method === "GET") return true;
   // Annual confirmation is another self-profile repair flow; its own guards
   // still enforce the active year, deadline, current center and module scope.
   return (req.method === "GET" && path === "/academic-years/my-confirmation") ||

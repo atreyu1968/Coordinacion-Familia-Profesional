@@ -5,6 +5,7 @@ import {
   type FormEvent,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import {
   useListCompanyAlerts,
   useCreateCompanyAlert,
@@ -281,15 +282,35 @@ function CreateAlertDialog() {
 }
 
 function AlertsTab() {
+  const searchParams = new URLSearchParams(useSearch());
   const { user } = useAuth();
   const qc = useQueryClient();
   const deleteMut = useDeleteCompanyAlert();
   const { data: provinces = [] } = useListProvinces();
 
   const [search, setSearch] = useState("");
-  const { data: alerts = [], isLoading } = useListCompanyAlerts(
+  const { data: allAlerts = [], isLoading } = useListCompanyAlerts(
     search.trim() ? { search: search.trim() } : undefined,
   );
+  const requestedProvinceId = Number(searchParams.get("provinceId"));
+  const selectedProvinceId =
+    user?.role === "superadmin" &&
+    Number.isInteger(requestedProvinceId) &&
+    requestedProvinceId > 0
+      ? requestedProvinceId
+      : null;
+  const dashboardOnly = searchParams.get("dashboard") === "alerts";
+  const alerts =
+    selectedProvinceId == null
+      ? dashboardOnly &&
+        (user?.role === "teacher" || user?.role === "department_head")
+        ? allAlerts.filter((alert) => alert.provinceId == null)
+        : allAlerts
+      : allAlerts.filter(
+          (alert) =>
+            alert.provinceId == null ||
+            alert.provinceId === selectedProvinceId,
+        );
 
   const provinceName = (id: number | null | undefined) =>
     id == null ? "Global" : provinces.find((p) => p.id === id)?.name ?? "—";
@@ -320,6 +341,11 @@ function AlertsTab() {
 
   return (
     <div className="space-y-4">
+      {selectedProvinceId != null && (
+        <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+          Avisos de la provincia seleccionada y autonómicos, como en el panel.
+        </p>
+      )}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

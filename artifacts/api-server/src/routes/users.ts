@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, or, desc, count, sql, not, getTableColumns, type SQL } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, desc, count, sql, not, inArray, getTableColumns, type SQL } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -33,6 +33,7 @@ import {
   hasScopeOver,
   canManageUser,
   roleRank,
+  resolveReadScope,
 } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -53,27 +54,76 @@ router.get("/users/management", requireAuth,
       return;
     }
     const caller = req.user!;
-    const filters: SQL[] = [];
-    if (caller.role === "coordinator") {
-      if (caller.provinceId == null) {
-        res.status(403).json({ message: "Tu cuenta no tiene una provincia asignada" });
-        return;
-      }
-      filters.push(eq(usersTable.provinceId, caller.provinceId));
-    } else if (caller.role === "department_head") {
-      if (caller.centerId == null) {
-        res.status(403).json({ message: "Tu cuenta no tiene un centro asignado" });
-        return;
-      }
-      filters.push(eq(usersTable.centerId, caller.centerId));
-    }
     const { role, provinceId, centerId, search, status = "all", page: requestedPage = 1, pageSize = 25 } = query.data;
+    const filters: SQL[] = [];
+    if (status === "active") {
+      const scope = resolveReadScope(caller);
+      const activeFamily = await getActiveFamily();
+      const centerFilters: SQL[] = [
+        isNull(centersTable.deletedAt),
+        sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ];
+      if (scope.kind === "province") {
+        centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
+      } else if (scope.kind === "center") {
+        centerFilters.push(eq(centersTable.id, scope.centerId));
+      } else if (scope.kind === "global" && provinceId != null) {
+        centerFilters.push(eq(centersTable.provinceId, provinceId));
+      }
+      const familyCenterIds = db
+        .select({ id: centersTable.id })
+        .from(centersTable)
+        .where(and(...centerFilters));
+
+      if (scope.kind === "global" && provinceId == null) {
+        filters.push(
+          or(inArray(usersTable.centerId, familyCenterIds), isNull(usersTable.centerId))!,
+        );
+      } else if (scope.kind === "global" && provinceId != null) {
+        filters.push(
+          or(
+            inArray(usersTable.centerId, familyCenterIds),
+            and(isNull(usersTable.centerId), eq(usersTable.provinceId, provinceId)),
+          )!,
+        );
+      } else if (scope.kind === "province") {
+        filters.push(
+          or(
+            inArray(usersTable.centerId, familyCenterIds),
+            and(isNull(usersTable.centerId), eq(usersTable.provinceId, scope.provinceId)),
+          )!,
+        );
+      } else if (scope.kind === "center") {
+        filters.push(inArray(usersTable.centerId, familyCenterIds));
+      } else {
+        filters.push(eq(usersTable.id, -1));
+      }
+      filters.push(eq(usersTable.status, "active"));
+      filters.push(isNull(usersTable.deletedAt));
+    } else {
+      if (caller.role === "coordinator") {
+        if (caller.provinceId == null) {
+          res.status(403).json({ message: "Tu cuenta no tiene una provincia asignada" });
+          return;
+        }
+        filters.push(eq(usersTable.provinceId, caller.provinceId));
+      } else if (caller.role === "department_head") {
+        if (caller.centerId == null) {
+          res.status(403).json({ message: "Tu cuenta no tiene un centro asignado" });
+          return;
+        }
+        filters.push(eq(usersTable.centerId, caller.centerId));
+      }
+    }
     if (role) filters.push(eq(usersTable.role, role));
-    if (provinceId != null) filters.push(eq(usersTable.provinceId, provinceId));
+    if (provinceId != null && status !== "active")
+      filters.push(eq(usersTable.provinceId, provinceId));
     if (centerId != null) filters.push(eq(usersTable.centerId, centerId));
-    if (status !== "all") filters.push(eq(usersTable.status, status));
-    // A soft-deactivated record is retained for recovery, never hard-deleted.
-    filters.push(or(isNull(usersTable.deletedAt), eq(usersTable.status, "inactive"))!);
+    if (status === "inactive") filters.push(eq(usersTable.status, "inactive"));
+    if (status !== "active") {
+      // A soft-deactivated record is retained for recovery, never hard-deleted.
+      filters.push(or(isNull(usersTable.deletedAt), eq(usersTable.status, "inactive"))!);
+    }
     if (search?.trim()) {
       const term = `%${search.trim().replace(/[\\%_]/g, "\\$&")}%`;
       filters.push(or(ilike(usersTable.name, term), ilike(usersTable.email, term))!);

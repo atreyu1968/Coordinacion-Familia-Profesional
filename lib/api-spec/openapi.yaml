@@ -1568,6 +1568,11 @@ paths:
           name: centerType
           schema:
             type: string
+        - in: query
+          name: dashboardOnly
+          description: Restrict the directory to the authenticated caller's dashboard read scope.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Centers

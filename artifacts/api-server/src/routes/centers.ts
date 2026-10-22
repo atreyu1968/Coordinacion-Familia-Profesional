@@ -22,22 +22,45 @@ import {
   AddTrainingOfferParams,
   AddTrainingOfferBody,
 } from "@workspace/api-zod";
-import { requireAuth, requireRole, hasScopeOver } from "../middlewares/auth";
+import {
+  requireAuth,
+  requireRole,
+  hasScopeOver,
+  optionalAuth,
+  resolveReadScope,
+} from "../middlewares/auth";
 import { toCenter, toTrainingOffer } from "../lib/mappers";
 import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
 import { cycleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
 
-router.get("/centers", async (req, res): Promise<void> => {
+router.get("/centers", optionalAuth, async (req, res): Promise<void> => {
   const query = ListCentersQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.message });
     return;
   }
   const filters: SQL[] = [isNull(centersTable.deletedAt)];
-  if (query.data.provinceId != null)
+  if (query.data.dashboardOnly) {
+    if (!req.user) {
+      res.status(401).json({ message: "Autenticación necesaria para consultar el ámbito del panel" });
+      return;
+    }
+    const scope = resolveReadScope(req.user);
+    if (scope.kind === "province") {
+      filters.push(eq(centersTable.provinceId, scope.provinceId));
+    } else if (scope.kind === "center") {
+      filters.push(eq(centersTable.id, scope.centerId));
+    } else if (scope.kind === "none") {
+      filters.push(eq(centersTable.id, -1));
+    } else if (query.data.provinceId != null) {
+      // Only global readers may narrow the dashboard directory by province.
+      filters.push(eq(centersTable.provinceId, query.data.provinceId));
+    }
+  } else if (query.data.provinceId != null) {
     filters.push(eq(centersTable.provinceId, query.data.provinceId));
+  }
   if (query.data.islandId != null)
     filters.push(eq(centersTable.islandId, query.data.islandId));
   if (query.data.municipalityId != null)

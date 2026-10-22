@@ -70,7 +70,9 @@ router.get("/company-alerts", requireAuth, async (req, res): Promise<void> => {
   // Visibility: superadmin sees all; everyone else sees alerts in their own
   // province plus global alerts (provinceId IS NULL). An explicit province
   // filter narrows within what the caller may already see.
-  if (scope.kind !== "global") {
+  if (scope.kind === "none") {
+    filters.push(eq(companyAlertsTable.id, -1));
+  } else if (scope.kind !== "global") {
     const provinceId = await resolveEffectiveProvinceId(scope);
     const scopeMatch =
       provinceId != null

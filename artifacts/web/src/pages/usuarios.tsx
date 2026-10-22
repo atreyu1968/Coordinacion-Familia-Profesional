@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListUsers,
@@ -87,6 +87,7 @@ const MISSING_PROFILE_LABELS = {
 type PendingAccess = { kind: "deactivate" | "reactivate"; user: ManagedUser } | null;
 
 export default function UsuariosPage() {
+  const searchParams = new URLSearchParams(useSearch());
   const { user } = useAuth();
   const { appName } = useBranding();
   const qc = useQueryClient();
@@ -95,10 +96,20 @@ export default function UsuariosPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState<Role | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const requestedRole = searchParams.get("role");
+  const dashboardOnly = searchParams.get("dashboard") === "users";
+  const [role, setRole] = useState<Role | null>(
+    () => ALL_ROLES.includes(requestedRole as Role) ? requestedRole as Role : null,
+  );
+  const [provinceId, setProvinceId] = useState<number | null>(() => {
+    const value = Number(searchParams.get("provinceId"));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  });
   const [centerId, setCenterId] = useState<number | null>(null);
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>(() => {
+    const value = searchParams.get("status");
+    return value === "active" || value === "inactive" ? value : "all";
+  });
   const [teachingProfile, setTeachingProfile] = useState<ProfileFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -112,7 +123,9 @@ export default function UsuariosPage() {
   }, [searchInput]);
 
   const provincesQ = useListProvinces();
-  const centersQ = useListCenters();
+  const centersQ = useListCenters(
+    dashboardOnly ? { dashboardOnly: true } : {},
+  );
   const provinces = useMemo(() => provincesQ.data ?? [], [provincesQ.data]);
   const centers = useMemo(() => centersQ.data ?? [], [centersQ.data]);
   const catalogsError = provincesQ.isError || centersQ.isError;
@@ -157,9 +170,16 @@ export default function UsuariosPage() {
       return { rows: managedQ.data?.users ?? [], total: managedQ.data?.total ?? 0 };
     }
     let list = (readQ.data ?? []).map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
+    if (status !== "all") list = list.filter((u) => u.status === status);
+    if (dashboardOnly) {
+      const activeFamilyCenterIds = new Set(centers.map((center) => center.id));
+      list = list.filter(
+        (u) => u.centerId != null && activeFamilyCenterIds.has(u.centerId),
+      );
+    }
     if (centerId != null) list = list.filter((u) => u.centerId === centerId);
     return { rows: list.slice((page - 1) * pageSize, page * pageSize), total: list.length };
-  }, [isManager, managedQ.data, readQ.data, centerId, page, pageSize]);
+  }, [isManager, managedQ.data, readQ.data, centerId, status, dashboardOnly, centers, page, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   useEffect(() => {

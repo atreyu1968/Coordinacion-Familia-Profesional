@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   eq,
   and,
+  or,
   isNull,
   inArray,
   desc,
@@ -27,7 +28,7 @@ import {
   GetSurveyResultsParams,
 } from "@workspace/api-zod";
 import type { User } from "@workspace/db";
-import { requireAuth, requireRole } from "../middlewares/auth";
+import { requireAuth, requireRole, resolveReadScope } from "../middlewares/auth";
 import {
   canCreateFormsSurveys,
   validateAudience,
@@ -78,8 +79,27 @@ router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
   if (query.data.status) {
     filters.push(eq(surveysTable.status, query.data.status));
   }
-  if (query.data.provinceId != null) {
-    filters.push(eq(surveysTable.provinceId, query.data.provinceId));
+  const scope = resolveReadScope(caller);
+  if (scope.kind === "global") {
+    if (query.data.provinceId != null) {
+      filters.push(
+        or(
+          eq(surveysTable.provinceId, query.data.provinceId),
+          isNull(surveysTable.provinceId),
+        )!,
+      );
+    }
+  } else if (scope.kind === "province") {
+    filters.push(
+      or(
+        eq(surveysTable.provinceId, scope.provinceId),
+        isNull(surveysTable.provinceId),
+      )!,
+    );
+  } else if (scope.kind === "center") {
+    filters.push(isNull(surveysTable.provinceId));
+  } else {
+    filters.push(eq(surveysTable.id, -1));
   }
 
   const allRows = await db

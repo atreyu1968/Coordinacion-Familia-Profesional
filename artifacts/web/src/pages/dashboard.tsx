@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import {
   useGetDashboardSummary,
   useGetDashboardStatistics,
@@ -68,6 +69,7 @@ const PALETTE = [
 type Point = { label: string; value: number };
 
 export default function DashboardPage() {
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
@@ -117,23 +119,52 @@ export default function DashboardPage() {
       ? "Ámbito autonómico (toda Canarias)"
       : provinces.find((p) => String(p.id) === provinceFilter)?.name ??
         "Provincial";
+  const canViewUserDirectory =
+    user?.role === "superadmin" ||
+    user?.role === "coordinator" ||
+    user?.role === "department_head" ||
+    user?.role === "teacher";
 
   const cards = [
-    { label: "Centros", value: summary?.centers, icon: Building2 },
-    { label: "Profesorado", value: summary?.teachers, icon: Users },
-    { label: "Recursos", value: summary?.resources, icon: FileText },
+    { label: "Centros", value: summary?.centers, icon: Building2, href: dashboardHref("/centros", { dashboard: "centers" }) },
+    {
+      label: "Profesorado",
+      value: summary?.teachers,
+      icon: Users,
+      href: canViewUserDirectory
+        ? dashboardHref("/usuarios", { dashboard: "users", role: "teacher", status: "active" })
+        : undefined,
+    },
+    { label: "Recursos", value: summary?.resources, icon: FileText, href: dashboardHref("/recursos", { dashboard: "resources" }) },
     {
       label: "Encuestas activas",
       value: summary?.activeSurveys,
       icon: BarChartIcon,
+      href: isSuperadmin
+        ? dashboardHref("/encuestas", { status: "open" })
+        : undefined,
     },
     {
       label: "Próximos eventos",
       value: summary?.upcomingEvents,
       icon: Calendar,
+      href: dashboardHref("/eventos", { dashboard: "events", period: "upcoming" }),
     },
-    { label: "Avisos de empresas", value: summary?.companyAlerts, icon: Bell },
+    {
+      label: "Avisos de empresas",
+      value: summary?.companyAlerts,
+      icon: Bell,
+      href: dashboardHref("/fct", { dashboard: "alerts" }),
+    },
   ];
+
+  function dashboardHref(path: string, filters: Record<string, string>) {
+    const query = new URLSearchParams(filters);
+    if (isSuperadmin && provinceFilter !== GLOBAL) {
+      query.set("provinceId", provinceFilter);
+    }
+    return `${path}?${query.toString()}`;
+  }
 
   const usersByRole = (stats?.usersByRole ?? []) as Point[];
   const centersByIsland = (stats?.centersByIsland ?? []) as Point[];
@@ -265,23 +296,46 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
-          <Card key={c.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {c.label}
-              </CardTitle>
-              <c.icon className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {summaryQuery.isLoading
-                  ? "—"
-                  : summaryQuery.isError && !summary
-                    ? "No disponible"
-                    : (c.value ?? 0)}
-              </div>
-            </CardContent>
-          </Card>
+          c.href ? (
+            <Link key={c.label} href={c.href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Card className="h-full transition-colors hover:border-primary">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {c.label}
+                  </CardTitle>
+                  <c.icon className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {summaryQuery.isLoading
+                      ? "—"
+                      : summaryQuery.isError && !summary
+                        ? "No disponible"
+                        : (c.value ?? 0)}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Abrir registros</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card key={c.label}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {c.label}
+                </CardTitle>
+                <c.icon className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {summaryQuery.isLoading
+                    ? "—"
+                    : summaryQuery.isError && !summary
+                      ? "No disponible"
+                      : (c.value ?? 0)}
+                </div>
+              </CardContent>
+            </Card>
+          )
         ))}
       </div>
 
@@ -310,6 +364,9 @@ export default function DashboardPage() {
               </LineChart>
             </ResponsiveContainer>
           )}
+          <ChartLinks points={resourcesByMonth} onSelect={(point) =>
+            navigate(dashboardHref("/recursos", { dashboard: "resources", month: point.label }))
+          } />
         </ChartCard>
 
         <ChartCard title="Actividad de eventos por mes">
@@ -330,6 +387,9 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
+          <ChartLinks points={eventsByMonth} onSelect={(point) =>
+            navigate(dashboardHref("/eventos", { dashboard: "events", month: point.label }))
+          } />
         </ChartCard>
 
         <ChartCard title="Usuarios por rol">
@@ -355,6 +415,10 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
+          <ChartLinks points={canViewUserDirectory ? usersByRole : []} onSelect={(point) => {
+            const role = roleForLabel(point.label);
+            if (role) navigate(dashboardHref("/usuarios", { dashboard: "users", role, status: "active" }));
+          }} />
         </ChartCard>
 
         <ChartCard title="Centros por isla">
@@ -375,6 +439,9 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
+          <ChartLinks points={centersByIsland} onSelect={(point) =>
+            navigate(dashboardHref("/centros", { dashboard: "centers", island: point.label }))
+          } />
         </ChartCard>
 
         <ChartCard title="Encuestas por estado">
@@ -405,8 +472,59 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           )}
+          <ChartLinks points={isSuperadmin ? surveysByStatus : []} onSelect={(point) => {
+            const status = surveyStatusForLabel(point.label);
+            if (status) navigate(dashboardHref("/encuestas", { status }));
+          }} />
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+function roleForLabel(label: string): string | null {
+  const roles: Record<string, string> = {
+    Superadministración: "superadmin",
+    Coordinación: "coordinator",
+    Prospección: "prospector",
+    "Jefatura de departamento": "department_head",
+    Profesorado: "teacher",
+  };
+  return roles[label] ?? null;
+}
+
+function surveyStatusForLabel(label: string): string | null {
+  const statuses: Record<string, string> = {
+    Borrador: "draft",
+    Abierta: "open",
+    Cerrada: "closed",
+  };
+  return statuses[label] ?? null;
+}
+
+function ChartLinks({
+  points,
+  onSelect,
+}: {
+  points: Point[];
+  onSelect: (point: Point) => void;
+}) {
+  if (points.length === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2">
+      {points.map((point) => (
+        <Button
+          key={point.label}
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs"
+          onClick={() => onSelect(point)}
+          aria-label={`Abrir ${point.label}: ${point.value} registros`}
+        >
+          {point.label} · {point.value}
+        </Button>
+      ))}
     </div>
   );
 }

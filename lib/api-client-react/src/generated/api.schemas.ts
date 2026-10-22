@@ -3574,6 +3574,10 @@ search?: SearchQueryParameter;
 family?: string;
 nature?: string;
 centerType?: string;
+/**
+ * Restrict the directory to the authenticated caller's dashboard read scope.
+ */
+dashboardOnly?: boolean;
 };
 
 export type ListModulesParams = {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   useListCenters,
   useListCenterFacets,
@@ -38,14 +38,22 @@ import { exportSheetsXlsx } from "@/lib/export";
 const ALL = "all";
 
 export default function CentrosPage() {
+  const searchParams = new URLSearchParams(useSearch());
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
+  const dashboardOnly = searchParams.get("dashboard") === "centers";
   const canManage =
     user?.role === "superadmin" || user?.role === "coordinator";
 
   const [search, setSearch] = useState("");
-  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(() => {
+    const value = Number(searchParams.get("provinceId"));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  });
   const [islandId, setIslandId] = useState<number | null>(null);
+  const [dashboardIsland, setDashboardIsland] = useState(
+    () => searchParams.get("island") ?? "",
+  );
   const [municipalityId, setMunicipalityId] = useState<number | null>(null);
   const [nature, setNature] = useState<string | null>(null);
   const [centerType, setCenterType] = useState<string | null>(null);
@@ -78,6 +86,7 @@ export default function CentrosPage() {
   );
 
   const params: ListCentersParams = {};
+  if (dashboardOnly) params.dashboardOnly = true;
   if (provinceId != null) params.provinceId = provinceId;
   if (islandId != null) params.islandId = islandId;
   if (municipalityId != null) params.municipalityId = municipalityId;
@@ -85,7 +94,15 @@ export default function CentrosPage() {
   if (nature) params.nature = nature;
   if (centerType) params.centerType = centerType;
 
-  const { data: centers = [], isLoading } = useListCenters(params);
+  const { data: fetchedCenters = [], isLoading } = useListCenters(params);
+  const centers = dashboardIsland
+    ? fetchedCenters.filter((center) =>
+        dashboardIsland === "Sin isla"
+          ? center.islandId == null
+          : center.islandId != null &&
+            islandName.get(center.islandId) === dashboardIsland,
+      )
+    : fetchedCenters;
   const exportCenters = () => {
     exportSheetsXlsx(
       [
@@ -187,6 +204,18 @@ export default function CentrosPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {dashboardIsland && (
+          <div className="sm:col-span-2 lg:col-span-4 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+            Centros de la isla «{dashboardIsland}» según el panel.{" "}
+            <button
+              type="button"
+              className="font-medium text-primary underline underline-offset-4"
+              onClick={() => setDashboardIsland("")}
+            >
+              Quitar filtro
+            </button>
+          </div>
+        )}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

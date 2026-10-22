@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
+import { useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListSurveys,
@@ -16,6 +17,7 @@ import {
   type CreateSurveyQuestionInputType,
   type Survey,
   type SurveyQuestion,
+  type ListSurveysParams,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -1014,10 +1016,28 @@ function SurveyDetailDialog({
 // Page
 // ---------------------------------------------------------------------------
 export default function EncuestasPage() {
+  const searchParams = new URLSearchParams(useSearch());
   const { user } = useAuth();
   const qc = useQueryClient();
   const now = useAvailabilityNow();
-  const { data: surveys = [], isLoading } = useListSurveys();
+  const requestedStatus = searchParams.get("status");
+  const requestedProvinceId = Number(searchParams.get("provinceId"));
+  const surveyParams: ListSurveysParams = {};
+  if (
+    requestedStatus === "draft" ||
+    requestedStatus === "open" ||
+    requestedStatus === "closed"
+  ) {
+    surveyParams.status = requestedStatus;
+  }
+  if (
+    user?.role === "superadmin" &&
+    Number.isInteger(requestedProvinceId) &&
+    requestedProvinceId > 0
+  ) {
+    surveyParams.provinceId = requestedProvinceId;
+  }
+  const { data: surveys = [], isLoading } = useListSurveys(surveyParams);
   const { data: provinces = [] } = useListProvinces();
   const deleteMut = useDeleteSurvey();
 

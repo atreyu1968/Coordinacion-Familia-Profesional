@@ -22,3 +22,17 @@ A separate `requireAuth`-only endpoint is required for a user to edit themselves
 - Email uniqueness on self-update must exclude the caller in SQL (`email = ? AND id != caller.id`),
   not by comparing strings, so case/normalization variants of the user's own email aren't
   rejected as duplicates.
+
+## Center discovery while repairing a profile
+
+Keep the ordinary `GET /centers` directory available to incomplete teachers so they can
+find a valid center during profile repair. Dashboard drilldowns must request the explicit
+`dashboardOnly` filter and enforce the caller's read scope; do not turn the public directory
+into a broadly authenticated endpoint just to scope dashboard links.
+
+**Why:** the normal auth guard blocks incomplete profiles, while center discovery was already
+available and is needed to repair a missing or unavailable center. Dashboard totals still
+must not expose a wider record set than the caller's scope.
+
+**How to apply:** preserve the profile-repair exception for `/centers`; add a distinct,
+authenticated scoped mode for any dashboard-specific center listing.

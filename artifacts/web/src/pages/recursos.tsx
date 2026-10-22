@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListResources,
+  useListCenters,
   useListModules,
   useCreateResource,
   useDeleteResource,
@@ -208,6 +210,7 @@ function CreateResourceDialog() {
 }
 
 export default function RecursosPage() {
+  const searchParams = new URLSearchParams(useSearch());
   const { user } = useAuth();
   const qc = useQueryClient();
   const deleteMut = useDeleteResource();
@@ -215,14 +218,49 @@ export default function RecursosPage() {
   const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
   const [moduleId, setModuleId] = useState<number | null>(moduleParam);
+  const dashboardOnly = searchParams.get("dashboard") === "resources";
+  const requestedProvinceId = Number(searchParams.get("provinceId"));
+  const provinceId =
+    user?.role === "superadmin" &&
+    Number.isInteger(requestedProvinceId) &&
+    requestedProvinceId > 0
+      ? requestedProvinceId
+      : undefined;
+  const month = searchParams.get("month")?.match(/^\d{4}-\d{2}$/)
+    ? searchParams.get("month")!
+    : null;
 
   const { data: modules = [] } = useListModules({});
+  const centersQuery = useListCenters(
+    provinceId != null
+      ? { provinceId, dashboardOnly: true }
+      : { dashboardOnly: true },
+    { query: { enabled: dashboardOnly } },
+  );
 
   const params: ListResourcesParams = {};
   if (search.trim()) params.search = search.trim();
   if (moduleId != null) params.moduleId = moduleId;
 
-  const { data: resources = [], isLoading } = useListResources(params);
+  const { data: allResources = [], isLoading: resourcesLoading } =
+    useListResources(params);
+  const centerIds = new Set((centersQuery.data ?? []).map((center) => center.id));
+  const resources = allResources.filter((resource) => {
+    if (
+      dashboardOnly &&
+      (resource.centerId == null || !centerIds.has(resource.centerId))
+    ) {
+      return false;
+    }
+    if (!month) return true;
+    const date = resource.createdAt ? new Date(resource.createdAt) : null;
+    return (
+      date != null &&
+      !Number.isNaN(date.getTime()) &&
+      date.toISOString().slice(0, 7) === month
+    );
+  });
+  const isLoading = resourcesLoading || (dashboardOnly && centersQuery.isLoading);
 
   const canDelete = (authorId: number | null | undefined) =>
     authorId === user?.id ||
@@ -307,6 +345,14 @@ export default function RecursosPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {(dashboardOnly || month) && (
+        <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+          {dashboardOnly && "Solo recursos contabilizados por el panel"}
+          {dashboardOnly && month && " · "}
+          {month && `Periodo: ${month}`}
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>

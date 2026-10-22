@@ -1965,7 +1965,8 @@ export const ListCentersQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "family": zod.coerce.string().optional(),
   "nature": zod.coerce.string().optional(),
-  "centerType": zod.coerce.string().optional()
+  "centerType": zod.coerce.string().optional(),
+  "dashboardOnly": zod.coerce.boolean().optional().describe('Restrict the directory to the authenticated caller\'s dashboard read scope.')
 })
 
 export const ListCentersResponseItem = zod.object({

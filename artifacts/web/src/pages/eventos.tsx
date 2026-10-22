@@ -31,6 +31,7 @@ import {
   type CreateEventInputType,
   type CreateAccreditationInputRole,
   type RsvpInputStatus,
+  type ListEventsParams,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { EventMinutesSection } from "@/components/events/event-minutes";
@@ -1667,10 +1668,19 @@ function EventsCalendarView({
 export default function EventosPage() {
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
-  const { data: events = [], isLoading } = useListEvents();
   const search = useSearch();
   const [, navigate] = useLocation();
   const params = useMemo(() => new URLSearchParams(search), [search]);
+  const requestedProvinceId = Number(params.get("provinceId"));
+  const eventParams: ListEventsParams = {};
+  if (
+    user?.role === "superadmin" &&
+    Number.isInteger(requestedProvinceId) &&
+    requestedProvinceId > 0
+  ) {
+    eventParams.provinceId = requestedProvinceId;
+  }
+  const { data: events = [], isLoading } = useListEvents(eventParams);
   const rawId = Number(params.get("evento"));
   const selectedId = Number.isInteger(rawId) && rawId > 0 ? rawId : null;
   const initialTab = params.get("seccion") === "acta" ? "acta" : undefined;
@@ -1679,6 +1689,14 @@ export default function EventosPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [view, setView] = useState<"cards" | "calendar">("cards");
   const canManage = canManageEvents(user?.role);
+  const dashboardMonth = params.get("month")?.match(/^\d{4}-\d{2}$/)
+    ? params.get("month")
+    : null;
+  const dashboardOnly = params.get("dashboard") === "events";
+  const upcomingOnly = params.get("period") === "upcoming";
+  const centerScopedDashboard =
+    dashboardOnly &&
+    (user?.role === "teacher" || user?.role === "department_head");
 
   if (selectedId != null) {
     return (
@@ -1688,8 +1706,25 @@ export default function EventosPage() {
     );
   }
 
+  const now = Date.now();
+  const dashboardEvents = events.filter((event) => {
+    if (centerScopedDashboard && event.provinceId != null) return false;
+    if (upcomingOnly) {
+      const start = event.startAt ? new Date(event.startAt).getTime() : NaN;
+      if (!Number.isFinite(start) || start < now) return false;
+    }
+    if (dashboardMonth) {
+      const date = event.startAt ?? event.createdAt;
+      if (!date || new Date(date).toISOString().slice(0, 7) !== dashboardMonth) {
+        return false;
+      }
+    }
+    return true;
+  });
   const shownEvents =
-    typeFilter === "all" ? events : events.filter((e) => e.type === typeFilter);
+    typeFilter === "all"
+      ? dashboardEvents
+      : dashboardEvents.filter((e) => e.type === typeFilter);
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -1742,6 +1777,14 @@ export default function EventosPage() {
           </Button>
         ))}
       </div>
+
+      {(upcomingOnly || dashboardMonth) && (
+        <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+          {upcomingOnly && "Próximos eventos según el panel"}
+          {upcomingOnly && dashboardMonth && " · "}
+          {dashboardMonth && `Periodo: ${dashboardMonth}`}
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground py-12 text-center">

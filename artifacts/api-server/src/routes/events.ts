@@ -159,7 +159,9 @@ router.get("/events", requireAuth, async (req, res): Promise<void> => {
 
   const filters: SQL[] = [isNull(eventsTable.deletedAt)];
 
-  if (scope.kind !== "global") {
+  if (scope.kind === "none") {
+    filters.push(eq(eventsTable.id, -1));
+  } else if (scope.kind !== "global") {
     const provinceId = await resolveEffectiveProvinceId(scope);
     const scopeMatch =
       provinceId != null
@@ -173,7 +175,12 @@ router.get("/events", requireAuth, async (req, res): Promise<void> => {
 
   if (query.data.type) filters.push(eq(eventsTable.type, query.data.type));
   if (query.data.provinceId != null) {
-    filters.push(eq(eventsTable.provinceId, query.data.provinceId));
+    filters.push(
+      or(
+        eq(eventsTable.provinceId, query.data.provinceId),
+        isNull(eventsTable.provinceId),
+      )!,
+    );
   }
 
   const rows = await db

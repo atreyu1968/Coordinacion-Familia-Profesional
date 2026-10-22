@@ -156,7 +156,12 @@ function activeUserScopeFilters(
   ];
 
   if (scope.centerId != null) {
-    filters.push(eq(usersTable.centerId, scope.centerId));
+    filters.push(
+      inArray(
+        usersTable.centerId,
+        activeFamilyCenterIds(scope, activeFamily),
+      ),
+    );
   } else if (scope.provinceId != null) {
     filters.push(
       or(
