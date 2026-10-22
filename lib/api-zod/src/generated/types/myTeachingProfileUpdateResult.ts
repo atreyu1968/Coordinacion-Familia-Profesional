@@ -12,4 +12,5 @@ export interface MyTeachingProfileUpdateResult {
   /** @nullable */
   activeYear: string | null;
   moduleIds: number[];
+  doesNotTeach: boolean;
 }

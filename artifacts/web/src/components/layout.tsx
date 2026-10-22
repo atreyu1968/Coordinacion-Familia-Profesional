@@ -81,7 +81,8 @@ export function AppLayout({ children }: LayoutProps) {
       teachingProfile.targetCenterId !== teachingProfile.user.centerId ||
       teachingProfile.user.provinceId !== teachingProfile.targetProvinceId ||
       (Boolean(teachingProfile.activeYear) &&
-        teachingProfile.moduleIds.length === 0));
+        teachingProfile.moduleIds.length === 0 &&
+        !teachingProfile.doesNotTeach));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // The sidebar is collapsed (icons only) by default and expands on hover. The
   // pin (chincheta) at its foot keeps it open; that choice is persisted.

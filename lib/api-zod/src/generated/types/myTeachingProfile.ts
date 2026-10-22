@@ -21,5 +21,6 @@ export interface MyTeachingProfile {
   /** @nullable */
   targetProvinceName: string | null;
   moduleIds: number[];
+  doesNotTeach: boolean;
   modules: MyTeachingModuleOption[];
 }

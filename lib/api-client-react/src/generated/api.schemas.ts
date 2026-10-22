@@ -3176,6 +3176,7 @@ export interface TeacherYearConfirmation {
   status: string;
   /** @nullable */
   centerId?: number | null;
+  doesNotTeach: boolean;
   deadline: string;
   /** @nullable */
   confirmedAt?: string | null;
@@ -3193,6 +3194,7 @@ export interface MyYearConfirmation {
   /** @nullable */
   centerId?: number | null;
   moduleIds?: number[];
+  doesNotTeach: boolean;
 }
 
 export interface MyTeachingModuleOption {
@@ -3221,6 +3223,7 @@ export interface MyTeachingProfile {
   /** @nullable */
   targetProvinceName: string | null;
   moduleIds: number[];
+  doesNotTeach: boolean;
   modules: MyTeachingModuleOption[];
 }
 
@@ -3229,6 +3232,8 @@ export interface UpdateMyTeachingProfileInput {
   centerId: number;
   /** @items.minimum 1 */
   moduleIds: number[];
+  /** True when the teacher explicitly declares not teaching during the active course. */
+  doesNotTeach: boolean;
 }
 
 export interface MyTeachingProfileUpdateResult {
@@ -3236,6 +3241,7 @@ export interface MyTeachingProfileUpdateResult {
   /** @nullable */
   activeYear: string | null;
   moduleIds: number[];
+  doesNotTeach: boolean;
 }
 
 export interface CollaborativeSpaceAuditReference {
@@ -3366,6 +3372,7 @@ export type CreateCollaborativeSpaceInput = CollaborativeSpaceInfoInput & Collab
 export interface ConfirmYearInput {
   centerId: number;
   moduleIds: number[];
+  doesNotTeach: boolean;
 }
 
 /**

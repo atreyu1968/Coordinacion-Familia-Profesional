@@ -519,6 +519,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/coordinator-mail.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/coordinator-tasks.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/ai-knowledge.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/teacher-year-no-teaching.sql"
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."

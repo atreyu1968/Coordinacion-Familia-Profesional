@@ -18,4 +18,5 @@ export interface MyYearConfirmation {
   /** @nullable */
   centerId?: number | null;
   moduleIds?: number[];
+  doesNotTeach: boolean;
 }

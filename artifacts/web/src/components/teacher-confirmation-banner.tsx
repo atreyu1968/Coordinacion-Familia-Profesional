@@ -39,6 +39,7 @@ export function TeacherConfirmationBanner() {
   const [open, setOpen] = useState(false);
   const [centerId, setCenterId] = useState<number | null>(null);
   const [moduleIds, setModuleIds] = useState<number[]>([]);
+  const [doesNotTeach, setDoesNotTeach] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const confirmMut = useConfirmYear();
@@ -56,6 +57,7 @@ export function TeacherConfirmationBanner() {
     if (open) {
       setCenterId(user?.centerId ?? null);
       setModuleIds(confirmation?.moduleIds ?? []);
+      setDoesNotTeach(confirmation?.doesNotTeach ?? false);
       setError(null);
     }
   }, [open, confirmation, user]);
@@ -73,6 +75,7 @@ export function TeacherConfirmationBanner() {
   if (!confirmation || confirmation.status !== "pending") return null;
 
   const toggleModule = (id: number) => {
+    setDoesNotTeach(false);
     setModuleIds((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
     );
@@ -84,18 +87,22 @@ export function TeacherConfirmationBanner() {
       setError("No tienes un centro asignado. Actualízalo desde Mi perfil.");
       return;
     }
-    if (moduleIds.length === 0) {
-      setError("Selecciona al menos un módulo que impartes.");
+    if (!doesNotTeach && moduleIds.length === 0) {
+      setError("Selecciona un módulo o declara que no impartes clase.");
       return;
     }
     try {
-      await confirmMut.mutateAsync({ data: { centerId, moduleIds } });
+      await confirmMut.mutateAsync({
+        data: { centerId, moduleIds: doesNotTeach ? [] : moduleIds, doesNotTeach },
+      });
       await qc.invalidateQueries({
         queryKey: getGetMyYearConfirmationQueryKey(),
       });
       toast({
         title: "Confirmación registrada",
-        description: "Gracias por confirmar tu centro y módulos para el curso.",
+        description: doesNotTeach
+          ? "La declaración de que no impartes clase quedó confirmada para el curso."
+          : "Gracias por confirmar tu centro y módulos para el curso.",
       });
       setOpen(false);
     } catch {
@@ -115,7 +122,7 @@ export function TeacherConfirmationBanner() {
                 {confirmation.year ? ` ${confirmation.year}` : ""}
               </p>
               <p className="text-sm text-amber-800/90 dark:text-amber-200/80">
-                Es obligatorio confirmar tu centro y los módulos que impartes.
+              Es obligatorio confirmar tu centro y tus módulos o declarar que no impartes clase.
                 {deadlineLabel
                   ? ` Tienes hasta el ${deadlineLabel}; si no confirmas, tu cuenta se desactivará automáticamente.`
                   : ""}
@@ -136,7 +143,7 @@ export function TeacherConfirmationBanner() {
           <DialogHeader>
             <DialogTitle>Confirmar curso académico</DialogTitle>
             <DialogDescription>
-              Revisa los módulos que vas a impartir
+              Revisa los módulos que vas a impartir o declara que no impartes clase
               {confirmation.year ? ` en el curso ${confirmation.year}` : ""}.
               El centro actual se toma de tu perfil; para cambiarlo, ve a Mi
               perfil.
@@ -154,9 +161,23 @@ export function TeacherConfirmationBanner() {
                 </p>
               </div>
             </div>
+            <label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm">
+              <Checkbox
+                checked={doesNotTeach}
+                onCheckedChange={(checked) => {
+                  const selected = checked === true;
+                  setDoesNotTeach(selected);
+                  if (selected) setModuleIds([]);
+                }}
+              />
+              <span>
+                No imparto clase durante el curso{" "}
+                {confirmation.year ?? ""}
+              </span>
+            </label>
             <div className="space-y-2">
-              <Label>Módulos que impartes *</Label>
-              <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-md border p-3">
+              <Label>Módulos que impartes</Label>
+              <div className={`max-h-56 space-y-1.5 overflow-y-auto rounded-md border p-3 ${doesNotTeach ? "opacity-50" : ""}`}>
                 {modules.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No hay módulos disponibles.
@@ -169,6 +190,7 @@ export function TeacherConfirmationBanner() {
                     >
                       <Checkbox
                         checked={moduleIds.includes(m.id)}
+                        disabled={doesNotTeach}
                         onCheckedChange={() => toggleModule(m.id)}
                       />
                       <span>

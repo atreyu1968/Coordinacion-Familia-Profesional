@@ -308,6 +308,25 @@ router.get(
         ),
       ];
     }
+    let doesNotTeach = false;
+    if (
+      activeYear &&
+      targetCenter &&
+      caller.centerId === targetCenter.id
+    ) {
+      const [declaration] = await db
+        .select({ doesNotTeach: teacherYearConfirmationsTable.doesNotTeach })
+        .from(teacherYearConfirmationsTable)
+        .where(
+          and(
+            eq(teacherYearConfirmationsTable.teacherId, caller.id),
+            eq(teacherYearConfirmationsTable.schoolYear, activeYear),
+            eq(teacherYearConfirmationsTable.centerId, targetCenter.id),
+            eq(teacherYearConfirmationsTable.status, "confirmed"),
+          ),
+        );
+      doesNotTeach = declaration?.doesNotTeach ?? false;
+    }
 
     res.json(
       GetMyTeachingProfileResponse.parse({
@@ -318,6 +337,7 @@ router.get(
         targetProvinceId: targetCenter?.provinceId ?? null,
         targetProvinceName: targetCenter?.provinceName ?? null,
         moduleIds,
+        doesNotTeach,
         modules,
       }),
     );
@@ -339,18 +359,26 @@ router.patch(
     const activeYear = await getActiveAcademicYear();
     const activeFamily = await getActiveFamily();
     const moduleIds = [...new Set(parsed.data.moduleIds)];
-    if (activeYear && moduleIds.length === 0) {
+    const doesNotTeach = parsed.data.doesNotTeach;
+    if (
+      activeYear &&
+      ((doesNotTeach && moduleIds.length > 0) ||
+        (!doesNotTeach && moduleIds.length === 0))
+    ) {
       res.status(400).json({
-        message: "Selecciona al menos un módulo que impartes en el curso activo",
+        message: doesNotTeach
+          ? "No selecciones módulos si declaras que no impartes clase"
+          : "Selecciona un módulo o declara que no impartes clase en el curso activo",
       });
       return;
     }
-    if (!activeYear && moduleIds.length > 0) {
+    if (!activeYear && (moduleIds.length > 0 || doesNotTeach)) {
       res.status(409).json({
-        message: "No hay un curso activo para guardar módulos",
+        message: "No hay un curso activo para guardar datos de docencia",
       });
       return;
     }
+    const profileSavedAt = new Date();
 
     const result = await db.transaction(async (tx) => {
       const [lockedUser] = await tx
@@ -485,21 +513,45 @@ router.patch(
           touchedModuleIds.add(moduleId);
         }
 
-        await tx
-          .update(teacherYearConfirmationsTable)
-          .set({ centerId: center.id })
+        const [confirmation] = await tx
+          .select()
+          .from(teacherYearConfirmationsTable)
           .where(
             and(
               eq(teacherYearConfirmationsTable.teacherId, caller.id),
               eq(teacherYearConfirmationsTable.schoolYear, activeYear),
             ),
-          );
+          )
+          .for("update");
+        if (confirmation) {
+          await tx
+            .update(teacherYearConfirmationsTable)
+            .set({
+              centerId: center.id,
+              doesNotTeach,
+              ...(doesNotTeach
+                ? { status: "confirmed", confirmedAt: profileSavedAt }
+                : {}),
+            })
+            .where(eq(teacherYearConfirmationsTable.id, confirmation.id));
+        } else if (doesNotTeach) {
+          await tx.insert(teacherYearConfirmationsTable).values({
+            teacherId: caller.id,
+            schoolYear: activeYear,
+            status: "confirmed",
+            centerId: center.id,
+            doesNotTeach: true,
+            deadline: profileSavedAt,
+            confirmedAt: profileSavedAt,
+          });
+        }
       }
 
       return {
         kind: "success" as const,
         user: updatedUser,
         moduleIds: activeYear ? moduleIds : [],
+        doesNotTeach: activeYear ? doesNotTeach : false,
         touchedModuleIds: [...touchedModuleIds],
       };
     });
@@ -543,6 +595,7 @@ router.patch(
         user: GetCurrentUserResponse.parse(result.user),
         activeYear,
         moduleIds: result.moduleIds,
+        doesNotTeach: result.doesNotTeach,
       }),
     );
   },

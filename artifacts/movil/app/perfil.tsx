@@ -51,6 +51,9 @@ export default function PerfilScreen() {
   const [teachingModuleIds, setTeachingModuleIds] = useState<number[] | null>(
     null,
   );
+  const [teachingNoTeaching, setTeachingNoTeaching] = useState<boolean | null>(
+    null,
+  );
   const [teachingError, setTeachingError] = useState<string | null>(null);
   const [teachingSuccess, setTeachingSuccess] = useState<string | null>(null);
   const [showCenterPicker, setShowCenterPicker] = useState(false);
@@ -90,6 +93,11 @@ export default function PerfilScreen() {
     (profileMatchesSelection && teachingCenterId === user?.centerId
       ? teachingProfileQuery.data?.moduleIds ?? []
       : []);
+  const selectedNoTeaching =
+    teachingNoTeaching ??
+    (profileMatchesSelection && teachingCenterId === user?.centerId
+      ? teachingProfileQuery.data?.doesNotTeach ?? false
+      : false);
   const modulesByCycle = availableModules.reduce<
     Record<string, typeof availableModules>
   >((groups, module) => {
@@ -112,7 +120,8 @@ export default function PerfilScreen() {
           teachingProfileQuery.data.targetCenterId !== user.centerId ||
           user.provinceId !== teachingProfileQuery.data.targetProvinceId ||
           (Boolean(teachingProfileQuery.data.activeYear) &&
-            teachingProfileQuery.data.moduleIds.length === 0))));
+            teachingProfileQuery.data.moduleIds.length === 0 &&
+            !teachingProfileQuery.data.doesNotTeach))));
   const filteredCenters = (centersQuery.data ?? []).filter((center) =>
     center.name.toLocaleLowerCase().includes(centerSearch.trim().toLocaleLowerCase()),
   );
@@ -181,6 +190,7 @@ export default function PerfilScreen() {
   const onTeachingCenterSelect = (centerId: number) => {
     setTeachingCenterId(centerId);
     setTeachingModuleIds(centerId === user?.centerId ? null : []);
+    setTeachingNoTeaching(false);
     setShowCenterPicker(false);
     setCenterSearch("");
     setTeachingError(null);
@@ -188,6 +198,7 @@ export default function PerfilScreen() {
   };
 
   const toggleTeachingModule = (moduleId: number) => {
+    if (selectedNoTeaching) setTeachingNoTeaching(false);
     setTeachingModuleIds((current) => {
       const selected = current ?? selectedModuleIds;
       return selected.includes(moduleId)
@@ -208,22 +219,38 @@ export default function PerfilScreen() {
       setTeachingError("No se han podido cargar los datos de docencia.");
       return;
     }
-    const moduleIds =
-      teachingProfileQuery.data.activeYear == null ? [] : selectedModuleIds;
-    if (teachingProfileQuery.data.activeYear && moduleIds.length === 0) {
-      setTeachingError("Selecciona al menos un módulo que impartes.");
+    const moduleIds = teachingProfileQuery.data.activeYear && !selectedNoTeaching
+      ? selectedModuleIds
+      : [];
+    if (
+      teachingProfileQuery.data.activeYear &&
+      !selectedNoTeaching &&
+      moduleIds.length === 0
+    ) {
+      setTeachingError("Selecciona un módulo o declara que no impartes clase.");
       return;
     }
 
     try {
       const updated = await teachingProfileMut.mutateAsync({
-        data: { centerId: teachingCenterId, moduleIds },
+        data: {
+          centerId: teachingCenterId,
+          moduleIds,
+          doesNotTeach: teachingProfileQuery.data.activeYear
+            ? selectedNoTeaching
+            : false,
+        },
       });
       await updateUser(updated.user as User);
       getSocket()?.connect();
       setTeachingCenterId(updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);
-      setTeachingSuccess("Centro y módulos actualizados.");
+      setTeachingNoTeaching(updated.doesNotTeach);
+      setTeachingSuccess(
+        updated.doesNotTeach
+          ? "Se ha registrado que no impartes clase este curso."
+          : "Centro y módulos actualizados.",
+      );
       await queryClient.invalidateQueries();
     } catch {
       setTeachingError("No se pudo guardar el centro y los módulos.");
@@ -409,6 +436,41 @@ export default function PerfilScreen() {
 
             {teachingProfileQuery.data?.activeYear ? (
               <>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selectedNoTeaching }}
+                  onPress={() => {
+                    const next = !selectedNoTeaching;
+                    setTeachingNoTeaching(next);
+                    if (next) setTeachingModuleIds([]);
+                  }}
+                  style={[
+                    styles.moduleOption,
+                    {
+                      borderColor: selectedNoTeaching
+                        ? colors.primary
+                        : colors.border,
+                      backgroundColor: selectedNoTeaching
+                        ? colors.accent
+                        : colors.card,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={selectedNoTeaching ? "check-square" : "square"}
+                    size={18}
+                    color={
+                      selectedNoTeaching
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                  />
+                  <Text style={[styles.optionText, { color: colors.foreground }]}>
+                    No imparto clase durante el curso{" "}
+                    {teachingProfileQuery.data.activeYear}
+                  </Text>
+                </Pressable>
                 <Text style={[styles.label, { color: colors.foreground }]}>
                   Módulos que impartes · {teachingProfileQuery.data.activeYear}
                 </Text>
@@ -440,6 +502,7 @@ export default function PerfilScreen() {
                               key={module.id}
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: active }}
+                              disabled={selectedNoTeaching}
                               onPress={() => toggleTeachingModule(module.id)}
                               style={({ pressed }) => [
                                 styles.moduleOption,
@@ -451,7 +514,7 @@ export default function PerfilScreen() {
                                     ? colors.accent
                                     : colors.card,
                                   borderRadius: colors.radius,
-                                  opacity: pressed ? 0.72 : 1,
+                                  opacity: selectedNoTeaching ? 0.45 : pressed ? 0.72 : 1,
                                 },
                               ]}
                             >

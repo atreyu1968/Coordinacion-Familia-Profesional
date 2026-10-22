@@ -9,4 +9,5 @@
 export interface ConfirmYearInput {
   centerId: number;
   moduleIds: number[];
+  doesNotTeach: boolean;
 }

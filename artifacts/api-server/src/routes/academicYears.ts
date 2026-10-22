@@ -404,6 +404,7 @@ router.get(
         schoolYear: teacherYearConfirmationsTable.schoolYear,
         status: teacherYearConfirmationsTable.status,
         centerId: teacherYearConfirmationsTable.centerId,
+        doesNotTeach: teacherYearConfirmationsTable.doesNotTeach,
         deadline: teacherYearConfirmationsTable.deadline,
         confirmedAt: teacherYearConfirmationsTable.confirmedAt,
         createdAt: teacherYearConfirmationsTable.createdAt,
@@ -428,7 +429,7 @@ router.get(
     const caller = req.user!;
     const year = await getActiveAcademicYear();
     if (caller.role !== "teacher" || !year) {
-      res.json({ year: year ?? null, status: "none" });
+      res.json({ year: year ?? null, status: "none", doesNotTeach: false });
       return;
     }
 
@@ -442,7 +443,7 @@ router.get(
         ),
       );
     if (!confirmation) {
-      res.json({ year, status: "none" });
+      res.json({ year, status: "none", doesNotTeach: false });
       return;
     }
 
@@ -464,6 +465,7 @@ router.get(
       confirmedAt: confirmation.confirmedAt,
       centerId: confirmation.centerId,
       moduleIds: assignments.map((a) => a.moduleId),
+      doesNotTeach: confirmation.doesNotTeach,
     });
   },
 );
@@ -549,6 +551,18 @@ router.post(
     }
 
     const moduleIds = Array.from(new Set(parsed.data.moduleIds));
+    const doesNotTeach = parsed.data.doesNotTeach;
+    if (
+      (doesNotTeach && moduleIds.length > 0) ||
+      (!doesNotTeach && moduleIds.length === 0)
+    ) {
+      res.status(400).json({
+        message: doesNotTeach
+          ? "No selecciones módulos si declaras que no impartes clase"
+          : "Selecciona un módulo o declara que no impartes clase",
+      });
+      return;
+    }
     if (moduleIds.length > 0) {
       const validModules = await db
         .select({ id: modulesTable.id, centerId: modulesTable.centerId })
@@ -713,6 +727,7 @@ router.post(
           status: "confirmed",
           confirmedAt,
           centerId: center.id,
+          doesNotTeach,
         })
         .where(eq(teacherYearConfirmationsTable.id, confirmation.id))
         .returning();

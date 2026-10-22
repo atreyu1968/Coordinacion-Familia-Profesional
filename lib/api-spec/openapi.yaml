@@ -1141,8 +1141,8 @@ paths:
     patch:
       operationId: updateMyTeachingProfile
       tags: [auth]
-      summary: Update the authenticated teacher's center and active-year modules
-      description: Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
+      summary: Update the teacher's center, modules, or no-teaching declaration
+      description: Changes the teacher's center immediately, derives province from that center, and reconciles active-year assignments or an explicit no-teaching declaration. The province is not accepted from the client.
       security:
         - bearerAuth: []
       requestBody:
@@ -5072,7 +5072,7 @@ paths:
     post:
       operationId: confirmYear
       tags: [academics]
-      summary: Teacher confirms center and modules for the active course
+      summary: Teacher confirms center and modules or declares no teaching
       security:
         - bearerAuth: []
       requestBody:
@@ -9133,6 +9133,8 @@ components:
         centerId:
           type: integer
           nullable: true
+        doesNotTeach:
+          type: boolean
         deadline:
           type: string
           format: date-time
@@ -9140,7 +9142,7 @@ components:
           type: string
           format: date-time
           nullable: true
-      required: [id, teacherId, schoolYear, status, deadline]
+      required: [id, teacherId, schoolYear, status, doesNotTeach, deadline]
     MyYearConfirmation:
       type: object
       properties:
@@ -9165,7 +9167,9 @@ components:
           type: array
           items:
             type: integer
-      required: [status]
+        doesNotTeach:
+          type: boolean
+      required: [status, doesNotTeach]
     MyTeachingModuleOption:
       type: object
       properties:
@@ -9210,6 +9214,8 @@ components:
           type: array
           items:
             type: integer
+        doesNotTeach:
+          type: boolean
         modules:
           type: array
           items:
@@ -9222,6 +9228,7 @@ components:
         - targetProvinceId
         - targetProvinceName
         - moduleIds
+        - doesNotTeach
         - modules
     UpdateMyTeachingProfileInput:
       type: object
@@ -9234,7 +9241,10 @@ components:
           items:
             type: integer
             minimum: 1
-      required: [centerId, moduleIds]
+        doesNotTeach:
+          type: boolean
+          description: True when the teacher explicitly declares not teaching during the active course.
+      required: [centerId, moduleIds, doesNotTeach]
     MyTeachingProfileUpdateResult:
       type: object
       properties:
@@ -9247,7 +9257,9 @@ components:
           type: array
           items:
             type: integer
-      required: [user, activeYear, moduleIds]
+        doesNotTeach:
+          type: boolean
+      required: [user, activeYear, moduleIds, doesNotTeach]
     CollaborativeSpaceAuditReference:
       type: object
       required: [id, name]
@@ -9379,4 +9391,6 @@ components:
           type: array
           items:
             type: integer
-      required: [centerId, moduleIds]
+        doesNotTeach:
+          type: boolean
+      required: [centerId, moduleIds, doesNotTeach]

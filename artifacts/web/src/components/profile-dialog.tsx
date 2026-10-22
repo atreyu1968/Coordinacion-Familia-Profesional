@@ -59,6 +59,9 @@ export function ProfileDialog({
   const [teachingModuleIds, setTeachingModuleIds] = useState<number[] | null>(
     null,
   );
+  const [teachingNoTeaching, setTeachingNoTeaching] = useState<boolean | null>(
+    null,
+  );
   const [teachingError, setTeachingError] = useState<string | null>(null);
   const isTeacher = user.role === "teacher";
   const centersQuery = useListCenters(
@@ -91,6 +94,11 @@ export function ProfileDialog({
     (profileMatchesSelection && teachingCenterId === user.centerId
       ? teachingProfileQuery.data?.moduleIds ?? []
       : []);
+  const selectedNoTeaching =
+    teachingNoTeaching ??
+    (profileMatchesSelection && teachingCenterId === user.centerId
+      ? teachingProfileQuery.data?.doesNotTeach ?? false
+      : false);
   const modulesByCycle = availableModules.reduce<
     Record<string, typeof availableModules>
   >((groups, module) => {
@@ -108,6 +116,7 @@ export function ProfileDialog({
     setError(null);
     setTeachingCenterId(user.centerId ?? null);
     setTeachingModuleIds(null);
+    setTeachingNoTeaching(null);
     setTeachingError(null);
   };
 
@@ -181,10 +190,12 @@ export function ProfileDialog({
     const nextCenterId = Number(value);
     setTeachingCenterId(nextCenterId);
     setTeachingModuleIds(nextCenterId === user.centerId ? null : []);
+    setTeachingNoTeaching(false);
     setTeachingError(null);
   };
 
   const toggleTeachingModule = (moduleId: number) => {
+    if (selectedNoTeaching) setTeachingNoTeaching(false);
     setTeachingModuleIds((current) => {
       const selected = current ?? selectedModuleIds;
       return selected.includes(moduleId)
@@ -203,25 +214,39 @@ export function ProfileDialog({
       setTeachingError("No se han podido cargar los datos de docencia.");
       return;
     }
-    const moduleIds =
-      teachingProfileQuery.data.activeYear == null ? [] : selectedModuleIds;
-    if (teachingProfileQuery.data.activeYear && moduleIds.length === 0) {
-      setTeachingError("Selecciona al menos un módulo que impartes.");
+    const moduleIds = teachingProfileQuery.data.activeYear && !selectedNoTeaching
+      ? selectedModuleIds
+      : [];
+    if (
+      teachingProfileQuery.data.activeYear &&
+      !selectedNoTeaching &&
+      moduleIds.length === 0
+    ) {
+      setTeachingError("Selecciona un módulo o declara que no impartes clase.");
       return;
     }
 
     try {
       const updated = await teachingProfileMut.mutateAsync({
-        data: { centerId: teachingCenterId, moduleIds },
+        data: {
+          centerId: teachingCenterId,
+          moduleIds,
+          doesNotTeach: teachingProfileQuery.data.activeYear
+            ? selectedNoTeaching
+            : false,
+        },
       });
       // Socket.io does not automatically retry a server-denied handshake.
       getSocket()?.connect();
       await qc.invalidateQueries();
       setTeachingCenterId(updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);
+      setTeachingNoTeaching(updated.doesNotTeach);
       toast({
         title: "Datos docentes actualizados",
-        description: "El cambio de centro y provincia ya está aplicado.",
+        description: updated.doesNotTeach
+          ? "Se ha registrado que no impartes clase este curso."
+          : "El centro, la provincia y los módulos ya están actualizados.",
       });
     } catch {
       setTeachingError("No se pudo guardar el centro y los módulos.");
@@ -315,6 +340,22 @@ export function ProfileDialog({
 
               {teachingProfileQuery.data?.activeYear ? (
                 <div className="space-y-2">
+                  <label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={selectedNoTeaching}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setTeachingNoTeaching(checked);
+                        if (checked) setTeachingModuleIds([]);
+                      }}
+                    />
+                    <span>
+                      No imparto clase durante el curso{" "}
+                      {teachingProfileQuery.data.activeYear}
+                    </span>
+                  </label>
                   <Label>Módulos que impartes</Label>
                   <div className="max-h-64 space-y-4 overflow-y-auto rounded-md border p-3">
                     {teachingProfileQuery.isLoading ? (
@@ -338,6 +379,7 @@ export function ProfileDialog({
                               <input
                                 type="checkbox"
                                 className="mt-0.5"
+                                disabled={selectedNoTeaching}
                                 checked={selectedModuleIds.includes(module.id)}
                                 onChange={() => toggleTeachingModule(module.id)}
                               />

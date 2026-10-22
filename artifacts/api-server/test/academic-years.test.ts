@@ -34,6 +34,7 @@ const TAG = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 const FROM_YEAR = `vitest-from-${TAG}`;
 const TO_YEAR = `vitest-to-${TAG}`;
 const CONFIRM_YEAR = `vitest-confirm-${TAG}`;
+const NO_TEACH_YEAR = `vitest-no-teach-${TAG}`;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -301,7 +302,7 @@ describe("POST /api/academic-years/confirm", () => {
     const res = await request(app)
       .post("/api/academic-years/confirm")
       .set(authHeader(token))
-      .send({ centerId, moduleIds: [moduleId] });
+      .send({ centerId, moduleIds: [moduleId], doesNotTeach: false });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("confirmed");
     expect(res.body.confirmedAt).toBeTruthy();
@@ -323,7 +324,7 @@ describe("POST /api/academic-years/confirm", () => {
     const again = await request(app)
       .post("/api/academic-years/confirm")
       .set(authHeader(token))
-      .send({ centerId, moduleIds: [moduleId] });
+      .send({ centerId, moduleIds: [moduleId], doesNotTeach: false });
     expect(again.status).toBe(200);
     const assignmentsAfter = await db
       .select()
@@ -351,8 +352,55 @@ describe("POST /api/academic-years/confirm", () => {
     const res = await request(app)
       .post("/api/academic-years/confirm")
       .set(authHeader(token))
-      .send({ centerId, moduleIds: [] });
+      .send({ centerId, moduleIds: [], doesNotTeach: false });
     expect(res.status).toBe(409);
+  });
+
+  it("confirms a teacher who declares no teaching without creating module assignments", async () => {
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const { user: teacher, token } = await createUser({
+      role: "teacher",
+      provinceId,
+      centerId,
+      incompleteProfile: true,
+    });
+    await createAcademicYear(NO_TEACH_YEAR);
+    await setActiveYear(NO_TEACH_YEAR);
+    await createYearConfirmation({
+      teacherId: teacher.id,
+      schoolYear: NO_TEACH_YEAR,
+      deadline: new Date(Date.now() + 15 * DAY_MS),
+      centerId,
+    });
+
+    const response = await request(app)
+      .post("/api/academic-years/confirm")
+      .set(authHeader(token))
+      .send({ centerId, moduleIds: [], doesNotTeach: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: "confirmed",
+      centerId,
+      doesNotTeach: true,
+    });
+    const assignments = await db
+      .select()
+      .from(teachingAssignmentsTable)
+      .where(
+        and(
+          eq(teachingAssignmentsTable.teacherId, teacher.id),
+          eq(teachingAssignmentsTable.schoolYear, NO_TEACH_YEAR),
+          isNull(teachingAssignmentsTable.deletedAt),
+        ),
+      );
+    expect(assignments).toEqual([]);
+
+    const myConfirmation = await request(app)
+      .get("/api/academic-years/my-confirmation")
+      .set(authHeader(token));
+    expect(myConfirmation.body.doesNotTeach).toBe(true);
   });
 });
 

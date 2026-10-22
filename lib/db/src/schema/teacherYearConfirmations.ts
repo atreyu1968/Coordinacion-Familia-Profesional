@@ -4,6 +4,7 @@ import {
   text,
   integer,
   timestamp,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 // Mandatory annual confirmation: when a new academic year is opened, each
@@ -18,6 +19,7 @@ export const teacherYearConfirmationsTable = pgTable(
     schoolYear: text("school_year").notNull(),
     status: text("status").notNull().default("pending"),
     centerId: integer("center_id"),
+    doesNotTeach: boolean("does_not_teach").notNull().default(false),
     deadline: timestamp("deadline", { withTimezone: true }).notNull(),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

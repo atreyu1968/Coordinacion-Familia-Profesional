@@ -4895,8 +4895,8 @@ export const getUpdateMyTeachingProfileUrl = () => {
 }
 
 /**
- * Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
- * @summary Update the authenticated teacher's center and active-year modules
+ * Changes the teacher's center immediately, derives province from that center, and reconciles active-year assignments or an explicit no-teaching declaration. The province is not accepted from the client.
+ * @summary Update the teacher's center, modules, or no-teaching declaration
  */
 export const updateMyTeachingProfile = async (updateMyTeachingProfileInput: UpdateMyTeachingProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<MyTeachingProfileUpdateResult> => {
 
@@ -4962,7 +4962,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateMyTeachingProfileMutationVariables = {data: BodyType<UpdateMyTeachingProfileInput>}
 
     /**
- * @summary Update the authenticated teacher's center and active-year modules
+ * @summary Update the teacher's center, modules, or no-teaching declaration
  */
 export const useUpdateMyTeachingProfile = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyTeachingProfile>>, TError,UpdateMyTeachingProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -21230,7 +21230,7 @@ export const getConfirmYearUrl = () => {
 }
 
 /**
- * @summary Teacher confirms center and modules for the active course
+ * @summary Teacher confirms center and modules or declares no teaching
  */
 export const confirmYear = async (confirmYearInput: ConfirmYearInput, options?: Parameters<typeof customFetch>[1]): Promise<TeacherYearConfirmation> => {
 
@@ -21296,7 +21296,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ConfirmYearMutationVariables = {data: BodyType<ConfirmYearInput>}
 
     /**
- * @summary Teacher confirms center and modules for the active course
+ * @summary Teacher confirms center and modules or declares no teaching
  */
 export const useConfirmYear = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmYear>>, TError,ConfirmYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

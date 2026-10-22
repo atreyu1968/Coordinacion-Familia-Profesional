@@ -121,7 +121,9 @@ function RootLayoutNav() {
       profile.user.provinceId == null ||
       profile.targetCenterId !== profile.user.centerId ||
       profile.user.provinceId !== profile.targetProvinceId ||
-      (Boolean(profile.activeYear) && profile.moduleIds.length === 0);
+      (Boolean(profile.activeYear) &&
+        profile.moduleIds.length === 0 &&
+        !profile.doesNotTeach);
 
     if (incomplete) {
       if (

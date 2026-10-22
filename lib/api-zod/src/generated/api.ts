@@ -1508,6 +1508,7 @@ export const GetMyTeachingProfileResponse = zod.object({
   "targetProvinceId": zod.number().int().nullable(),
   "targetProvinceName": zod.string().nullable(),
   "moduleIds": zod.array(zod.number().int()),
+  "doesNotTeach": zod.boolean(),
   "modules": zod.array(zod.object({
   "id": zod.number().int(),
   "code": zod.string().nullish(),
@@ -1520,8 +1521,8 @@ export const GetMyTeachingProfileResponse = zod.object({
 
 
 /**
- * Changes the teacher's center immediately, derives province from that center, and reconciles only active-year assignments. The province is not accepted from the client.
- * @summary Update the authenticated teacher's center and active-year modules
+ * Changes the teacher's center immediately, derives province from that center, and reconciles active-year assignments or an explicit no-teaching declaration. The province is not accepted from the client.
+ * @summary Update the teacher's center, modules, or no-teaching declaration
  */
 
 
@@ -1529,7 +1530,8 @@ export const GetMyTeachingProfileResponse = zod.object({
 
 export const UpdateMyTeachingProfileBody = zod.object({
   "centerId": zod.number().int().min(1),
-  "moduleIds": zod.array(zod.number().int().min(1))
+  "moduleIds": zod.array(zod.number().int().min(1)),
+  "doesNotTeach": zod.boolean().describe('True when the teacher explicitly declares not teaching during the active course.')
 })
 
 export const UpdateMyTeachingProfileResponse = zod.object({
@@ -1544,7 +1546,8 @@ export const UpdateMyTeachingProfileResponse = zod.object({
   "createdAt": zod.coerce.date().optional()
 }),
   "activeYear": zod.string().nullable(),
-  "moduleIds": zod.array(zod.number().int())
+  "moduleIds": zod.array(zod.number().int()),
+  "doesNotTeach": zod.boolean()
 })
 
 
@@ -5843,6 +5846,7 @@ export const ListYearConfirmationsResponseItem = zod.object({
   "schoolYear": zod.string(),
   "status": zod.string().describe('pending | confirmed'),
   "centerId": zod.number().int().nullish(),
+  "doesNotTeach": zod.boolean(),
   "deadline": zod.coerce.date(),
   "confirmedAt": zod.coerce.date().nullish()
 })
@@ -5858,16 +5862,18 @@ export const GetMyYearConfirmationResponse = zod.object({
   "deadline": zod.coerce.date().nullish(),
   "confirmedAt": zod.coerce.date().nullish(),
   "centerId": zod.number().int().nullish(),
-  "moduleIds": zod.array(zod.number().int()).optional()
+  "moduleIds": zod.array(zod.number().int()).optional(),
+  "doesNotTeach": zod.boolean()
 })
 
 
 /**
- * @summary Teacher confirms center and modules for the active course
+ * @summary Teacher confirms center and modules or declares no teaching
  */
 export const ConfirmYearBody = zod.object({
   "centerId": zod.number().int(),
-  "moduleIds": zod.array(zod.number().int())
+  "moduleIds": zod.array(zod.number().int()),
+  "doesNotTeach": zod.boolean()
 })
 
 export const ConfirmYearResponse = zod.object({
@@ -5877,6 +5883,7 @@ export const ConfirmYearResponse = zod.object({
   "schoolYear": zod.string(),
   "status": zod.string().describe('pending | confirmed'),
   "centerId": zod.number().int().nullish(),
+  "doesNotTeach": zod.boolean(),
   "deadline": zod.coerce.date(),
   "confirmedAt": zod.coerce.date().nullish()
 })

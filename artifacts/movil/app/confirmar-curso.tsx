@@ -53,6 +53,7 @@ export default function ConfirmYearScreen() {
 
   const [centerId, setCenterId] = useState<number | null>(null);
   const [moduleIds, setModuleIds] = useState<number[]>([]);
+  const [doesNotTeach, setDoesNotTeach] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -68,6 +69,7 @@ export default function ConfirmYearScreen() {
     setModuleIds(
       (confirmation?.moduleIds ?? []).filter((id) => visibleModuleIds.has(id)),
     );
+    setDoesNotTeach(confirmation?.doesNotTeach ?? false);
     setInitialized(true);
   }, [
     initialized,
@@ -88,6 +90,7 @@ export default function ConfirmYearScreen() {
   }, [confirmation]);
 
   const toggleModule = (id: number) => {
+    setDoesNotTeach(false);
     setModuleIds((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
     );
@@ -99,12 +102,18 @@ export default function ConfirmYearScreen() {
       setError("Selecciona tu centro.");
       return;
     }
-    if (moduleIds.length === 0) {
-      setError("Selecciona al menos un módulo que impartes.");
+    if (!doesNotTeach && moduleIds.length === 0) {
+      setError("Selecciona un módulo o declara que no impartes clase.");
       return;
     }
     try {
-      await confirmMut.mutateAsync({ data: { centerId, moduleIds } });
+      await confirmMut.mutateAsync({
+        data: {
+          centerId,
+          moduleIds: doesNotTeach ? [] : moduleIds,
+          doesNotTeach,
+        },
+      });
       await qc.invalidateQueries({
         queryKey: getGetMyYearConfirmationQueryKey(),
       });
@@ -160,7 +169,7 @@ export default function ConfirmYearScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={[styles.intro, { color: colors.mutedForeground }]}>
-            Revisa los módulos que vas a impartir
+            Revisa los módulos que vas a impartir o declara que no impartes clase
             {confirmation?.year ? ` en el curso ${confirmation.year}` : ""}.
             {deadlineLabel
               ? ` Tienes hasta el ${deadlineLabel}.`
@@ -183,10 +192,37 @@ export default function ConfirmYearScreen() {
             </Text>
           </Card>
 
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: doesNotTeach }}
+            onPress={() => {
+              const next = !doesNotTeach;
+              setDoesNotTeach(next);
+              if (next) setModuleIds([]);
+            }}
+            style={[
+              styles.option,
+              {
+                borderColor: doesNotTeach ? colors.primary : colors.border,
+                backgroundColor: doesNotTeach ? colors.accent : colors.background,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <Feather
+              name={doesNotTeach ? "check-square" : "square"}
+              size={20}
+              color={doesNotTeach ? colors.primary : colors.mutedForeground}
+            />
+            <Text style={[styles.optionText, { color: colors.foreground }]}>
+              No imparto clase durante el curso {confirmation?.year ?? ""}
+            </Text>
+          </Pressable>
+
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Módulos que impartes
           </Text>
-          <Card style={styles.listCard}>
+          <Card style={[styles.listCard, doesNotTeach && { opacity: 0.5 }]}>
             {eligibleModules.length === 0 ? (
               <Text style={[styles.muted, { color: colors.mutedForeground }]}>
                 No hay módulos disponibles.
@@ -197,6 +233,7 @@ export default function ConfirmYearScreen() {
                 return (
                   <Pressable
                     key={m.id}
+                    disabled={doesNotTeach}
                     onPress={() => toggleModule(m.id)}
                     style={({ pressed }) => [
                       styles.option,

@@ -11,4 +11,6 @@ export interface UpdateMyTeachingProfileInput {
   centerId: number;
   /** @items.minimum 1 */
   moduleIds: number[];
+  /** True when the teacher explicitly declares not teaching during the active course. */
+  doesNotTeach: boolean;
 }

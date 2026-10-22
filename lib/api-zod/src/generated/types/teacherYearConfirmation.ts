@@ -16,6 +16,7 @@ export interface TeacherYearConfirmation {
   status: string;
   /** @nullable */
   centerId?: number | null;
+  doesNotTeach: boolean;
   deadline: Date;
   /** @nullable */
   confirmedAt?: Date | null;

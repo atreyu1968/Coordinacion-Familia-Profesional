@@ -183,12 +183,41 @@ describe("mandatory teacher profile API guard", () => {
     const centerId = await createCenter(provinceId);
     const moduleId = await createModule({ centerId });
     const save = (moduleIds: number[]) => request(app).patch("/api/auth/me/teaching-profile")
-      .set(authHeader(teacher.token)).send({ centerId, moduleIds });
+      .set(authHeader(teacher.token)).send({ centerId, moduleIds, doesNotTeach: false });
     expect((await save([])).status).toBe(400);
     expect((await save([moduleId])).status).toBe(200);
     expect((await groups(teacher.token)).status).toBe(200);
     await db.update(modulesTable).set({ deletedAt: new Date() }).where(eq(modulesTable.id, moduleId));
     expect((await groups(teacher.token)).status).toBe(403);
+  });
+  it("unlocks access when a teacher explicitly declares no teaching for the active year", async () => {
+    const admin = await createUser({ role: "superadmin" });
+    const teacher = await createUser({
+      role: "teacher",
+      incompleteProfile: true,
+    });
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+
+    const saved = await request(app)
+      .patch("/api/auth/me/teaching-profile")
+      .set(authHeader(teacher.token))
+      .send({ centerId, moduleIds: [], doesNotTeach: true });
+    expect(saved.status).toBe(200);
+    expect(saved.body.doesNotTeach).toBe(true);
+    expect(saved.body.moduleIds).toEqual([]);
+    expect((await groups(teacher.token)).status).toBe(200);
+
+    const managed = await request(app)
+      .get("/api/users/management")
+      .query({ search: teacher.email, teachingProfile: "complete" })
+      .set(authHeader(admin.token));
+    expect(managed.status).toBe(200);
+    expect(managed.body.users).toHaveLength(1);
+    expect(managed.body.users[0].teachingProfile).toEqual({
+      complete: true,
+      missing: [],
+    });
   });
   it("checks current province, center family/deletion and active year instead of trusting stored IDs", async () => {
     const teacher = await createUser();

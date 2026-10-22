@@ -75,6 +75,7 @@ export function toTeacherYearConfirmation(
     schoolYear: row.schoolYear,
     status: row.status,
     centerId: row.centerId ?? null,
+    doesNotTeach: row.doesNotTeach,
     deadline: row.deadline.toISOString(),
     confirmedAt: row.confirmedAt ? row.confirmedAt.toISOString() : null,
   };

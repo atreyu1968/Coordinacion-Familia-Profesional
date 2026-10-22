@@ -1,6 +1,7 @@
 import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import {
-  db, centersTable, modulesTable, teachingAssignmentsTable, usersTable, type User,
+  db, centersTable, modulesTable, teachingAssignmentsTable,
+  teacherYearConfirmationsTable, usersTable, type User,
 } from "@workspace/db";
 import { getSettings, professionalFamilyOf } from "./settings";
 import { moduleFamilyFilter } from "./familyCatalog";
@@ -21,7 +22,7 @@ export function teachingProfilePredicates(family: string, activeYear: string | n
     .where(validCenter));
   const province = exists(db.select({ id: centersTable.id }).from(centersTable)
     .where(and(validCenter, eq(centersTable.provinceId, usersTable.provinceId))));
-  const modules = activeYear ? exists(db
+  const assignments = activeYear ? exists(db
     .select({ id: teachingAssignmentsTable.id })
     .from(teachingAssignmentsTable)
     .innerJoin(modulesTable, eq(modulesTable.id, teachingAssignmentsTable.moduleId))
@@ -34,6 +35,19 @@ export function teachingProfilePredicates(family: string, activeYear: string | n
       or(isNull(modulesTable.centerId), eq(modulesTable.centerId, usersTable.centerId)),
       moduleFamilyFilter(family),
     ))) : sql<boolean>`true`;
+  const noTeachingDeclaration = activeYear
+    ? exists(db
+        .select({ id: teacherYearConfirmationsTable.id })
+        .from(teacherYearConfirmationsTable)
+        .where(and(
+          eq(teacherYearConfirmationsTable.teacherId, usersTable.id),
+          eq(teacherYearConfirmationsTable.schoolYear, activeYear),
+          eq(teacherYearConfirmationsTable.centerId, usersTable.centerId),
+          eq(teacherYearConfirmationsTable.doesNotTeach, true),
+          eq(teacherYearConfirmationsTable.status, "confirmed"),
+        )))
+    : sql<boolean>`true`;
+  const modules = or(assignments, noTeachingDeclaration)!;
   return { center, province, modules, complete: and(center, province, modules)! };
 }
 
