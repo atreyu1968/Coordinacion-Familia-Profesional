@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import {
   AlertTriangle, ArrowDownToLine, ArrowLeft, ArrowRight, CalendarClock,
   Check, ChevronDown, CircleAlert, Clock3, Inbox,
@@ -338,7 +339,23 @@ function CoordinatorMailDetail({ id }: { id: number }) {
             <div className="mail-message__line"><span className="mail-message__dot" /><div className="mail-message__who"><strong>{entry.item.senderName || entry.item.senderEmail}</strong><span>{entry.item.direction === "received" ? "Recibido" : "Enviado"} · {safeDate(entry.item.receivedAt)}</span></div></div>
             <div className="mail-message__content"><p className="mail-source">Caso original: {entry.item.caseTitle}</p><div className="mail-message__recipient">De: {entry.item.senderEmail}<br />Para: {entry.item.toEmails || "—"}{entry.item.ccEmails ? <><br />CC: {entry.item.ccEmails}</> : null}</div>
               <h3>{entry.item.subject || "Sin asunto"}</h3><p className="mail-inert-body" data-testid={`text-mail-message-body-${entry.item.id}`}>{entry.item.bodyText}{entry.item.bodyTruncated ? "\n\n[Contenido recortado]" : ""}</p>
-              {entry.item.attachments.length > 0 && <div className="mail-attachments"><p>Adjuntos · no se comparten con la IA</p>{entry.item.attachments.map((file) => <button className="mail-attachment" key={file.id} disabled={file.status !== "ready"} onClick={() => void attachmentDownload(file.id, file.fileName)} data-testid={`button-download-attachment-${file.id}`}><ArrowDownToLine /><span>{file.fileName}</span><small>{file.status === "ready" ? formatBytes(file.size) : "No disponible"}</small></button>)}</div>}
+              {entry.item.attachments.length > 0 && <div className="mail-attachments"><p>Adjuntos · no se comparten con la IA</p>{entry.item.attachments.map((file) => <div className="mail-attachment-row" key={file.id}>
+                <button className="mail-attachment" disabled={file.status !== "ready"} onClick={() => void attachmentDownload(file.id, file.fileName)} data-testid={`button-download-attachment-${file.id}`}><ArrowDownToLine /><span>{file.fileName}</span><small>{file.status === "ready" ? formatBytes(file.size) : "No disponible"}</small></button>
+                {file.status === "ready" && isHtmlDocumentName(file.fileName) && <HtmlDocxDownloadButton
+                  className="mail-attachment-docx"
+                  fileName={file.fileName}
+                  testId={`button-download-mail-attachment-docx-${file.id}`}
+                  loadHtml={async () => {
+                    const token = localStorage.getItem(TOKEN_KEY);
+                    const response = await fetch(`/api/coordinator-mail/attachments/${file.id}`, {
+                      credentials: "include",
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    });
+                    if (!response.ok) throw new Error("No se pudo descargar el archivo");
+                    return response.blob();
+                  }}
+                />}
+              </div>)}</div>}
             </div>
           </article> : <article className="mail-note" key={`n-${entry.item.id}`} data-testid={`card-mail-note-${entry.item.id}`}><div className="mail-message__line"><span className="mail-message__dot mail-message__dot--note" /><div className="mail-message__who"><strong>Nota privada · {entry.item.author}</strong><span>{safeDate(entry.item.createdAt)}</span></div></div><p className="mail-source">Caso original: {entry.item.caseTitle}</p><p>{entry.item.content}</p></article>)}
         </div>

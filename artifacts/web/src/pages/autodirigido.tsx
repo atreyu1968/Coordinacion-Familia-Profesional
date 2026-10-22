@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import {
   Award, BookOpen, CheckCircle2, ChevronLeft, FileUp, GraduationCap,
   Pencil, Play, Plus, Send, Upload, Video, X,
@@ -219,11 +220,18 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
       const result = await download.mutateAsync({ lessonId: lesson.id });
       const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
       if (!response.ok) throw new Error();
-      const url = URL.createObjectURL(await response.blob());
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = lesson.objectName ?? "archivo"; anchor.click();
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = lesson.objectName ?? "archivo";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch { toast({ title: "No se pudo descargar el archivo", variant: "destructive" }); }
   };
+  const htmlDownloadAvailable = lesson.kind === "file" && isHtmlDocumentName(lesson.objectName ?? "");
 
   return (
     <Card className="overflow-hidden">
@@ -231,7 +239,20 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
       <CardContent className="space-y-4">
         {lesson.kind === "text" && <div className="whitespace-pre-wrap text-sm leading-7">{String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")}</div>}
         {lesson.kind === "video" && Boolean(lesson.content.url || lesson.content.embedUrl) && <video controls className="max-h-[420px] w-full rounded-md bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />}
-        {lesson.kind === "file" && <Button variant="outline" onClick={downloadFile} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>}
+        {lesson.kind === "file" && <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
+          {htmlDownloadAvailable && <HtmlDocxDownloadButton
+            fileName={lesson.objectName ?? "documento.html"}
+            testId={`button-download-lesson-docx-${lesson.id}`}
+            disabled={download.isPending}
+            loadHtml={async () => {
+              const result = await download.mutateAsync({ lessonId: lesson.id });
+              const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
+              if (!response.ok) throw new Error("No se pudo descargar el archivo");
+              return response.blob();
+            }}
+          />}
+        </div>}
         {lesson.kind === "quiz" && <div className="space-y-4">{questions.map((question, index) => <fieldset key={index} className="space-y-2"><legend className="text-sm font-medium">{index + 1}. {question.prompt ?? question.text ?? "Pregunta"}</legend>{(question.options ?? []).map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name={`q-${lesson.id}-${index}`} checked={answers[index] === optionIndex} onChange={() => setAnswers((old) => { const next = [...old]; next[index] = optionIndex; return next; })} />{option}</label>)}</fieldset>)}<Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}>{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button></div>}
         {isScorm && <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
         {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} />)}

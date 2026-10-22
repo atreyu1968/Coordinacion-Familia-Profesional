@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { WikiPermissionEditorDialog } from "@/components/WikiPermissionEditorDialog";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import {
   BookText,
   Download,
@@ -475,10 +476,10 @@ export default function DocumentacionPage() {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    } catch {
+    } catch (error) {
       toast({
         title: "No se pudo descargar el archivo",
-        description: "Comprueba tu sesión e inténtalo de nuevo.",
+        description: error instanceof Error ? error.message : "Comprueba tu sesión e inténtalo de nuevo.",
         variant: "destructive",
       });
     }
@@ -998,6 +999,20 @@ export default function DocumentacionPage() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
+                            {isHtmlDocumentName(attachment.fileName) && (
+                              <HtmlDocxDownloadButton
+                                fileName={attachment.fileName}
+                                testId={`button-download-wiki-attachment-docx-${attachment.id}`}
+                                loadHtml={async () => {
+                                  const response = await fetch(
+                                    `${import.meta.env.BASE_URL}api/wiki/attachments/${attachment.id}/download`,
+                                    { headers: authHeaders() },
+                                  );
+                                  if (!response.ok) throw new Error("No se pudo descargar el archivo");
+                                  return response.blob();
+                                }}
+                              />
+                            )}
                             {page.canDelete && (
                               <Button
                                 data-testid={`button-delete-wiki-attachment-${attachment.id}`}

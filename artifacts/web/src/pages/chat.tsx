@@ -73,6 +73,7 @@ import {
   FileText,
   Image as ImageIcon,
 } from "lucide-react";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 
 const TOKEN_KEY = "coordina_adg_token";
 const CHAT_PAGE_SIZE = 200;
@@ -209,25 +210,40 @@ function AttachmentView({ message }: { message: Message }) {
 
   // Generic file
   return (
-    <a
-      href={blobUrl ?? undefined}
-      download={message.attachmentName ?? "documento"}
-      className="inline-flex items-center gap-2 rounded-md border bg-background/60 px-3 py-2 text-sm hover:bg-accent"
-    >
-      {blobUrl ? (
-        <Download className="w-4 h-4 shrink-0" />
-      ) : (
-        <FileText className="w-4 h-4 shrink-0 opacity-70" />
-      )}
-      <span className="truncate max-w-[12rem]">
-        {message.attachmentName ?? "documento"}
-      </span>
-      {message.attachmentSize != null && (
-        <span className="text-xs text-muted-foreground shrink-0">
-          {formatSize(message.attachmentSize)}
+    <div className="flex flex-wrap items-center gap-2">
+      <a
+        href={blobUrl ?? undefined}
+        download={message.attachmentName ?? "documento"}
+        className="inline-flex items-center gap-2 rounded-md border bg-background/60 px-3 py-2 text-sm hover:bg-accent"
+      >
+        {blobUrl ? (
+          <Download className="w-4 h-4 shrink-0" />
+        ) : (
+          <FileText className="w-4 h-4 shrink-0 opacity-70" />
+        )}
+        <span className="truncate max-w-[12rem]">
+          {message.attachmentName ?? "documento"}
         </span>
+        {message.attachmentSize != null && (
+          <span className="text-xs text-muted-foreground shrink-0">
+            {formatSize(message.attachmentSize)}
+          </span>
+        )}
+      </a>
+      {isHtmlDocumentName(message.attachmentName ?? "") && (
+        <HtmlDocxDownloadButton
+          fileName={message.attachmentName ?? "documento.html"}
+          testId={`button-download-chat-attachment-docx-${message.id}`}
+          disabled={!blobUrl}
+          loadHtml={async () => {
+            if (!blobUrl) throw new Error("El archivo todavía no está disponible");
+            const response = await fetch(blobUrl);
+            if (!response.ok) throw new Error("No se pudo descargar el archivo");
+            return response.blob();
+          }}
+        />
       )}
-    </a>
+    </div>
   );
 }
 

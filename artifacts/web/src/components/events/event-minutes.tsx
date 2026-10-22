@@ -91,6 +91,16 @@ function formatDateTime(v?: string | null): string {
   return new Date(v).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" });
 }
 
+function draftFilename(eventName?: string): string {
+  const safeName = (eventName || "acta-de-reunion")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "acta-de-reunion";
+  return `Acta-${safeName}-borrador.docx`;
+}
+
 function isBusy(m?: EventMinutes): boolean {
   if (!m) return false;
   return (
@@ -482,6 +492,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
   const [instructions, setInstructions] = useState("");
   const [consent, setConsent] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [draftView, setDraftView] = useState<"preview" | "edit">(minutes.draftText?.trim() ? "preview" : "edit");
   const [purpose, setPurpose] = useState<MinutesSourceInputPurpose>("evidence");
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -735,6 +746,30 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       document.body.classList.remove("minutes-print-draft");
     }, 250);
   };
+  const downloadDraftDocx = async () => {
+    if (!draft.trim() || downloadingDocx) return;
+    setDownloadingDocx(true);
+    try {
+      const { createMinutesDocx } = await import("./minutes-docx");
+      const blob = await createMinutesDocx(draft, context);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = draftFilename(context.eventName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      toast({
+        title: "No se pudo generar el DOCX",
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingDocx(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -824,11 +859,16 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                       Editar texto
                     </Button>
                     {draftView === "edit" && <span className="text-xs text-muted-foreground">La vista previa convierte títulos, listas y tablas en formato de acta.</span>}
-                    <Button size="sm" variant="outline" className="gap-1.5 sm:ml-auto" onClick={printDraft} disabled={!draft.trim()} data-testid="button-download-draft-minutes">
-                      <Download className="w-3.5 h-3.5" /> Descargar borrador en PDF
-                    </Button>
+                    <div className="flex flex-wrap gap-2 sm:ml-auto">
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void downloadDraftDocx()} disabled={!draft.trim() || downloadingDocx} data-testid="button-download-draft-docx">
+                        <Download className="w-3.5 h-3.5" /> {downloadingDocx ? "Preparando DOCX…" : "Descargar borrador en DOCX"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={printDraft} disabled={!draft.trim()} data-testid="button-download-draft-minutes">
+                        <Download className="w-3.5 h-3.5" /> Descargar borrador en PDF
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Se abrirá la ventana de impresión; elige «Guardar como PDF» para descargarlo.</p>
+                  <p className="text-xs text-muted-foreground">El DOCX descarga el borrador actual, incluidas las tablas. Para el PDF, se abrirá la ventana de impresión; elige «Guardar como PDF».</p>
                   {draftView === "edit" ? (
                     <Textarea
                       value={draft}

@@ -30,7 +30,7 @@ al fallar una petición.
 **Why:** aprovechar la integración multimedia disponible sin eludir una configuración explícita del despliegue.
 **How to apply:** mostrar el error del proveedor elegido; no reenviar el mismo material a otro proveedor como reintento oculto.
 
-El borrador debe verse como un documento maquetado, no como marcas Markdown sin procesar; las tablas y listas deben conservar formato. Mantener claras y separadas las acciones de descargar el borrador, adjuntar el documento definitivo y publicar.
+El borrador debe verse como un documento maquetado, no como marcas Markdown sin procesar; las tablas y listas deben conservar formato. Mantener claras y separadas las descargas PDF/DOCX del borrador, el adjunto definitivo y la publicación.
 El adjunto definitivo no se envía a la IA y solo se comparte al publicar. Una subida posterior no debe cambiar en silencio el adjunto de una versión ya publicada.
 **Why:** el usuario señaló que la mezcla de texto y Markdown, las tablas y la falta de controles claros hacían difícil revisar y finalizar actas.
-**How to apply:** renderizar los formatos de texto admitidos en la vista previa y mantener una descarga PDF explícita. Para resolver qué archivo corresponde a la versión compartida, elegir la subida más reciente creada antes o en el momento de publicación; una subida más nueva solo se hace pública al volver a publicar.
+**How to apply:** renderizar los formatos de texto admitidos en la vista previa y ofrecer PDF y DOCX editable a partir del borrador actual. Para resolver qué archivo corresponde a la versión compartida, elegir la subida más reciente creada antes o en el momento de publicación; una subida más nueva solo se hace pública al volver a publicar.

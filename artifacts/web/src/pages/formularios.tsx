@@ -73,6 +73,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import {
   FileText,
   FileCheck2,
@@ -543,18 +544,34 @@ function ValueCell({
     if (!value.objectPath || !value.fileName) {
       return <span className="text-muted-foreground">—</span>;
     }
+    const fileName = value.fileName;
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="gap-1.5 h-8"
-        onClick={() =>
-          downloadSubmissionFile(value.id, value.fileName ?? "documento")
-        }
-      >
-        <Download className="w-3.5 h-3.5" />
-        <span className="max-w-[160px] truncate">{value.fileName}</span>
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 h-8"
+          onClick={() => downloadSubmissionFile(value.id, fileName)}
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span className="max-w-[160px] truncate">{fileName}</span>
+        </Button>
+        {isHtmlDocumentName(fileName) && (
+          <HtmlDocxDownloadButton
+            fileName={fileName}
+            testId={`button-download-submission-docx-${value.id}`}
+            loadHtml={async () => {
+              const token = localStorage.getItem(TOKEN_KEY);
+              const response = await fetch(
+                `${import.meta.env.BASE_URL}api/document-forms/submission-values/${value.id}/file`,
+                { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+              );
+              if (!response.ok) throw new Error("No se pudo descargar el archivo");
+              return response.blob();
+            }}
+          />
+        )}
+      </div>
     );
   }
   return <span>{value.value || "—"}</span>;

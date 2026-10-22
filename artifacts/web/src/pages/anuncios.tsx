@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import {
   Megaphone,
   Plus,
@@ -328,20 +329,37 @@ function AnnouncementCard({
       {item.attachments && item.attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-1">
           {item.attachments.map((att) => (
-            <button
-              key={att.id}
-              type="button"
-              onClick={() => downloadAttachment(att.id, att.fileName)}
-              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm hover:bg-accent"
-            >
-              <Download className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="truncate max-w-[14rem]">{att.fileName}</span>
-              {att.size != null && (
-                <span className="text-xs text-muted-foreground">
-                  {formatSize(att.size)}
-                </span>
+            <div key={att.id} className="inline-flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => downloadAttachment(att.id, att.fileName)}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm hover:bg-accent"
+                data-testid={`button-download-announcement-attachment-${att.id}`}
+              >
+                <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="truncate max-w-[14rem]">{att.fileName}</span>
+                {att.size != null && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatSize(att.size)}
+                  </span>
+                )}
+              </button>
+              {isHtmlDocumentName(att.fileName) && (
+                <HtmlDocxDownloadButton
+                  fileName={att.fileName}
+                  testId={`button-download-announcement-attachment-docx-${att.id}`}
+                  loadHtml={async () => {
+                    const token = localStorage.getItem(TOKEN_KEY);
+                    const response = await fetch(
+                      `${import.meta.env.BASE_URL}api/announcements/attachments/${att.id}/file`,
+                      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+                    );
+                    if (!response.ok) throw new Error("No se pudo descargar el archivo");
+                    return response.blob();
+                  }}
+                />
               )}
-            </button>
+            </div>
           ))}
         </div>
       )}

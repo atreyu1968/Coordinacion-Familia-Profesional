@@ -107,6 +107,9 @@
 .mail-attachment:disabled { opacity:.55; cursor:not-allowed; }
 .mail-attachment span { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.74rem; }
 .mail-attachment small { color:var(--mail-muted); font-size:.68rem; }
+.mail-attachment-row { display:flex; align-items:center; gap:.35rem; }
+.mail-attachment-row .mail-attachment { flex:1; min-width:0; width:auto; }
+.mail-attachment-docx { flex-shrink:0; }
 .mail-note { background:#fff9e9; border-color:#eadfbe; }
 .mail-note > p { margin:.65rem 0 0 1.8rem; font-size:.82rem; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
 .mail-pagination--thread { padding:.8rem 0; border:0; }
