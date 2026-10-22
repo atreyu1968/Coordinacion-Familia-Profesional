@@ -30,7 +30,7 @@ import {
 } from "expo-audio";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 
 import {
   getListChatGroupsQueryKey,
@@ -50,6 +50,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { LeaveChatGroupAction } from "@/components/LeaveChatGroupAction";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -356,7 +357,8 @@ export default function ChatDetailScreen() {
   const groupsQuery = useListChatGroups({
     query: {
       queryKey: getListChatGroupsQueryKey(),
-      enabled: !!forwarding,
+      enabled: Number.isInteger(groupId),
+      staleTime: 0,
     },
   });
 
@@ -774,6 +776,7 @@ export default function ChatDetailScreen() {
         showBack
         right={
           <View style={styles.headerActions}>
+            <LeaveChatGroupAction group={groupsQuery.data?.find((group) => group.id === groupId)} onLeft={() => router.replace("/(tabs)/chat")} />
             <Pressable
               onPress={() => {
                 setShowSearch((v) => !v);

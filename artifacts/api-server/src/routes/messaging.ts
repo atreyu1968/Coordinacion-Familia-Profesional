@@ -32,6 +32,7 @@ import {
   ListChatGroupsResponse,
   ListChatContactsQueryParams,
   ListChatContactsResponse,
+  LeaveChatGroupParams,
   CreateChatGroupBody,
   SyncModuleChatGroupsResponse,
   MarkChatReadParams,
@@ -68,7 +69,7 @@ import {
   toAnnouncement,
   toNotification,
 } from "../lib/mappers";
-import { emitToGroup, emitToGroupMembers } from "../lib/realtime";
+import { emitToGroup, emitToGroupMembers, emitToUser } from "../lib/realtime";
 import { parseBeforeId } from "../lib/messageCursor";
 import { notifyUsers } from "../lib/notify";
 import {
@@ -555,6 +556,10 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   const memberIds = Array.from(
     new Set([...(data.memberIds ?? []), caller.id]),
   ).filter((id) => Number.isInteger(id));
+  if (!data.name.trim() || data.name.trim().length > 200 || (type === "group" && memberIds.length < 2)) {
+    res.status(400).json({ message: "Indica un nombre de hasta 200 caracteres y al menos otra persona para el grupo" });
+    return;
+  }
 
   // Direct messages: exactly one counterpart, deduped to an existing thread.
   if (type === "direct") {
@@ -666,7 +671,54 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     if (other?.name) displayName = other.name;
   }
 
+  if (type === "group") {
+    const recipients = memberIds.filter((id) => id !== caller.id);
+    await notifyUsers(recipients, {
+      title: "Te han añadido a un grupo",
+      body: group.name,
+      type: "chat_group",
+      data: { groupId: group.id },
+    });
+    for (const id of recipients) emitToUser(id, "chat_update", { groupId: group.id });
+  }
   res.status(201).json(toChatGroup({ ...group, name: displayName }));
+});
+
+router.post("/chat/groups/:id/leave", requireAuth, async (req, res): Promise<void> => {
+  const params = LeaveChatGroupParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ message: "Grupo no válido" });
+    return;
+  }
+  const [group] = await db.select().from(chatGroupsTable).where(eq(chatGroupsTable.id, params.data.id));
+  if (!group) {
+    res.status(404).json({ message: "Grupo no encontrado" });
+    return;
+  }
+  if (!(await isGroupMember(group.id, req.user!.id))) {
+    res.status(403).json({ message: "No perteneces a este grupo" });
+    return;
+  }
+  if (group.type === "direct" || group.moduleId != null) {
+    res.status(409).json({ message: group.moduleId != null
+      ? "Los grupos de módulos se actualizan con tus asignaciones docentes."
+      : "Esta conversación no es un grupo." });
+    return;
+  }
+  await db.delete(chatGroupMembersTable).where(and(
+    eq(chatGroupMembersTable.groupId, group.id),
+    eq(chatGroupMembersTable.userId, req.user!.id),
+  ));
+  emitToUser(req.user!.id, "chat_update", { groupId: group.id, left: true });
+  const members = await db.select({ id: chatGroupMembersTable.userId })
+    .from(chatGroupMembersTable).innerJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+    .where(and(eq(chatGroupMembersTable.groupId, group.id), eq(usersTable.status, "active"), isNull(usersTable.deletedAt)));
+  await notifyUsers(members.map((member) => member.id), {
+    title: `${req.user!.name} ha salido del grupo`,
+    body: group.name, type: "chat_group", data: { groupId: group.id },
+  });
+  for (const member of members) emitToUser(member.id, "chat_update", { groupId: group.id });
+  res.status(204).end();
 });
 
 // Provision/sync a group chat for every teaching module within the caller's

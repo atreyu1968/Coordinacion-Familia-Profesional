@@ -3779,6 +3779,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /chat/groups/{id}/leave:
+    post:
+      operationId: leaveChatGroup
+      tags: [messaging]
+      summary: Leave a manually created group; automatic module groups follow teaching assignments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Left the group
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /chat/groups/{id}/read:
     post:
       operationId: markChatRead

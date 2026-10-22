@@ -100,6 +100,7 @@ export default function ChatListScreen() {
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => router.push("/new-group")}
+              accessibilityLabel="Crear grupo"
               hitSlop={12}
               style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
             >

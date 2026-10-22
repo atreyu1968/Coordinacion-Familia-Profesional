@@ -87,6 +87,7 @@ function deepLinkFromData(data: unknown): Href | null {
   if (!data || typeof data !== "object") return null;
   const payload = data as Record<string, unknown>;
   switch (payload.type) {
+    case "chat_group":
     case "message": {
       const groupId = payload.groupId;
       if (groupId == null) return "/(tabs)/chat";

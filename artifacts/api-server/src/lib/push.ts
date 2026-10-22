@@ -42,6 +42,7 @@ function pushPath(data: Record<string, unknown>): string {
 
   switch (data.type) {
     case "message":
+    case "chat_group":
       return groupId == null ? "/chat" : `/chat/${groupId}`;
     case "survey":
       return surveyId == null ? "/surveys" : `/survey/${surveyId}`;

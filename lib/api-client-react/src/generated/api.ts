@@ -16159,6 +16159,80 @@ export const useSyncModuleChatGroups = <TError = ErrorType<Error>,
       return useMutation(getSyncModuleChatGroupsMutationOptions(options), queryClient);
     }
 
+export const getLeaveChatGroupUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/groups/${id}/leave`
+}
+
+/**
+ * @summary Leave a manually created group; automatic module groups follow teaching assignments
+ */
+export const leaveChatGroup = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getLeaveChatGroupUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLeaveChatGroupMutationKey = () => ['leaveChatGroup'] as const;
+
+export const getLeaveChatGroupMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveChatGroup>>, TError,LeaveChatGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveChatGroup>>, TError,LeaveChatGroupMutationVariables, TContext> => {
+
+const mutationKey = getLeaveChatGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveChatGroup>>, LeaveChatGroupMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  leaveChatGroup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveChatGroupMutationResult = NonNullable<Awaited<ReturnType<typeof leaveChatGroup>>>
+
+    export type LeaveChatGroupMutationError = ErrorType<ErrorResponse>
+    export type LeaveChatGroupMutationVariables = {id: number}
+
+    /**
+ * @summary Leave a manually created group; automatic module groups follow teaching assignments
+ */
+export const useLeaveChatGroup = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveChatGroup>>, TError,LeaveChatGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof leaveChatGroup>>,
+        TError,
+        LeaveChatGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLeaveChatGroupMutationOptions(options), queryClient);
+    }
+
 export const getMarkChatReadUrl = (id: number,) => {
 
 

@@ -34,6 +34,37 @@ afterAll(async () => {
 });
 
 describe("chat groups", () => {
+  it("notifies new group participants and revokes access when they leave", async () => {
+    const creator = await createUser();
+    const member = await createUser();
+    const stranger = await createUser();
+    const response = await request(app).post("/api/chat/groups").set(authHeader(creator.token))
+      .send({ name: "Grupo voluntario", type: "group", memberIds: [member.user.id] });
+    expect(response.status).toBe(201);
+    const id = response.body.id;
+    trackGroup(id);
+    const notices = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, member.user.id));
+    expect(notices.some((notice) => notice.type === "chat_group")).toBe(true);
+    expect((await request(app).post(`/api/chat/groups/${id}/leave`).set(authHeader(stranger.token))).status).toBe(403);
+    expect((await request(app).post(`/api/chat/groups/${id}/leave`).set(authHeader(member.token))).status).toBe(204);
+    const list = await request(app).get("/api/chat/groups").set(authHeader(member.token));
+    expect(list.body.some((group: { id: number }) => group.id === id)).toBe(false);
+    expect((await request(app).get(`/api/chat/groups/${id}/messages`).set(authHeader(member.token))).status).toBe(403);
+    expect((await request(app).post(`/api/chat/groups/${id}/messages`).set(authHeader(member.token)).send({ content: "No permitido" })).status).toBe(403);
+    expect((await request(app).get(`/api/chat/groups/${id}/messages`).set(authHeader(creator.token))).status).toBe(200);
+    expect((await request(app).post("/api/chat/groups").set(authHeader(creator.token))
+      .send({ name: "Grupo vacío", type: "group", memberIds: [] })).status).toBe(400);
+  });
+
+  it("does not allow leaving automatic module groups independently of teaching assignments", async () => {
+    const actor = await createUser();
+    const moduleId = await createModule();
+    const [group] = await db.insert(chatGroupsTable).values({ name: "Grupo automático", type: "group", moduleId }).returning();
+    trackGroup(group!.id);
+    await db.insert(chatGroupMembersTable).values({ groupId: group!.id, userId: actor.user.id });
+    expect((await request(app).post(`/api/chat/groups/${group!.id}/leave`).set(authHeader(actor.token))).status).toBe(409);
+    expect((await request(app).get(`/api/chat/groups/${group!.id}/members`).set(authHeader(actor.token))).status).toBe(200);
+  });
   it("lists active contacts across provinces without leaking emails or disabled accounts", async () => {
     const provinceA = await createProvince();
     const provinceB = await createProvince();

@@ -4451,6 +4451,16 @@ export const SyncModuleChatGroupsResponse = zod.object({
 
 
 /**
+ * @summary Leave a manually created group; automatic module groups follow teaching assignments
+ */
+export const LeaveChatGroupParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const LeaveChatGroupResponse = zod.void()
+
+
+/**
  * @summary Mark a chat group as read for the caller
  */
 export const MarkChatReadParams = zod.object({

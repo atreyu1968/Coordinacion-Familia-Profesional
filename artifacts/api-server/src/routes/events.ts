@@ -381,6 +381,21 @@ router.patch(
       });
     }
 
+    await notifyUsers(await resolveProvinceAudience(event!.provinceId, caller.id), {
+      title: `Evento actualizado: ${event!.name}`,
+      body: "Consulta los cambios de fecha, lugar o información del evento.",
+      type: "event", data: { eventId: event!.id },
+    });
+    if (loaded.event.provinceId !== event!.provinceId) {
+      const currentAudience = new Set(await resolveProvinceAudience(event!.provinceId, caller.id));
+      const previousAudience = (await resolveProvinceAudience(loaded.event.provinceId, caller.id))
+        .filter((id) => !currentAudience.has(id));
+      await notifyUsers(previousAudience, {
+        title: "Un evento ha cambiado de ámbito",
+        body: "Revisa tu calendario para consultar los eventos disponibles.",
+        type: "event",
+      });
+    }
     res.json(toEvent(event!));
   },
 );
@@ -421,6 +436,11 @@ router.delete(
     await db
       .delete(calendarEntriesTable)
       .where(eq(calendarEntriesTable.eventId, loaded.event.id));
+    await notifyUsers(await resolveProvinceAudience(loaded.event.provinceId, caller.id), {
+      title: `Evento cancelado: ${loaded.event.name}`,
+      body: "El evento ya no está disponible en el calendario.",
+      type: "event",
+    });
     res.status(204).end();
   },
 );

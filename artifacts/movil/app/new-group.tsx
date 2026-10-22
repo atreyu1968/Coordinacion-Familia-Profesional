@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -10,31 +9,36 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   useCreateChatGroup,
-  useListUsers,
-  type User,
+  useListChatContacts,
+  getListChatContactsQueryKey,
+  type ChatContact,
+  type ChatGroup,
+  getListChatGroupsQueryKey,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, EmptyState, ErrorState, Loading } from "@/components/ui";
-import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { initials, roleLabel } from "@/lib/format";
 
 export default function NewGroupScreen() {
+  const queryClient = useQueryClient();
   const colors = useColors();
-  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [name, setName] = useState("");
-  const [selected, setSelected] = useState<Record<number, User>>({});
-  const { data, isLoading, isError, refetch } = useListUsers(
-    search.trim() ? { search: search.trim() } : undefined,
-  );
+  const [selected, setSelected] = useState<Record<number, ChatContact>>({});
+  const [error, setError] = useState("");
+  const contactParams = search.trim() ? { search: search.trim() } : undefined;
+  const { data, isLoading, isError, refetch } = useListChatContacts(contactParams, {
+    query: { queryKey: getListChatContactsQueryKey(contactParams), staleTime: 0, refetchOnMount: "always" },
+  });
   const createGroup = useCreateChatGroup();
 
-  const toggle = (u: User) => {
+  const toggle = (u: ChatContact) => {
     setSelected((prev) => {
       const next = { ...prev };
       if (next[u.id]) delete next[u.id];
@@ -49,13 +53,14 @@ export default function NewGroupScreen() {
     if (createGroup.isPending) return;
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert("Falta el nombre", "Escribe un nombre para el grupo.");
+      setError("Escribe un nombre para el grupo.");
       return;
     }
     if (selectedList.length === 0) {
-      Alert.alert("Sin miembros", "Selecciona al menos una persona.");
+      setError("Selecciona al menos una persona.");
       return;
     }
+    setError("");
     createGroup.mutate(
       {
         data: {
@@ -66,21 +71,21 @@ export default function NewGroupScreen() {
       },
       {
         onSuccess: (group) => {
+          queryClient.setQueryData<ChatGroup[]>(getListChatGroupsQueryKey(), (previous = []) => [group, ...previous]);
+          void queryClient.invalidateQueries({ queryKey: getListChatGroupsQueryKey() });
           router.replace({
             pathname: "/chat/[id]",
             params: { id: String(group.id), name: group.name },
           });
         },
         onError: () => {
-          Alert.alert("Error", "No se pudo crear el grupo.");
+          setError("No se pudo crear el grupo. Inténtalo de nuevo.");
         },
       },
     );
   };
 
-  const others = (data ?? []).filter(
-    (u) => u.id !== user?.id && u.status === "active",
-  );
+  const others = data ?? [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -115,6 +120,7 @@ export default function NewGroupScreen() {
           <TextInput
             value={name}
             onChangeText={setName}
+            maxLength={200}
             placeholder="Nombre del grupo"
             placeholderTextColor={colors.mutedForeground}
             style={[styles.fieldInput, { color: colors.foreground }]}
@@ -134,7 +140,8 @@ export default function NewGroupScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Buscar personas"
+            placeholder="Buscar personas o centros"
+            maxLength={100}
             placeholderTextColor={colors.mutedForeground}
             autoCapitalize="none"
             style={[styles.fieldInput, { color: colors.foreground }]}
@@ -145,6 +152,7 @@ export default function NewGroupScreen() {
             {selectedList.length} seleccionada(s)
           </Text>
         ) : null}
+        {error ? <Text style={{ color: colors.destructive }}>{error}</Text> : null}
       </View>
       {isLoading ? (
         <Loading />
@@ -185,7 +193,7 @@ export default function NewGroupScreen() {
                     style={[styles.role, { color: colors.mutedForeground }]}
                     numberOfLines={1}
                   >
-                    {roleLabel(item.role)}
+                    {item.centerName ?? "Sin centro indicado"} · {roleLabel(item.role)}
                   </Text>
                 </View>
                 <Feather

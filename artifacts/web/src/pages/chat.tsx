@@ -79,6 +79,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { CreateChatGroupDialog, LeaveChatGroupButton } from "@/components/chat-group-actions";
 
 const TOKEN_KEY = "coordina_adg_token";
 const CHAT_PAGE_SIZE = 200;
@@ -1021,6 +1022,7 @@ function ConversationView({
             <Users className="w-5 h-5" />
           </Button>
         )}
+        <LeaveChatGroupButton group={group} onLeft={onBack} />
       </div>
 
       {showSearch && (
@@ -1257,6 +1259,7 @@ export default function ChatPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
   const {
     data: contacts = [],
@@ -1350,8 +1353,17 @@ export default function ChatPage() {
             Conversaciones directas y de grupo con tu profesorado y coordinación.
           </p>
         </div>
-        <Button type="button" onClick={() => setContactsOpen(true)}>Nuevo mensaje</Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={() => setNewGroupOpen(true)}>Nuevo grupo</Button>
+          <Button type="button" onClick={() => setContactsOpen(true)}>Nuevo mensaje</Button>
+        </div>
       </div>
+      <CreateChatGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} onCreated={(group) => {
+        queryClient.setQueryData<ChatGroup[]>(getListChatGroupsQueryKey(), (previous = []) => [group, ...previous]);
+        setSelectedId(group.id);
+        setActiveTab("groups");
+        void refetch();
+      }} />
       <Dialog open={contactsOpen} onOpenChange={setContactsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
