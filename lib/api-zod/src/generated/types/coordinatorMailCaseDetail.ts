@@ -7,9 +7,11 @@
  */
 import type { CoordinatorMailCase } from './coordinatorMailCase';
 import type { CoordinatorMailCaseNote } from './coordinatorMailCaseNote';
+import type { CoordinatorMailLinkedCase } from './coordinatorMailLinkedCase';
 import type { CoordinatorMailMessages } from './coordinatorMailMessages';
 
 export type CoordinatorMailCaseDetail = CoordinatorMailCase & {
   notes: CoordinatorMailCaseNote[];
   messages: CoordinatorMailMessages;
+  linkedCases: CoordinatorMailLinkedCase[];
 };

@@ -13,10 +13,14 @@ import * as zod from 'zod';
  */
 export const getCoordinatorMailWorkspaceQueryPageDefault = 1;
 
+export const getCoordinatorMailWorkspaceQuerySearchMax = 100;
+
 
 
 export const GetCoordinatorMailWorkspaceQueryParams = zod.object({
-  "page": zod.coerce.number().int().min(1).default(getCoordinatorMailWorkspaceQueryPageDefault)
+  "page": zod.coerce.number().int().min(1).default(getCoordinatorMailWorkspaceQueryPageDefault),
+  "status": zod.enum(['open', 'waiting', 'closed']).optional(),
+  "search": zod.coerce.string().max(getCoordinatorMailWorkspaceQuerySearchMax).optional()
 })
 
 export const GetCoordinatorMailWorkspaceResponse = zod.object({
@@ -50,7 +54,8 @@ export const GetCoordinatorMailWorkspaceResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }))
 })
 
@@ -86,10 +91,13 @@ export const GetCoordinatorMailCaseResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }).and(zod.object({
   "notes": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
   "content": zod.string(),
   "author": zod.string(),
@@ -98,6 +106,8 @@ export const GetCoordinatorMailCaseResponse = zod.object({
   "messages": zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "direction": zod.enum(['received', 'sent']),
   "senderEmail": zod.string(),
   "senderName": zod.string(),
@@ -119,7 +129,12 @@ export const GetCoordinatorMailCaseResponse = zod.object({
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "total": zod.number().int()
-})
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
 }))
 
 
@@ -167,10 +182,13 @@ export const UpdateCoordinatorMailCaseResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }).and(zod.object({
   "notes": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
   "content": zod.string(),
   "author": zod.string(),
@@ -179,6 +197,8 @@ export const UpdateCoordinatorMailCaseResponse = zod.object({
   "messages": zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "direction": zod.enum(['received', 'sent']),
   "senderEmail": zod.string(),
   "senderName": zod.string(),
@@ -200,7 +220,163 @@ export const UpdateCoordinatorMailCaseResponse = zod.object({
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "total": zod.number().int()
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
+}))
+
+
+/**
+ * @summary Link two private mail cases owned by the authenticated coordinator
+ */
+export const AddCoordinatorMailCaseLinkParams = zod.object({
+  "id": zod.coerce.number().int()
 })
+
+
+
+
+export const AddCoordinatorMailCaseLinkBody = zod.object({
+  "targetCaseId": zod.number().int().min(1)
+})
+
+export const AddCoordinatorMailCaseLinkResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
+}))
+
+
+/**
+ * @summary Unlink a case from the authenticated coordinator's private group
+ */
+
+
+
+export const RemoveCoordinatorMailCaseLinkParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "linkedId": zod.coerce.number().int().min(1)
+})
+
+export const RemoveCoordinatorMailCaseLinkResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "status": zod.enum(['open', 'waiting', 'closed']),
+  "dueAt": zod.coerce.date().nullable(),
+  "revision": zod.number().int(),
+  "lastActivityAt": zod.coerce.date(),
+  "messageCount": zod.number().int(),
+  "attachmentCount": zod.number().int(),
+  "latestSubject": zod.string().nullable(),
+  "latestSender": zod.string().nullable(),
+  "aiStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "aiError": zod.string().nullable(),
+  "draftTo": zod.string(),
+  "draftSubject": zod.string(),
+  "draftBody": zod.string(),
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
+}).and(zod.object({
+  "notes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
+  "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
+  "content": zod.string(),
+  "author": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
+  "direction": zod.enum(['received', 'sent']),
+  "senderEmail": zod.string(),
+  "senderName": zod.string(),
+  "toEmails": zod.string(),
+  "ccEmails": zod.string(),
+  "subject": zod.string(),
+  "bodyText": zod.string(),
+  "bodyTruncated": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "status": zod.enum(['queued', 'ready', 'error']),
+  "error": zod.string().nullable()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
 }))
 
 
@@ -235,10 +411,13 @@ export const AddCoordinatorMailCaseNoteResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }).and(zod.object({
   "notes": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
   "content": zod.string(),
   "author": zod.string(),
@@ -247,6 +426,8 @@ export const AddCoordinatorMailCaseNoteResponse = zod.object({
   "messages": zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "direction": zod.enum(['received', 'sent']),
   "senderEmail": zod.string(),
   "senderName": zod.string(),
@@ -268,7 +449,12 @@ export const AddCoordinatorMailCaseNoteResponse = zod.object({
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "total": zod.number().int()
-})
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
 }))
 
 
@@ -306,10 +492,13 @@ export const GenerateCoordinatorMailReplyDraftResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }).and(zod.object({
   "notes": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "kind": zod.enum(['note', 'status', 'draft', 'ai_draft', 'sent']),
   "content": zod.string(),
   "author": zod.string(),
@@ -318,6 +507,8 @@ export const GenerateCoordinatorMailReplyDraftResponse = zod.object({
   "messages": zod.object({
   "items": zod.array(zod.object({
   "id": zod.number().int(),
+  "caseId": zod.number().int(),
+  "caseTitle": zod.string(),
   "direction": zod.enum(['received', 'sent']),
   "senderEmail": zod.string(),
   "senderName": zod.string(),
@@ -339,7 +530,12 @@ export const GenerateCoordinatorMailReplyDraftResponse = zod.object({
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "total": zod.number().int()
-})
+}),
+  "linkedCases": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "isCurrent": zod.boolean()
+}))
 }))
 
 
@@ -439,7 +635,8 @@ export const SyncCoordinatorGmailResponse = zod.object({
   "draftTo": zod.string(),
   "draftSubject": zod.string(),
   "draftBody": zod.string(),
-  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable()
+  "outboxStatus": zod.union([zod.literal('queued'),zod.literal('sending'),zod.literal('sent'),zod.literal('failed'),zod.literal('unknown'),zod.literal(null)]).nullable(),
+  "linkedCaseCount": zod.number().int()
 }))
 })
 

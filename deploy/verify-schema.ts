@@ -59,6 +59,7 @@ const additiveTables = [
   "meeting_ai_settings",
   "coordinator_mail_settings",
   "coordinator_mail_accounts",
+  "coordinator_mail_case_groups",
   "coordinator_mail_cases",
   "coordinator_mail_case_threads",
   "coordinator_mail_messages",
@@ -455,6 +456,7 @@ for (const column of expected.columns) {
        (column.table === "collaborative_spaces" && column.column === "provisioning_started_at") ||
        (column.table === "users" &&
         ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version"].includes(column.column)) ||
+       (column.table === "coordinator_mail_cases" && column.column === "group_id") ||
        (column.table === "invitations" &&
         ["max_uses", "used_count"].includes(column.column)))
     ) {
@@ -514,8 +516,22 @@ function keySignature(key: Key): string {
 }
 
 const actualKeys = new Set(actual.constraints.map(keySignature));
+const coordinatorMailGroupingPending =
+  allowMissingUpgradeColumns &&
+  (pendingTables.has("coordinator_mail_case_groups") ||
+    !actualByKey.has("coordinator_mail_cases.group_id"));
 for (const key of expected.constraints) {
   if (pendingTables.has(key.table)) continue;
+  if (
+    coordinatorMailGroupingPending &&
+    key.type === "foreign" &&
+    key.table === "coordinator_mail_cases" &&
+    key.columns.length === 1 &&
+    key.columns[0] === "group_id" &&
+    key.foreignTable === "coordinator_mail_case_groups"
+  ) {
+    continue;
+  }
   if (!actualKeys.has(keySignature(key))) {
     problems.push(
       `missing ${key.type} key on ${key.table} (${key.columns.join(", ")})` +
@@ -528,6 +544,13 @@ for (const key of expected.constraints) {
 
 for (const index of expected.indexes) {
   if (pendingTables.has(index.table)) continue;
+  if (
+    coordinatorMailGroupingPending &&
+    index.table === "coordinator_mail_cases" &&
+    index.name === "coordinator_mail_case_group_idx"
+  ) {
+    continue;
+  }
   const found = actual.indexes.find(
     (candidate) =>
       candidate.table === index.table && candidate.name === index.name,

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useRoute } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetCoordinatorMailCaseQueryKey,
   getGetCoordinatorMailWorkspaceQueryKey,
+  useAddCoordinatorMailCaseLink,
   useAddCoordinatorMailCaseNote,
   useDisconnectCoordinatorGmail,
   useGenerateCoordinatorMailReplyDraft,
@@ -13,6 +14,7 @@ import {
   useStartCoordinatorGmailOAuth,
   useSyncCoordinatorGmail,
   useUpdateCoordinatorMailCase,
+  useRemoveCoordinatorMailCaseLink,
   useGetCoordinatorMailAdminSettings,
   useUpdateCoordinatorMailAdminSettings,
   type CoordinatorMailCase,
@@ -28,8 +30,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertTriangle, ArrowDownToLine, ArrowLeft, ArrowRight, CalendarClock,
   Check, ChevronDown, CircleAlert, Clock3, Inbox,
-  Mail, MessageSquare, RefreshCw, Search, Send, Settings2, ShieldCheck,
-  Sparkles, Unplug, X,
+  Link2, Mail, MessageSquare, RefreshCw, Search, Send, Settings2, ShieldCheck,
+  Sparkles, Unlink, Unplug, X,
 } from "lucide-react";
 import "./coordinator-mail.css";
 
@@ -132,14 +134,11 @@ function ConnectionPanel() {
 
 function CoordinatorMailInbox() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<"all" | CoordinatorMailCaseStatus>("all");
   const [search, setSearch] = useState("");
   const params = { page, ...(status !== "all" ? { status } : {}), ...(search.trim() ? { search: search.trim() } : {}) };
   const query = useGetCoordinatorMailWorkspace(params, { query: { queryKey: getGetCoordinatorMailWorkspaceQueryKey(params), refetchInterval: 300_000 } });
-  const cases = useMemo(() => (query.data?.items ?? []).filter((item) =>
-    (status === "all" || item.status === status) &&
-    `${item.title} ${item.latestSubject ?? ""} ${item.latestSender ?? ""}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
-  ), [query.data?.items, status, search]);
+  const cases = query.data?.items ?? [];
   const totalPages = Math.max(1, Math.ceil((query.data?.total ?? 0) / (query.data?.pageSize ?? PAGE_SIZE)));
   return <WorkspaceShell>
     <header className="mail-page-head">
@@ -153,7 +152,7 @@ function CoordinatorMailInbox() {
         <label className="mail-search"><Search aria-hidden="true" /><span className="sr-only">Buscar asuntos</span>
           <Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar por asunto o remitente" data-testid="input-mail-search" /></label>
         <label className="mail-filter"><span className="sr-only">Filtrar por estado</span><ChevronDown aria-hidden="true" />
-          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} data-testid="select-mail-status">
+          <select value={status} onChange={(event) => { setStatus(event.target.value as "all" | CoordinatorMailCaseStatus); setPage(1); }} data-testid="select-mail-status">
             <option value="all">Todos los estados</option><option value="open">Abiertos</option><option value="waiting">En espera</option><option value="closed">Cerrados</option>
           </select></label>
       </div>
@@ -176,7 +175,7 @@ function CaseRow({ item }: { item: CoordinatorMailCase }) {
   return <Link href={`/asuntos-correo/${item.id}`} className="mail-case-row" data-testid={`link-mail-case-${item.id}`}>
     <div className="mail-case-row__main"><div className="mail-case-row__top"><h2 data-testid={`text-mail-case-title-${item.id}`}>{item.title}</h2><span className={statusClass(item.status)} data-testid={`status-mail-case-${item.id}`}>{STATUS_LABEL[item.status]}</span></div>
       <p className="mail-case-row__subject">{item.latestSubject || "Sin asunto reciente"}</p>
-      <div className="mail-case-row__meta"><span>{item.latestSender || "Remitente desconocido"}</span><span aria-hidden="true">·</span><span>{item.messageCount} {item.messageCount === 1 ? "mensaje" : "mensajes"}</span>{item.attachmentCount > 0 && <span>{item.attachmentCount} adjuntos</span>}</div></div>
+      <div className="mail-case-row__meta"><span>{item.latestSender || "Remitente desconocido"}</span><span aria-hidden="true">·</span><span>{item.messageCount} {item.messageCount === 1 ? "mensaje" : "mensajes"}</span>{item.linkedCaseCount > 1 && <span>{item.linkedCaseCount} casos vinculados</span>}{item.attachmentCount > 0 && <span>{item.attachmentCount} adjuntos</span>}</div></div>
     <div className="mail-case-row__date"><Clock3 aria-hidden="true" /><span>{safeDate(item.lastActivityAt, { dateStyle: "medium" })}</span></div>
   </Link>;
 }
@@ -195,10 +194,18 @@ function CoordinatorMailDetail({ id }: { id: number }) {
   const [sendConfirm, setSendConfirm] = useState(false);
   const [error, setError] = useState("");
   const [sendUnknown, setSendUnknown] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkPage, setLinkPage] = useState(1);
   const queryKey = getGetCoordinatorMailCaseQueryKey(id, { messagePage });
   const query = useGetCoordinatorMailCase(id, { messagePage }, { query: { queryKey, refetchInterval: 300_000 } });
+  const linkSearchParams = { page: linkPage, search: linkSearch.trim() };
+  const linkCandidatesQuery = useGetCoordinatorMailWorkspace(linkSearchParams, {
+    query: { queryKey: getGetCoordinatorMailWorkspaceQueryKey(linkSearchParams), enabled: linkSearch.trim().length >= 2 },
+  });
   const qc = useQueryClient();
   const update = useUpdateCoordinatorMailCase();
+  const addCaseLink = useAddCoordinatorMailCaseLink();
+  const removeCaseLink = useRemoveCoordinatorMailCaseLink();
   const addNote = useAddCoordinatorMailCaseNote();
   const generate = useGenerateCoordinatorMailReplyDraft();
   const send = useSendCoordinatorMailReply();
@@ -272,13 +279,35 @@ function CoordinatorMailDetail({ id }: { id: number }) {
       setError("No se conoce el resultado del envío. Comprueba Gmail Enviados antes de volver a intentarlo.");
     }
   };
+  const linkCase = async (targetCaseId: number) => {
+    setError("");
+    try {
+      const saved = await addCaseLink.mutateAsync({ id, data: { targetCaseId } });
+      qc.setQueryData(queryKey, saved);
+      await qc.invalidateQueries({ queryKey: getGetCoordinatorMailWorkspaceQueryKey() });
+      setLinkSearch("");
+    } catch {
+      setError("No se pudo vincular el asunto. Comprueba que sigue en tu buzón y vuelve a intentarlo.");
+    }
+  };
+  const unlinkCase = async (targetCaseId: number) => {
+    if (!window.confirm("¿Desvincular este caso? Sus mensajes, adjuntos, notas y borrador se conservarán en su caso original.")) return;
+    setError("");
+    try {
+      const saved = await removeCaseLink.mutateAsync({ id, linkedId: targetCaseId });
+      qc.setQueryData(queryKey, saved);
+      await qc.invalidateQueries({ queryKey: getGetCoordinatorMailWorkspaceQueryKey() });
+    } catch {
+      setError("No se pudo desvincular el caso. El historial original se conserva.");
+    }
+  };
   if (query.isLoading) return <WorkspaceShell><div className="mail-detail-skeleton" role="status" data-testid="loading-mail-detail"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-56" /><Skeleton className="h-64" /></div></WorkspaceShell>;
   if (query.isError || !detail) return <WorkspaceShell><div className="mail-error-state" role="alert" data-testid="status-mail-detail-error"><CircleAlert /><div><strong>No se pudo abrir este asunto</strong><p>Vuelve a la bandeja e inténtalo de nuevo.</p></div><Link href="/asuntos-correo" className="mail-button-link"><ArrowLeft /> Volver a la bandeja</Link></div></WorkspaceShell>;
   const maxPages = Math.max(1, Math.ceil(detail.messages.total / detail.messages.pageSize));
   const timeline = [
     ...detail.messages.items.map((message) => ({ kind: "email" as const, at: new Date(message.receivedAt), item: message })),
     ...detail.notes.map((entry) => ({ kind: "note" as const, at: new Date(entry.createdAt), item: entry })),
-  ].sort((a, b) => a.at.getTime() - b.at.getTime());
+  ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.item.id - b.item.id || a.kind.localeCompare(b.kind));
   const lastInbound = [...detail.messages.items].reverse().find((message) => message.direction === "received");
   const verifiedRecipient = draftTo.trim();
   const attachmentDownload = async (attachmentId: number, filename: string) => {
@@ -294,7 +323,7 @@ function CoordinatorMailDetail({ id }: { id: number }) {
   return <WorkspaceShell>
     <div className="mail-detail-top"><Link href="/asuntos-correo" className="mail-back" data-testid="link-back-mail-inbox"><ArrowLeft /> Bandeja</Link><span className="mail-revision" data-testid="text-mail-revision">Revisión {detail.revision}</span></div>
     <header className="mail-detail-head" data-testid="header-mail-case">
-      <div><p className="mail-eyebrow">Asunto {detail.id} · {detail.messageCount} mensajes</p><h1 data-testid="heading-mail-case">{detail.title}</h1><p className="mail-subject-latest">{detail.latestSubject || "Sin asunto"}</p></div>
+      <div><p className="mail-eyebrow">Asunto {detail.id}{detail.linkedCaseCount > 1 ? ` · ${detail.linkedCaseCount} casos vinculados` : ""} · {detail.messageCount} mensajes</p><h1 data-testid="heading-mail-case">{detail.title}</h1><p className="mail-subject-latest">{detail.latestSubject || "Sin asunto"}</p></div>
       <span className={statusClass(detail.status)} data-testid="status-mail-case-detail">{STATUS_LABEL[detail.status]}</span>
     </header>
     {error && <div className="mail-error-state mail-error-state--compact" role="alert" data-testid="status-mail-detail-action-error"><CircleAlert /><p>{error}</p><button aria-label="Cerrar aviso" onClick={() => setError("")} data-testid="button-dismiss-mail-error"><X /></button></div>}
@@ -305,11 +334,11 @@ function CoordinatorMailDetail({ id }: { id: number }) {
         <div className="mail-timeline" data-testid="list-mail-timeline">
           {timeline.map((entry) => entry.kind === "email" ? <article className={`mail-message mail-message--${entry.item.direction}`} key={`m-${entry.item.id}`} data-testid={`card-mail-message-${entry.item.id}`}>
             <div className="mail-message__line"><span className="mail-message__dot" /><div className="mail-message__who"><strong>{entry.item.senderName || entry.item.senderEmail}</strong><span>{entry.item.direction === "received" ? "Recibido" : "Enviado"} · {safeDate(entry.item.receivedAt)}</span></div></div>
-            <div className="mail-message__content"><div className="mail-message__recipient">De: {entry.item.senderEmail}<br />Para: {entry.item.toEmails || "—"}{entry.item.ccEmails ? <><br />CC: {entry.item.ccEmails}</> : null}</div>
+            <div className="mail-message__content"><p className="mail-source">Caso original: {entry.item.caseTitle}</p><div className="mail-message__recipient">De: {entry.item.senderEmail}<br />Para: {entry.item.toEmails || "—"}{entry.item.ccEmails ? <><br />CC: {entry.item.ccEmails}</> : null}</div>
               <h3>{entry.item.subject || "Sin asunto"}</h3><p className="mail-inert-body" data-testid={`text-mail-message-body-${entry.item.id}`}>{entry.item.bodyText}{entry.item.bodyTruncated ? "\n\n[Contenido recortado]" : ""}</p>
               {entry.item.attachments.length > 0 && <div className="mail-attachments"><p>Adjuntos · no se comparten con la IA</p>{entry.item.attachments.map((file) => <button className="mail-attachment" key={file.id} disabled={file.status !== "ready"} onClick={() => void attachmentDownload(file.id, file.fileName)} data-testid={`button-download-attachment-${file.id}`}><ArrowDownToLine /><span>{file.fileName}</span><small>{file.status === "ready" ? formatBytes(file.size) : "No disponible"}</small></button>)}</div>}
             </div>
-          </article> : <article className="mail-note" key={`n-${entry.item.id}`} data-testid={`card-mail-note-${entry.item.id}`}><div className="mail-message__line"><span className="mail-message__dot mail-message__dot--note" /><div className="mail-message__who"><strong>Nota privada · {entry.item.author}</strong><span>{safeDate(entry.item.createdAt)}</span></div></div><p>{entry.item.content}</p></article>)}
+          </article> : <article className="mail-note" key={`n-${entry.item.id}`} data-testid={`card-mail-note-${entry.item.id}`}><div className="mail-message__line"><span className="mail-message__dot mail-message__dot--note" /><div className="mail-message__who"><strong>Nota privada · {entry.item.author}</strong><span>{safeDate(entry.item.createdAt)}</span></div></div><p className="mail-source">Caso original: {entry.item.caseTitle}</p><p>{entry.item.content}</p></article>)}
         </div>
         <nav className="mail-pagination mail-pagination--thread" aria-label="Paginación de mensajes" data-testid="pagination-mail-messages">
           <span data-testid="text-mail-message-page">Página {messagePage} de {maxPages}</span><div><Button variant="outline" size="sm" disabled={messagePage <= 1} onClick={() => setMessagePage((p) => Math.max(1, p - 1))} data-testid="button-mail-message-previous"><ArrowLeft /> Anterior</Button><Button variant="outline" size="sm" disabled={messagePage >= maxPages} onClick={() => setMessagePage((p) => Math.min(maxPages, p + 1))} data-testid="button-mail-message-next">Siguiente <ArrowRight /></Button></div>
@@ -317,6 +346,34 @@ function CoordinatorMailDetail({ id }: { id: number }) {
         <form className="mail-note-form" onSubmit={(event) => void submitNote(event)} data-testid="form-mail-note"><label htmlFor="mail-note">Añadir nota privada</label><Textarea id="mail-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Apunta el siguiente paso o un contexto para el equipo…" rows={3} data-testid="input-mail-note" /><Button type="submit" disabled={!note.trim() || addNote.isPending} data-testid="button-add-mail-note"><MessageSquare /> {addNote.isPending ? "Guardando…" : "Añadir nota"}</Button></form>
       </section>
       <aside className="mail-tools" aria-label="Herramientas del asunto">
+        <section className="mail-tool-card mail-case-links" data-testid="panel-mail-case-links">
+          <h2>Casos enlazados</h2>
+          <p className="mail-link-explainer">El historial compartido conserva mensajes, adjuntos y notas en sus casos originales. Cada borrador permanece en el caso donde se creó.</p>
+          <ul>{detail.linkedCases.map((linked) => <li key={linked.id} data-testid={`mail-linked-case-${linked.id}`}>
+            <Link href={`/asuntos-correo/${linked.id}`} className={linked.isCurrent ? "mail-linked-case mail-linked-case--current" : "mail-linked-case"}>{linked.title}{linked.isCurrent ? " · caso abierto" : ""}</Link>
+            {!linked.isCurrent && <Button type="button" size="sm" variant="ghost" disabled={removeCaseLink.isPending} onClick={() => void unlinkCase(linked.id)} data-testid={`button-unlink-mail-case-${linked.id}`}><Unlink /> Desvincular</Button>}
+          </li>)}</ul>
+          <label htmlFor="mail-link-search">Vincular otro asunto</label>
+          <Input id="mail-link-search" value={linkSearch} onChange={(event) => { setLinkSearch(event.target.value); setLinkPage(1); }} placeholder="Busca por asunto, remitente o texto" data-testid="input-mail-link-search" />
+          <p className="mail-link-hint">Escribe al menos dos caracteres. Solo aparecen casos de tu propio buzón.</p>
+          {linkSearch.trim().length >= 2 && linkCandidatesQuery.isLoading && <p role="status">Buscando asuntos…</p>}
+          {linkSearch.trim().length >= 2 && linkCandidatesQuery.isError && <p className="mail-link-error" role="alert">No se pudieron buscar los asuntos.</p>}
+          {linkSearch.trim().length >= 2 && linkCandidatesQuery.data && (() => {
+            const linkedIds = new Set(detail.linkedCases.map((entry) => entry.id));
+            const candidates = linkCandidatesQuery.data.items.filter((entry) => !linkedIds.has(entry.id));
+            return candidates.length ? <>
+              <ul className="mail-link-results">{candidates.map((candidate) => <li key={candidate.id}>
+                <span>{candidate.title}{candidate.linkedCaseCount > 1 ? ` · ${candidate.linkedCaseCount} casos` : ""}</span>
+                <Button type="button" size="sm" variant="outline" disabled={addCaseLink.isPending} onClick={() => void linkCase(candidate.id)} data-testid={`button-link-mail-case-${candidate.id}`}><Link2 /> Vincular</Button>
+              </li>)}</ul>
+              {linkCandidatesQuery.data.total > linkCandidatesQuery.data.pageSize && <nav className="mail-link-pagination" aria-label="Resultados de asuntos">
+                <Button type="button" size="sm" variant="ghost" disabled={linkPage <= 1 || linkCandidatesQuery.isFetching} onClick={() => setLinkPage((value) => Math.max(1, value - 1))}>Anterior</Button>
+                <span>{linkPage} / {Math.ceil(linkCandidatesQuery.data.total / linkCandidatesQuery.data.pageSize)}</span>
+                <Button type="button" size="sm" variant="ghost" disabled={linkPage >= Math.ceil(linkCandidatesQuery.data.total / linkCandidatesQuery.data.pageSize) || linkCandidatesQuery.isFetching} onClick={() => setLinkPage((value) => value + 1)}>Siguiente</Button>
+              </nav>}
+            </> : <p className="mail-link-hint">No hay otros asuntos que coincidan.</p>;
+          })()}
+        </section>
         <section className="mail-tool-card" data-testid="panel-mail-case-settings"><h2>Seguimiento</h2><label htmlFor="mail-case-status">Estado</label><select id="mail-case-status" value={detail.status} onChange={(event) => void updateStatus(event.target.value as CoordinatorMailCaseStatus)} data-testid="select-mail-case-status"><option value="open">Abierto</option><option value="waiting">En espera</option><option value="closed">Cerrado</option></select><label htmlFor="mail-case-due">Vencimiento</label><div className="mail-date-input"><CalendarClock /><input id="mail-case-due" type="date" value={detail.dueAt ? new Date(detail.dueAt).toISOString().slice(0, 10) : ""} onChange={(event) => void updateDueDate(event.target.value)} data-testid="input-mail-case-due" /></div></section>
         <section className="mail-tool-card mail-reply" data-testid="panel-mail-reply"><div className="mail-tool-heading"><div><p className="mail-eyebrow">Respuesta</p><h2>Borrador revisable</h2></div><span className={dirty ? "mail-save-indicator mail-save-indicator--dirty" : "mail-save-indicator"} data-testid="status-mail-draft-save">{dirty ? "Sin guardar" : "Guardado"}</span></div>
           <div className="mail-forward-warning" role="note" data-testid="notice-forwarded-email"><AlertTriangle /> Si este email fue reenviado, quien lo reenvió puede no ser la persona destinataria de tu respuesta.</div>

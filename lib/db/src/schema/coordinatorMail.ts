@@ -34,9 +34,16 @@ export const coordinatorMailAccountsTable = pgTable("coordinator_mail_accounts",
 }, (t) => [uniqueIndex("coordinator_mail_accounts_user_uq").on(t.userId)]);
 export const coordinatorMailAccountInsertSchema = createInsertSchema(coordinatorMailAccountsTable).omit({ id: true, createdAt: true, updatedAt: true });
 
+export const coordinatorMailCaseGroupsTable = pgTable("coordinator_mail_case_groups", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("coordinator_mail_case_group_owner_idx").on(t.ownerId)]);
+
 export const coordinatorMailCasesTable = pgTable("coordinator_mail_cases", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").references(() => coordinatorMailCaseGroupsTable.id, { onDelete: "set null" }),
   gmailThreadId: text("gmail_thread_id"),
   title: text("title").notNull(),
   status: text("status").notNull().default("open"),
@@ -59,6 +66,7 @@ export const coordinatorMailCasesTable = pgTable("coordinator_mail_cases", {
 }, (t) => [
   uniqueIndex("coordinator_mail_case_thread_uq").on(t.ownerId, t.gmailThreadId),
   index("coordinator_mail_case_owner_activity_idx").on(t.ownerId, t.lastActivityAt),
+  index("coordinator_mail_case_group_idx").on(t.ownerId, t.groupId),
 ]);
 export const coordinatorMailCaseInsertSchema = createInsertSchema(coordinatorMailCasesTable).omit({ id: true, createdAt: true, updatedAt: true });
 

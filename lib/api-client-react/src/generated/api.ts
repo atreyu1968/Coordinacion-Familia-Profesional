@@ -67,6 +67,7 @@ import type {
   CoordinatorMailAdminSettings,
   CoordinatorMailAiDraftInput,
   CoordinatorMailCaseDetail,
+  CoordinatorMailCaseLinkInput,
   CoordinatorMailCaseSummary,
   CoordinatorMailCaseUpdate,
   CoordinatorMailNoteInput,
@@ -615,6 +616,171 @@ export const useUpdateCoordinatorMailCase = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdateCoordinatorMailCaseMutationOptions(options), queryClient);
+    }
+
+export const getAddCoordinatorMailCaseLinkUrl = (id: number,) => {
+
+
+
+
+  return `/api/coordinator-mail/cases/${id}/links`
+}
+
+/**
+ * @summary Link two private mail cases owned by the authenticated coordinator
+ */
+export const addCoordinatorMailCaseLink = async (id: number,
+    coordinatorMailCaseLinkInput: CoordinatorMailCaseLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorMailCaseDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CoordinatorMailCaseDetail>(getAddCoordinatorMailCaseLinkUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(coordinatorMailCaseLinkInput)
+  }
+);}
+
+
+
+
+
+export const getAddCoordinatorMailCaseLinkMutationKey = () => ['addCoordinatorMailCaseLink'] as const;
+
+export const getAddCoordinatorMailCaseLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>, TError,AddCoordinatorMailCaseLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>, TError,AddCoordinatorMailCaseLinkMutationVariables, TContext> => {
+
+const mutationKey = getAddCoordinatorMailCaseLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>, AddCoordinatorMailCaseLinkMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addCoordinatorMailCaseLink(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddCoordinatorMailCaseLinkMutationResult = NonNullable<Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>>
+    export type AddCoordinatorMailCaseLinkMutationBody = BodyType<CoordinatorMailCaseLinkInput>
+    export type AddCoordinatorMailCaseLinkMutationError = ErrorType<ErrorResponse>
+    export type AddCoordinatorMailCaseLinkMutationVariables = {id: number;data: BodyType<CoordinatorMailCaseLinkInput>}
+
+    /**
+ * @summary Link two private mail cases owned by the authenticated coordinator
+ */
+export const useAddCoordinatorMailCaseLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>, TError,AddCoordinatorMailCaseLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addCoordinatorMailCaseLink>>,
+        TError,
+        AddCoordinatorMailCaseLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddCoordinatorMailCaseLinkMutationOptions(options), queryClient);
+    }
+
+export const getRemoveCoordinatorMailCaseLinkUrl = (id: number,
+    linkedId: number,) => {
+
+
+
+
+  return `/api/coordinator-mail/cases/${id}/links/${linkedId}`
+}
+
+/**
+ * @summary Unlink a case from the authenticated coordinator's private group
+ */
+export const removeCoordinatorMailCaseLink = async (id: number,
+    linkedId: number, options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorMailCaseDetail> => {
+
+  return customFetch<CoordinatorMailCaseDetail>(getRemoveCoordinatorMailCaseLinkUrl(id,linkedId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveCoordinatorMailCaseLinkMutationKey = () => ['removeCoordinatorMailCaseLink'] as const;
+
+export const getRemoveCoordinatorMailCaseLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>, TError,RemoveCoordinatorMailCaseLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>, TError,RemoveCoordinatorMailCaseLinkMutationVariables, TContext> => {
+
+const mutationKey = getRemoveCoordinatorMailCaseLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>, RemoveCoordinatorMailCaseLinkMutationVariables> = (props) => {
+          const {id,linkedId} = props ?? {};
+
+          return  removeCoordinatorMailCaseLink(id,linkedId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveCoordinatorMailCaseLinkMutationResult = NonNullable<Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>>
+
+    export type RemoveCoordinatorMailCaseLinkMutationError = ErrorType<ErrorResponse>
+    export type RemoveCoordinatorMailCaseLinkMutationVariables = {id: number;linkedId: number}
+
+    /**
+ * @summary Unlink a case from the authenticated coordinator's private group
+ */
+export const useRemoveCoordinatorMailCaseLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>, TError,RemoveCoordinatorMailCaseLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeCoordinatorMailCaseLink>>,
+        TError,
+        RemoveCoordinatorMailCaseLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveCoordinatorMailCaseLinkMutationOptions(options), queryClient);
     }
 
 export const getAddCoordinatorMailCaseNoteUrl = (id: number,) => {

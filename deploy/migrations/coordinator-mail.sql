@@ -33,9 +33,18 @@ CREATE TABLE IF NOT EXISTS public.coordinator_mail_accounts (
 CREATE UNIQUE INDEX IF NOT EXISTS coordinator_mail_accounts_user_uq
   ON public.coordinator_mail_accounts(user_id);
 
+CREATE TABLE IF NOT EXISTS public.coordinator_mail_case_groups (
+  id serial PRIMARY KEY,
+  owner_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS coordinator_mail_case_group_owner_idx
+  ON public.coordinator_mail_case_groups(owner_id);
+
 CREATE TABLE IF NOT EXISTS public.coordinator_mail_cases (
   id serial PRIMARY KEY,
   owner_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  group_id integer REFERENCES public.coordinator_mail_case_groups(id) ON DELETE SET NULL,
   gmail_thread_id text,
   title text NOT NULL,
   status text NOT NULL DEFAULT 'open',
@@ -56,10 +65,31 @@ CREATE TABLE IF NOT EXISTS public.coordinator_mail_cases (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.coordinator_mail_cases
+  ADD COLUMN IF NOT EXISTS group_id integer;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_constraint
+    WHERE conrelid = 'public.coordinator_mail_cases'::regclass
+      AND contype = 'f'
+      AND conkey = ARRAY[(
+        SELECT attnum FROM pg_catalog.pg_attribute
+        WHERE attrelid = 'public.coordinator_mail_cases'::regclass AND attname = 'group_id'
+      )]::smallint[]
+      AND confrelid = 'public.coordinator_mail_case_groups'::regclass
+  ) THEN
+    ALTER TABLE public.coordinator_mail_cases
+      ADD CONSTRAINT coordinator_mail_cases_group_fk
+      FOREIGN KEY (group_id) REFERENCES public.coordinator_mail_case_groups(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS coordinator_mail_case_thread_uq
   ON public.coordinator_mail_cases(owner_id, gmail_thread_id);
 CREATE INDEX IF NOT EXISTS coordinator_mail_case_owner_activity_idx
   ON public.coordinator_mail_cases(owner_id, last_activity_at DESC);
+CREATE INDEX IF NOT EXISTS coordinator_mail_case_group_idx
+  ON public.coordinator_mail_cases(owner_id, group_id);
 
 CREATE TABLE IF NOT EXISTS public.coordinator_mail_case_threads (
   id serial PRIMARY KEY,

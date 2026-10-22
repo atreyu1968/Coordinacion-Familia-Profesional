@@ -156,6 +156,69 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   --command="SELECT EXISTS (SELECT 1 FROM public.collaborative_spaces WHERE name = 'Preserved independent space' AND provisioning_started_at IS NULL) AND EXISTS (SELECT 1 FROM public.account_audit WHERE actor_name = 'Preserved migration user')" \
   | grep -qx t
 
+echo "==> Upgrading the mail grouping schema without changing existing mail records"
+create_test_database coordina_mail_group_upgrade
+migrate_database coordina_mail_group_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_mail_group_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    INSERT INTO public.users (name, email, password_hash, role)
+      VALUES ('Preserved mail owner', 'mail-group-upgrade@example.test', 'test-only-hash', 'teacher');
+    INSERT INTO public.coordinator_mail_cases
+      (owner_id, gmail_thread_id, title, draft_to, draft_subject, draft_body)
+      SELECT id, 'preserved-thread', 'Preserved mail case', 'reply@example.test', 'Re: subject', 'Keep this draft'
+      FROM public.users WHERE email = 'mail-group-upgrade@example.test';
+    INSERT INTO public.coordinator_mail_messages
+      (owner_id, case_id, gmail_message_id, sender_email, subject, body_text, received_at)
+      SELECT owner_id, id, 'preserved-message', 'sender@example.test', 'Original subject', 'Keep this message', now()
+      FROM public.coordinator_mail_cases WHERE title = 'Preserved mail case';
+    INSERT INTO public.coordinator_mail_attachments
+      (message_id, provider_attachment_id, file_name, content_type, size)
+      SELECT id, 'preserved-attachment', 'original.pdf', 'application/pdf', 12
+      FROM public.coordinator_mail_messages WHERE gmail_message_id = 'preserved-message';
+    INSERT INTO public.coordinator_mail_case_notes (case_id, content)
+      SELECT id, 'Keep this note' FROM public.coordinator_mail_cases WHERE title = 'Preserved mail case';
+    INSERT INTO public.coordinator_mail_outbox (case_id, revision, recipient, subject, body_text, status)
+      SELECT id, revision, 'reply@example.test', 'Re: subject', 'Keep this sent response', 'sent'
+      FROM public.coordinator_mail_cases WHERE title = 'Preserved mail case';
+    ALTER TABLE public.coordinator_mail_cases DROP COLUMN group_id;
+    DROP TABLE public.coordinator_mail_case_groups;
+  "
+migrate_database coordina_mail_group_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_mail_group_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    SELECT
+      (SELECT group_id IS NULL AND draft_body = 'Keep this draft'
+        FROM public.coordinator_mail_cases WHERE title = 'Preserved mail case')
+      AND (SELECT body_text = 'Keep this message'
+        FROM public.coordinator_mail_messages WHERE gmail_message_id = 'preserved-message')
+      AND (SELECT file_name = 'original.pdf'
+        FROM public.coordinator_mail_attachments WHERE provider_attachment_id = 'preserved-attachment')
+      AND (SELECT content = 'Keep this note'
+        FROM public.coordinator_mail_case_notes WHERE content = 'Keep this note')
+      AND (SELECT body_text = 'Keep this sent response' AND status = 'sent'
+        FROM public.coordinator_mail_outbox WHERE body_text = 'Keep this sent response')
+      AND EXISTS (
+        SELECT 1 FROM pg_catalog.pg_constraint c
+        JOIN pg_catalog.pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.conrelid = 'public.coordinator_mail_cases'::regclass
+          AND c.contype = 'f' AND a.attname = 'group_id'
+          AND c.confrelid = 'public.coordinator_mail_case_groups'::regclass
+      )
+      AND EXISTS (
+        SELECT 1 FROM pg_catalog.pg_indexes
+        WHERE schemaname = 'public' AND tablename = 'coordinator_mail_cases'
+          AND indexname = 'coordinator_mail_case_group_idx'
+      )
+  " | grep -qx t
+echo "==> Verifying the mail grouping upgrade is idempotent"
+migrate_database coordina_mail_group_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_mail_group_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT group_id IS NULL AND draft_body = 'Keep this draft' FROM public.coordinator_mail_cases WHERE title = 'Preserved mail case'" \
+  | grep -qx t
+
 echo "==> Rejecting an incompatible existing additive table before touching other tables"
 create_test_database coordina_invalid_addition
 migrate_database coordina_invalid_addition

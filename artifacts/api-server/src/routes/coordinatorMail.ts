@@ -1,9 +1,9 @@
 import { Router, type Request, type Response } from "express";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { db, coordinatorMailAccountsTable, coordinatorMailAttachmentsTable, coordinatorMailCaseNotesTable, coordinatorMailCasesTable, coordinatorMailMessagesTable, coordinatorMailOutboxTable, coordinatorMailSettingsTable, usersTable } from "@workspace/db";
+import { db, coordinatorMailAccountsTable, coordinatorMailAttachmentsTable, coordinatorMailCaseGroupsTable, coordinatorMailCaseNotesTable, coordinatorMailCasesTable, coordinatorMailMessagesTable, coordinatorMailOutboxTable, coordinatorMailSettingsTable, usersTable } from "@workspace/db";
 import {
-  AddCoordinatorMailCaseNoteBody, GenerateCoordinatorMailReplyDraftBody,
+  AddCoordinatorMailCaseLinkBody, AddCoordinatorMailCaseNoteBody, GenerateCoordinatorMailReplyDraftBody,
   SendCoordinatorMailReplyBody, UpdateCoordinatorMailAdminSettingsBody,
   UpdateCoordinatorMailCaseBody,
 } from "@workspace/api-zod";
@@ -120,6 +120,100 @@ router.patch("/coordinator-mail/cases/:id", requireAuth, wrap(async (req, res) =
         caseId: id, createdBy: user.id, kind: "draft", content: "Se guardó el borrador de respuesta. No se envió.",
       });
     }
+  });
+  res.json(await mailCaseDetail(user.id, id));
+}));
+
+router.post("/coordinator-mail/cases/:id/links", requireAuth, wrap(async (req, res) => {
+  const user = await requireMailCoordinator(req);
+  const id = mailCaseId(req.params.id);
+  const { targetCaseId } = parsed(AddCoordinatorMailCaseLinkBody, req.body);
+  if (id === targetCaseId) throw new AttendanceError(400, "Elige otro asunto para vincularlo.");
+  await db.transaction(async tx => {
+    // Serialize group edits within one private mailbox, including overlapping merges.
+    await tx.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.id, user.id)).limit(1).for("update");
+    const cases = await tx.select().from(coordinatorMailCasesTable)
+      .where(and(eq(coordinatorMailCasesTable.ownerId, user.id), inArray(coordinatorMailCasesTable.id, [id, targetCaseId])))
+      .orderBy(coordinatorMailCasesTable.id).for("update");
+    if (cases.length !== 2) throw new AttendanceError(404, "No se encontró uno de los asuntos de tu buzón.");
+    const groupIds = [...new Set(cases.map(row => row.groupId).filter((groupId): groupId is number => groupId != null))].sort((a, b) => a - b);
+    if (cases[0].groupId != null && cases[0].groupId === cases[1].groupId) {
+      throw new AttendanceError(409, "Estos asuntos ya están vinculados.");
+    }
+    const groups = groupIds.length ? await tx.select().from(coordinatorMailCaseGroupsTable)
+      .where(and(eq(coordinatorMailCaseGroupsTable.ownerId, user.id), inArray(coordinatorMailCaseGroupsTable.id, groupIds)))
+      .orderBy(coordinatorMailCaseGroupsTable.id).for("update") : [];
+    if (groups.length !== groupIds.length) throw new AttendanceError(404, "No se encontró el grupo privado.");
+    const [createdGroup] = groupIds.length ? [] : await tx.insert(coordinatorMailCaseGroupsTable)
+      .values({ ownerId: user.id }).returning();
+    const keepGroupId = groupIds[0] ?? createdGroup?.id;
+    if (keepGroupId == null) throw new Error("Could not create coordinator mail case group.");
+    const groupedMemberIds = groupIds.length ? await tx.select({ id: coordinatorMailCasesTable.id })
+      .from(coordinatorMailCasesTable)
+      .where(and(eq(coordinatorMailCasesTable.ownerId, user.id), inArray(coordinatorMailCasesTable.groupId, groupIds))) : [];
+    const affectedIds = [...new Set([...cases.map(row => row.id), ...groupedMemberIds.map(row => row.id)])];
+    await tx.update(coordinatorMailCasesTable).set({
+      groupId: keepGroupId, revision: sql`${coordinatorMailCasesTable.revision} + 1`,
+      updatedAt: new Date(),
+    }).where(and(eq(coordinatorMailCasesTable.ownerId, user.id), inArray(coordinatorMailCasesTable.id, affectedIds)));
+    const obsoleteGroupIds = groupIds.filter(groupId => groupId !== keepGroupId);
+    if (obsoleteGroupIds.length) await tx.delete(coordinatorMailCaseGroupsTable)
+      .where(and(eq(coordinatorMailCaseGroupsTable.ownerId, user.id), inArray(coordinatorMailCaseGroupsTable.id, obsoleteGroupIds)));
+    await tx.insert(coordinatorMailCaseNotesTable).values({
+      caseId: id, createdBy: user.id, kind: "status",
+      content: `Se vinculó el asunto ${targetCaseId} a este grupo privado.`,
+    });
+    await tx.update(coordinatorMailCasesTable).set({ lastActivityAt: new Date() })
+      .where(and(eq(coordinatorMailCasesTable.id, id), eq(coordinatorMailCasesTable.ownerId, user.id)));
+  });
+  res.json(await mailCaseDetail(user.id, id));
+}));
+
+router.delete("/coordinator-mail/cases/:id/links/:linkedId", requireAuth, wrap(async (req, res) => {
+  const user = await requireMailCoordinator(req);
+  const id = mailCaseId(req.params.id);
+  const linkedId = mailCaseId(req.params.linkedId);
+  if (id === linkedId) throw new AttendanceError(400, "Elige otro asunto para desvincularlo.");
+  await db.transaction(async tx => {
+    await tx.select({ id: usersTable.id }).from(usersTable)
+      .where(eq(usersTable.id, user.id)).limit(1).for("update");
+    const cases = await tx.select().from(coordinatorMailCasesTable)
+      .where(and(eq(coordinatorMailCasesTable.ownerId, user.id), inArray(coordinatorMailCasesTable.id, [id, linkedId])))
+      .orderBy(coordinatorMailCasesTable.id).for("update");
+    if (cases.length !== 2) throw new AttendanceError(404, "No se encontró uno de los asuntos de tu buzón.");
+    const [source, target] = cases[0].id === id ? cases : [cases[1], cases[0]];
+    if (source.groupId == null || source.groupId !== target.groupId) {
+      throw new AttendanceError(409, "Estos asuntos no pertenecen al mismo grupo.");
+    }
+    const [group] = await tx.select().from(coordinatorMailCaseGroupsTable)
+      .where(and(eq(coordinatorMailCaseGroupsTable.id, source.groupId), eq(coordinatorMailCaseGroupsTable.ownerId, user.id)))
+      .limit(1).for("update");
+    if (!group) throw new AttendanceError(404, "No se encontró el grupo privado.");
+    const members = await tx.select({ id: coordinatorMailCasesTable.id }).from(coordinatorMailCasesTable)
+      .where(and(eq(coordinatorMailCasesTable.ownerId, user.id), eq(coordinatorMailCasesTable.groupId, source.groupId)));
+    const now = new Date();
+    if (members.length <= 2) {
+      await tx.update(coordinatorMailCasesTable).set({
+        groupId: null, revision: sql`${coordinatorMailCasesTable.revision} + 1`, updatedAt: now,
+      }).where(and(eq(coordinatorMailCasesTable.ownerId, user.id), inArray(coordinatorMailCasesTable.id, members.map(member => member.id))));
+      await tx.delete(coordinatorMailCaseGroupsTable).where(and(
+        eq(coordinatorMailCaseGroupsTable.id, source.groupId), eq(coordinatorMailCaseGroupsTable.ownerId, user.id),
+      ));
+    } else {
+      await tx.update(coordinatorMailCasesTable).set({
+        groupId: null, revision: sql`${coordinatorMailCasesTable.revision} + 1`, updatedAt: now,
+      }).where(and(eq(coordinatorMailCasesTable.id, target.id), eq(coordinatorMailCasesTable.ownerId, user.id)));
+      await tx.update(coordinatorMailCasesTable).set({
+        revision: sql`${coordinatorMailCasesTable.revision} + 1`, updatedAt: now,
+      }).where(and(eq(coordinatorMailCasesTable.id, source.id), eq(coordinatorMailCasesTable.ownerId, user.id)));
+    }
+    await tx.insert(coordinatorMailCaseNotesTable).values({
+      caseId: id, createdBy: user.id, kind: "status",
+      content: `Se desvinculó el asunto ${linkedId} de este grupo privado.`,
+    });
+    await tx.update(coordinatorMailCasesTable).set({ lastActivityAt: now })
+      .where(and(eq(coordinatorMailCasesTable.id, id), eq(coordinatorMailCasesTable.ownerId, user.id)));
   });
   res.json(await mailCaseDetail(user.id, id));
 }));

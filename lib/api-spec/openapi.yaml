@@ -58,6 +58,12 @@ paths:
         - name: page
           in: query
           schema: { type: integer, minimum: 1, default: 1 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, waiting, closed] }
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
       responses:
         "200":
           description: Owner-private mail cases.
@@ -100,6 +106,46 @@ paths:
               schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
         "409": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}/links:
+    post:
+      operationId: addCoordinatorMailCaseLink
+      tags: [coordinator-mail]
+      summary: Link two private mail cases owned by the authenticated coordinator
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorMailCaseLinkInput" }
+      responses:
+        "200":
+          description: Linked case details with the shared chronological history.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /coordinator-mail/cases/{id}/links/{linkedId}:
+    delete:
+      operationId: removeCoordinatorMailCaseLink
+      tags: [coordinator-mail]
+      summary: Unlink a case from the authenticated coordinator's private group
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - name: linkedId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Updated case details after unlinking.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorMailCaseDetail" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /coordinator-mail/cases/{id}/notes:
     post:
       operationId: addCoordinatorMailCaseNote
@@ -5698,6 +5744,8 @@ components:
       type: object
       properties:
         id: { type: integer }
+        caseId: { type: integer }
+        caseTitle: { type: string }
         direction: { type: string, enum: [received, sent] }
         senderEmail: { type: string }
         senderName: { type: string }
@@ -5710,16 +5758,25 @@ components:
         attachments:
           type: array
           items: { $ref: "#/components/schemas/CoordinatorMailAttachment" }
-      required: [id, direction, senderEmail, senderName, toEmails, ccEmails, subject, bodyText, bodyTruncated, receivedAt, attachments]
+      required: [id, caseId, caseTitle, direction, senderEmail, senderName, toEmails, ccEmails, subject, bodyText, bodyTruncated, receivedAt, attachments]
     CoordinatorMailCaseNote:
       type: object
       properties:
         id: { type: integer }
+        caseId: { type: integer }
+        caseTitle: { type: string }
         kind: { type: string, enum: [note, status, draft, ai_draft, sent] }
         content: { type: string }
         author: { type: string }
         createdAt: { type: string, format: date-time }
-      required: [id, kind, content, author, createdAt]
+      required: [id, caseId, caseTitle, kind, content, author, createdAt]
+    CoordinatorMailLinkedCase:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        isCurrent: { type: boolean }
+      required: [id, title, isCurrent]
     CoordinatorMailCase:
       type: object
       properties:
@@ -5739,7 +5796,8 @@ components:
         draftSubject: { type: string }
         draftBody: { type: string }
         outboxStatus: { type: ["string", "null"], enum: [queued, sending, sent, failed, unknown, null] }
-      required: [id, title, status, dueAt, revision, lastActivityAt, messageCount, attachmentCount, latestSubject, latestSender, aiStatus, aiError, draftTo, draftSubject, draftBody, outboxStatus]
+        linkedCaseCount: { type: integer }
+      required: [id, title, status, dueAt, revision, lastActivityAt, messageCount, attachmentCount, latestSubject, latestSender, aiStatus, aiError, draftTo, draftSubject, draftBody, outboxStatus, linkedCaseCount]
     CoordinatorMailCaseSummary:
       type: object
       properties:
@@ -5772,7 +5830,15 @@ components:
               type: array
               items: { $ref: "#/components/schemas/CoordinatorMailCaseNote" }
             messages: { $ref: "#/components/schemas/CoordinatorMailMessages" }
-          required: [notes, messages]
+            linkedCases:
+              type: array
+              items: { $ref: "#/components/schemas/CoordinatorMailLinkedCase" }
+          required: [notes, messages, linkedCases]
+    CoordinatorMailCaseLinkInput:
+      type: object
+      properties:
+        targetCaseId: { type: integer, minimum: 1 }
+      required: [targetCaseId]
     CoordinatorMailNoteInput:
       type: object
       properties: { content: { type: string, minLength: 1, maxLength: 5000 } }

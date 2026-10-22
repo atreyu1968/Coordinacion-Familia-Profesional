@@ -117,6 +117,20 @@
 .mail-tool-card { padding:1rem; border:1px solid var(--mail-line); border-radius:.9rem; background:var(--mail-card); }
 .mail-tool-card > h2 { margin-bottom:.85rem; }
 .mail-tool-card > label { display:block; margin:.75rem 0 .35rem; }
+.mail-case-links > h2 { margin-bottom:.4rem; }
+.mail-link-explainer, .mail-link-hint { margin:.35rem 0 .65rem; color:var(--mail-muted); font-size:.7rem; line-height:1.5; }
+.mail-case-links ul { display:grid; gap:.4rem; margin:.65rem 0; padding:0; list-style:none; }
+.mail-case-links li { display:flex; align-items:center; justify-content:space-between; gap:.4rem; min-width:0; }
+.mail-linked-case { min-width:0; overflow:hidden; color:var(--mail-green); font-size:.74rem; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.mail-linked-case--current { color:var(--mail-ink); text-decoration:none; }
+.mail-case-links li button { display:inline-flex; align-items:center; gap:.3rem; flex:none; font-size:.68rem; }
+.mail-case-links li button svg { width:.85rem; height:.85rem; }
+.mail-case-links input { background:#fff; font-size:.76rem; }
+.mail-link-results { padding-top:.55rem !important; border-top:1px solid var(--mail-line); }
+.mail-link-results li > span { min-width:0; overflow:hidden; font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }
+.mail-link-pagination { display:flex; align-items:center; justify-content:space-between; margin-top:.5rem; color:var(--mail-muted); font-size:.68rem; }
+.mail-link-error { color:#85463c; font-size:.72rem; }
+.mail-source { margin:0 0 .5rem !important; color:var(--mail-muted); font-size:.68rem !important; line-height:1.4 !important; }
 .mail-tool-card select, .mail-date-input { width:100%; min-height:2.5rem; padding:.55rem .65rem; border:1px solid #d5dfd8; border-radius:.5rem; background:#fbfcf9; color:var(--mail-ink); font-size:.8rem; }
 .mail-date-input { display:flex; align-items:center; gap:.5rem; }
 .mail-date-input svg { width:1rem; color:var(--mail-muted); }

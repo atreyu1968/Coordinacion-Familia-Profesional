@@ -9,6 +9,8 @@ import type { CoordinatorMailCaseNoteKind } from './coordinatorMailCaseNoteKind'
 
 export interface CoordinatorMailCaseNote {
   id: number;
+  caseId: number;
+  caseTitle: string;
   kind: CoordinatorMailCaseNoteKind;
   content: string;
   author: string;

@@ -5,10 +5,16 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GetCoordinatorMailWorkspaceStatus } from './getCoordinatorMailWorkspaceStatus';
 
 export type GetCoordinatorMailWorkspaceParams = {
 /**
  * @minimum 1
  */
 page?: number;
+status?: GetCoordinatorMailWorkspaceStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
 };

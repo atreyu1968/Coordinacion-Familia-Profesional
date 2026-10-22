@@ -10,6 +10,8 @@ import type { CoordinatorMailMessageDirection } from './coordinatorMailMessageDi
 
 export interface CoordinatorMailMessage {
   id: number;
+  caseId: number;
+  caseTitle: string;
   direction: CoordinatorMailMessageDirection;
   senderEmail: string;
   senderName: string;

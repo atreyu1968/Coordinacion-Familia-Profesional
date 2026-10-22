@@ -495,6 +495,8 @@ export const CoordinatorMailMessageDirection = {
 
 export interface CoordinatorMailMessage {
   id: number;
+  caseId: number;
+  caseTitle: string;
   direction: CoordinatorMailMessageDirection;
   senderEmail: string;
   senderName: string;
@@ -520,10 +522,18 @@ export const CoordinatorMailCaseNoteKind = {
 
 export interface CoordinatorMailCaseNote {
   id: number;
+  caseId: number;
+  caseTitle: string;
   kind: CoordinatorMailCaseNoteKind;
   content: string;
   author: string;
   createdAt: string;
+}
+
+export interface CoordinatorMailLinkedCase {
+  id: number;
+  title: string;
+  isCurrent: boolean;
 }
 
 export type CoordinatorMailCaseStatus = typeof CoordinatorMailCaseStatus[keyof typeof CoordinatorMailCaseStatus];
@@ -581,6 +591,7 @@ export interface CoordinatorMailCase {
   draftBody: string;
   /** @nullable */
   outboxStatus: CoordinatorMailCaseOutboxStatus;
+  linkedCaseCount: number;
 }
 
 export interface CoordinatorMailCaseSummary {
@@ -603,7 +614,13 @@ export interface CoordinatorMailMessages {
 export type CoordinatorMailCaseDetail = CoordinatorMailCase & {
   notes: CoordinatorMailCaseNote[];
   messages: CoordinatorMailMessages;
+  linkedCases: CoordinatorMailLinkedCase[];
 };
+
+export interface CoordinatorMailCaseLinkInput {
+  /** @minimum 1 */
+  targetCaseId: number;
+}
 
 export interface CoordinatorMailNoteInput {
   /**
@@ -3124,7 +3141,21 @@ export type GetCoordinatorMailWorkspaceParams = {
  * @minimum 1
  */
 page?: number;
+status?: GetCoordinatorMailWorkspaceStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
 };
+
+export type GetCoordinatorMailWorkspaceStatus = typeof GetCoordinatorMailWorkspaceStatus[keyof typeof GetCoordinatorMailWorkspaceStatus];
+
+
+export const GetCoordinatorMailWorkspaceStatus = {
+  open: 'open',
+  waiting: 'waiting',
+  closed: 'closed',
+} as const;
 
 export type GetCoordinatorMailCaseParams = {
 /**

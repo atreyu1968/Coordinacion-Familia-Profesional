@@ -31,4 +31,5 @@ export interface CoordinatorMailCase {
   draftBody: string;
   /** @nullable */
   outboxStatus: CoordinatorMailCaseOutboxStatus;
+  linkedCaseCount: number;
 }
