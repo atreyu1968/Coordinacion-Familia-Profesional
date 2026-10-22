@@ -46,7 +46,10 @@ describe("managed teacher profile integrity", () => {
       const moduleId = await createModule({ centerId });
       const saved = await save([moduleId]);
       expect(saved.status).toBe(200);
-      expect(saved.body.user).toMatchObject({ role, centerId, provinceId });
+      expect(saved.body.user).toMatchObject({
+        role, centerId: actor.user.centerId, provinceId: actor.user.provinceId,
+        teachingCenterId: centerId,
+      });
       expect(saved.body.moduleIds).toEqual([moduleId]);
       expect((await groups(actor.token)).status).toBe(200);
       const declared = await save([], true);
@@ -56,7 +59,7 @@ describe("managed teacher profile integrity", () => {
     },
   );
 
-  it("does not let a personal teaching update change a coordinator's province or a department head's management center", async () => {
+  it("allows a personal teaching center in any province without changing management scope", async () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
     const differentCenter = await createCenter(provinceId);
@@ -68,10 +71,34 @@ describe("managed teacher profile integrity", () => {
           centerId: role === "coordinator" ? outsideCenter : differentCenter,
           moduleIds: [], doesNotTeach: true,
         });
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, actor.user.id));
-      expect(user).toMatchObject({ role, provinceId, centerId });
+      expect(user).toMatchObject({
+        role, provinceId, centerId,
+        teachingCenterId: role === "coordinator" ? outsideCenter : differentCenter,
+      });
+      expect((await groups(actor.token)).status).toBe(200);
+      const personal = await request(app).get("/api/auth/me/teaching-profile").set(authHeader(actor.token));
+      expect(personal.body.targetCenterId).toBe(user.teachingCenterId);
     }
+  });
+
+  it("shows official modules of the active family even when no center has declared an offer", async () => {
+    expect(await getActiveFamily()).toBe("Administración y Gestión");
+    const centerId = await createCenter(await createProvince());
+    const adgModule = await createModule({ centerId: null, cycleName: "Técnico en Gestión Administrativa" });
+    const otherModule = await createModule({ centerId: null, cycleName: "Técnico en Actividades Ecuestres" });
+    const actor = await createUser({ centerId, incompleteProfile: true });
+    const profile = await request(app).get("/api/auth/me/teaching-profile").set(authHeader(actor.token));
+    expect(profile.status).toBe(200);
+    expect(profile.body.modules.map((module: { id: number }) => module.id)).toContain(adgModule);
+    expect(profile.body.modules.map((module: { id: number }) => module.id)).not.toContain(otherModule);
+    const wrong = await request(app).patch("/api/auth/me/teaching-profile")
+      .set(authHeader(actor.token)).send({ centerId, moduleIds: [otherModule], doesNotTeach: false });
+    expect(wrong.status).toBe(400);
+    const valid = await request(app).patch("/api/auth/me/teaching-profile")
+      .set(authHeader(actor.token)).send({ centerId, moduleIds: [adgModule], doesNotTeach: false });
+    expect(valid.status).toBe(200);
   });
 
   it("matches the access guard for invalid centers, province mismatches and historical modules", async () => {

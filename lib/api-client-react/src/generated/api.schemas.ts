@@ -856,6 +856,11 @@ export interface User {
   provinceId?: number | null;
   /** @nullable */
   centerId?: number | null;
+  /**
+     * Personal teaching center for administrative roles; does not grant management permissions.
+     * @nullable
+     */
+  teachingCenterId?: number | null;
   createdAt?: string;
 }
 
@@ -2601,6 +2606,12 @@ export interface CreateCalendarEntryInput {
   description?: string | null;
 }
 
+export interface ChatContact {
+  id: number;
+  name: string;
+  role: Role;
+}
+
 export interface ChatGroup {
   id: number;
   name: string;
@@ -3749,6 +3760,13 @@ export type ListCalendarEventsParams = {
 provinceId?: ProvinceQueryParameter;
 from?: string;
 to?: string;
+};
+
+export type ListChatContactsParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
 };
 
 export type ListGroupMessagesParams = {

@@ -33,6 +33,44 @@ afterAll(async () => {
 });
 
 describe("chat groups", () => {
+  it("lists active contacts across provinces without leaking emails or disabled accounts", async () => {
+    const provinceA = await createProvince();
+    const provinceB = await createProvince();
+    const centerA = await createCenter(provinceA);
+    const centerB = await createCenter(provinceB);
+    const sender = await createUser({ centerId: centerA, provinceId: provinceA, name: "Remitente de prueba" });
+    const recipient = await createUser({ centerId: centerB, provinceId: provinceB, name: "Contacto distante" });
+    const disabled = await createUser({
+      centerId: centerB, provinceId: provinceB, name: "Contacto desactivado", status: "inactive",
+    });
+    const deleted = await createUser({ centerId: centerB, provinceId: provinceB, name: "Contacto eliminado" });
+    await db.update(usersTable).set({ deletedAt: new Date() }).where(eq(usersTable.id, deleted.user.id));
+
+    expect((await request(app).get("/api/chat/contacts")).status).toBe(401);
+    const response = await request(app).get("/api/chat/contacts").set(authHeader(sender.token));
+    expect(response.status).toBe(200);
+    const ids = response.body.map((contact: { id: number }) => contact.id);
+    expect(ids).toContain(recipient.user.id);
+    expect(ids).not.toContain(sender.user.id);
+    expect(ids).not.toContain(disabled.user.id);
+    expect(ids).not.toContain(deleted.user.id);
+    expect(response.body.find((contact: { id: number }) => contact.id === recipient.user.id))
+      .toEqual({ id: recipient.user.id, name: recipient.user.name, role: recipient.user.role });
+
+    const filtered = await request(app).get("/api/chat/contacts")
+      .query({ search: "distante" }).set(authHeader(sender.token));
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.map((contact: { id: number }) => contact.id)).toContain(recipient.user.id);
+    expect(filtered.body.map((contact: { id: number }) => contact.id)).not.toContain(disabled.user.id);
+
+    const conversation = await request(app).post("/api/chat/groups")
+      .set(authHeader(sender.token)).send({
+        name: recipient.user.name, type: "direct", memberIds: [recipient.user.id],
+      });
+    expect(conversation.status).toBe(201);
+    trackGroup(conversation.body.id);
+  });
+
   it("creates a direct message thread between two users", async () => {
     const a = await createUser({ role: "teacher" });
     const b = await createUser({ role: "teacher" });

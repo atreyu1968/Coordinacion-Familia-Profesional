@@ -59,27 +59,32 @@ export function AppLayout({ children }: LayoutProps) {
   const { customLogoUrl, appName } = useBranding();
   const [location, setLocation] = useLocation();
   const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? "");
+  const personalCenterId = user?.role === "teacher" ? user.centerId : user?.teachingCenterId ?? user?.centerId;
   const teachingProfileQuery = useGetMyTeachingProfile(
-    { targetCenterId: user?.centerId ?? undefined },
+    { targetCenterId: personalCenterId ?? undefined },
     {
       query: {
         queryKey: getGetMyTeachingProfileQueryKey({
-          targetCenterId: user?.centerId ?? undefined,
+          targetCenterId: personalCenterId ?? undefined,
         }),
         enabled: isTeacher,
       },
     },
   );
   const teachingProfile = teachingProfileQuery.data;
+  const savedCenterId = teachingProfile?.user.role === "teacher"
+    ? teachingProfile.user.centerId
+    : teachingProfile?.user.teachingCenterId ?? teachingProfile?.user.centerId;
   const forceTeachingProfileCompletion =
     isTeacher &&
     (teachingProfileQuery.isPending ||
       teachingProfileQuery.isError ||
       !teachingProfile ||
-      teachingProfile.user.centerId == null ||
-      teachingProfile.user.provinceId == null ||
-      teachingProfile.targetCenterId !== teachingProfile.user.centerId ||
-      teachingProfile.user.provinceId !== teachingProfile.targetProvinceId ||
+      savedCenterId == null ||
+      teachingProfile.targetProvinceId == null ||
+      teachingProfile.targetCenterId !== savedCenterId ||
+      (teachingProfile.user.role === "teacher" &&
+        teachingProfile.user.provinceId !== teachingProfile.targetProvinceId) ||
       (Boolean(teachingProfile.activeYear) &&
         teachingProfile.moduleIds.length === 0 &&
         !teachingProfile.doesNotTeach));

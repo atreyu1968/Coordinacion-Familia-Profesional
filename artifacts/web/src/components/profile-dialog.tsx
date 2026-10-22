@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 import {
@@ -22,13 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
@@ -53,8 +46,9 @@ export function ProfileDialog({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const personalCenterId = user.role === "teacher" ? user.centerId : user.teachingCenterId ?? user.centerId;
   const [teachingCenterId, setTeachingCenterId] = useState<number | null>(
-    user.centerId ?? null,
+    personalCenterId ?? null,
   );
   const [teachingModuleIds, setTeachingModuleIds] = useState<number[] | null>(
     null,
@@ -63,6 +57,8 @@ export function ProfileDialog({
     null,
   );
   const [teachingError, setTeachingError] = useState<string | null>(null);
+  const [centerSearch, setCenterSearch] = useState("");
+  const centerPickerRef = useRef<HTMLDetailsElement>(null);
   const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user.role);
   const centersQuery = useListCenters(
     {},
@@ -73,9 +69,10 @@ export function ProfileDialog({
       },
     },
   );
+  const search = centerSearch.trim().toLocaleLowerCase();
   const selectableCenters = (centersQuery.data ?? []).filter((center) =>
-    (user.role !== "coordinator" || center.provinceId === user.provinceId) &&
-    (user.role !== "department_head" || center.id === user.centerId),
+    center.name.toLocaleLowerCase().includes(search) ||
+    (center.code ?? "").toLocaleLowerCase().includes(search),
   );
   const teachingProfileQuery = useGetMyTeachingProfile(
     { targetCenterId: teachingCenterId ?? undefined },
@@ -95,12 +92,12 @@ export function ProfileDialog({
     : [];
   const selectedModuleIds =
     teachingModuleIds ??
-    (profileMatchesSelection && teachingCenterId === user.centerId
+    (profileMatchesSelection && teachingCenterId === personalCenterId
       ? teachingProfileQuery.data?.moduleIds ?? []
       : []);
   const selectedNoTeaching =
     teachingNoTeaching ??
-    (profileMatchesSelection && teachingCenterId === user.centerId
+    (profileMatchesSelection && teachingCenterId === personalCenterId
       ? teachingProfileQuery.data?.doesNotTeach ?? false
       : false);
   const modulesByCycle = availableModules.reduce<
@@ -118,10 +115,11 @@ export function ProfileDialog({
     setNewPassword("");
     setConfirmPassword("");
     setError(null);
-    setTeachingCenterId(user.centerId ?? null);
+    setTeachingCenterId(personalCenterId ?? null);
     setTeachingModuleIds(null);
     setTeachingNoTeaching(null);
     setTeachingError(null);
+    setCenterSearch("");
   };
 
   const onOpenChange = (next: boolean) => {
@@ -193,7 +191,7 @@ export function ProfileDialog({
   const onTeachingCenterChange = (value: string) => {
     const nextCenterId = Number(value);
     setTeachingCenterId(nextCenterId);
-    setTeachingModuleIds(nextCenterId === user.centerId ? null : []);
+    setTeachingModuleIds(nextCenterId === personalCenterId ? null : []);
     setTeachingNoTeaching(false);
     setTeachingError(null);
   };
@@ -242,15 +240,20 @@ export function ProfileDialog({
       });
       // Socket.io does not automatically retry a server-denied handshake.
       getSocket()?.connect();
-      await qc.invalidateQueries();
-      setTeachingCenterId(updated.user.centerId ?? null);
+      qc.setQueryData(getGetCurrentUserQueryKey(), updated.user);
+      // Do not keep the mandatory dialog stuck in "Guardando" while unrelated
+      // queries (including previously blocked dashboard reads) retry.
+      void qc.invalidateQueries();
+      setTeachingCenterId(updated.user.role === "teacher"
+        ? updated.user.centerId ?? null
+        : updated.user.teachingCenterId ?? updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);
       setTeachingNoTeaching(updated.doesNotTeach);
       toast({
         title: "Datos docentes actualizados",
         description: updated.doesNotTeach
           ? "Se ha registrado que no impartes clase este curso."
-          : "El centro, la provincia y los módulos ya están actualizados.",
+          : "Tu centro docente y tus módulos ya están actualizados.",
       });
     } catch {
       setTeachingError("No se pudo guardar el centro y los módulos.");
@@ -314,25 +317,52 @@ export function ProfileDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="teaching-center">Centro</Label>
-                <Select
-                  value={
-                    teachingCenterId == null
-                      ? ""
-                      : String(teachingCenterId)
-                  }
-                  onValueChange={onTeachingCenterChange}
-                >
-                  <SelectTrigger id="teaching-center">
-                    <SelectValue placeholder="Selecciona tu centro" />
-                  </SelectTrigger>
-                  <SelectContent>
+                <Input
+                  id="teaching-center-search"
+                  type="search"
+                  placeholder="Buscar por nombre o código de centro"
+                  value={centerSearch}
+                  onChange={(event) => {
+                    setCenterSearch(event.target.value);
+                    centerPickerRef.current?.setAttribute("open", "");
+                  }}
+                  autoComplete="off"
+                />
+                <details ref={centerPickerRef} className="rounded-md border">
+                  <summary
+                    id="teaching-center"
+                    className="cursor-pointer px-3 py-2 text-sm marker:text-muted-foreground"
+                  >
+                    {centersQuery.data?.find((center) => center.id === teachingCenterId)?.name ??
+                      "Selecciona tu centro"}
+                  </summary>
+                  <div
+                    role="listbox"
+                    aria-label="Centros disponibles"
+                    className="max-h-[min(55vh,20rem)] overflow-y-auto overscroll-contain border-t p-1"
+                  >
+                    {selectableCenters.length === 0 && (
+                      <p className="px-2 py-3 text-sm text-muted-foreground">
+                        No hay centros con ese nombre o código.
+                      </p>
+                    )}
                     {selectableCenters.map((center) => (
-                      <SelectItem key={center.id} value={String(center.id)}>
-                        {center.name}
-                      </SelectItem>
+                      <button
+                        key={center.id}
+                        type="button"
+                        role="option"
+                        aria-selected={center.id === teachingCenterId}
+                        className="block w-full rounded px-2 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none aria-selected:bg-accent"
+                        onClick={() => {
+                          onTeachingCenterChange(String(center.id));
+                          centerPickerRef.current?.removeAttribute("open");
+                        }}
+                      >
+                        {center.name} · {center.code || `Centro ${center.id}`}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </details>
                 <p className="text-xs text-muted-foreground">
                   Provincia:{" "}
                   {profileMatchesSelection

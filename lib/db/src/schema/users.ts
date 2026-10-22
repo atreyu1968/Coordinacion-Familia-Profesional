@@ -24,6 +24,8 @@ export const usersTable = pgTable("users", {
   status: text("status").notNull().default("active"),
   provinceId: integer("province_id"),
   centerId: integer("center_id"),
+  // Personal teaching center; administrative center/province remain unchanged.
+  teachingCenterId: integer("teaching_center_id"),
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

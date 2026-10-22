@@ -43,9 +43,10 @@ Coordinators keep their assigned province; department heads keep their assigned
 management center. Superadministrator authority remains global.
 **Why:** those fields also authorize management actions; unrestricted self-editing
 would otherwise transfer administrative access without approval.
-**How to apply:** validate scope against the locked account during profile saves.
-Supporting a teaching center outside that management scope requires separating
-personal teaching data from management scope, not relaxing the authorization check.
+**How to apply:** personal teaching changes for administrative roles must leave
+their management center and province unchanged. A teaching center may be in a
+different province, but that must never alter administrative access. Ordinary
+teachers continue to derive their province from their selected teaching center.
 
 **Rule:** management indicators of profile integrity must remain informational and separate from annual confirmation and account activation.
 **Why:** the requested management visibility must not introduce automatic account deactivation based on missing profile data.

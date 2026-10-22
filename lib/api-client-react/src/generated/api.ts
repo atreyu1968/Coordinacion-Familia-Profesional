@@ -51,6 +51,7 @@ import type {
   Center,
   CenterDetail,
   CenterFacets,
+  ChatContact,
   ChatGroup,
   ChatMember,
   CheckInInput,
@@ -159,6 +160,7 @@ import type {
   LearningOutcome,
   ListCalendarEventsParams,
   ListCentersParams,
+  ListChatContactsParams,
   ListCompanyAlertsParams,
   ListCyclesParams,
   ListDocumentFormsParams,
@@ -4898,7 +4900,7 @@ export const getUpdateMyTeachingProfileUrl = () => {
 }
 
 /**
- * Available to teachers, department heads, coordinators and superadministrators. Derives province from the center and reconciles active-year assignments or an explicit no-teaching declaration. Coordinators must stay in their assigned province and department heads in their assigned management center; personal teaching edits never expand management privileges. The province is not accepted from the client.
+ * Available to teachers, department heads, coordinators and superadministrators. Derives the teaching province from the selected center and reconciles active-year assignments or an explicit no-teaching declaration. Personal teaching centers for administrative roles do not change their management center or province. Only modules of the active professional family are accepted.
  * @summary Update the authenticated user's teaching center, modules, or no-teaching declaration
  */
 export const updateMyTeachingProfile = async (updateMyTeachingProfileInput: UpdateMyTeachingProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<MyTeachingProfileUpdateResult> => {
@@ -15797,6 +15799,114 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateCalendarEntryMutationOptions(options), queryClient);
     }
+
+export const getListChatContactsUrl = (params?: ListChatContactsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chat/contacts?${stringifiedParams}` : `/api/chat/contacts`
+}
+
+/**
+ * @summary List active registered users available for a direct conversation
+ */
+export const listChatContacts = async (params?: ListChatContactsParams, options?: Parameters<typeof customFetch>[1]): Promise<ChatContact[]> => {
+
+  return customFetch<ChatContact[]>(getListChatContactsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChatContactsQueryKey = (params?: ListChatContactsParams,) => {
+    return [
+    `/api/chat/contacts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListChatContactsQueryOptions = <TData = Awaited<ReturnType<typeof listChatContacts>>, TError = ErrorType<ErrorResponse>>(params?: ListChatContactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChatContactsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChatContacts>>> = ({ signal }) => listChatContacts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListChatContactsQueryResult = NonNullable<Awaited<ReturnType<typeof listChatContacts>>>
+export type ListChatContactsQueryError = ErrorType<ErrorResponse>
+
+
+export function useListChatContacts<TData = Awaited<ReturnType<typeof listChatContacts>>, TError = ErrorType<ErrorResponse>>(
+ params: undefined |  ListChatContactsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listChatContacts>>,
+          TError,
+          Awaited<ReturnType<typeof listChatContacts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListChatContacts<TData = Awaited<ReturnType<typeof listChatContacts>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListChatContactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listChatContacts>>,
+          TError,
+          Awaited<ReturnType<typeof listChatContacts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListChatContacts<TData = Awaited<ReturnType<typeof listChatContacts>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListChatContactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List active registered users available for a direct conversation
+ */
+
+export function useListChatContacts<TData = Awaited<ReturnType<typeof listChatContacts>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListChatContactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatContacts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListChatContactsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListChatGroupsUrl = () => {
 

@@ -5,27 +5,33 @@ import { router } from "expo-router";
 
 import {
   useCreateChatGroup,
-  useListUsers,
-  type User,
+  useListChatContacts,
+  getListChatContactsQueryKey,
+  type ChatContact,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, EmptyState, ErrorState, Loading } from "@/components/ui";
-import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { initials, roleLabel } from "@/lib/format";
 
 export default function NewChatScreen() {
   const colors = useColors();
-  const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const { data, isLoading, isError, refetch } = useListUsers(
-    search.trim() ? { search: search.trim() } : undefined,
-  );
+  const [chatError, setChatError] = useState("");
+  const contactParams = search.trim() ? { search: search.trim() } : undefined;
+  const { data, isLoading, isError, refetch } = useListChatContacts(contactParams, {
+    query: {
+      queryKey: getListChatContactsQueryKey(contactParams),
+      staleTime: 0,
+      refetchOnMount: "always",
+    },
+  });
   const createGroup = useCreateChatGroup();
 
-  const startChat = (other: User) => {
+  const startChat = (other: ChatContact) => {
     if (createGroup.isPending) return;
+    setChatError("");
     createGroup.mutate(
       {
         data: {
@@ -41,13 +47,12 @@ export default function NewChatScreen() {
             params: { id: String(group.id), name: group.name },
           });
         },
+        onError: () => setChatError("No se pudo iniciar la conversación. Inténtalo de nuevo."),
       },
     );
   };
 
-  const others = (data ?? []).filter(
-    (u) => u.id !== user?.id && u.status === "active",
-  );
+  const others = data ?? [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -63,6 +68,7 @@ export default function NewChatScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
+            maxLength={100}
             placeholder="Buscar personas"
             placeholderTextColor={colors.mutedForeground}
             autoCapitalize="none"
@@ -70,6 +76,11 @@ export default function NewChatScreen() {
           />
         </View>
       </View>
+      {chatError ? (
+        <Text style={{ color: colors.destructive, paddingHorizontal: 16, paddingBottom: 8 }}>
+          {chatError}
+        </Text>
+      ) : null}
       {isLoading ? (
         <Loading />
       ) : isError ? (

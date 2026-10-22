@@ -11,32 +11,38 @@ export const TEACHING_PROFILE_ROLES = ["teacher", "department_head", "coordinato
 export function requiresTeachingProfile(role: string): boolean {
   return (TEACHING_PROFILE_ROLES as readonly string[]).includes(role);
 }
+export function teachingCenterId(user: Pick<User, "role" | "centerId" | "teachingCenterId">): number | null {
+  return user.role === "teacher" ? user.centerId : user.teachingCenterId ?? user.centerId;
+}
 export const TEACHING_PROFILE_REQUIRED_MESSAGE =
   "Completa los datos obligatorios de tu perfil docente antes de continuar.";
 
 // Integrity is independent of account status and annual confirmation. Keep the
 // access guard and management diagnostics on these exact same predicates.
 export function teachingProfilePredicates(family: string, activeYear: string | null) {
+  const personalCenter = sql<number>`case when ${usersTable.role} = 'teacher'
+    then ${usersTable.centerId} else coalesce(${usersTable.teachingCenterId}, ${usersTable.centerId}) end`;
   const validCenter = and(
-    eq(centersTable.id, usersTable.centerId),
+    eq(centersTable.id, personalCenter),
     isNull(centersTable.deletedAt),
     sql`${centersTable.families} @> ${JSON.stringify([family])}::jsonb`,
   );
   const center = exists(db.select({ id: centersTable.id }).from(centersTable)
     .where(validCenter));
   const province = exists(db.select({ id: centersTable.id }).from(centersTable)
-    .where(and(validCenter, eq(centersTable.provinceId, usersTable.provinceId))));
+    .where(and(validCenter, sql`${centersTable.provinceId} is not null`,
+      sql`(${usersTable.role} <> 'teacher' or ${centersTable.provinceId} = ${usersTable.provinceId})`)));
   const assignments = activeYear ? exists(db
     .select({ id: teachingAssignmentsTable.id })
     .from(teachingAssignmentsTable)
     .innerJoin(modulesTable, eq(modulesTable.id, teachingAssignmentsTable.moduleId))
     .where(and(
       eq(teachingAssignmentsTable.teacherId, usersTable.id),
-      eq(teachingAssignmentsTable.centerId, usersTable.centerId),
+      eq(teachingAssignmentsTable.centerId, personalCenter),
       eq(teachingAssignmentsTable.schoolYear, activeYear),
       isNull(teachingAssignmentsTable.deletedAt),
       isNull(modulesTable.deletedAt),
-      or(isNull(modulesTable.centerId), eq(modulesTable.centerId, usersTable.centerId)),
+      or(isNull(modulesTable.centerId), eq(modulesTable.centerId, personalCenter)),
       moduleFamilyFilter(family),
     ))) : sql<boolean>`true`;
   const noTeachingDeclaration = activeYear
@@ -46,7 +52,7 @@ export function teachingProfilePredicates(family: string, activeYear: string | n
         .where(and(
           eq(teacherYearConfirmationsTable.teacherId, usersTable.id),
           eq(teacherYearConfirmationsTable.schoolYear, activeYear),
-          eq(teacherYearConfirmationsTable.centerId, usersTable.centerId),
+          eq(teacherYearConfirmationsTable.centerId, personalCenter),
           eq(teacherYearConfirmationsTable.doesNotTeach, true),
           eq(teacherYearConfirmationsTable.status, "confirmed"),
         )))

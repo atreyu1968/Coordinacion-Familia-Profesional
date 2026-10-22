@@ -37,6 +37,7 @@ export default function PerfilScreen() {
   const queryClient = useQueryClient();
   const teachingProfileMut = useUpdateMyTeachingProfile();
   const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? "");
+  const personalCenterId = user?.role === "teacher" ? user.centerId : user?.teachingCenterId ?? user?.centerId;
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -46,7 +47,7 @@ export default function PerfilScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [teachingCenterId, setTeachingCenterId] = useState<number | null>(
-    user?.centerId ?? null,
+    personalCenterId ?? null,
   );
   const [teachingModuleIds, setTeachingModuleIds] = useState<number[] | null>(
     null,
@@ -90,12 +91,12 @@ export default function PerfilScreen() {
     : [];
   const selectedModuleIds =
     teachingModuleIds ??
-    (profileMatchesSelection && teachingCenterId === user?.centerId
+    (profileMatchesSelection && teachingCenterId === personalCenterId
       ? teachingProfileQuery.data?.moduleIds ?? []
       : []);
   const selectedNoTeaching =
     teachingNoTeaching ??
-    (profileMatchesSelection && teachingCenterId === user?.centerId
+    (profileMatchesSelection && teachingCenterId === personalCenterId
       ? teachingProfileQuery.data?.doesNotTeach ?? false
       : false);
   const modulesByCycle = availableModules.reduce<
@@ -108,23 +109,22 @@ export default function PerfilScreen() {
   const selectedCenter =
     centersQuery.data?.find((center) => center.id === teachingCenterId) ?? null;
   const isSavedCenterSelected =
-    teachingCenterId === (user?.centerId ?? null);
+    teachingCenterId === (personalCenterId ?? null);
   const mustCompleteTeachingProfile =
     isTeacher &&
-    (user?.centerId == null ||
-      user?.provinceId == null ||
+    (personalCenterId == null ||
       (isSavedCenterSelected &&
         (teachingProfileQuery.isPending ||
           teachingProfileQuery.isError ||
           !teachingProfileQuery.data ||
-          teachingProfileQuery.data.targetCenterId !== user.centerId ||
-          user.provinceId !== teachingProfileQuery.data.targetProvinceId ||
+          teachingProfileQuery.data.targetCenterId !== personalCenterId ||
+          teachingProfileQuery.data.targetProvinceId == null ||
+          (user?.role === "teacher" &&
+            user.provinceId !== teachingProfileQuery.data.targetProvinceId) ||
           (Boolean(teachingProfileQuery.data.activeYear) &&
             teachingProfileQuery.data.moduleIds.length === 0 &&
             !teachingProfileQuery.data.doesNotTeach))));
   const filteredCenters = (centersQuery.data ?? []).filter((center) =>
-    (user?.role !== "coordinator" || center.provinceId === user.provinceId) &&
-    (user?.role !== "department_head" || center.id === user.centerId) &&
     center.name.toLocaleLowerCase().includes(centerSearch.trim().toLocaleLowerCase()),
   );
 
@@ -191,7 +191,7 @@ export default function PerfilScreen() {
 
   const onTeachingCenterSelect = (centerId: number) => {
     setTeachingCenterId(centerId);
-    setTeachingModuleIds(centerId === user?.centerId ? null : []);
+    setTeachingModuleIds(centerId === personalCenterId ? null : []);
     setTeachingNoTeaching(false);
     setShowCenterPicker(false);
     setCenterSearch("");
@@ -245,7 +245,9 @@ export default function PerfilScreen() {
       });
       await updateUser(updated.user as User);
       getSocket()?.connect();
-      setTeachingCenterId(updated.user.centerId ?? null);
+      setTeachingCenterId(updated.user.role === "teacher"
+        ? updated.user.centerId ?? null
+        : updated.user.teachingCenterId ?? updated.user.centerId ?? null);
       setTeachingModuleIds(updated.moduleIds);
       setTeachingNoTeaching(updated.doesNotTeach);
       setTeachingSuccess(

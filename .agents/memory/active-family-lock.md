@@ -33,10 +33,18 @@ column (NOT the resolved value, which always falls back to the default).
 non-default family ONCE; locking on the raw column (not the resolved fallback)
 allows that one selection, then freezes it.
 
-**Why:** family is a CENTER-level concept — it lives ONLY on `centers.families`
-(jsonb array); cycles and modules remain global catalog rows without a family
-column. Family-facing lists must derive membership through active-family centers'
-training offers rather than inventing a family attribute on the catalog rows.
+**Why:** centers store `families`, but cycles and modules are global catalog
+rows without a family column. The official Grados D source assigns families
+to cycles; requiring a center's training offer to discover that membership
+hid nearly every official module on installations without offers.
+
+**How to apply — module/cycle catalog:** match known official cycles against
+their source family membership, including cycles cross-listed in two families;
+only custom or unknown cycles fall back to active-family centers' training
+offers. A center's offer in the wrong family must not make an official module
+visible outside its official family. Center-specific modules additionally
+require their own center to belong to the active family. Keep the catalog
+available even if no center has recorded an offer yet.
 
 **How to apply — every center-read and center-by-id surface must add the
 predicate** `families @> '["<activeFamily>"]'::jsonb`:
@@ -58,8 +66,8 @@ predicate** `families @> '["<activeFamily>"]'::jsonb`:
   with a cycle-name fallback for legacy rows). Existing out-of-family forum data
   remains stored but is hidden and inaccessible, not deleted.
 - `GET /modules`, `GET /cycles`, and `GET /cycles/:id/modules` use the same
-  family membership rules as the forum. Cycles are listed only when offered by
-  an active-family center; module totals count only active-family modules.
+  official-family rules. Official cycles do not require a local offer;
+  module totals count only active-family modules.
 
 **Deliberately left scope-based (NOT family-filtered):** events, surveys,
 alerts, usersByRole — these are province/regional scoped, not center-bound, so

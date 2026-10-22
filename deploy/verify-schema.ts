@@ -463,7 +463,7 @@ for (const column of expected.columns) {
       (pendingTables.has(column.table) ||
        (column.table === "collaborative_spaces" && column.column === "provisioning_started_at") ||
        (column.table === "users" &&
-        ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version"].includes(column.column)) ||
+        ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version", "teaching_center_id"].includes(column.column)) ||
        (column.table === "coordinator_mail_cases" && column.column === "group_id") ||
        (column.table === "invitations" &&
          ["max_uses", "used_count"].includes(column.column)) ||

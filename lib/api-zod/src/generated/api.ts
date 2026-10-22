@@ -1429,6 +1429,7 @@ export const LoginResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -1445,6 +1446,7 @@ export const GetCurrentUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -1473,6 +1475,7 @@ export const UpdateProfileResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 }).and(zod.object({
   "requiresReauthentication": zod.boolean().optional().describe('True when changing the password has revoked this session.'),
@@ -1500,6 +1503,7 @@ export const GetMyTeachingProfileResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 }),
   "activeYear": zod.string().nullable(),
@@ -1521,7 +1525,7 @@ export const GetMyTeachingProfileResponse = zod.object({
 
 
 /**
- * Available to teachers, department heads, coordinators and superadministrators. Derives province from the center and reconciles active-year assignments or an explicit no-teaching declaration. Coordinators must stay in their assigned province and department heads in their assigned management center; personal teaching edits never expand management privileges. The province is not accepted from the client.
+ * Available to teachers, department heads, coordinators and superadministrators. Derives the teaching province from the selected center and reconciles active-year assignments or an explicit no-teaching declaration. Personal teaching centers for administrative roles do not change their management center or province. Only modules of the active professional family are accepted.
  * @summary Update the authenticated user's teaching center, modules, or no-teaching declaration
  */
 
@@ -1543,6 +1547,7 @@ export const UpdateMyTeachingProfileResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 }),
   "activeYear": zod.string().nullable(),
@@ -1597,6 +1602,7 @@ export const RegisterWithTokenResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -1766,6 +1772,7 @@ export const ListUsersResponseItem = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -1841,6 +1848,7 @@ export const ListManagedUsersResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 }).and(zod.object({
   "canManage": zod.boolean().describe('Whether this caller may edit or change this account\'s access'),
@@ -1900,6 +1908,7 @@ export const GetUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -1928,6 +1937,7 @@ export const UpdateUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -4378,6 +4388,25 @@ export const CreateCalendarEntryResponse = zod.object({
 })
 
 
+/**
+ * @summary List active registered users available for a direct conversation
+ */
+export const listChatContactsQuerySearchMax = 100;
+
+
+
+export const ListChatContactsQueryParams = zod.object({
+  "search": zod.coerce.string().max(listChatContactsQuerySearchMax).optional()
+})
+
+export const ListChatContactsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher'])
+})
+export const ListChatContactsResponse = zod.array(ListChatContactsResponseItem)
+
+
 export const ListChatGroupsResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -5991,6 +6020,7 @@ export const ReactivateUserResponse = zod.object({
   "status": zod.string(),
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
   "createdAt": zod.coerce.date().optional()
 })
 

@@ -17,5 +17,10 @@ export interface User {
   provinceId?: number | null;
   /** @nullable */
   centerId?: number | null;
+  /**
+     * Personal teaching center for administrative roles; does not grant management permissions.
+     * @nullable
+     */
+  teachingCenterId?: number | null;
   createdAt?: Date;
 }

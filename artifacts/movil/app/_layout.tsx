@@ -55,11 +55,11 @@ function RootLayoutNav() {
   const router = useRouter();
   const isTeacher = Boolean(token && ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? ""));
   const teachingProfileQuery = useGetMyTeachingProfile(
-    { targetCenterId: user?.centerId ?? undefined },
+    { targetCenterId: (user?.role === "teacher" ? user.centerId : user?.teachingCenterId ?? user?.centerId) ?? undefined },
     {
       query: {
         queryKey: getGetMyTeachingProfileQueryKey({
-          targetCenterId: user?.centerId ?? undefined,
+          targetCenterId: (user?.role === "teacher" ? user.centerId : user?.teachingCenterId ?? user?.centerId) ?? undefined,
         }),
         enabled: isTeacher && !locked,
         retry: false,
@@ -117,10 +117,10 @@ function RootLayoutNav() {
     const incomplete =
       teachingProfileQuery.isError ||
       !profile ||
-      profile.user.centerId == null ||
-      profile.user.provinceId == null ||
-      profile.targetCenterId !== profile.user.centerId ||
-      profile.user.provinceId !== profile.targetProvinceId ||
+      (profile.user.role === "teacher" ? profile.user.centerId : profile.user.teachingCenterId ?? profile.user.centerId) == null ||
+      profile.targetProvinceId == null ||
+      profile.targetCenterId !== (profile.user.role === "teacher" ? profile.user.centerId : profile.user.teachingCenterId ?? profile.user.centerId) ||
+      (profile.user.role === "teacher" && profile.user.provinceId !== profile.targetProvinceId) ||
       (Boolean(profile.activeYear) &&
         profile.moduleIds.length === 0 &&
         !profile.doesNotTeach);

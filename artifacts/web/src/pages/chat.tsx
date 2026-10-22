@@ -6,8 +6,13 @@ import {
   useMemo,
   type FormEvent,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useListChatGroups,
+  getListChatGroupsQueryKey,
+  useListChatContacts,
+  getListChatContactsQueryKey,
+  useCreateChatGroup,
   listGroupMessages,
   useSendGroupMessage,
   useEditMessage,
@@ -1245,11 +1250,23 @@ function ConversationView({
 // Page
 // ---------------------------------------------------------------------------
 export default function ChatPage() {
+  const queryClient = useQueryClient();
   const moduleParam = useModuleParam();
   const token = useMemo(() => localStorage.getItem(TOKEN_KEY), []);
   const { data: groups = [], isLoading, refetch } = useListChatGroups();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+  const {
+    data: contacts = [],
+    isLoading: contactsLoading,
+    isError: contactsError,
+    refetch: refetchContacts,
+  } = useListChatContacts(undefined, {
+    query: { queryKey: getListChatContactsQueryKey(), enabled: contactsOpen, staleTime: 0 },
+  });
+  const createDirect = useCreateChatGroup();
   const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
   const [didPreselect, setDidPreselect] = useState(false);
 
@@ -1295,17 +1312,90 @@ export default function ChatPage() {
   }, [groups, filter, activeTab]);
 
   const selected = groups.find((g) => g.id === selectedId) ?? null;
+  const matchingContacts = contacts.filter((contact) =>
+    contact.name.toLocaleLowerCase().includes(contactSearch.trim().toLocaleLowerCase()),
+  );
+  const startDirect = (contact: (typeof contacts)[number]) => {
+    if (createDirect.isPending) return;
+    createDirect.mutate(
+      { data: { name: contact.name, type: "direct", memberIds: [contact.id] } },
+      {
+        onSuccess: (group) => {
+          queryClient.setQueryData<ChatGroup[]>(getListChatGroupsQueryKey(), (previous = []) =>
+            previous.some((conversation) => conversation.id === group.id) ? previous : [group, ...previous],
+          );
+          setContactsOpen(false);
+          setSelectedId(group.id);
+          setActiveTab("people");
+          void refetch();
+        },
+        onError: () => toast({
+          title: "No se pudo iniciar la conversación",
+          description: "Comprueba la conexión y vuelve a intentarlo.",
+          variant: "destructive",
+        }),
+      },
+    );
+  };
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <MessageCircle className="w-6 h-6 text-primary" /> Mensajes
-        </h1>
-        <p className="text-muted-foreground">
-          Conversaciones directas y de grupo con tu profesorado y coordinación.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary" /> Mensajes
+          </h1>
+          <p className="text-muted-foreground">
+            Conversaciones directas y de grupo con tu profesorado y coordinación.
+          </p>
+        </div>
+        <Button type="button" onClick={() => setContactsOpen(true)}>Nuevo mensaje</Button>
       </div>
+      <Dialog open={contactsOpen} onOpenChange={setContactsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo mensaje</DialogTitle>
+            <DialogDescription>Elige a una persona registrada para conversar.</DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            maxLength={100}
+            value={contactSearch}
+            onChange={(event) => setContactSearch(event.target.value)}
+            placeholder="Buscar por nombre"
+            aria-label="Buscar personas registradas"
+          />
+          <div className="max-h-[min(55vh,22rem)] overflow-y-auto overscroll-contain rounded-md border">
+            {contactsLoading ? (
+              <p className="p-4 text-sm text-muted-foreground">Cargando personas…</p>
+            ) : contactsError ? (
+              <div className="p-4 text-sm">
+                No se pudieron cargar los contactos.{" "}
+                <button type="button" onClick={() => void refetchContacts()} className="text-primary underline">
+                  Reintentar
+                </button>
+              </div>
+            ) : matchingContacts.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">
+                {contactSearch.trim() ? "No hay personas con ese nombre." : "No hay otras cuentas activas."}
+              </p>
+            ) : matchingContacts.map((contact) => (
+              <button
+                key={contact.id}
+                type="button"
+                disabled={createDirect.isPending}
+                onClick={() => startDirect(contact)}
+                className="flex w-full items-center gap-3 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-accent disabled:opacity-50"
+              >
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback>{initials(contact.name)}</AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 truncate text-sm">{contact.name}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
@@ -1371,7 +1461,7 @@ export default function ChatPage() {
                     {filter.trim()
                       ? "No se encontraron conversaciones."
                       : activeTab === "people"
-                        ? "No tienes conversaciones con personas."
+                        ? "No tienes conversaciones. Pulsa «Nuevo mensaje» para ver las personas registradas."
                         : "Aún no perteneces a ningún grupo."}
                   </p>
                 ) : (

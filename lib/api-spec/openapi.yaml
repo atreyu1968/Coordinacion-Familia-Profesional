@@ -1142,7 +1142,7 @@ paths:
       operationId: updateMyTeachingProfile
       tags: [auth]
       summary: Update the authenticated user's teaching center, modules, or no-teaching declaration
-      description: Available to teachers, department heads, coordinators and superadministrators. Derives province from the center and reconciles active-year assignments or an explicit no-teaching declaration. Coordinators must stay in their assigned province and department heads in their assigned management center; personal teaching edits never expand management privileges. The province is not accepted from the client.
+      description: Available to teachers, department heads, coordinators and superadministrators. Derives the teaching province from the selected center and reconciles active-year assignments or an explicit no-teaching declaration. Personal teaching centers for administrative roles do not change their management center or province. Only modules of the active professional family are accepted.
       security:
         - bearerAuth: []
       requestBody:
@@ -3698,6 +3698,32 @@ paths:
   # ---------------------------------------------------------------------------
   # Messaging
   # ---------------------------------------------------------------------------
+  /chat/contacts:
+    get:
+      operationId: listChatContacts
+      tags: [messaging]
+      summary: List active registered users available for a direct conversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+            maxLength: 100
+      responses:
+        "200":
+          description: Minimal contact directory without email addresses or administrative scope data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatContact"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
   /chat/groups:
     get:
       operationId: listChatGroups
@@ -6261,6 +6287,10 @@ components:
         centerId:
           type: integer
           nullable: true
+        teachingCenterId:
+          type: integer
+          nullable: true
+          description: Personal teaching center for administrative roles; does not grant management permissions.
         createdAt:
           type: string
           format: date-time
@@ -8320,6 +8350,16 @@ components:
           type: string
           nullable: true
       required: [title, date]
+    ChatContact:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+      required: [id, name, role]
     ChatGroup:
       type: object
       properties:

@@ -117,7 +117,9 @@ describe("shared invitation registration limits", () => {
     expect(teacher.status).toBe(201);
     invitationIds.push(teacher.body.invitation.id);
     expect(teacher.body.invitation).toMatchObject({ provinceId: province, centerId: center });
-    const unassigned = await createUser({ role: "coordinator" });
+    const unassigned = await createUser({
+      role: "coordinator", provinceId: null, centerId: null, incompleteProfile: true,
+    });
     expect((await request(app).post("/api/invitations").set(authHeader(unassigned.token))
       .send({ role: "department_head" })).status).toBe(403);
   });

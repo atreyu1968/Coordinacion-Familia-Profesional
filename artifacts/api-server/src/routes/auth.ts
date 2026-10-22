@@ -40,6 +40,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { disconnectUserSessions } from "../lib/realtime";
 import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { teachingCenterId } from "../lib/teachingProfileAccess";
 import { logger } from "../lib/logger";
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
@@ -219,7 +220,7 @@ router.get(
     }
 
     const caller = req.user!;
-    const targetCenterId = query.data.targetCenterId ?? caller.centerId;
+    const targetCenterId = query.data.targetCenterId ?? teachingCenterId(caller);
     const activeYear = await getActiveAcademicYear();
     const activeFamily = await getActiveFamily();
 
@@ -286,7 +287,7 @@ router.get(
     if (
       activeYear &&
       targetCenter &&
-      caller.centerId === targetCenter.id
+      teachingCenterId(caller) === targetCenter.id
     ) {
       const assignments = await db
         .select({ moduleId: teachingAssignmentsTable.moduleId })
@@ -312,7 +313,7 @@ router.get(
     if (
       activeYear &&
       targetCenter &&
-      caller.centerId === targetCenter.id
+      teachingCenterId(caller) === targetCenter.id
     ) {
       const [declaration] = await db
         .select({ doesNotTeach: teacherYearConfirmationsTable.doesNotTeach })
@@ -408,12 +409,6 @@ router.patch(
         .for("update");
       if (!center) return { kind: "center" as const };
       if (center.provinceId == null) return { kind: "province" as const };
-      // Personal teaching data must not change administrative scope.
-      if (
-        (caller.role === "coordinator" && center.provinceId !== lockedUser.provinceId) ||
-        (caller.role === "department_head" && center.id !== lockedUser.centerId)
-      ) return { kind: "center" as const };
-
       if (activeYear && moduleIds.length > 0) {
         const validModules = await tx
           .select({
@@ -444,7 +439,9 @@ router.patch(
 
       const [updatedUser] = await tx
         .update(usersTable)
-        .set({ centerId: center.id, provinceId: center.provinceId })
+        .set(caller.role === "teacher"
+          ? { centerId: center.id, provinceId: center.provinceId, teachingCenterId: null }
+          : { teachingCenterId: center.id })
         .where(eq(usersTable.id, caller.id))
         .returning();
       if (!updatedUser) return { kind: "user" as const };

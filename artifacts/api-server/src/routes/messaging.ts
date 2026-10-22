@@ -8,6 +8,8 @@ import {
   asc,
   isNull,
   notExists,
+  ilike,
+  ne,
   sql,
 } from "drizzle-orm";
 import {
@@ -27,6 +29,8 @@ import {
 } from "@workspace/db";
 import {
   ListChatGroupsResponse,
+  ListChatContactsQueryParams,
+  ListChatContactsResponse,
   CreateChatGroupBody,
   SyncModuleChatGroupsResponse,
   MarkChatReadParams,
@@ -390,6 +394,31 @@ async function loadAssembledMessage(messageId: number, callerId: number) {
 // ---------------------------------------------------------------------------
 // Chat groups
 // ---------------------------------------------------------------------------
+router.get("/chat/contacts", requireAuth, async (req, res): Promise<void> => {
+  const query = ListChatContactsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ message: "Búsqueda de contactos no válida" });
+    return;
+  }
+  const filters = [
+    eq(usersTable.status, "active"),
+    isNull(usersTable.deletedAt),
+    ne(usersTable.id, req.user!.id),
+  ];
+  const search = query.data.search?.trim();
+  if (search) filters.push(ilike(usersTable.name, `%${search}%`));
+
+  // Direct messages already permit active counterparts across center/province.
+  // Expose only the minimum necessary fields, not the administrative directory.
+  const contacts = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    role: usersTable.role,
+  }).from(usersTable).where(and(...filters))
+    .orderBy(asc(usersTable.name), asc(usersTable.id));
+  res.json(ListChatContactsResponse.parse(contacts));
+});
+
 router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   await deleteEmptyChatGroups();
   const caller = req.user!;
