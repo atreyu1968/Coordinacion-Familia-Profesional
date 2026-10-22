@@ -11,6 +11,12 @@ Los borradores de IA requieren una petición explícita y consentimiento; nunca 
 
 **How to apply:** al ampliar la bandeja, conservar aislamiento por usuario, mínima autorización OAuth, configuración desde administración y confirmación humana de todo envío.
 
+En el intercambio OAuth, Google puede omitir un token de renovación nuevo cuando ya había concedido acceso sin conexión. Si el registro de esa cuenta ya guarda uno cifrado, conservarlo; no marcar como conectada una cuenta nueva sin token renovable.
+
+**Why:** el token de acceso caduca y la importación en segundo plano necesita renovación; exigir siempre uno nuevo puede hacer que una autorización válida no llegue a guardarse.
+
+**How to apply:** aceptar la respuesta OAuth con token de acceso aunque falte el de renovación, reutilizar solo el token previo del mismo propietario y mostrar un error explícito cuando no exista ninguno.
+
 El dominio de instalación indicado por el usuario es `coordinacionfp.org`; la URI de retorno de Gmail para esa instalación es `https://coordinacionfp.org/api/coordinator-mail/gmail/callback`.
 
 **Why:** el usuario corrigió expresamente el dominio antiguo que aparecía en la configuración OAuth.
