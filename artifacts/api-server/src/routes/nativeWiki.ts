@@ -200,7 +200,7 @@ async function getSectionPermissions(
   moduleId: number | null,
 ): Promise<WikiActionPermissions> {
   if (moduleId === null) {
-    return user.role === "superadmin"
+    return user.role === "superadmin" || user.role === "coordinator"
       ? { ...ALL_WIKI_PERMISSIONS }
       : { ...NO_WIKI_PERMISSIONS };
   }

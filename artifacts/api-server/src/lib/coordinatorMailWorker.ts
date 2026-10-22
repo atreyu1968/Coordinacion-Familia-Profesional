@@ -195,7 +195,7 @@ async function syncOneMessage(): Promise<boolean> {
   try {
     const query = account.syncQuery ?? (account.lastSyncAt
       ? `after:${Math.max(0, Math.floor(account.lastSyncAt.getTime() / 1000) - 172800)} -in:spam -in:trash -in:drafts`
-      : "newer_than:30d -in:spam -in:trash -in:drafts");
+      : "-in:spam -in:trash -in:drafts");
     const page = await gmailQuery(account, {
       maxResults: "1", q: query,
       ...(account.syncPageToken ? { pageToken: account.syncPageToken } : {}),

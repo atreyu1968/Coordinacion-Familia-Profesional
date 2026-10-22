@@ -1,7 +1,7 @@
 import { getSettings } from "./settings";
 import { resolveNextcloudConfig, resolveNextcloudUrl, type NextcloudConfig } from "./nextcloud";
 
-export type GroupFolder = { id: number; mountPoint: string; groups: Record<string, number> };
+export type GroupFolder = { id: number; mountPoint: string; groups: Record<string, number>; advancedPermissions: boolean };
 export type GroupFolderFile = { folderId: number; mountPoint: string; path: string[]; fileName: string; etag: string; size: number };
 
 function auth(config: NextcloudConfig) {
@@ -65,7 +65,11 @@ export async function listManagedGroupFolders(): Promise<{ publicUrl: string; fo
       const rights = typeof val === "object" && val !== null ? Number((val as Record<string, unknown>).permissions) : Number(val);
       if (Number.isFinite(rights) && (rights & 1) === 1) groups[key] = rights;
     }
-    if (Number.isSafeInteger(id) && id > 0 && mountPoint && !/[\/\\\x00-\x1f]/.test(mountPoint)) folders.push({ id, mountPoint, groups });
+    const advancedPermissions = row.acl === true || row.acl === 1 || row.acl === "1" ||
+      row.advanced_permissions === true || row.advanced_permissions === 1 || row.advanced_permissions === "1";
+    if (Number.isSafeInteger(id) && id > 0 && mountPoint && !/[\/\\\x00-\x1f]/.test(mountPoint)) {
+      folders.push({ id, mountPoint, groups, advancedPermissions });
+    }
   }
   return { publicUrl, folders };
 }

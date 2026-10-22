@@ -88,7 +88,11 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
     for (const module of modules) {
       const mount = moduleFolderName({ moduleId: module.id, name: module.name, code: module.code });
       const folder = byName.get(mount);
-      if (folder && folder.groups[moduleGroupId(module.id)] != null) allowedFolders.set(folder.id, { title: `Módulo ${module.name}`, mount });
+      if (folder?.advancedPermissions) {
+        warnings.push(`Nextcloud: «${mount}» usa permisos avanzados; no se indexará para evitar que la cuenta técnica eluda una restricción de archivo.`);
+      } else if (folder && folder.groups[moduleGroupId(module.id)] != null) {
+        allowedFolders.set(folder.id, { title: `Módulo ${module.name}`, mount });
+      }
     }
     const spaces = await db.select({ id: collaborativeSpacesTable.id, name: collaborativeSpacesTable.name }).from(collaborativeSpacesTable);
     const memberships = user.role === "superadmin" ? spaces : await db.select({ id: collaborativeSpacesTable.id, name: collaborativeSpacesTable.name })
@@ -97,7 +101,11 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
     for (const space of memberships) {
       const mount = independentSpaceFolderName(space.id);
       const folder = byName.get(mount);
-      if (folder && folder.groups[independentSpaceGroupId(space.id)] != null) allowedFolders.set(folder.id, { title: `Espacio ${space.name}`, mount });
+      if (folder?.advancedPermissions) {
+        warnings.push(`Nextcloud: «${mount}» usa permisos avanzados; no se indexará para evitar que la cuenta técnica eluda una restricción de archivo.`);
+      } else if (folder && folder.groups[independentSpaceGroupId(space.id)] != null) {
+        allowedFolders.set(folder.id, { title: `Espacio ${space.name}`, mount });
+      }
     }
     for (const [folderId, meta] of allowedFolders) {
       const files = await listGroupFolderFiles(folderId);
@@ -202,6 +210,14 @@ async function collect(user: User): Promise<{ items: Candidate[]; warnings: stri
   }
   const mail = await db.select().from(coordinatorMailAccountsTable).where(eq(coordinatorMailAccountsTable.userId, user.id));
   if (mail.length && ["coordinator", "superadmin"].includes(user.role)) {
+    if (mail.some(account => account.syncStatus === "queued" || account.syncStatus === "syncing" || account.lastSyncAt == null)) {
+      warnings.push("La importación del historial completo de Gmail sigue en curso; los correos aún no importados no se han consultado.");
+    }
+    for (const account of mail) {
+      if (account.syncStatus === "error" || account.syncStatus === "needs_reauthorization") {
+        warnings.push(`Gmail (${account.email}): la sincronización está detenida; el índice solo incluye los mensajes importados anteriormente.`);
+      }
+    }
     const cases = await db.select().from(coordinatorMailCasesTable).where(eq(coordinatorMailCasesTable.ownerId, user.id));
     for (const c of cases) {
       const msgs = await db.select().from(coordinatorMailMessagesTable).where(and(
@@ -335,7 +351,11 @@ export async function processOneAiKnowledgeJob() {
     // A user's explicit sync refreshes the source snapshot before any results
     // can be sent to an AI provider. The worker never crawls every remote folder
     // once per file.
-    const snapshot = candidateSnapshots.get(claimed.row.userId);
+    let snapshot = candidateSnapshots.get(claimed.row.userId);
+    if (!snapshot || snapshot.expiresAt <= Date.now()) {
+      await synchronizeAiKnowledge(claimed.row.userId);
+      snapshot = candidateSnapshots.get(claimed.row.userId);
+    }
     const item = snapshot && snapshot.expiresAt > Date.now()
       ? snapshot.items.find(x => x.key === claimed.row.sourceKey && x.version === claimed.row.version)
       : undefined;

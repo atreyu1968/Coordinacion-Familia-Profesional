@@ -16,7 +16,9 @@ import {
   addMembership,
   authHeader,
   cleanup,
+  createCenter,
   createModule as createBaseModule,
+  createProvince,
   createUser,
 } from "./helpers";
 import { extractText, indexWikiAttachment } from "../src/lib/wikiIndexing";
@@ -66,8 +68,8 @@ async function makeUser(options: Parameters<typeof createUser>[0] = {}) {
   return created;
 }
 
-async function makeModule() {
-  const id = await createBaseModule({ name: `${UNIQUE} module` });
+async function makeModule(centerId?: number) {
+  const id = await createBaseModule({ name: `${UNIQUE} module`, ...(centerId ? { centerId } : {}) });
   fixture.moduleIds.push(id);
   return id;
 }
@@ -226,8 +228,9 @@ describe("native wiki authenticated reads and search", () => {
 });
 
 describe("native wiki edit grants", () => {
-  it("restricts general-page creation and edits to superadmins", async () => {
+  it("lets coordinators and superadmins manage general documentation, but not teachers", async () => {
     const teacher = await makeUser();
+    const coordinator = await makeUser({ role: "coordinator" });
     const admin = await makeUser({ role: "superadmin" });
     const body = {
       moduleId: null,
@@ -245,7 +248,7 @@ describe("native wiki edit grants", () => {
 
     const created = await request(app)
       .post("/api/wiki/pages")
-      .set(authHeader(admin.token))
+      .set(authHeader(coordinator.token))
       .send(body);
     expect(created.status).toBe(201);
     fixture.pageIds.push(created.body.id);
@@ -262,6 +265,30 @@ describe("native wiki edit grants", () => {
       .send({ content: "After" });
     expect(permittedEdit.status).toBe(200);
     expect(permittedEdit.body.content).toBe("After");
+  });
+
+  it("lets coordinators manage module documentation only in their province", async () => {
+    const province = await createProvince();
+    const center = await createCenter(province);
+    const otherProvince = await createProvince();
+    const otherCenter = await createCenter(otherProvince);
+    const ownModule = await makeModule(center);
+    const otherModule = await makeModule(otherCenter);
+    const coordinator = await makeUser({ role: "coordinator", provinceId: province });
+    const ownPage = await makePage({ userId: coordinator.user.id, moduleId: ownModule });
+    const otherPage = await makePage({ userId: coordinator.user.id, moduleId: otherModule });
+
+    const permitted = await request(app)
+      .patch(`/api/wiki/pages/${ownPage}`)
+      .set(authHeader(coordinator.token))
+      .send({ content: "Contenido provincial actualizado" });
+    expect(permitted.status).toBe(200);
+
+    const denied = await request(app)
+      .patch(`/api/wiki/pages/${otherPage}`)
+      .set(authHeader(coordinator.token))
+      .send({ content: "Cambio fuera de ámbito" });
+    expect(denied.status).toBe(403);
   });
 
   it("requires an active module edit grant and limits coordinator management to active members", async () => {

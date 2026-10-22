@@ -133,7 +133,7 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   | grep -qx t
 echo "==> Testing bounded and unlimited invitations on the isolated database"
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  pnpm --filter @workspace/api-server exec vitest run test/invitations.test.ts test/event-certificates.test.ts test/event-accreditations.test.ts test/meeting-minutes.test.ts
+  pnpm --filter @workspace/api-server exec vitest run test/invitations.test.ts test/event-certificates.test.ts test/event-accreditations.test.ts test/meeting-minutes.test.ts test/native-wiki.test.ts test/ai-knowledge-nextcloud.unit.test.ts
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
