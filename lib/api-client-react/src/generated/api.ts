@@ -250,6 +250,9 @@ import type {
   SyncModuleChatGroupsResult,
   TeacherYearConfirmation,
   TeachingAssignment,
+  TestTeacherCleanupInput,
+  TestTeacherCleanupPreview,
+  TestTeacherCleanupResult,
   TrainingOffer,
   TransferInput,
   UpdateBrandingInput,
@@ -5794,6 +5797,195 @@ export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TErr
 
 
 
+
+export const getPreviewTestTeacherCleanupUrl = () => {
+
+
+
+
+  return `/api/users/test-teachers/cleanup`
+}
+
+/**
+ * @summary Superadministrator preview of permanent cleanup of the four reserved test teacher accounts
+ */
+export const previewTestTeacherCleanup = async ( options?: Parameters<typeof customFetch>[1]): Promise<TestTeacherCleanupPreview> => {
+
+  return customFetch<TestTeacherCleanupPreview>(getPreviewTestTeacherCleanupUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewTestTeacherCleanupQueryKey = () => {
+    return [
+    `/api/users/test-teachers/cleanup`
+    ] as const;
+    }
+
+
+export const getPreviewTestTeacherCleanupQueryOptions = <TData = Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewTestTeacherCleanupQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewTestTeacherCleanup>>> = ({ signal }) => previewTestTeacherCleanup({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PreviewTestTeacherCleanupQueryResult = NonNullable<Awaited<ReturnType<typeof previewTestTeacherCleanup>>>
+export type PreviewTestTeacherCleanupQueryError = ErrorType<unknown>
+
+
+export function usePreviewTestTeacherCleanup<TData = Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewTestTeacherCleanup>>,
+          TError,
+          Awaited<ReturnType<typeof previewTestTeacherCleanup>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewTestTeacherCleanup<TData = Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewTestTeacherCleanup>>,
+          TError,
+          Awaited<ReturnType<typeof previewTestTeacherCleanup>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewTestTeacherCleanup<TData = Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Superadministrator preview of permanent cleanup of the four reserved test teacher accounts
+ */
+
+export function usePreviewTestTeacherCleanup<TData = Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewTestTeacherCleanup>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPreviewTestTeacherCleanupQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPurgeTestTeachersUrl = () => {
+
+
+
+
+  return `/api/users/test-teachers/cleanup`
+}
+
+/**
+ * @summary Permanently remove only the reserved test teachers after explicit confirmation
+ */
+export const purgeTestTeachers = async (testTeacherCleanupInput: TestTeacherCleanupInput, options?: Parameters<typeof customFetch>[1]): Promise<TestTeacherCleanupResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TestTeacherCleanupResult>(getPurgeTestTeachersUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(testTeacherCleanupInput)
+  }
+);}
+
+
+
+
+
+export const getPurgeTestTeachersMutationKey = () => ['purgeTestTeachers'] as const;
+
+export const getPurgeTestTeachersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purgeTestTeachers>>, TError,PurgeTestTeachersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof purgeTestTeachers>>, TError,PurgeTestTeachersMutationVariables, TContext> => {
+
+const mutationKey = getPurgeTestTeachersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof purgeTestTeachers>>, PurgeTestTeachersMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  purgeTestTeachers(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PurgeTestTeachersMutationResult = NonNullable<Awaited<ReturnType<typeof purgeTestTeachers>>>
+    export type PurgeTestTeachersMutationBody = BodyType<TestTeacherCleanupInput>
+    export type PurgeTestTeachersMutationError = ErrorType<void>
+    export type PurgeTestTeachersMutationVariables = {data: BodyType<TestTeacherCleanupInput>}
+
+    /**
+ * @summary Permanently remove only the reserved test teachers after explicit confirmation
+ */
+export const usePurgeTestTeachers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof purgeTestTeachers>>, TError,PurgeTestTeachersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof purgeTestTeachers>>,
+        TError,
+        PurgeTestTeachersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPurgeTestTeachersMutationOptions(options), queryClient);
+    }
 
 export const getListManagedUsersUrl = (params?: ListManagedUsersParams,) => {
   const normalizedParams = new URLSearchParams();

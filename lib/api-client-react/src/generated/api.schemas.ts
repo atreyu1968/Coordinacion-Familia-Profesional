@@ -890,6 +890,7 @@ export const UserAuditEventAction = {
   update: 'update',
   deactivate: 'deactivate',
   reactivate: 'reactivate',
+  purge_test_teachers: 'purge_test_teachers',
 } as const;
 
 export interface UserAuditEvent {
@@ -905,6 +906,44 @@ export interface UserAuditEvent {
 export interface UserAuditPage {
   events: UserAuditEvent[];
   hasMore: boolean;
+}
+
+export interface TestTeacherAccount {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface TestTeacherHistoryCount {
+  label: string;
+  count: number;
+}
+
+export interface TestTeacherCleanupPreview {
+  accounts: TestTeacherAccount[];
+  assignments: number;
+  history: TestTeacherHistoryCount[];
+  blockedReasons: string[];
+  fingerprint: string;
+}
+
+export type TestTeacherCleanupInputConfirmation = typeof TestTeacherCleanupInputConfirmation[keyof typeof TestTeacherCleanupInputConfirmation];
+
+
+export const TestTeacherCleanupInputConfirmation = {
+  ELIMINAR_DOCENTES_DE_PRUEBA: 'ELIMINAR DOCENTES DE PRUEBA',
+} as const;
+
+export interface TestTeacherCleanupInput {
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+  confirmation: TestTeacherCleanupInputConfirmation;
+}
+
+export interface TestTeacherCleanupResult {
+  accountsDeleted: number;
+  assignmentsDeleted: number;
+  historyDeleted: number;
 }
 
 export type TeacherProfileIntegrityMissingItem = typeof TeacherProfileIntegrityMissingItem[keyof typeof TeacherProfileIntegrityMissingItem];

@@ -66,6 +66,19 @@ if [[ "${1:-}" == "--ai-knowledge-only" ]]; then
   exit 0
 fi
 
+run_test_teacher_cleanup_tests() {
+  create_test_database coordina_test_teacher_cleanup
+  migrate_database coordina_test_teacher_cleanup
+  COORDINA_CLEANUP_TEST_ROOT="${TEST_ROOT}" \
+    DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_test_teacher_cleanup?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run --config vitest.test-teachers.config.ts
+}
+if [[ "${1:-}" == "--test-teachers-only" ]]; then
+  run_test_teacher_cleanup_tests
+  exit 0
+fi
+
+run_test_teacher_cleanup_tests
 run_ai_knowledge_tests
 
 echo "==> Testing an empty self-hosted database"

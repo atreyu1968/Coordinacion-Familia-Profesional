@@ -7,7 +7,7 @@ import { ROLE_LABELS } from "@/lib/user-management";
 const labels: Record<string, string> = {
   name: "Nombre", role: "Rol", centerId: "Centro", provinceId: "Provincia", status: "Estado",
 };
-const actions = { update: "Edición", deactivate: "Desactivación", reactivate: "Reactivación" };
+const actions = { update: "Edición", deactivate: "Desactivación", reactivate: "Reactivación", purge_test_teachers: "Eliminación definitiva de datos de prueba" };
 
 export function UserAuditDialog({ user, onClose, centers, provinces }: {
   user: ManagedUser;

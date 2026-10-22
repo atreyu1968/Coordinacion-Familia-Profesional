@@ -15,3 +15,5 @@ export const db = drizzle(pool, { schema });
 
 export * from "./schema";
 export * from "./moduleChat";
+export * from "./testTeacherAccounts";
+export type { PoolClient } from "pg";

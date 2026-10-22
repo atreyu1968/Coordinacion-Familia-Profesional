@@ -27,6 +27,7 @@ import {
 import { changeAccount } from "../lib/accountAudit";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
 import { teachingProfilePredicates } from "../lib/teachingProfileAccess";
+import { testTeacherCleanupRouter } from "./testTeacherCleanup";
 import {
   requireAuth,
   requireRole,
@@ -37,6 +38,7 @@ import {
 } from "../middlewares/auth";
 
 const router: IRouter = Router();
+router.use(testTeacherCleanupRouter);
 
 function mayManageAccount(caller: User, target: User): boolean {
   return caller.id !== target.id &&

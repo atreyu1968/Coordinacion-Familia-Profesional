@@ -29,6 +29,7 @@ import {
 } from "@/lib/user-management";
 import { UserEditDialog } from "@/components/user-edit-dialog";
 import { UserAuditDialog } from "@/components/user-audit-dialog";
+import { TestTeacherCleanupDialog } from "@/components/test-teacher-cleanup-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,11 +265,14 @@ export default function UsuariosPage() {
           Personas con acceso a la plataforma {appName}.
         </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {isSuperadmin && <TestTeacherCleanupDialog />}
         {["superadmin", "coordinator", "department_head"].includes(user?.role ?? "") && (
           <Button variant="outline" asChild>
             <Link href="/invitaciones">Gestionar invitaciones</Link>
           </Button>
         )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

@@ -9,6 +9,10 @@ import {
   modulesTable,
   teachingAssignmentsTable,
   syncModuleChatGroup,
+  accountAuditTable,
+  TEST_TEACHER_EMAILS,
+  TEST_TEACHER_LOCK,
+  TEST_TEACHER_PURGE_ACTION,
 } from "@workspace/db";
 
 // Seeds a handful of TEST teachers for the "Administración y Gestión"
@@ -38,17 +42,17 @@ type CycleKey = { name: string; level: string };
 const TEACHERS: { name: string; email: string; cycle: CycleKey }[] = [
   {
     name: "Ana García (Profesora de prueba)",
-    email: "ana.garcia@admin.coordina.test",
+    email: TEST_TEACHER_EMAILS[0],
     cycle: { name: "Técnico en Gestión Administrativa", level: "Grado Medio" },
   },
   {
     name: "Bruno López (Profesor de prueba)",
-    email: "bruno.lopez@admin.coordina.test",
+    email: TEST_TEACHER_EMAILS[1],
     cycle: { name: "Técnico en Gestión Administrativa", level: "Grado Medio" },
   },
   {
     name: "Carmen Ruiz (Profesora de prueba)",
-    email: "carmen.ruiz@admin.coordina.test",
+    email: TEST_TEACHER_EMAILS[2],
     cycle: {
       name: "Técnico Superior en Administración y Finanzas",
       level: "Grado Superior",
@@ -56,7 +60,7 @@ const TEACHERS: { name: string; email: string; cycle: CycleKey }[] = [
   },
   {
     name: "David Sánchez (Profesor de prueba)",
-    email: "david.sanchez@admin.coordina.test",
+    email: TEST_TEACHER_EMAILS[3],
     cycle: {
       name: "Técnico Superior en Asistencia a la Dirección",
       level: "Grado Superior",
@@ -73,6 +77,13 @@ async function main(): Promise<void> {
   const affectedModuleIds = new Set<number>();
 
   await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${TEST_TEACHER_LOCK})`);
+    const [purged] = await tx.select({ id: accountAuditTable.id }).from(accountAuditTable)
+      .where(eq(accountAuditTable.action, TEST_TEACHER_PURGE_ACTION)).limit(1);
+    if (purged) {
+      console.log("Test teachers were permanently removed by administration; automatic recreation is disabled.");
+      return;
+    }
     // 1) Resolve the target center (by name, else any with the family).
     const [byName] = await tx
       .select({

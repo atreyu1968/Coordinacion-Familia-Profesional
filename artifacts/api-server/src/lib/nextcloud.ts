@@ -244,6 +244,7 @@ async function ocs(
   method: string,
   path: string,
   form?: Record<string, string | string[]>,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const auth = Buffer.from(
     `${config.adminUser}:${config.adminPassword}`,
@@ -266,10 +267,15 @@ async function ocs(
     body = params.toString();
     headers["Content-Type"] = "application/x-www-form-urlencoded";
   }
-  const res = await fetch(`${config.url}${path}`, { method, headers, body });
+  const res = await fetch(`${config.url}${path}`, { method, headers, body, signal });
   const text = await res.text();
   if (!res.ok) {
-    throw new OcsError(res.status, `OCS ${method} ${path} -> ${res.status}: ${text}`);
+    let ocsCode: number | null = null;
+    try {
+      const code = JSON.parse(text)?.ocs?.meta?.statuscode;
+      if (typeof code === "number") ocsCode = code;
+    } catch { /* A proxy error is not proof that a Nextcloud user is absent. */ }
+    throw new OcsError(res.status, `OCS ${method} ${path} -> ${res.status}: ${text}`, ocsCode);
   }
   let parsed: unknown;
   try {
@@ -586,3 +592,19 @@ export async function revokeIndependentSpaceMember(
 }
 
 export { OcsError };
+
+/** Revoke a removed fixture's external sessions without deleting shared files. */
+export async function disableTestTeacherNextcloudAccount(config: NextcloudConfig, userId: number): Promise<void> {
+  const path = `/ocs/v2.php/cloud/users/${encodeURIComponent(nextcloudUid(userId))}`;
+  type UserInfo = { ocs?: { data?: { enabled?: unknown } } };
+  try {
+    const before = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
+    if (before?.enabled === false || before?.enabled === "false") return;
+    await ocs(config, "PUT", `${path}/disable`, undefined, AbortSignal.timeout(5000));
+    const after = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
+    if (after?.enabled !== false && after?.enabled !== "false") throw new Error("Nextcloud no confirmó la desactivación.");
+  } catch (error) {
+    if (error instanceof OcsError && error.status === 404 && error.ocsCode === 998) return;
+    throw error;
+  }
+}

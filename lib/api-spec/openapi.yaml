@@ -1343,6 +1343,41 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+  /users/test-teachers/cleanup:
+    get:
+      operationId: previewTestTeacherCleanup
+      tags: [users]
+      summary: Superadministrator preview of permanent cleanup of the four reserved test teacher accounts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Read-only cleanup preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestTeacherCleanupPreview"
+    post:
+      operationId: purgeTestTeachers
+      tags: [users]
+      summary: Permanently remove only the reserved test teachers after explicit confirmation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestTeacherCleanupInput"
+      responses:
+        "200":
+          description: Cleanup completed atomically; automatic test seeding is disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestTeacherCleanupResult"
+        "409":
+          description: Preview changed or shared real-user activity prevents deletion; nothing was deleted
   /users/management:
     get:
       operationId: listManagedUsers
@@ -6255,7 +6290,7 @@ components:
           format: date-time
         action:
           type: string
-          enum: [update, deactivate, reactivate]
+          enum: [update, deactivate, reactivate, purge_test_teachers]
         changes:
           type: array
           items:
@@ -6271,6 +6306,64 @@ components:
         hasMore:
           type: boolean
       required: [events, hasMore]
+    TestTeacherAccount:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+      required: [id, name, email]
+    TestTeacherHistoryCount:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required: [label, count]
+    TestTeacherCleanupPreview:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestTeacherAccount"
+        assignments:
+          type: integer
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestTeacherHistoryCount"
+        blockedReasons:
+          type: array
+          items:
+            type: string
+        fingerprint:
+          type: string
+      required: [accounts, assignments, history, blockedReasons, fingerprint]
+    TestTeacherCleanupInput:
+      type: object
+      properties:
+        fingerprint:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        confirmation:
+          type: string
+          enum: ["ELIMINAR DOCENTES DE PRUEBA"]
+      required: [fingerprint, confirmation]
+    TestTeacherCleanupResult:
+      type: object
+      properties:
+        accountsDeleted:
+          type: integer
+        assignmentsDeleted:
+          type: integer
+        historyDeleted:
+          type: integer
+      required: [accountsDeleted, assignmentsDeleted, historyDeleted]
     ManagedUser:
       allOf:
         - $ref: "#/components/schemas/User"

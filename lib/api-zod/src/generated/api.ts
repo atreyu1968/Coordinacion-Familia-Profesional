@@ -1772,6 +1772,43 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
 
 /**
+ * @summary Superadministrator preview of permanent cleanup of the four reserved test teacher accounts
+ */
+export const PreviewTestTeacherCleanupResponse = zod.object({
+  "accounts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string()
+})),
+  "assignments": zod.number().int(),
+  "history": zod.array(zod.object({
+  "label": zod.string(),
+  "count": zod.number().int()
+})),
+  "blockedReasons": zod.array(zod.string()),
+  "fingerprint": zod.string()
+})
+
+
+/**
+ * @summary Permanently remove only the reserved test teachers after explicit confirmation
+ */
+export const purgeTestTeachersBodyFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const PurgeTestTeachersBody = zod.object({
+  "fingerprint": zod.string().regex(purgeTestTeachersBodyFingerprintRegExp),
+  "confirmation": zod.enum(['ELIMINAR DOCENTES DE PRUEBA'])
+})
+
+export const PurgeTestTeachersResponse = zod.object({
+  "accountsDeleted": zod.number().int(),
+  "assignmentsDeleted": zod.number().int(),
+  "historyDeleted": zod.number().int()
+})
+
+
+/**
  * @summary Paginated user administration, including deactivated accounts within the manager's scope
  */
 export const listManagedUsersQueryStatusDefault = `all`;
@@ -1840,7 +1877,7 @@ export const ListUserAuditResponse = zod.object({
   "actorName": zod.string(),
   "targetId": zod.number().int(),
   "occurredAt": zod.coerce.date(),
-  "action": zod.enum(['update', 'deactivate', 'reactivate']),
+  "action": zod.enum(['update', 'deactivate', 'reactivate', 'purge_test_teachers']),
   "changes": zod.array(zod.object({
   "field": zod.enum(['name', 'role', 'centerId', 'provinceId', 'status']),
   "before": zod.string().nullable(),

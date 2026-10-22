@@ -11,7 +11,7 @@ export const accountAuditTable = pgTable("account_audit", {
   actorName: text("actor_name").notNull(),
   targetId: integer("target_id").notNull(),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
-  action: text("action").$type<"update" | "deactivate" | "reactivate">().notNull(),
+  action: text("action").$type<"update" | "deactivate" | "reactivate" | "purge_test_teachers">().notNull(),
   changes: jsonb("changes").$type<AccountAuditChange[]>().notNull(),
   beforeProvinceId: integer("before_province_id"),
   afterProvinceId: integer("after_province_id"),
