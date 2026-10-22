@@ -254,7 +254,7 @@ export async function createHtmlDocx(
   imageHeaders?: Record<string, string>,
 ): Promise<Blob> {
   const parsed = new DOMParser().parseFromString(html, "text/html");
-  const rules = stylesheetRules(parsed);
+  const rules = await stylesheetRules(parsed, imageBaseUrl, imageHeaders);
   const title = fileName.replace(/\.(?:html|htm)$/i, "") || parsed.title || "Documento";
   const children: DocxBlock[] = [
     new Paragraph({
@@ -279,24 +279,90 @@ const MAX_DOCX_IMAGE_WIDTH = 600;
 
 const MAX_DOCX_IMAGE_HEIGHT = 750;
 
-function stylesheetRules(root: ParentNode): CssRule[] {
+const MAX_STYLESHEET_BYTES = 256 * 1024;
+const MAX_TOTAL_STYLESHEET_BYTES = 512 * 1024;
+const MAX_STYLESHEETS = 10;
+
+async function stylesheetRules(
+  root: ParentNode,
+  baseUrl?: string,
+  requestHeaders?: Record<string, string>,
+): Promise<CssRule[]> {
   const rules: CssRule[] = [];
-  for (const sheet of Array.from(root.querySelectorAll("style"))) {
-    const source = (sheet.textContent ?? "").slice(0, 100_000).replace(/\/\*[\s\S]*?\*\//g, "");
-    for (const match of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (rules.length >= 100) break;
-      const declarations = cssDeclarations(match[2]);
-      if (!Object.keys(declarations).length) continue;
-      for (const selector of match[1].split(",")) {
-        const cleanSelector = selector.trim();
-        if (cleanSelector && cleanSelector.length <= 200 && !cleanSelector.startsWith("@")) {
-          rules.push({ selector: cleanSelector, declarations });
-          if (rules.length >= 100) break;
-        }
+  const origin = window.location.origin;
+  let documentUrl: URL;
+  let allowLinkedStylesheets = true;
+  try {
+    documentUrl = new URL(baseUrl ?? window.location.href, window.location.href);
+    if (documentUrl.origin !== origin || !["http:", "https:"].includes(documentUrl.protocol)) {
+      allowLinkedStylesheets = false;
+    }
+  } catch {
+    documentUrl = new URL(window.location.href);
+    allowLinkedStylesheets = Boolean(!baseUrl);
+  }
+
+  let totalBytes = 0;
+  let stylesheetCount = 0;
+  for (const sheet of Array.from(root.querySelectorAll("style, link[rel][href]"))) {
+    if (rules.length >= 100) break;
+    if (sheet.tagName.toUpperCase() === "STYLE") {
+      addStylesheetRules(rules, sheet.textContent ?? "");
+      continue;
+    }
+    if (
+      !allowLinkedStylesheets
+      || sheet.tagName.toUpperCase() !== "LINK"
+      || !sheet.getAttribute("rel")?.split(/\s+/).some((rel) => rel.toLowerCase() === "stylesheet")
+      || !sheet.hasAttribute("href")
+    ) continue;
+    if (stylesheetCount >= MAX_STYLESHEETS || totalBytes >= MAX_TOTAL_STYLESHEET_BYTES) continue;
+    stylesheetCount += 1;
+    const href = sheet.getAttribute("href")?.trim();
+    if (!href) continue;
+    try {
+      const url = new URL(href, documentUrl);
+      if (
+        !["http:", "https:"].includes(url.protocol)
+        || url.origin !== origin
+        || url.username
+        || url.password
+      ) continue;
+      const response = await fetch(url.href, {
+        credentials: "same-origin",
+        redirect: "error",
+        headers: requestHeaders,
+      });
+      if (!response.ok || (response.url && new URL(response.url).origin !== origin)) continue;
+      if (response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "text/css") continue;
+      const bytes = await readBoundedResponse(response, Math.min(
+        MAX_STYLESHEET_BYTES,
+        MAX_TOTAL_STYLESHEET_BYTES - totalBytes,
+      ));
+      if (!bytes) continue;
+      totalBytes += bytes.length;
+      addStylesheetRules(rules, new TextDecoder().decode(bytes));
+    } catch {
+      // Missing, inaccessible, or malformed stylesheets must not block DOCX download.
+    }
+  }
+  return rules.slice(0, 100);
+}
+
+function addStylesheetRules(rules: CssRule[], source: string): void {
+  const css = source.slice(0, 100_000).replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (rules.length >= 100) break;
+    const declarations = cssDeclarations(match[2]);
+    if (!Object.keys(declarations).length) continue;
+    for (const selector of match[1].split(",")) {
+      const cleanSelector = selector.trim();
+      if (cleanSelector && cleanSelector.length <= 200 && !cleanSelector.startsWith("@")) {
+        rules.push({ selector: cleanSelector, declarations });
+        if (rules.length >= 100) break;
       }
     }
   }
-  return rules;
 }
 
 function alignment(value?: string): ParagraphAlignment | undefined {
@@ -461,12 +527,12 @@ type ParagraphAlignment = (typeof AlignmentType)[keyof typeof AlignmentType];
 
 type ImageSource = { bytes: Uint8Array; type: ImageType };
 
-async function readBoundedResponse(response: Response): Promise<Uint8Array | null> {
+async function readBoundedResponse(response: Response, maxBytes = MAX_IMAGE_BYTES): Promise<Uint8Array | null> {
   const length = Number(response.headers.get("content-length"));
-  if (Number.isFinite(length) && length > MAX_IMAGE_BYTES) return null;
+  if (Number.isFinite(length) && length > maxBytes) return null;
   if (!response.body) {
     const bytes = new Uint8Array(await response.arrayBuffer());
-    return bytes.length <= MAX_IMAGE_BYTES ? bytes : null;
+    return bytes.length <= maxBytes ? bytes : null;
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -476,7 +542,7 @@ async function readBoundedResponse(response: Response): Promise<Uint8Array | nul
       const { done, value } = await reader.read();
       if (done) break;
       total += value.length;
-      if (total > MAX_IMAGE_BYTES) {
+      if (total > maxBytes) {
         await reader.cancel();
         return null;
       }

@@ -182,6 +182,75 @@ describe("createHtmlDocx", () => {
     expect((window as Window & { __htmlDocxScriptRan?: boolean }).__htmlDocxScriptRan).toBeUndefined();
     expect((window as Window & { __htmlDocxEventRan?: boolean }).__htmlDocxEventRan).toBeUndefined();
   });
+
+  it("applies allowlisted styles from same-origin linked stylesheets", async () => {
+    const requestHeaders = { Authorization: "Bearer test-token" };
+    const fetchMock = vi.fn(async () => new Response(
+      ".linked { color: #123456; background-color: rgb(171, 205, 239); font-weight: 700; text-align: center; position: fixed; }",
+      { headers: { "content-type": "text/css; charset=utf-8" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const blob = await createHtmlDocx(
+      '<html><head><link rel="stylesheet" href="../styles/document.css"></head><body><p class="linked">Styled by linked CSS</p></body></html>',
+      "linked.html",
+      `${window.location.origin}/files/case/document.html`,
+      requestHeaders,
+    );
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${window.location.origin}/files/styles/document.css`,
+      expect.objectContaining({
+        credentials: "same-origin",
+        redirect: "error",
+        headers: requestHeaders,
+      }),
+    );
+    expect(documentXml).toContain("Styled by linked CSS");
+    expect(documentXml).toContain("w:val=\"123456\"");
+    expect(documentXml).toContain("w:fill=\"ABCDEF\"");
+    expect(documentXml).toContain("<w:b/>");
+    expect(documentXml).toContain("<w:jc w:val=\"center\"/>");
+    expect(documentXml).not.toContain("position");
+  });
+
+  it("does not fetch third-party stylesheets and skips failed same-origin stylesheets", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error("stylesheet unavailable");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const blob = await createHtmlDocx(`
+      <link rel="stylesheet" href="https://styles.example.test/external.css">
+      <link rel="stylesheet" href="/missing.css">
+      <p>DOCX still downloads</p>
+    `, "offline-styles.html", `${window.location.origin}/files/document.html`);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toBe(`${window.location.origin}/missing.css`);
+    expect(documentXml).toContain("DOCX still downloads");
+  });
+
+  it("ignores linked stylesheets when the HTML base URL is cross-origin", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const blob = await createHtmlDocx(
+      '<link rel="stylesheet" href="/private.css"><p>Safe fallback</p>',
+      "external-base.html",
+      "https://outside.example.test/document.html",
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+    expect(documentXml).toContain("Safe fallback");
+  });
 });
 
 describe("HTML DOCX download button", () => {
