@@ -315,6 +315,12 @@ if [[ -z "${JWT_SECRET:-}" ]]; then
 fi
 # Preserve optional integration settings across reruns unless overridden by env.
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(env_get PUBLIC_APP_URL)}"
+# Use the installation's public HTTPS origin as the canonical URL when a real
+# domain was selected. This is required behind TLS-terminating proxies/tunnels,
+# where nginx sees HTTP even though users access the app over HTTPS.
+if [[ -z "${PUBLIC_APP_URL}" && "${DOMAIN}" != "_" && ! "${DOMAIN}" =~ ^[0-9.]+$ ]]; then
+  PUBLIC_APP_URL="https://${DOMAIN}"
+fi
 # MOBILE_WEB_URL was already resolved (and prompted) during configuration; it may
 # also be edited later from the control panel. The "App Móvil" page shows its
 # install QR only when this (or the panel value) is set.

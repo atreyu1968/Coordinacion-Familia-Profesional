@@ -45,6 +45,7 @@ import {
   X,
 } from "lucide-react";
 import { apiErrorMessage, apiErrorStatus } from "./certificate-utils";
+import { useBranding } from "@/lib/branding";
 
 const MAX_SOURCES = 20;
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -223,15 +224,20 @@ export function SafeMarkdown({ text }: { text: string }) {
   return <div className="text-[15px] break-words">{out}</div>;
 }
 
-type MinutesDocumentContext = { eventName?: string; eventStartAt?: string | null; eventLocation?: string | null };
+type MinutesDocumentContext = {
+  professionalFamily: string;
+  eventName?: string;
+  eventStartAt?: string | null;
+  eventLocation?: string | null;
+};
 
-function MinutesDocument({ text, context = {} }: { text: string; context?: MinutesDocumentContext }) {
+function MinutesDocument({ text, context }: { text: string; context: MinutesDocumentContext }) {
   return (
     <div data-minutes-print className="mx-auto max-w-[820px] min-h-[560px] bg-white px-6 py-8 sm:px-12 sm:py-12 text-slate-800 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
       <header className="border-b-2 border-primary/70 pb-6 mb-7 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">Coordinación educativa</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">COORDINACIÓN familia profesional de {context.professionalFamily}</p>
         <p className="mt-3 font-serif text-xl sm:text-2xl font-semibold tracking-wide text-slate-900">ACTA DE REUNIÓN</p>
-        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">Reunión de coordinación</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">REUNIÓN DE COORDINACIÓN</p>
       </header>
       {(context.eventName || context.eventStartAt || context.eventLocation) && (
         <dl className="grid gap-x-5 gap-y-2 sm:grid-cols-2 mb-8 border-b border-slate-200 pb-5 text-sm">
@@ -251,7 +257,7 @@ function MinutesDocument({ text, context = {} }: { text: string; context?: Minut
 // ---------------------------------------------------------------------------
 // Published (reader) view
 // ---------------------------------------------------------------------------
-function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; eventId: number; context?: MinutesDocumentContext }) {
+function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; eventId: number; context: MinutesDocumentContext }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(minutesLink(eventId));
@@ -1352,6 +1358,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
 // Entry
 // ---------------------------------------------------------------------------
 export function EventMinutesSection({ eventId, eventName, eventStartAt, eventLocation }: { eventId: number; eventName?: string; eventStartAt?: string | null; eventLocation?: string | null }) {
+  const { professionalFamily } = useBranding();
   const q = useGetEventMinutes(eventId, {
     query: {
       queryKey: getGetEventMinutesQueryKey(eventId),
@@ -1377,7 +1384,7 @@ export function EventMinutesSection({ eventId, eventName, eventStartAt, eventLoc
       </div>
     );
   }
-  const context: MinutesDocumentContext = { eventName, eventStartAt, eventLocation };
+  const context: MinutesDocumentContext = { professionalFamily, eventName, eventStartAt, eventLocation };
   if (content.canManage) return <Workspace eventId={eventId} minutes={content} context={context} />;
   if (content.enabled && (content.publishedText || content.publishedDocument)) {
     return <PublishedActa minutes={content} eventId={eventId} context={context} />;

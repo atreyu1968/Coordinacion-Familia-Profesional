@@ -13,6 +13,7 @@ import {
 } from "docx";
 
 export type MinutesDocxContext = {
+  professionalFamily: string;
   eventName?: string;
   eventStartAt?: string | null;
   eventLocation?: string | null;
@@ -159,7 +160,7 @@ export async function createMinutesDocx(text: string, context: MinutesDocxContex
       alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
       children: [new TextRun({
-        text: "COORDINACIÓN EDUCATIVA",
+        text: `COORDINACIÓN familia profesional de ${context.professionalFamily}`,
         bold: true,
         allCaps: true,
         font: "Aptos",

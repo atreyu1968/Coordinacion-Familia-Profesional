@@ -66,6 +66,13 @@ filesystem instead.
   pulls+rebuilds+restarts. Must stay **idempotent**: preserve existing
   DB password, JWT_SECRET, and optional JAAS_*/RESEND_*/PUBLIC_APP_URL on rerun
   (read them back from the existing `.env`), never rotate them silently.
+- **Canonical public URL:** when installing with a real `DOMAIN`, default
+  `PUBLIC_APP_URL` to `https://DOMAIN` only if no explicit or stored value exists.
+  **Why:** TLS often terminates before nginx, so forwarded request headers can
+  describe internal HTTP while Google OAuth and absolute links need the public
+  HTTPS origin.
+  **How to apply:** preserve explicit overrides and existing `.env` values;
+  never include `/app` or another path in `PUBLIC_APP_URL`.
 - **Nextcloud/Collabora maintenance policy:** the user requires that a working
   installation is simply reported as working and is not updated. If it is
   incorrect or a major update exists, ask whether to update.

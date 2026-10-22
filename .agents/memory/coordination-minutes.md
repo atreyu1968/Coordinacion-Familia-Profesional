@@ -42,3 +42,7 @@ El borrador debe verse como un documento maquetado, no como marcas Markdown sin 
 El adjunto definitivo no se envía a la IA y solo se comparte al publicar. Una subida posterior no debe cambiar en silencio el adjunto de una versión ya publicada.
 **Why:** el usuario señaló que la mezcla de texto y Markdown, las tablas y la falta de controles claros hacían difícil revisar y finalizar actas.
 **How to apply:** renderizar los formatos de texto admitidos en la vista previa y ofrecer PDF y DOCX editable a partir del borrador actual. Para resolver qué archivo corresponde a la versión compartida, elegir la subida más reciente creada antes o en el momento de publicación; una subida más nueva solo se hace pública al volver a publicar.
+
+El encabezado modelo de las actas es «COORDINACIÓN familia profesional de {familia configurada}», «ACTA DE REUNIÓN» y «REUNIÓN DE COORDINACIÓN». La familia debe leerse de la configuración de marca, no fijarse en el código.
+**Why:** el usuario aportó un modelo de acta y pidió adaptar el encabezado a él.
+**How to apply:** mantener el mismo encabezado en la vista previa y el DOCX descargable; no añadir un logotipo que el modelo no contiene.

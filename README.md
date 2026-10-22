@@ -263,7 +263,7 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 | `LOG_LEVEL` | no | `info` por defecto |
 | `STORAGE_DRIVER` | sí | `local` para guardar ficheros en disco |
 | `LOCAL_STORAGE_DIR` | sí (con `local`) | Carpeta de los ficheros subidos |
-| `PUBLIC_APP_URL` | no | Solo si el API se sirve en otro origen |
+| `PUBLIC_APP_URL` | no | Origen público canónico (`https://dominio`, sin ruta); el instalador lo deriva del dominio de instalación y debe ajustarse si el origen público es distinto |
 | `MOBILE_WEB_URL` | no | URL pública (HTTPS) de la app móvil; por defecto `https://TU_DOMINIO/app` |
 | `JAAS_APP_ID` / `JAAS_KID` / `JAAS_PRIVATE_KEY` | no | Videollamadas con JaaS (8x8) |
 | `RESEND_API_KEY` / `RESEND_FROM` | no | Envío de correos (recuperar contraseña) |
