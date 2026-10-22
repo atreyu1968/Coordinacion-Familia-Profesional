@@ -597,14 +597,26 @@ export { OcsError };
 export async function disableTestTeacherNextcloudAccount(config: NextcloudConfig, userId: number): Promise<void> {
   const path = `/ocs/v2.php/cloud/users/${encodeURIComponent(nextcloudUid(userId))}`;
   type UserInfo = { ocs?: { data?: { enabled?: unknown } } };
+  let step = "check-account";
   try {
     const before = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
     if (before?.enabled === false || before?.enabled === "false") return;
+    step = "disable-account";
     await ocs(config, "PUT", `${path}/disable`, undefined, AbortSignal.timeout(5000));
+    step = "verify-disable";
     const after = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
     if (after?.enabled !== false && after?.enabled !== "false") throw new Error("Nextcloud no confirmó la desactivación.");
   } catch (error) {
-    if (error instanceof OcsError && error.status === 404 && error.ocsCode === 998) return;
+    // OCS v2 can return its logical "user not found" code (998) in an HTTP
+    // 200 response. A bare proxy/server 404 has no OCS code and must still fail
+    // closed; it is not evidence that the account is absent.
+    if (error instanceof OcsError && error.ocsCode === 998) return;
+    logger.warn({
+      step,
+      httpStatus: error instanceof OcsError ? error.status : null,
+      ocsCode: error instanceof OcsError ? error.ocsCode : null,
+      errorType: error instanceof Error ? error.name : "unknown",
+    }, "No se pudo confirmar la revocación de una cuenta de prueba en Nextcloud");
     throw error;
   }
 }

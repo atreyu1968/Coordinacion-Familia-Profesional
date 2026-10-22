@@ -24,7 +24,11 @@ describe("External fixture revocation without deleting files", () => {
     await disableTestTeacherNextcloudAccount(config, 123);
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
-  it("accepts an OCS-confirmed absent user, not a proxy 404", async () => {
+  it("accepts an OCS-confirmed absent user in HTTP 200 or 404, not a proxy 404", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ocs: { meta: { statuscode: 998 }, data: [] } }), { status: 200 }),
+    ));
+    await expect(disableTestTeacherNextcloudAccount(config, 123)).resolves.toBeUndefined();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({ ocs: { meta: { statuscode: 998 }, data: [] } }), { status: 404 }),
     ));
