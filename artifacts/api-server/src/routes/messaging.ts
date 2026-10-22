@@ -10,6 +10,7 @@ import {
   notExists,
   ilike,
   ne,
+  or,
   sql,
 } from "drizzle-orm";
 import {
@@ -406,7 +407,10 @@ router.get("/chat/contacts", requireAuth, async (req, res): Promise<void> => {
     ne(usersTable.id, req.user!.id),
   ];
   const search = query.data.search?.trim();
-  if (search) filters.push(ilike(usersTable.name, `%${search}%`));
+  if (search) filters.push(or(
+    ilike(usersTable.name, `%${search}%`),
+    ilike(centersTable.name, `%${search}%`),
+  )!);
 
   // Direct messages already permit active counterparts across center/province.
   // Expose only the minimum necessary fields, not the administrative directory.
@@ -414,7 +418,12 @@ router.get("/chat/contacts", requireAuth, async (req, res): Promise<void> => {
     id: usersTable.id,
     name: usersTable.name,
     role: usersTable.role,
-  }).from(usersTable).where(and(...filters))
+    centerName: centersTable.name,
+  }).from(usersTable).leftJoin(centersTable, and(
+    eq(centersTable.id, sql<number>`case when ${usersTable.role} = 'teacher'
+      then ${usersTable.centerId} else coalesce(${usersTable.teachingCenterId}, ${usersTable.centerId}) end`),
+    isNull(centersTable.deletedAt),
+  )).where(and(...filters))
     .orderBy(asc(usersTable.name), asc(usersTable.id));
   res.json(ListChatContactsResponse.parse(contacts));
 });

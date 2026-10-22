@@ -19,6 +19,7 @@ import {
   modulesTable,
   centersTable,
   usersTable,
+  teachingAssignmentsTable,
   type User,
 } from "@workspace/db";
 import {
@@ -50,7 +51,7 @@ import {
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
 import { resolveAudienceUserIds } from "../lib/audience";
-import { getActiveFamily } from "../lib/settings";
+import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
@@ -132,15 +133,26 @@ async function moduleVisibleTo(
   if (module.centerId == null) return true; // global module
   const scope = resolveReadScope(caller);
   if (scope.kind === "global") return true;
-  if (scope.kind === "center") return module.centerId === scope.centerId;
+  if (scope.kind === "center" && module.centerId === scope.centerId) return true;
   if (scope.kind === "province") {
     const [center] = await db
       .select({ provinceId: centersTable.provinceId })
       .from(centersTable)
       .where(eq(centersTable.id, module.centerId));
-    return center?.provinceId === scope.provinceId;
+    if (center?.provinceId === scope.provinceId) return true;
   }
-  return false;
+  // Management scope and personal teaching center can differ. Teaching a module
+  // grants forum participation without an additional manual enrollment.
+  const year = await getActiveAcademicYear();
+  if (!year) return false;
+  const [assignment] = await db.select({ id: teachingAssignmentsTable.id })
+    .from(teachingAssignmentsTable).where(and(
+      eq(teachingAssignmentsTable.teacherId, caller.id),
+      eq(teachingAssignmentsTable.moduleId, module.id),
+      eq(teachingAssignmentsTable.schoolYear, year),
+      isNull(teachingAssignmentsTable.deletedAt),
+    )).limit(1);
+  return assignment != null;
 }
 
 async function moduleVisibleById(
@@ -181,7 +193,18 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
     moduleFamilyFilter(await getActiveFamily()),
   ];
   const scopeMatch = moduleScopeFilter(scope);
-  if (scopeMatch) filters.push(scopeMatch);
+  if (scopeMatch) {
+    const year = await getActiveAcademicYear();
+    filters.push(year ? or(
+      scopeMatch,
+      inArray(modulesTable.id, db.select({ moduleId: teachingAssignmentsTable.moduleId })
+        .from(teachingAssignmentsTable).where(and(
+          eq(teachingAssignmentsTable.teacherId, caller.id),
+          eq(teachingAssignmentsTable.schoolYear, year),
+          isNull(teachingAssignmentsTable.deletedAt),
+        ))),
+    )! : scopeMatch);
+  }
 
   const modules = await db
     .select()

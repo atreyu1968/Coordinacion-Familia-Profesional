@@ -82,6 +82,14 @@ if [[ "${1:-}" == "--profiles-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--messaging-only" ]]; then
+  create_test_database coordina_messaging
+  migrate_database coordina_messaging
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_messaging?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/messaging.test.ts test/forums.test.ts test/teaching-profile-access.test.ts
+  exit 0
+fi
+
 if [[ "${1:-}" == "--dashboard-only" ]]; then
   create_test_database coordina_dashboard
   migrate_database coordina_dashboard

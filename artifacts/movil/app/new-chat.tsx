@@ -69,7 +69,7 @@ export default function NewChatScreen() {
             value={search}
             onChangeText={setSearch}
             maxLength={100}
-            placeholder="Buscar personas"
+            placeholder="Buscar personas o centros"
             placeholderTextColor={colors.mutedForeground}
             autoCapitalize="none"
             style={[styles.searchInput, { color: colors.foreground }]}
@@ -106,6 +106,9 @@ export default function NewChatScreen() {
               <View style={styles.rowBody}>
                 <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
                   {item.name}
+                </Text>
+                <Text style={[styles.role, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {item.centerName ?? "Sin centro indicado"}
                 </Text>
                 <Text style={[styles.role, { color: colors.mutedForeground }]} numberOfLines={1}>
                   {roleLabel(item.role)}

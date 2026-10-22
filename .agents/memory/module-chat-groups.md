@@ -5,6 +5,14 @@ description: How per-module group chats stay in sync with teaching_assignments, 
 
 # Module group chats
 
+## Required automatic participation
+
+Los profesores deben quedar incluidos directamente en los grupos de mensajes de los módulos que imparten y en sus foros, sin una inscripción manual adicional.
+
+**Why:** El usuario lo confirmó como regla de funcionamiento de la red.
+
+**How to apply:** Teaching assignments grant participation automatically. Personal teaching assignments must also grant forum access when a coordinator's teaching center is outside their management scope; this does not extend their management permissions. Reconcile all selected modules when saving the profile, not only changed assignments, so an unchanged save can repair missing membership.
+
 Each teaching module can have exactly one auto-managed group chat, enforced by a
 unique index on `chat_groups.module_id` (NULL = manual groups, many allowed).
 

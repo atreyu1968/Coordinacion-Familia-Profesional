@@ -2610,6 +2610,8 @@ export interface ChatContact {
   id: number;
   name: string;
   role: Role;
+  /** @nullable */
+  centerName: string | null;
 }
 
 export interface ChatGroup {

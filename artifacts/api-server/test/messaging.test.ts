@@ -8,6 +8,7 @@ import {
   chatGroupMembersTable,
   teachingAssignmentsTable,
   usersTable,
+  centersTable,
   notificationsTable,
   syncModuleChatGroup,
 } from "@workspace/db";
@@ -54,14 +55,25 @@ describe("chat groups", () => {
     expect(ids).not.toContain(sender.user.id);
     expect(ids).not.toContain(disabled.user.id);
     expect(ids).not.toContain(deleted.user.id);
+    const center = await db.select({ name: centersTable.name }).from(centersTable)
+      .where(eq(centersTable.id, centerB));
     expect(response.body.find((contact: { id: number }) => contact.id === recipient.user.id))
-      .toEqual({ id: recipient.user.id, name: recipient.user.name, role: recipient.user.role });
+      .toEqual({ id: recipient.user.id, name: recipient.user.name, role: recipient.user.role, centerName: center[0]!.name });
 
     const filtered = await request(app).get("/api/chat/contacts")
       .query({ search: "distante" }).set(authHeader(sender.token));
     expect(filtered.status).toBe(200);
     expect(filtered.body.map((contact: { id: number }) => contact.id)).toContain(recipient.user.id);
     expect(filtered.body.map((contact: { id: number }) => contact.id)).not.toContain(disabled.user.id);
+    const byCenter = await request(app).get("/api/chat/contacts")
+      .query({ search: center[0]!.name }).set(authHeader(sender.token));
+    expect(byCenter.status).toBe(200);
+    expect(byCenter.body.map((contact: { id: number }) => contact.id)).toContain(recipient.user.id);
+    const coordinator = await createUser({ role: "coordinator", centerId: centerA, provinceId: provinceA });
+    await db.update(usersTable).set({ teachingCenterId: centerB }).where(eq(usersTable.id, coordinator.user.id));
+    const personal = await request(app).get("/api/chat/contacts").set(authHeader(sender.token));
+    expect(personal.body.find((contact: { id: number }) => contact.id === coordinator.user.id).centerName)
+      .toBe(center[0]!.name);
 
     const conversation = await request(app).post("/api/chat/groups")
       .set(authHeader(sender.token)).send({

@@ -581,7 +581,7 @@ router.patch(
       return;
     }
 
-    for (const moduleId of result.touchedModuleIds) {
+    for (const moduleId of new Set([...result.touchedModuleIds, ...result.moduleIds])) {
       try {
         await syncModuleChatGroup(moduleId);
       } catch (err) {

@@ -4402,7 +4402,8 @@ export const ListChatContactsQueryParams = zod.object({
 export const ListChatContactsResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
-  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher'])
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "centerName": zod.string().nullable()
 })
 export const ListChatContactsResponse = zod.array(ListChatContactsResponseItem)
 

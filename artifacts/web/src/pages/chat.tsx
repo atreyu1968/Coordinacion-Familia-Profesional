@@ -1313,7 +1313,8 @@ export default function ChatPage() {
 
   const selected = groups.find((g) => g.id === selectedId) ?? null;
   const matchingContacts = contacts.filter((contact) =>
-    contact.name.toLocaleLowerCase().includes(contactSearch.trim().toLocaleLowerCase()),
+    `${contact.name} ${contact.centerName ?? ""}`.toLocaleLowerCase()
+      .includes(contactSearch.trim().toLocaleLowerCase()),
   );
   const startDirect = (contact: (typeof contacts)[number]) => {
     if (createDirect.isPending) return;
@@ -1362,7 +1363,7 @@ export default function ChatPage() {
             maxLength={100}
             value={contactSearch}
             onChange={(event) => setContactSearch(event.target.value)}
-            placeholder="Buscar por nombre"
+            placeholder="Buscar por nombre o centro"
             aria-label="Buscar personas registradas"
           />
           <div className="max-h-[min(55vh,22rem)] overflow-y-auto overscroll-contain rounded-md border">
@@ -1390,7 +1391,12 @@ export default function ChatPage() {
                 <Avatar className="h-9 w-9 shrink-0">
                   <AvatarFallback>{initials(contact.name)}</AvatarFallback>
                 </Avatar>
-                <span className="min-w-0 truncate text-sm">{contact.name}</span>
+                <span className="min-w-0 text-sm">
+                  <span className="block truncate">{contact.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {contact.centerName ?? "Sin centro indicado"}
+                  </span>
+                </span>
               </button>
             ))}
           </div>

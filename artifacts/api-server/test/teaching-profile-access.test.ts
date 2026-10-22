@@ -1,14 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   db, centersTable, integrationSettingsTable, modulesTable, usersTable,
   teacherYearConfirmationsTable, teachingAssignmentsTable,
+  chatGroupMembersTable,
 } from "@workspace/db";
 import app from "../src/app";
 import { getSettings, getActiveFamily } from "../src/lib/settings";
 import {
   authHeader, cleanup, createCenter, createModule, createProvince, createTeachingAssignment, createUser,
+  trackGroup,
 } from "./helpers";
 
 const year = `profile-access-${Date.now()}`;
@@ -25,6 +27,48 @@ beforeAll(async () => {
 describe("managed teacher profile integrity", () => {
   const management = (token: string, query: Record<string, string | number> = {}) =>
     request(app).get("/api/users/management").query(query).set(authHeader(token));
+
+  it("automatically joins teaching chats and forums, repairs membership and follows module changes", async () => {
+    await createUser({ role: "superadmin", incompleteProfile: true });
+    const provinceId = await createProvince();
+    const managementCenter = await createCenter(provinceId);
+    const personalCenter = await createCenter(await createProvince());
+    const firstModule = await createModule({ centerId: personalCenter });
+    const secondModule = await createModule({ centerId: personalCenter });
+    const actor = await createUser({
+      role: "coordinator", provinceId, centerId: managementCenter, incompleteProfile: true,
+    });
+    const headers = authHeader(actor.token);
+    const save = (moduleIds: number[]) => request(app).patch("/api/auth/me/teaching-profile")
+      .set(headers).send({ centerId: personalCenter, moduleIds, doesNotTeach: false });
+    expect((await save([firstModule])).status).toBe(200);
+    const chats = await groups(actor.token);
+    const first = chats.body.find((chat: { moduleId: number }) => chat.moduleId === firstModule);
+    expect(first).toBeDefined();
+    trackGroup(first.id);
+
+    await db.delete(chatGroupMembersTable).where(and(
+      eq(chatGroupMembersTable.groupId, first.id),
+      eq(chatGroupMembersTable.userId, actor.user.id),
+    ));
+    expect((await save([firstModule])).status).toBe(200);
+    expect((await groups(actor.token)).body.map((chat: { moduleId: number }) => chat.moduleId))
+      .toContain(firstModule);
+    const forums = await request(app).get("/api/forum/modules").set(headers);
+    expect(forums.status).toBe(200);
+    expect(forums.body.map((module: { id: number }) => module.id)).toContain(firstModule);
+    expect((await request(app).get("/api/forum/threads").query({ moduleId: firstModule }).set(headers)).status).toBe(200);
+
+    expect((await save([secondModule])).status).toBe(200);
+    const updated = await groups(actor.token);
+    expect(updated.body.map((chat: { moduleId: number }) => chat.moduleId)).not.toContain(firstModule);
+    const second = updated.body.find((chat: { moduleId: number }) => chat.moduleId === secondModule);
+    expect(second).toBeDefined();
+    trackGroup(second.id);
+    const updatedForums = await request(app).get("/api/forum/modules").set(headers);
+    expect(updatedForums.body.map((module: { id: number }) => module.id)).not.toContain(firstModule);
+    expect(updatedForums.body.map((module: { id: number }) => module.id)).toContain(secondModule);
+  });
 
   it.each(["coordinator", "superadmin", "department_head"] as const)(
     "requires %s to save teaching data, with no exemption for administrative privileges",

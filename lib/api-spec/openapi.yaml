@@ -8359,7 +8359,10 @@ components:
           type: string
         role:
           $ref: "#/components/schemas/Role"
-      required: [id, name, role]
+        centerName:
+          type: string
+          nullable: true
+      required: [id, name, role, centerName]
     ChatGroup:
       type: object
       properties:
