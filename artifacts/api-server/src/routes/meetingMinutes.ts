@@ -223,14 +223,14 @@ router.delete("/events/:id/minutes/shared-documents/:documentId", requireAuth, w
   res.json(DeleteEventMinutesSharedDocumentResponse.parse(await workspace(event.id, true)));
 }));
 router.get("/events/:id/minutes/shared-documents/:documentId/download", requireAuth, wrap(async (req, res) => {
-  const { event, manage, departmentHeadView } = await publishedReaderEventFor(req);
+  const { event, manage } = await publishedReaderEventFor(req);
   const [minutes] = await db.select().from(meetingMinutesTable)
     .where(eq(meetingMinutesTable.eventId, event.id)).limit(1);
   if (!manage) {
     if (!minutes?.enabled || !minutes.publishedText || !minutes.publishedAt) {
       throw new AttendanceError(404, "No hay documentos publicados junto al acta.");
     }
-    if (departmentHeadView && !(await publishedFinalDocument(event.id, minutes.publishedAt))) {
+    if (!(await publishedFinalDocument(event.id, minutes.publishedAt))) {
       throw new AttendanceError(404, "No hay acta oficial subida y publicada.");
     }
   }

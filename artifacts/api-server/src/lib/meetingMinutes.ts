@@ -79,7 +79,7 @@ export async function workspace(eventId: number, manage: boolean, departmentHead
     .where(eq(meetingMinutesSharedDocumentsTable.eventId, eventId))
     .orderBy(asc(meetingMinutesSharedDocumentsTable.createdAt), asc(meetingMinutesSharedDocumentsTable.id));
   const publicationVisible = !!(row?.enabled && row.publishedText && row.publishedAt &&
-    (!departmentHeadView || publishedDocument));
+    (manage || publishedDocument));
   const visibleSharedDocuments = manage
     ? sharedDocuments.map((document) => sharedDocumentDto(document, true))
     : publicationVisible
@@ -95,7 +95,7 @@ export async function workspace(eventId: number, manage: boolean, departmentHead
     eventId, enabled: manage ? (row?.enabled ?? false) : publicationVisible,
     canManage: manage, revision: manage ? (row?.revision ?? 0) : 0,
     draftText: manage ? (row?.draftText ?? "") : null,
-    publishedText: row?.enabled && !departmentHeadView ? (row.publishedText ?? null) : null,
+    publishedText: row?.enabled && manage && !departmentHeadView ? (row.publishedText ?? null) : null,
     publishedAt: publicationVisible ? (row?.publishedAt?.toISOString() ?? null) : null,
     draftDocument: draftDocument ? { id: draftDocument.id, fileName: draftDocument.fileName, contentType: draftDocument.contentType, size: draftDocument.size } : null,
     publishedDocument: publishedDocument ? { id: publishedDocument.id, fileName: publishedDocument.fileName, contentType: publishedDocument.contentType, size: publishedDocument.size } : null,

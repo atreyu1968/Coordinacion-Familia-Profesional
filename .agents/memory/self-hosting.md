@@ -227,4 +227,6 @@ run without a TTY. **How to apply:** `install.sh` and `update.sh` call
 from the Drizzle schema; existing databases receive only reviewed additive SQL
 migrations between strict preflight and full post-migration validation. Keep
 explicit allowances for new additive columns in schema preflight, and never use
-`push-force` on a populated database.
+`push-force` on a populated database. Apply the same policy to task-merge setup:
+regenerate API contract outputs and validate source before reviewed, backed-up
+migrations; do not replace this with an unconditional Drizzle push.

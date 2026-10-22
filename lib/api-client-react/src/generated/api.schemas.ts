@@ -3803,3 +3803,4 @@ export type CommitLmsScormSessionParams = {
  */
 token: LmsTokenQueryParameter;
 };
+

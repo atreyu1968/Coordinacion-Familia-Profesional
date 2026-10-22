@@ -62,13 +62,16 @@ export default function ActaScreen() {
       queryKey: getGetEventMinutesQueryKey(eventId),
       enabled: valid && (isDepartmentHead || event.data?.type === "coordination_meeting"),
       retry: false,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchInterval: 30_000,
     },
   });
   const notMeeting = !isDepartmentHead && !!event.data && event.data.type !== "coordination_meeting";
 
   const m = minutes.data;
-  const published = !isDepartmentHead && m?.enabled && m.publishedText ? m.publishedText : null;
-  const publishedDocument = m?.enabled ? m.publishedDocument : null;
+  // This reader screen shows only the uploaded official document, never AI text.
+  const publishedDocument = m?.enabled && m.publishedAt ? m.publishedDocument : null;
   const sharedDocuments = m?.sharedDocuments ?? [];
   const eventName = event.data?.name ?? (typeof params.name === "string" ? params.name : null) ?? "Reunión de coordinación";
 
@@ -112,7 +115,7 @@ export default function ActaScreen() {
         </View>
       ) : minutes.error ? (
         <ErrorState onRetry={minutes.refetch} />
-      ) : !published && !publishedDocument ? (
+      ) : !publishedDocument ? (
         <View style={styles.center}>
           <Feather name="file-text" size={28} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
@@ -150,32 +153,6 @@ export default function ActaScreen() {
                 </Text>
               </Pressable>
             ) : null}
-            {published ? <View style={styles.body}>
-              {published.replace(/\r\n/g, "\n").split("\n").map((raw, i) => {
-                const line = raw.trimEnd();
-                const h = line.match(/^(#{1,3})\s+(.*)$/);
-                const b = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
-                if (!line.trim()) return <View key={i} style={{ height: 8 }} />;
-                if (h)
-                  return (
-                    <Text key={i} accessibilityRole="header" style={[h[1].length === 1 ? styles.h1 : styles.h2, { color: colors.foreground }]}>
-                      {h[2]}
-                    </Text>
-                  );
-                if (b)
-                  return (
-                    <Text key={i} style={[styles.p, { color: colors.foreground }]}>
-                      {"\u2022  "}
-                      {b[1].replace(/\*\*/g, "")}
-                    </Text>
-                  );
-                return (
-                  <Text key={i} style={[styles.p, { color: colors.foreground }]}>
-                    {line.replace(/\*\*/g, "")}
-                  </Text>
-                );
-              })}
-            </View> : null}
             {sharedDocuments.length > 0 ? (
               <View style={[styles.sharedSection, { borderTopColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Documentos compartidos</Text>
@@ -218,14 +195,10 @@ const styles = StyleSheet.create({
   bar: { position: "absolute", top: 0, left: 0, right: 0, height: 4 },
   kicker: { fontSize: 11, letterSpacing: 2, fontFamily: "Inter_600SemiBold", marginTop: 4 },
   meta: { fontSize: 12, marginTop: 4, fontFamily: "Inter_400Regular" },
-  body: { marginTop: 14 },
   fileAction: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 14, marginTop: 14 },
   fileActionText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
   sharedSection: { marginTop: 20, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
   sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
   sharedRow: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   sharedTitle: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
-  h1: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_700Bold", marginTop: 10, marginBottom: 4 },
-  h2: { fontSize: 16, lineHeight: 22, fontFamily: "Inter_600SemiBold", marginTop: 8, marginBottom: 2 },
-  p: { fontSize: 15, lineHeight: 22, fontFamily: "Inter_400Regular" },
 });

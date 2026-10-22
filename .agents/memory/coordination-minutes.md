@@ -15,6 +15,12 @@ Todas las jefaturas de departamento pueden consultar las actas publicadas aunque
 **Why:** el usuario pidió acceso para todas las jefaturas, pero precisó que solo debían acceder al acta publicada subida por la coordinación y a documentos expresamente compartidos junto a ella.
 **How to apply:** conservar una ruta de lectura específica para actas publicadas, separada de la autorización general del evento; limitar su respuesta y descargas a la instantánea oficial.
 
+La vista de consulta de actas en móvil solo debe mostrar el documento definitivo
+subido y publicado, también si quien consulta es coordinador; el texto generado
+o una instantánea del borrador no lo sustituye.
+**Why:** el usuario señaló que en la app móvil se veía el borrador, tras haber pedido acceso únicamente al acta definitiva subida por coordinación.
+**How to apply:** sin documento definitivo publicado, mostrar que no hay acta oficial disponible; mantener la revisión privada separada de la lectura móvil.
+
 La IA debe trabajar con documentos y audios y, en vídeos, con lo hablado
 **y** las diapositivas e imágenes. Un análisis meramente de audio no satisface el alcance elegido.
 El micrófono permite aportar instrucciones e ideas y revisar el acta, no acreditar

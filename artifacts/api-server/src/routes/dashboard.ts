@@ -197,30 +197,31 @@ function activeUserScopeFilters(
 }
 
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
-  const query = GetDashboardStatisticsQueryParams.safeParse(req.query);
+  const query = GetDashboardSummaryQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ message: query.error.message });
+    return;
+  }
 
   const parsedPeriod = parseDashboardPeriod(
     query.data.startDate,
     query.data.endDate,
   );
-
-  const parsedPeriod = parseDashboardPeriod(
-    query.data.startDate,
-    query.data.endDate,
-  );
-    const scope: DashboardScope = {
-      provinceId,
-      centerId: null,
-      empty: false,
-    };
+  if (parsedPeriod.error) {
+    res.status(400).json({ message: parsedPeriod.error });
+    return;
+  }
+  const period = parsedPeriod.period;
+  const scope = resolveScope(req.user!, query.data.provinceId);
   if (scope.empty) {
     res.json(
-      GetDashboardStatisticsResponse.parse({
-        resourcesByMonth: [],
-        usersByRole: [],
-        centersByIsland: [],
-        eventsByMonth: [],
-        surveysByStatus: [],
+      GetDashboardSummaryResponse.parse({
+        centers: 0,
+        teachers: 0,
+        resources: 0,
+        activeSurveys: 0,
+        upcomingEvents: 0,
+        companyAlerts: 0,
       }),
     );
     return;
@@ -264,7 +265,11 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(resourcesTable)
     .where(and(...resourceScopeFilters(scope, activeFamily, period)));
 
-  const surveyFilters: SQL[] = [isNull(surveysTable.deletedAt)];
+  const surveyFilters: SQL[] = [
+    isNull(surveysTable.deletedAt),
+    eq(surveysTable.status, "open"),
+    ...periodFilters(surveysTable.createdAt, period),
+  ];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
   if (surveyScope) surveyFilters.push(surveyScope);
   const [activeSurveysCount] = await db
@@ -273,9 +278,11 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .where(and(...surveyFilters));
 
   const eventDate = sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`;
-
-  const eventDate = sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`;
-  const eventFilters: SQL[] = [isNull(eventsTable.deletedAt)];
+  const eventFilters: SQL[] = [
+    isNull(eventsTable.deletedAt),
+    ...periodFilters(eventDate, period),
+  ];
+  if (!period) eventFilters.push(gte(eventsTable.startAt, new Date()));
   const eventScope = provinceColFilter(eventsTable.provinceId, scope);
   if (eventScope) eventFilters.push(eventScope);
   const [upcomingEventsCount] = await db
@@ -283,7 +290,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(eventsTable)
     .where(and(...eventFilters));
 
-  const alertFilters: SQL[] = [isNull(companyAlertsTable.deletedAt)];
+  const alertFilters: SQL[] = [
+    isNull(companyAlertsTable.deletedAt),
+    ...periodFilters(companyAlertsTable.createdAt, period),
+  ];
   const alertScope = provinceColFilter(companyAlertsTable.provinceId, scope);
   if (alertScope) alertFilters.push(alertScope);
   const [companyAlertsCount] = await db
@@ -305,21 +315,21 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
 
 router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void> => {
   const query = GetDashboardStatisticsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ message: query.error.message });
+    return;
+  }
 
   const parsedPeriod = parseDashboardPeriod(
     query.data.startDate,
     query.data.endDate,
   );
-
-  const parsedPeriod = parseDashboardPeriod(
-    query.data.startDate,
-    query.data.endDate,
-  );
-    const scope: DashboardScope = {
-      provinceId,
-      centerId: null,
-      empty: false,
-    };
+  if (parsedPeriod.error) {
+    res.status(400).json({ message: parsedPeriod.error });
+    return;
+  }
+  const period = parsedPeriod.period;
+  const scope = resolveScope(req.user!, query.data.provinceId);
   if (scope.empty) {
     res.json(
       GetDashboardStatisticsResponse.parse({
@@ -372,7 +382,13 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     .groupBy(islandsTable.name);
 
   const eventMonth = sql<string>`to_char(coalesce(${eventsTable.startAt}, ${eventsTable.createdAt}), 'YYYY-MM')`;
-  const eventFilters: SQL[] = [isNull(eventsTable.deletedAt)];
+  const eventFilters: SQL[] = [
+    isNull(eventsTable.deletedAt),
+    ...periodFilters(
+      sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`,
+      period,
+    ),
+  ];
   const eventScope = provinceColFilter(eventsTable.provinceId, scope);
   if (eventScope) eventFilters.push(eventScope);
   const eventsByMonthRows = await db
@@ -382,7 +398,10 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     .groupBy(eventMonth)
     .orderBy(eventMonth);
 
-  const surveyFilters: SQL[] = [isNull(surveysTable.deletedAt)];
+  const surveyFilters: SQL[] = [
+    isNull(surveysTable.deletedAt),
+    ...periodFilters(surveysTable.createdAt, period),
+  ];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
   if (surveyScope) surveyFilters.push(surveyScope);
   const surveysByStatusRows = await db
@@ -418,11 +437,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
 });
 
 router.get("/reports", requireAuth, requireRole("superadmin", "coordinator"), async (req, res): Promise<void> => {
-    const scope: DashboardScope = {
-      provinceId,
-      centerId: null,
-      empty: false,
-    };
+  const scope = resolveScope(req.user!);
   // Default-deny: roles with no read scope see no reports at all.
   if (scope.empty) {
     res.json(ListReportsResponse.parse([]));
@@ -676,4 +691,3 @@ function isValidDateOnly(value: string): boolean {
   );
 }
 
-  const period = parsedPeriod.period;

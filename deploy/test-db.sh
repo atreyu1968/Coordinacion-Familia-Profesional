@@ -134,6 +134,9 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="INSERT INTO public.invitations (code, role, status, expires_at) VALUES ('legacy-consumed-link', 'teacher', 'used', now() + interval '1 day'); ALTER TABLE public.invitations DROP COLUMN max_uses, DROP COLUMN used_count"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="INSERT INTO public.teacher_year_confirmations (teacher_id, school_year, status, deadline, confirmed_at) SELECT id, '2099-2100', 'confirmed', now(), now() FROM public.users WHERE email = 'upgrade-preserve@example.test'; ALTER TABLE public.teacher_year_confirmations DROP COLUMN does_not_teach"
 
 echo "==> Applying the upgrade to the existing database"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
@@ -148,9 +151,9 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT max_uses = 1 AND used_count = 1 AND status = 'used' FROM public.invitations WHERE code = 'legacy-consumed-link'" \
   | grep -qx t
-echo "==> Testing bounded and unlimited invitations on the isolated database"
+echo "==> Running the API regression suite on the upgraded isolated database"
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  pnpm --filter @workspace/api-server exec vitest run test/invitations.test.ts test/event-certificates.test.ts test/event-accreditations.test.ts test/meeting-minutes.test.ts test/native-wiki.test.ts test/ai-knowledge-nextcloud.unit.test.ts
+  pnpm --filter @workspace/api-server exec vitest run
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
@@ -163,7 +166,18 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
   | grep -qx t
 
 echo "==> Verifying an already upgraded database can be upgraded again"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT status = 'confirmed' AND does_not_teach = false AND confirmed_at IS NOT NULL FROM public.teacher_year_confirmations WHERE school_year = '2099-2100'" \
+  | grep -qx t
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="UPDATE public.teacher_year_confirmations SET does_not_teach = true WHERE school_year = '2099-2100'"
 migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT status = 'confirmed' AND does_not_teach = true FROM public.teacher_year_confirmations WHERE school_year = '2099-2100'" \
+  | grep -qx t
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="INSERT INTO public.collaborative_spaces (name) VALUES ('Preserved independent space'); INSERT INTO public.account_audit (actor_id, actor_name, target_id, action, changes, before_role, after_role) SELECT id, name, id, 'update', '[]'::jsonb, role::text, role::text FROM public.users WHERE email = 'upgrade-preserve@example.test'; ALTER TABLE public.collaborative_spaces DROP COLUMN provisioning_started_at"

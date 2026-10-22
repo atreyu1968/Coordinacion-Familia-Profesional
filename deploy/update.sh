@@ -169,6 +169,8 @@ run_as_user "cd '${APP_DIR}' && pnpm install --frozen-lockfile"
 echo "==> Backing up and migrating the database"
 run_db_helper backup
 run_db_helper prepare
+echo "==> Validating application source before applying database changes"
+run_as_user "cd '${APP_DIR}' && pnpm run typecheck:libs && pnpm --filter @workspace/api-server run typecheck && pnpm --filter @workspace/web run typecheck"
 run_db_helper apply
 
 echo "==> Preloading reference data (provinces, islands, municipalities, FP centers)"

@@ -65,7 +65,16 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     expect((await call("post", base() + "/publish").send({ revision: w.revision, publish: true, reviewed: true })).status).toBe(200);
     w = await current();
     await call("put", base()).send({ revision: w.revision, draftText: "Cambio aún no publicado" });
-    expect((await call("get", base(), reader)).body.publishedText).toBe("Acta privada revisada");
+    expect((await current()).publishedText).toBe("Acta privada revisada");
+    const readerView = (await call("get", base(), reader)).body;
+    expect(readerView).toMatchObject({
+      enabled: false, draftText: null, publishedText: null, publishedAt: null,
+      publishedDocument: null, sharedDocuments: [], sources: [], messages: [],
+    });
+    expect(JSON.stringify(readerView)).not.toContain("Acta privada revisada");
+    expect(JSON.stringify(readerView)).not.toContain("Cambio aún no publicado");
+    expect((await call("get", base() + "/documents/published", reader)).status).toBe(404);
+    expect((await call("get", base() + "/documents/draft", reader)).status).toBe(403);
     w = await current();
     await call("post", base() + "/publish").send({ revision: w.revision, publish: false, reviewed: false });
     expect((await call("get", base(), reader)).body.publishedText).toBeNull();
@@ -160,7 +169,10 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     let w = await current();
     result = await call("post", base() + "/publish").send({ revision: w.revision, publish: true, reviewed: true });
     expect(result.status).toBe(200);
-    expect((await call("get", base(), reader)).body.publishedDocument).toMatchObject({ id: firstDocumentId, fileName: "acta-final.pdf" });
+    expect((await call("get", base(), reader)).body).toMatchObject({
+      enabled: true, draftText: null, publishedText: null, sources: [], messages: [],
+      publishedDocument: { id: firstDocumentId, fileName: "acta-final.pdf" },
+    });
     expect((await call("get", base() + "/documents/published", reader)).status).toBe(200);
     const headWorkspace = (await call("get", base(), outsideHead)).body;
     expect(headWorkspace).toMatchObject({

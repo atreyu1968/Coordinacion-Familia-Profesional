@@ -395,6 +395,8 @@ log "Applying database schema"
 # the target schema. No API artifact or live web tree has changed at this point.
 run_db_helper backup
 run_db_helper prepare
+log "Validating application source before applying database changes"
+run_as_user "cd '${APP_DIR}' && pnpm run typecheck:libs && pnpm --filter @workspace/api-server run typecheck && pnpm --filter @workspace/web run typecheck"
 run_db_helper apply
 
 # ---------------------------------------------------------------------------
