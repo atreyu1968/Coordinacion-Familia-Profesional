@@ -55,8 +55,12 @@ import {
   type ExportSheet,
 } from "@/lib/export";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { useAcademicYears } from "@/components/year-selector";
 
 const GLOBAL = "global";
+const ALL_PERIODS = "all";
+const CUSTOM_PERIOD = "custom";
 const PALETTE = [
   "hsl(217 91% 60%)",
   "hsl(160 84% 39%)",
@@ -74,23 +78,62 @@ export default function DashboardPage() {
   const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
   const { data: provinces = [] } = useListProvinces();
+  const {
+    years,
+    activeYear,
+    isLoading: academicYearsLoading,
+  } = useAcademicYears();
   const [provinceFilter, setProvinceFilter] = useState<string>(GLOBAL);
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
-  const params =
-    isSuperadmin && provinceFilter !== GLOBAL
+  const activeYearRange = activeYear ? academicYearDateRange(activeYear) : null;
+  const periodSelection =
+    selectedPeriod ??
+    (activeYearRange ? `year:${activeYear}` : ALL_PERIODS);
+  const selectedYear =
+    periodSelection.startsWith("year:")
+      ? periodSelection.slice("year:".length)
+      : null;
+  const selectedRange =
+    selectedYear != null
+      ? academicYearDateRange(selectedYear)
+      : periodSelection === CUSTOM_PERIOD
+        ? { startDate: customStartDate, endDate: customEndDate }
+        : null;
+  const hasValidPeriod =
+    selectedRange == null ||
+    (isValidDateInput(selectedRange.startDate) &&
+      isValidDateInput(selectedRange.endDate) &&
+      selectedRange.startDate <= selectedRange.endDate);
+  const periodReady = !academicYearsLoading && hasValidPeriod;
+
+  const params = {
+    ...(isSuperadmin && provinceFilter !== GLOBAL
       ? { provinceId: Number(provinceFilter) }
-      : undefined;
+      : {}),
+    ...(selectedRange && periodReady
+      ? {
+          startDate: selectedRange.startDate,
+          endDate: selectedRange.endDate,
+        }
+      : {}),
+  };
+  const queryParams = Object.keys(params).length > 0 ? params : undefined;
 
-  const summaryQuery = useGetDashboardSummary(params, {
+  const summaryQuery = useGetDashboardSummary(queryParams, {
     query: {
-      queryKey: getGetDashboardSummaryQueryKey(params),
+      queryKey: getGetDashboardSummaryQueryKey(queryParams),
+      enabled: periodReady,
       refetchInterval: 60_000,
       refetchOnWindowFocus: true,
     },
   });
-  const statsQuery = useGetDashboardStatistics(params, {
+  const statsQuery = useGetDashboardStatistics(queryParams, {
     query: {
-      queryKey: getGetDashboardStatisticsQueryKey(params),
+      queryKey: getGetDashboardStatisticsQueryKey(queryParams),
+      enabled: periodReady,
       refetchInterval: 60_000,
       refetchOnWindowFocus: true,
     },
@@ -119,6 +162,15 @@ export default function DashboardPage() {
       ? "Ámbito autonómico (toda Canarias)"
       : provinces.find((p) => String(p.id) === provinceFilter)?.name ??
         "Provincial";
+  const periodLabel =
+    selectedYear && selectedRange
+      ? `Curso ${selectedYear} · ${formatPeriodDate(selectedRange.startDate)} – ${formatPeriodDate(selectedRange.endDate)}`
+      : periodSelection === CUSTOM_PERIOD && hasValidPeriod && selectedRange
+        ? `Del ${formatPeriodDate(selectedRange.startDate)} al ${formatPeriodDate(selectedRange.endDate)}`
+        : periodSelection === CUSTOM_PERIOD
+          ? "Selecciona las dos fechas"
+          : "Todos los periodos";
+  const isPeriodFiltered = selectedRange != null;
   const canViewUserDirectory =
     user?.role === "superadmin" ||
     user?.role === "coordinator" ||
@@ -126,16 +178,30 @@ export default function DashboardPage() {
     user?.role === "teacher";
 
   const cards = [
-    { label: "Centros", value: summary?.centers, icon: Building2, href: dashboardHref("/centros", { dashboard: "centers" }) },
     {
-      label: "Profesorado",
+      label: isPeriodFiltered ? "Centros dados de alta" : "Centros",
+      value: summary?.centers,
+      icon: Building2,
+      href: dashboardHref("/centros", { dashboard: "centers" }),
+    },
+    {
+      label: isPeriodFiltered ? "Profesorado dado de alta" : "Profesorado",
       value: summary?.teachers,
       icon: Users,
       href: canViewUserDirectory
-        ? dashboardHref("/usuarios", { dashboard: "users", role: "teacher", status: "active" })
+        ? dashboardHref("/usuarios", {
+            dashboard: "users",
+            role: "teacher",
+            status: "active",
+          })
         : undefined,
     },
-    { label: "Recursos", value: summary?.resources, icon: FileText, href: dashboardHref("/recursos", { dashboard: "resources" }) },
+    {
+      label: isPeriodFiltered ? "Recursos del periodo" : "Recursos",
+      value: summary?.resources,
+      icon: FileText,
+      href: dashboardHref("/recursos", { dashboard: "resources" }),
+    },
     {
       label: "Encuestas activas",
       value: summary?.activeSurveys,
@@ -145,10 +211,15 @@ export default function DashboardPage() {
         : undefined,
     },
     {
-      label: "Próximos eventos",
+      label: isPeriodFiltered ? "Eventos del periodo" : "Próximos eventos",
       value: summary?.upcomingEvents,
       icon: Calendar,
-      href: dashboardHref("/eventos", { dashboard: "events", period: "upcoming" }),
+      href: dashboardHref(
+        "/eventos",
+        isPeriodFiltered
+          ? { dashboard: "events" }
+          : { dashboard: "events", period: "upcoming" },
+      ),
     },
     {
       label: "Avisos de empresas",
@@ -162,6 +233,10 @@ export default function DashboardPage() {
     const query = new URLSearchParams(filters);
     if (isSuperadmin && provinceFilter !== GLOBAL) {
       query.set("provinceId", provinceFilter);
+    }
+    if (selectedRange && hasValidPeriod) {
+      query.set("startDate", selectedRange.startDate);
+      query.set("endDate", selectedRange.endDate);
     }
     return `${path}?${query.toString()}`;
   }
@@ -208,11 +283,14 @@ export default function DashboardPage() {
   const fileBase = `estadisticas-adg-${scopeLabel
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}-${periodLabel
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")}`;
 
   const onExportPdf = () =>
     exportTablesPdf(
-      `Estadísticas · ${professionalFamily} — ${scopeLabel}`,
+      `Estadísticas · ${professionalFamily} — ${scopeLabel} — ${periodLabel}`,
       buildSheets(),
       `${fileBase}.pdf`,
     );
@@ -254,6 +332,64 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           )}
+          <Select
+            value={periodSelection}
+            onValueChange={(value) => {
+              if (value === CUSTOM_PERIOD) {
+                if (selectedRange) {
+                  setCustomStartDate(selectedRange.startDate);
+                  setCustomEndDate(selectedRange.endDate);
+                } else {
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                }
+              }
+              setSelectedPeriod(value);
+            }}
+          >
+            <SelectTrigger
+              className="w-[220px]"
+              aria-label="Filtrar por curso o periodo"
+              data-testid="select-dashboard-period"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PERIODS}>Todos los periodos</SelectItem>
+              {years
+                .filter((year) => academicYearDateRange(year.name) != null)
+                .map((year) => (
+                  <SelectItem
+                    key={year.id}
+                    value={`year:${year.name}`}
+                  >
+                    Curso {year.name}{year.name === activeYear ? " (activo)" : ""}
+                  </SelectItem>
+                ))}
+              <SelectItem value={CUSTOM_PERIOD}>Intervalo de fechas</SelectItem>
+            </SelectContent>
+          </Select>
+          {periodSelection === CUSTOM_PERIOD && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                aria-label="Fecha inicial del periodo"
+                data-testid="input-dashboard-period-start"
+                className="w-[160px]"
+              />
+              <span className="text-sm text-muted-foreground">a</span>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                aria-label="Fecha final del periodo"
+                data-testid="input-dashboard-period-end"
+                className="w-[160px]"
+              />
+            </div>
+          )}
           <Button variant="outline" size="sm" onClick={onExportPdf}>
             <FileDown className="mr-2 h-4 w-4" />
             PDF
@@ -267,8 +403,9 @@ export default function DashboardPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>
-          Datos consultados directamente en la plataforma; actualización
-          automática cada minuto.
+          Periodo consultado: <strong data-testid="text-dashboard-period">{periodLabel}</strong>.
+          Las altas se cuentan por fecha de creación y los eventos por su fecha
+          de celebración. Los indicadores reflejan el estado actual.
         </span>
         <span aria-live="polite">
           {isRefreshing
@@ -278,6 +415,15 @@ export default function DashboardPage() {
               : "Consultando datos…"}
         </span>
       </div>
+
+      {!periodReady && (
+        <Alert>
+          <AlertTitle>Completa el intervalo de fechas</AlertTitle>
+          <AlertDescription>
+            Selecciona una fecha inicial y final válidas para consultar el panel.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {(summaryQuery.isError || statsQuery.isError) && (
         <Alert variant="destructive">
@@ -297,7 +443,11 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
           c.href ? (
-            <Link key={c.label} href={c.href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link
+              key={c.label}
+              href={c.href}
+              className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <Card className="h-full transition-colors hover:border-primary">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -313,7 +463,9 @@ export default function DashboardPage() {
                         ? "No disponible"
                         : (c.value ?? 0)}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Abrir registros</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Abrir registros
+                  </p>
                 </CardContent>
               </Card>
             </Link>
@@ -364,9 +516,17 @@ export default function DashboardPage() {
               </LineChart>
             </ResponsiveContainer>
           )}
-          <ChartLinks points={resourcesByMonth} onSelect={(point) =>
-            navigate(dashboardHref("/recursos", { dashboard: "resources", month: point.label }))
-          } />
+          <ChartLinks
+            points={resourcesByMonth}
+            onSelect={(point) =>
+              navigate(
+                dashboardHref("/recursos", {
+                  dashboard: "resources",
+                  month: point.label,
+                }),
+              )
+            }
+          />
         </ChartCard>
 
         <ChartCard title="Actividad de eventos por mes">
@@ -387,12 +547,20 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
-          <ChartLinks points={eventsByMonth} onSelect={(point) =>
-            navigate(dashboardHref("/eventos", { dashboard: "events", month: point.label }))
-          } />
+          <ChartLinks
+            points={eventsByMonth}
+            onSelect={(point) =>
+              navigate(
+                dashboardHref("/eventos", {
+                  dashboard: "events",
+                  month: point.label,
+                }),
+              )
+            }
+          />
         </ChartCard>
 
-        <ChartCard title="Usuarios por rol">
+        <ChartCard title="Usuarios dados de alta por rol">
           {statsQuery.isLoading ? (
             <ChartMessage>Consultando datos…</ChartMessage>
           ) : statsQuery.isError && !stats ? (
@@ -415,13 +583,24 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
-          <ChartLinks points={canViewUserDirectory ? usersByRole : []} onSelect={(point) => {
-            const role = roleForLabel(point.label);
-            if (role) navigate(dashboardHref("/usuarios", { dashboard: "users", role, status: "active" }));
-          }} />
+          <ChartLinks
+            points={canViewUserDirectory ? usersByRole : []}
+            onSelect={(point) => {
+              const role = roleForLabel(point.label);
+              if (role) {
+                navigate(
+                  dashboardHref("/usuarios", {
+                    dashboard: "users",
+                    role,
+                    status: "active",
+                  }),
+                );
+              }
+            }}
+          />
         </ChartCard>
 
-        <ChartCard title="Centros por isla">
+        <ChartCard title="Centros dados de alta por isla">
           {statsQuery.isLoading ? (
             <ChartMessage>Consultando datos…</ChartMessage>
           ) : statsQuery.isError && !stats ? (
@@ -439,9 +618,17 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
-          <ChartLinks points={centersByIsland} onSelect={(point) =>
-            navigate(dashboardHref("/centros", { dashboard: "centers", island: point.label }))
-          } />
+          <ChartLinks
+            points={centersByIsland}
+            onSelect={(point) =>
+              navigate(
+                dashboardHref("/centros", {
+                  dashboard: "centers",
+                  island: point.label,
+                }),
+              )
+            }
+          />
         </ChartCard>
 
         <ChartCard title="Encuestas por estado">
@@ -472,12 +659,50 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           )}
-          <ChartLinks points={isSuperadmin ? surveysByStatus : []} onSelect={(point) => {
-            const status = surveyStatusForLabel(point.label);
-            if (status) navigate(dashboardHref("/encuestas", { status }));
-          }} />
+          <ChartLinks
+            points={isSuperadmin ? surveysByStatus : []}
+            onSelect={(point) => {
+              const status = surveyStatusForLabel(point.label);
+              if (status) {
+                navigate(dashboardHref("/encuestas", { status }));
+              }
+            }}
+          />
         </ChartCard>
       </div>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+      Sin datos para este ámbito.
+    </div>
+  );
+}
+
+function ChartMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+      {children}
     </div>
   );
 }
@@ -529,35 +754,32 @@ function ChartLinks({
   );
 }
 
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function academicYearDateRange(
+  schoolYear: string,
+): { startDate: string; endDate: string } | null {
+  const match = /^(\d{4})\/(\d{4})$/.exec(schoolYear);
+  if (!match || Number(match[2]) !== Number(match[1]) + 1) return null;
+  return {
+    startDate: `${match[1]}-09-01`,
+    endDate: `${match[2]}-08-31`,
+  };
+}
+
+function isValidDateInput(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
   );
 }
 
-function EmptyChart() {
-  return (
-    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
-      Sin datos para este ámbito.
-    </div>
-  );
-}
-
-function ChartMessage({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
-      {children}
-    </div>
-  );
+function formatPeriodDate(value: string): string {
+  if (!isValidDateInput(value)) return value;
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00.000Z`));
 }

@@ -5,11 +5,13 @@ import {
   or,
   isNull,
   gte,
+  lt,
   inArray,
   count,
   sql,
   desc,
   type SQL,
+  type SQLWrapper,
 } from "drizzle-orm";
 import {
   db,
@@ -63,10 +65,10 @@ type DashboardScope = {
   empty: boolean;
 };
 
-// Constrain dashboard aggregates to the caller's tenant scope. Scope is
-// role-driven (see resolveReadScope): superadmin sees everything (optionally
-// narrowed by an explicit province filter); province roles are locked to their
-// province; center roles to their center; everyone else sees nothing.
+type DashboardPeriod = {
+  from: Date;
+  until: Date;
+};
 function resolveScope(
   caller: User,
   requestedProvinceId?: number | null,
@@ -137,10 +139,12 @@ function activeFamilyCenterIds(scope: DashboardScope, activeFamily: string) {
 function resourceScopeFilters(
   scope: DashboardScope,
   activeFamily: string,
+  period?: DashboardPeriod,
 ): SQL[] {
   return [
     isNull(resourcesTable.deletedAt),
     inArray(resourcesTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+    ...periodFilters(resourcesTable.createdAt, period),
   ];
 }
 
@@ -149,10 +153,12 @@ function resourceScopeFilters(
 function activeUserScopeFilters(
   scope: DashboardScope,
   activeFamily: string,
+  period?: DashboardPeriod,
 ): SQL[] {
   const filters: SQL[] = [
     isNull(usersTable.deletedAt),
     eq(usersTable.status, "active"),
+    ...periodFilters(usersTable.createdAt, period),
   ];
 
   if (scope.centerId != null) {
@@ -191,22 +197,30 @@ function activeUserScopeFilters(
 }
 
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
-  const query = GetDashboardSummaryQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ message: query.error.message });
-    return;
-  }
+  const query = GetDashboardStatisticsQueryParams.safeParse(req.query);
 
-  const scope = resolveScope(req.user!, query.data.provinceId);
+  const parsedPeriod = parseDashboardPeriod(
+    query.data.startDate,
+    query.data.endDate,
+  );
+
+  const parsedPeriod = parseDashboardPeriod(
+    query.data.startDate,
+    query.data.endDate,
+  );
+    const scope: DashboardScope = {
+      provinceId,
+      centerId: null,
+      empty: false,
+    };
   if (scope.empty) {
     res.json(
-      GetDashboardSummaryResponse.parse({
-        centers: 0,
-        teachers: 0,
-        resources: 0,
-        activeSurveys: 0,
-        upcomingEvents: 0,
-        companyAlerts: 0,
+      GetDashboardStatisticsResponse.parse({
+        resourcesByMonth: [],
+        usersByRole: [],
+        centersByIsland: [],
+        eventsByMonth: [],
+        surveysByStatus: [],
       }),
     );
     return;
@@ -217,6 +231,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   const centerFilters: SQL[] = [
     isNull(centersTable.deletedAt),
     centerInActiveFamily(activeFamily),
+    ...periodFilters(centersTable.createdAt, period),
   ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
@@ -240,18 +255,16 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
         eq(usersTable.status, "active"),
         eq(usersTable.role, "teacher"),
         inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+        ...periodFilters(usersTable.createdAt, period),
       ),
     );
 
   const [resourcesCount] = await db
     .select({ value: count() })
     .from(resourcesTable)
-    .where(and(...resourceScopeFilters(scope, activeFamily)));
+    .where(and(...resourceScopeFilters(scope, activeFamily, period)));
 
-  const surveyFilters: SQL[] = [
-    isNull(surveysTable.deletedAt),
-    eq(surveysTable.status, "open"),
-  ];
+  const surveyFilters: SQL[] = [isNull(surveysTable.deletedAt)];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
   if (surveyScope) surveyFilters.push(surveyScope);
   const [activeSurveysCount] = await db
@@ -259,10 +272,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(surveysTable)
     .where(and(...surveyFilters));
 
-  const eventFilters: SQL[] = [
-    isNull(eventsTable.deletedAt),
-    gte(eventsTable.startAt, new Date()),
-  ];
+  const eventDate = sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`;
+
+  const eventDate = sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`;
+  const eventFilters: SQL[] = [isNull(eventsTable.deletedAt)];
   const eventScope = provinceColFilter(eventsTable.provinceId, scope);
   if (eventScope) eventFilters.push(eventScope);
   const [upcomingEventsCount] = await db
@@ -292,12 +305,21 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
 
 router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void> => {
   const query = GetDashboardStatisticsQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ message: query.error.message });
-    return;
-  }
 
-  const scope = resolveScope(req.user!, query.data.provinceId);
+  const parsedPeriod = parseDashboardPeriod(
+    query.data.startDate,
+    query.data.endDate,
+  );
+
+  const parsedPeriod = parseDashboardPeriod(
+    query.data.startDate,
+    query.data.endDate,
+  );
+    const scope: DashboardScope = {
+      provinceId,
+      centerId: null,
+      empty: false,
+    };
   if (scope.empty) {
     res.json(
       GetDashboardStatisticsResponse.parse({
@@ -317,11 +339,11 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
   const resourcesByMonthRows = await db
     .select({ label: resourceMonth, value: count() })
     .from(resourcesTable)
-    .where(and(...resourceScopeFilters(scope, activeFamily)))
+    .where(and(...resourceScopeFilters(scope, activeFamily, period)))
     .groupBy(resourceMonth)
     .orderBy(resourceMonth);
 
-  const userFilters = activeUserScopeFilters(scope, activeFamily);
+  const userFilters = activeUserScopeFilters(scope, activeFamily, period);
   const usersByRoleRows = await db
     .select({ role: usersTable.role, value: count() })
     .from(usersTable)
@@ -331,6 +353,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
   const centerFilters: SQL[] = [
     isNull(centersTable.deletedAt),
     centerInActiveFamily(activeFamily),
+    ...periodFilters(centersTable.createdAt, period),
   ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
@@ -395,7 +418,11 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
 });
 
 router.get("/reports", requireAuth, requireRole("superadmin", "coordinator"), async (req, res): Promise<void> => {
-  const scope = resolveScope(req.user!);
+    const scope: DashboardScope = {
+      provinceId,
+      centerId: null,
+      empty: false,
+    };
   // Default-deny: roles with no read scope see no reports at all.
   if (scope.empty) {
     res.json(ListReportsResponse.parse([]));
@@ -610,3 +637,43 @@ router.post(
 );
 
 export default router;
+
+function parseDashboardPeriod(
+  startDate?: string,
+  endDate?: string,
+): { period?: DashboardPeriod; error?: string } {
+  if (startDate == null && endDate == null) return {};
+  if (startDate == null || endDate == null) {
+    return { error: "startDate y endDate deben enviarse juntos." };
+  }
+  if (!isValidDateOnly(startDate) || !isValidDateOnly(endDate)) {
+    return { error: "El periodo debe usar fechas válidas con formato YYYY-MM-DD." };
+  }
+
+  const from = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  if (from > end) {
+    return { error: "startDate no puede ser posterior a endDate." };
+  }
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { period: { from, until: end } };
+}
+
+function periodFilters(
+  column: SQLWrapper,
+  period?: DashboardPeriod,
+): SQL[] {
+  if (!period) return [];
+  return [gte(column, period.from), lt(column, period.until)];
+}
+
+function isValidDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
+
+  const period = parsedPeriod.period;

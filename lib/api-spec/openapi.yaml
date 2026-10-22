@@ -4099,6 +4099,20 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/ProvinceQuery"
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Inclusive start date for the dashboard period.
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Inclusive end date for the dashboard period.
       responses:
         "200":
           description: Summary
@@ -4115,6 +4129,20 @@ paths:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/ProvinceQuery"
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Inclusive start date for the dashboard period.
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Inclusive end date for the dashboard period.
       responses:
         "200":
           description: Statistics

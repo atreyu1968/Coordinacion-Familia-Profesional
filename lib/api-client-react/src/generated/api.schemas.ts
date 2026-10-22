@@ -3720,10 +3720,30 @@ beforeId?: number;
 
 export type GetDashboardSummaryParams = {
 provinceId?: ProvinceQueryParameter;
+/**
+ * Inclusive start date for the dashboard period.
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+startDate?: string;
+/**
+ * Inclusive end date for the dashboard period.
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+endDate?: string;
 };
 
 export type GetDashboardStatisticsParams = {
 provinceId?: ProvinceQueryParameter;
+/**
+ * Inclusive start date for the dashboard period.
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+startDate?: string;
+/**
+ * Inclusive end date for the dashboard period.
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+endDate?: string;
 };
 
 export type GetCollaborativeSpaceHistoryParams = {
@@ -3783,4 +3803,3 @@ export type CommitLmsScormSessionParams = {
  */
 token: LmsTokenQueryParameter;
 };
-

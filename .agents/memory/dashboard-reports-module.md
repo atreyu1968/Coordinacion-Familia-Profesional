@@ -46,3 +46,18 @@ family make live totals disagree with the platform's usable population.
 
 **How to apply:** keep the summary teacher count and users-by-role chart on the
 same status and family-scope rules when changing dashboard aggregates.
+
+## Dashboard period semantics
+Academic-year labels in `YYYY/YYYY` format map to the inclusive UTC date range
+September 1 through August 31. Other dashboard periods are explicit inclusive
+date ranges; the API implements the last day as an exclusive next-day boundary.
+Timestamp-based aggregates use creation time, except events, which use their
+start time and fall back to creation time. Existing active/non-deleted filters
+still describe current state, not a historical snapshot.
+
+**Why:** the dashboard's existing aggregates do not share an academic-year
+column, so date bounds let summary figures and charts use one common filter
+without implying that current statuses are historical.
+
+**How to apply:** keep the same date semantics in new dashboard aggregates and
+exports, and test both boundary dates and authorization scope.
