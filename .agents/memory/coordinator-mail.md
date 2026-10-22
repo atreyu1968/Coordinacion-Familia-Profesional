@@ -11,6 +11,12 @@ Los borradores de IA requieren una petición explícita y consentimiento; nunca 
 
 **How to apply:** al ampliar la bandeja, conservar aislamiento por usuario, mínima autorización OAuth, configuración desde administración y confirmación humana de todo envío.
 
+El dominio de instalación indicado por el usuario es `coordinacionfp.org`; la URI de retorno de Gmail para esa instalación es `https://coordinacionfp.org/api/coordinator-mail/gmail/callback`.
+
+**Why:** el usuario corrigió expresamente el dominio antiguo que aparecía en la configuración OAuth.
+
+**How to apply:** usar ese dominio al orientar sobre su servidor y Google Cloud, sin fijarlo globalmente en el código reutilizable. Mantener coherentes la dirección pública del servidor y la URI guardada en la administración.
+
 La vinculación entre asuntos es una agrupación de presentación privada por propietario, no una fusión de registros. Mensajes, adjuntos, notas, borradores y envíos siguen en su caso original; el historial compartido atribuye cada mensaje y nota a ese origen. La IA y el borrador activo continúan limitados al caso seleccionado.
 
 **Why:** los reenvíos relacionados deben consultarse juntos sin cambiar ni mezclar el contenido original ni ampliar el contexto autorizado para la IA.
