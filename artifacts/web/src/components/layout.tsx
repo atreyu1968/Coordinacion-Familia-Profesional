@@ -58,7 +58,7 @@ export function AppLayout({ children }: LayoutProps) {
   const { user, isLoading, logout } = useAuth();
   const { customLogoUrl, appName } = useBranding();
   const [location, setLocation] = useLocation();
-  const isTeacher = user?.role === "teacher";
+  const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? "");
   const teachingProfileQuery = useGetMyTeachingProfile(
     { targetCenterId: user?.centerId ?? undefined },
     {

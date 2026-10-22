@@ -13,10 +13,11 @@ Aggregation endpoints live in one router (`dashboard.ts`, mounted at root, so
 - **Resources have no provinceId** — the dashboard derives scope from their
   centers in the active family. Center-less resources are excluded from these
   family-attributed figures; do not infer a province directly on resources.
-- **Province-scoped tables** (surveys, events, company_alerts, annual_reports)
-  use `provinceId NULL = regional/autonómica, visible to everyone`. A province
-  caller sees `provinceId = X OR NULL`; a **center caller** (no province col to
-  match) sees **only `NULL`** rows.
+- **Province scope differs by resource**: regional (`provinceId NULL`) rows are
+  included within an authorized scope. Events and company alerts also include
+  a center caller's own province, matching their normal list/detail access.
+  Surveys retain their narrower scope and additionally enforce audience and
+  private-draft visibility. Do not use one generic center-to-province rule for all resources.
 - **`scope.empty` (ReadScope.none) is default-deny**: return zeros / `[]`, never
   regional rows. Treating empty like center scope is a data leak (caught in review).
 
@@ -37,15 +38,19 @@ DashboardStatistics was extended with `eventsByMonth` (TimeSeriesPoint[]) and
 
 ## User statistics
 Dashboard user totals and users-by-role charts count active, non-deleted
-accounts only. Center-assigned accounts are limited to centers in the active
+accounts of **all roles**, not just the `teacher` role. A separate teacher
+subtotal must never be presented as the user total. Center-assigned accounts are limited to centers in the active
 professional-family footprint; province-level accounts without a center remain
 in their assigned province.
 
 **Why:** inactive accounts and users attached to centers outside the configured
 family make live totals disagree with the platform's usable population.
+Department heads and coordinators are users too; a teacher-only count can be
+zero while the user directory contains real active accounts.
 
-**How to apply:** keep the summary teacher count and users-by-role chart on the
-same status and family-scope rules when changing dashboard aggregates.
+**How to apply:** keep the summary user total, users-by-role chart and active
+directory on the same status and family-scope rules. The user-total drilldown
+must not silently add a teacher-role filter.
 
 ## Dashboard period semantics
 Centers and active users are **current population totals**, never registrations
@@ -61,6 +66,15 @@ with the role chart for center-less accounts.
 drilldowns must preserve province/role/status but omit creation-date bounds.
 Label both types explicitly; an older course selection is not a historical
 population snapshot.
+
+Activity drilldowns must actually consume the date bounds carried in their URL;
+putting dates in a link without applying them in the destination creates a
+different list from the card. Survey counts must use the same audience rules
+as their list, not just geographic scope.
+
+**Why:** geographic-only survey aggregates exposed counts of private audiences,
+and activity pages silently ignored the course interval. Restricting center
+users to regional events/alerts also hid province records they could otherwise open.
 
 Academic-year labels in `YYYY/YYYY` format map to the inclusive UTC date range
 September 1 through August 31. Other dashboard periods are explicit inclusive

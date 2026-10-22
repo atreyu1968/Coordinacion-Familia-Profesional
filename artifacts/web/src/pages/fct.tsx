@@ -6,6 +6,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
+import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import {
   useListCompanyAlerts,
   useCreateCompanyAlert,
@@ -299,18 +300,15 @@ function AlertsTab() {
     requestedProvinceId > 0
       ? requestedProvinceId
       : null;
-  const dashboardOnly = searchParams.get("dashboard") === "alerts";
-  const alerts =
+  const scopedAlerts =
     selectedProvinceId == null
-      ? dashboardOnly &&
-        (user?.role === "teacher" || user?.role === "department_head")
-        ? allAlerts.filter((alert) => alert.provinceId == null)
-        : allAlerts
+      ? allAlerts
       : allAlerts.filter(
           (alert) =>
             alert.provinceId == null ||
             alert.provinceId === selectedProvinceId,
         );
+  const alerts = scopedAlerts.filter((alert) => matchesDashboardPeriod(alert.createdAt, searchParams));
 
   const provinceName = (id: number | null | undefined) =>
     id == null ? "Global" : provinces.find((p) => p.id === id)?.name ?? "—";

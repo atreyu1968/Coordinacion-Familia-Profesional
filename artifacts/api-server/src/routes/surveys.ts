@@ -39,6 +39,7 @@ import {
   isWithinParticipationWindow,
 } from "../lib/audience";
 import { toSurvey } from "../lib/mappers";
+import { filterVisibleSurveys } from "../lib/survey-visibility";
 import { notifyUsers } from "../lib/notify";
 
 const router: IRouter = Router();
@@ -111,14 +112,7 @@ router.get("/surveys", requireAuth, async (req, res): Promise<void> => {
   // Visibility by audience membership. Superadmins see everything; creators see
   // their own; everyone else only surveys whose audience includes them. Drafts
   // are only visible to superadmins and the creator.
-  const isSuperadmin = caller.role === "superadmin";
-  const viewerCtx = isSuperadmin ? null : await getViewerContext(caller);
-  const rows = allRows.filter((r) => {
-    const isCreator = r.createdById === caller.id;
-    if (r.status === "draft" && !isSuperadmin && !isCreator) return false;
-    if (isSuperadmin || isCreator) return true;
-    return isInAudience(r.audienceType, r.audienceIds, viewerCtx!);
-  });
+  const rows = await filterVisibleSurveys(caller, allRows);
 
   res.json(ListSurveysResponse.parse(rows.map(toSurvey)));
 });

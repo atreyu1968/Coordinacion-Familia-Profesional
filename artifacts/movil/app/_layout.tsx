@@ -53,7 +53,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
-  const isTeacher = Boolean(token && user?.role === "teacher");
+  const isTeacher = Boolean(token && ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? ""));
   const teachingProfileQuery = useGetMyTeachingProfile(
     { targetCenterId: user?.centerId ?? undefined },
     {

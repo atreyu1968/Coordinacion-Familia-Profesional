@@ -192,13 +192,12 @@ export default function DashboardPage() {
       href: dashboardHref("/centros", { dashboard: "centers" }),
     },
     {
-      label: "Profesorado activo",
-      value: summary?.teachers,
+      label: "Usuarios activos",
+      value: summary?.users,
       icon: Users,
       href: canViewUserDirectory
         ? dashboardHref("/usuarios", {
             dashboard: "users",
-            role: "teacher",
             status: "active",
           })
         : undefined,
@@ -210,12 +209,10 @@ export default function DashboardPage() {
       href: dashboardHref("/recursos", { dashboard: "resources" }),
     },
     {
-      label: "Encuestas activas",
+      label: isPeriodFiltered ? "Encuestas abiertas del periodo" : "Encuestas abiertas",
       value: summary?.activeSurveys,
       icon: BarChartIcon,
-      href: isSuperadmin
-        ? dashboardHref("/encuestas", { status: "open" })
-        : undefined,
+      href: dashboardHref("/encuestas", { status: "open" }),
     },
     {
       label: isPeriodFiltered ? "Eventos del periodo" : "Próximos eventos",
@@ -229,7 +226,7 @@ export default function DashboardPage() {
       ),
     },
     {
-      label: "Avisos de empresas",
+      label: isPeriodFiltered ? "Avisos de empresas del periodo" : "Avisos de empresas",
       value: summary?.companyAlerts,
       icon: Bell,
       href: dashboardHref("/fct", { dashboard: "alerts" }),

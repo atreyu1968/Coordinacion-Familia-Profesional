@@ -36,7 +36,7 @@ export default function PerfilScreen() {
   const updateMut = useUpdateProfile();
   const queryClient = useQueryClient();
   const teachingProfileMut = useUpdateMyTeachingProfile();
-  const isTeacher = user?.role === "teacher";
+  const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user?.role ?? "");
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -123,6 +123,8 @@ export default function PerfilScreen() {
             teachingProfileQuery.data.moduleIds.length === 0 &&
             !teachingProfileQuery.data.doesNotTeach))));
   const filteredCenters = (centersQuery.data ?? []).filter((center) =>
+    (user?.role !== "coordinator" || center.provinceId === user.provinceId) &&
+    (user?.role !== "department_head" || center.id === user.centerId) &&
     center.name.toLocaleLowerCase().includes(centerSearch.trim().toLocaleLowerCase()),
   );
 

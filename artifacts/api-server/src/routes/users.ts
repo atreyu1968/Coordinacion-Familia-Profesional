@@ -26,7 +26,7 @@ import {
 } from "@workspace/api-zod";
 import { changeAccount } from "../lib/accountAudit";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
-import { teachingProfilePredicates } from "../lib/teachingProfileAccess";
+import { teachingProfilePredicates, TEACHING_PROFILE_ROLES, requiresTeachingProfile } from "../lib/teachingProfileAccess";
 import { testTeacherCleanupRouter } from "./testTeacherCleanup";
 import {
   requireAuth,
@@ -133,15 +133,20 @@ router.get("/users/management", requireAuth,
     const settings = await getSettings();
     const activeYear = settings.activeAcademicYear?.trim() || null;
     const profile = teachingProfilePredicates(professionalFamilyOf(settings), activeYear);
-    // Only teachers lower in the hierarchy and inside the already applied
-    // account scope are diagnosed. Correlated predicates never return rosters.
-    const incomplete = and(eq(usersTable.role, "teacher"), not(profile.complete))!;
+    // Diagnose only accounts the caller may manage, never peers or their own
+    // profile. Administrative roles can also be teachers.
+    const diagnosable = and(
+      inArray(usersTable.role, TEACHING_PROFILE_ROLES.filter((role) =>
+        caller.role === "superadmin" || roleRank(role) < roleRank(caller.role))),
+      sql`${usersTable.id} <> ${caller.id}`,
+    )!;
+    const incomplete = and(diagnosable, not(profile.complete))!;
     const profileFilter = query.data.teachingProfile;
     const result = await db.transaction(async (tx) => {
       const [integritySummary] = await tx.select({ total: count() }).from(usersTable)
         .where(and(...filters, incomplete));
       if (profileFilter === "incomplete") filters.push(incomplete);
-      if (profileFilter === "complete") filters.push(and(eq(usersTable.role, "teacher"), profile.complete)!);
+      if (profileFilter === "complete") filters.push(and(diagnosable, profile.complete)!);
       const [summary] = await tx.select({ total: count() }).from(usersTable).where(and(...filters));
       const total = summary.total;
       const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
@@ -163,7 +168,7 @@ router.get("/users/management", requireAuth,
           ];
           return {
             ...target, canManage,
-            teachingProfile: target.role === "teacher" && canManage
+            teachingProfile: requiresTeachingProfile(target.role) && canManage
               ? { complete: missing.length === 0, missing } : null,
           };
         }),

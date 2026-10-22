@@ -2800,6 +2800,8 @@ export interface RegisterPushTokenInput {
 
 export interface DashboardSummary {
   centers: number;
+  /** Total de cuentas activas de todos los roles dentro del ámbito autorizado y la familia profesional. */
+  users: number;
   teachers: number;
   resources: number;
   activeSurveys: number;

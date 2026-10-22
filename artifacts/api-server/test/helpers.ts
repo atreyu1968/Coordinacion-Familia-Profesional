@@ -1,3 +1,4 @@
+import { requiresTeachingProfile } from "../src/lib/teachingProfileAccess";
 import {
   db,
   usersTable,
@@ -82,7 +83,7 @@ export interface SeedUserOptions {
   name?: string;
   password?: string;
   status?: string;
-  // Most permission tests need an otherwise valid teacher. Explicitly opt out
+  // Permission tests need an otherwise valid teaching profile. Explicitly opt out
   // when testing onboarding or incomplete-profile denial.
   incompleteProfile?: boolean;
 }
@@ -104,10 +105,14 @@ export async function createUser(
   let centerId = opts.centerId;
   let provinceId = opts.provinceId;
   const role = opts.role ?? "teacher";
-  if (role === "teacher" && !opts.incompleteProfile) {
+  if (requiresTeachingProfile(role) && !opts.incompleteProfile) {
     if (centerId === undefined && provinceId !== null) {
       provinceId ??= await createProvince();
-      centerId = await createCenter(provinceId);
+      const candidates = role === "teacher" ? [] : await db.select().from(centersTable)
+        .where(eq(centersTable.provinceId, provinceId));
+      const family = await getActiveFamily();
+      centerId = candidates.find((center) => center.deletedAt == null && center.families?.includes(family))?.id
+        ?? await createCenter(provinceId);
     } else if (centerId != null && provinceId === undefined) {
       const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId));
       provinceId = center?.provinceId ?? null;
@@ -127,7 +132,7 @@ export async function createUser(
     .returning();
   created.userIds.push(user!.id);
   const activeYear = await getActiveAcademicYear();
-  if (role === "teacher" && !opts.incompleteProfile && centerId != null && activeYear) {
+  if (requiresTeachingProfile(role) && !opts.incompleteProfile && centerId != null && activeYear) {
     const moduleId = await createModule({ centerId });
     await createTeachingAssignment({
       teacherId: user!.id, centerId, moduleId, schoolYear: activeYear,

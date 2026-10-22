@@ -36,6 +36,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { EventMinutesSection } from "@/components/events/event-minutes";
 import { useSearch, useLocation } from "wouter";
+import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { AttendanceManager } from "@/components/events/attendance-manager";
 import { useBranding } from "@/lib/branding";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1692,11 +1693,7 @@ export default function EventosPage() {
   const dashboardMonth = params.get("month")?.match(/^\d{4}-\d{2}$/)
     ? params.get("month")
     : null;
-  const dashboardOnly = params.get("dashboard") === "events";
   const upcomingOnly = params.get("period") === "upcoming";
-  const centerScopedDashboard =
-    dashboardOnly &&
-    (user?.role === "teacher" || user?.role === "department_head");
 
   if (selectedId != null) {
     return (
@@ -1708,7 +1705,7 @@ export default function EventosPage() {
 
   const now = Date.now();
   const dashboardEvents = events.filter((event) => {
-    if (centerScopedDashboard && event.provinceId != null) return false;
+    if (!matchesDashboardPeriod(event.startAt ?? event.createdAt, params)) return false;
     if (upcomingOnly) {
       const start = event.startAt ? new Date(event.startAt).getTime() : NaN;
       if (!Number.isFinite(start) || start < now) return false;

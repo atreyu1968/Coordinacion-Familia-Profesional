@@ -26,6 +26,54 @@ describe("managed teacher profile integrity", () => {
   const management = (token: string, query: Record<string, string | number> = {}) =>
     request(app).get("/api/users/management").query(query).set(authHeader(token));
 
+  it.each(["coordinator", "superadmin", "department_head"] as const)(
+    "requires %s to save teaching data, with no exemption for administrative privileges",
+    async (role) => {
+      const provinceId = await createProvince();
+      const centerId = await createCenter(provinceId);
+      const actor = await createUser({
+        role, provinceId, centerId: role === "department_head" ? centerId : undefined,
+        incompleteProfile: true,
+      });
+      const headers = authHeader(actor.token);
+      expect((await groups(actor.token)).status).toBe(403);
+      expect((await request(app).get("/api/auth/me/teaching-profile").set(headers)).status).toBe(200);
+      expect((await request(app).get("/api/centers").set(headers)).status).toBe(200);
+      const save = (moduleIds: number[], doesNotTeach = false) =>
+        request(app).patch("/api/auth/me/teaching-profile").set(headers)
+          .send({ centerId, moduleIds, doesNotTeach });
+      expect((await save([])).status).toBe(400);
+      const moduleId = await createModule({ centerId });
+      const saved = await save([moduleId]);
+      expect(saved.status).toBe(200);
+      expect(saved.body.user).toMatchObject({ role, centerId, provinceId });
+      expect(saved.body.moduleIds).toEqual([moduleId]);
+      expect((await groups(actor.token)).status).toBe(200);
+      const declared = await save([], true);
+      expect(declared.status).toBe(200);
+      expect(declared.body.doesNotTeach).toBe(true);
+      expect((await groups(actor.token)).status).toBe(200);
+    },
+  );
+
+  it("does not let a personal teaching update change a coordinator's province or a department head's management center", async () => {
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const differentCenter = await createCenter(provinceId);
+    const outsideCenter = await createCenter(await createProvince());
+    for (const role of ["coordinator", "department_head"] as const) {
+      const actor = await createUser({ role, provinceId, centerId, incompleteProfile: true });
+      const response = await request(app).patch("/api/auth/me/teaching-profile")
+        .set(authHeader(actor.token)).send({
+          centerId: role === "coordinator" ? outsideCenter : differentCenter,
+          moduleIds: [], doesNotTeach: true,
+        });
+      expect(response.status).toBe(404);
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, actor.user.id));
+      expect(user).toMatchObject({ role, provinceId, centerId });
+    }
+  });
+
   it("matches the access guard for invalid centers, province mismatches and historical modules", async () => {
     const admin = await createUser({ role: "superadmin" });
     const teacher = await createUser();

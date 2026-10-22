@@ -42,6 +42,7 @@ import {
   professionalFamilyOf,
 } from "../lib/settings";
 import { toAnnualReport } from "../lib/mappers";
+import { filterVisibleSurveys } from "../lib/survey-visibility";
 
 const router: IRouter = Router();
 
@@ -103,6 +104,13 @@ function provinceColFilter(
     return or(eq(provinceCol, scope.provinceId), isNull(provinceCol));
   }
   return undefined;
+}
+
+// Events and company alerts are visible in the center's province as well as globally.
+function activityProvinceFilter(column: AnyPgColumn, scope: DashboardScope): SQL | undefined {
+  if (scope.centerId == null) return provinceColFilter(column, scope);
+  return or(isNull(column), inArray(column, db.select({ id: centersTable.provinceId })
+    .from(centersTable).where(eq(centersTable.id, scope.centerId))));
 }
 
 // SQL predicate: a center offers the app's active professional family. The whole
@@ -216,6 +224,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     res.json(
       GetDashboardSummaryResponse.parse({
         centers: 0,
+        users: 0,
         teachers: 0,
         resources: 0,
         activeSurveys: 0,
@@ -246,15 +255,13 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   // Current population, not registrations within the activity period. Use the
   // same scope as the role chart and user directory, including center-less
   // accounts only where the caller's scope permits seeing them.
-  const [teachersCount] = await db
-    .select({ value: count() })
+  const [usersCount] = await db
+    .select({
+      value: count(),
+      teachers: sql<number>`count(*) filter (where ${usersTable.role} = 'teacher')`.mapWith(Number),
+    })
     .from(usersTable)
-    .where(
-      and(
-        ...activeUserScopeFilters(scope, activeFamily),
-        eq(usersTable.role, "teacher"),
-      ),
-    );
+    .where(and(...activeUserScopeFilters(scope, activeFamily)));
 
   const [resourcesCount] = await db
     .select({ value: count() })
@@ -268,10 +275,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   ];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
   if (surveyScope) surveyFilters.push(surveyScope);
-  const [activeSurveysCount] = await db
-    .select({ value: count() })
+  const visibleSurveys = await filterVisibleSurveys(req.user!, await db
+    .select()
     .from(surveysTable)
-    .where(and(...surveyFilters));
+    .where(and(...surveyFilters)));
 
   const eventDate = sql`coalesce(${eventsTable.startAt}, ${eventsTable.createdAt})`;
   const eventFilters: SQL[] = [
@@ -279,7 +286,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     ...periodFilters(eventDate, period),
   ];
   if (!period) eventFilters.push(gte(eventsTable.startAt, new Date()));
-  const eventScope = provinceColFilter(eventsTable.provinceId, scope);
+  const eventScope = activityProvinceFilter(eventsTable.provinceId, scope);
   if (eventScope) eventFilters.push(eventScope);
   const [upcomingEventsCount] = await db
     .select({ value: count() })
@@ -290,7 +297,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     isNull(companyAlertsTable.deletedAt),
     ...periodFilters(companyAlertsTable.createdAt, period),
   ];
-  const alertScope = provinceColFilter(companyAlertsTable.provinceId, scope);
+  const alertScope = activityProvinceFilter(companyAlertsTable.provinceId, scope);
   if (alertScope) alertFilters.push(alertScope);
   const [companyAlertsCount] = await db
     .select({ value: count() })
@@ -300,9 +307,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   res.json(
     GetDashboardSummaryResponse.parse({
       centers: centersCount?.value ?? 0,
-      teachers: teachersCount?.value ?? 0,
+      users: usersCount?.value ?? 0,
+      teachers: usersCount?.teachers ?? 0,
       resources: resourcesCount?.value ?? 0,
-      activeSurveys: activeSurveysCount?.value ?? 0,
+      activeSurveys: visibleSurveys.length,
       upcomingEvents: upcomingEventsCount?.value ?? 0,
       companyAlerts: companyAlertsCount?.value ?? 0,
     }),
@@ -385,7 +393,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
       period,
     ),
   ];
-  const eventScope = provinceColFilter(eventsTable.provinceId, scope);
+  const eventScope = activityProvinceFilter(eventsTable.provinceId, scope);
   if (eventScope) eventFilters.push(eventScope);
   const eventsByMonthRows = await db
     .select({ label: eventMonth, value: count() })
@@ -400,11 +408,14 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
   ];
   const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
   if (surveyScope) surveyFilters.push(surveyScope);
-  const surveysByStatusRows = await db
-    .select({ status: surveysTable.status, value: count() })
+  const visibleSurveys = await filterVisibleSurveys(req.user!, await db
+    .select()
     .from(surveysTable)
-    .where(and(...surveyFilters))
-    .groupBy(surveysTable.status);
+    .where(and(...surveyFilters)));
+  const surveysByStatusRows = Object.entries(visibleSurveys.reduce<Record<string, number>>((totals, survey) => {
+    totals[survey.status] = (totals[survey.status] ?? 0) + 1;
+    return totals;
+  }, {})).map(([status, value]) => ({ status, value }));
 
   res.json(
     GetDashboardStatisticsResponse.parse({

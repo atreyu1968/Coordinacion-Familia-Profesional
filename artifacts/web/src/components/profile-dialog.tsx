@@ -63,7 +63,7 @@ export function ProfileDialog({
     null,
   );
   const [teachingError, setTeachingError] = useState<string | null>(null);
-  const isTeacher = user.role === "teacher";
+  const isTeacher = ["teacher", "department_head", "coordinator", "superadmin"].includes(user.role);
   const centersQuery = useListCenters(
     {},
     {
@@ -72,6 +72,10 @@ export function ProfileDialog({
          enabled: (open || forceOpen) && isTeacher,
       },
     },
+  );
+  const selectableCenters = (centersQuery.data ?? []).filter((center) =>
+    (user.role !== "coordinator" || center.provinceId === user.provinceId) &&
+    (user.role !== "department_head" || center.id === user.centerId),
   );
   const teachingProfileQuery = useGetMyTeachingProfile(
     { targetCenterId: teachingCenterId ?? undefined },
@@ -322,7 +326,7 @@ export function ProfileDialog({
                     <SelectValue placeholder="Selecciona tu centro" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(centersQuery.data ?? []).map((center) => (
+                    {selectableCenters.map((center) => (
                       <SelectItem key={center.id} value={String(center.id)}>
                         {center.name}
                       </SelectItem>

@@ -104,5 +104,8 @@ describe("dashboard record list scopes", () => {
     expect(alerts.body).toEqual([]);
     expect(surveys.status).toBe(200);
     expect(surveys.body).toEqual([]);
+    const summary = await request(app).get("/api/dashboard/summary").set(headers);
+    expect(summary.status).toBe(200);
+    expect(Object.values(summary.body).every((value) => value === 0)).toBe(true);
   });
 });

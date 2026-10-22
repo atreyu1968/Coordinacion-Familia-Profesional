@@ -41,6 +41,30 @@ afterAll(async () => {
 });
 
 describe("dashboard data", () => {
+  it("counts all active user roles even when there are no teacher-role accounts", async () => {
+    const provinceId = await createProvince();
+    const otherProvince = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const admin = await createUser({ role: "superadmin" });
+    await createUser({ role: "department_head", centerId, provinceId });
+    await createUser({ role: "coordinator", provinceId });
+    await createUser({ role: "department_head", centerId, provinceId, status: "inactive" });
+    await createUser({ role: "coordinator", provinceId: otherProvince });
+    const filters = { provinceId, startDate: "2099-09-01", endDate: "2100-08-31" };
+    const summary = await request(app).get("/api/dashboard/summary")
+      .query(filters).set(authHeader(admin.token));
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({ users: 2, teachers: 0 });
+    const stats = await request(app).get("/api/dashboard/statistics")
+      .query(filters).set(authHeader(admin.token));
+    expect(stats.status).toBe(200);
+    expect(stats.body.usersByRole.reduce((total: number, row: { value: number }) => total + row.value, 0)).toBe(summary.body.users);
+    const directory = await request(app).get("/api/users/management")
+      .query({ provinceId, status: "active", pageSize: 100 }).set(authHeader(admin.token));
+    expect(directory.status).toBe(200);
+    expect(directory.body.users).toHaveLength(summary.body.users);
+  });
+
   it("reflects account status changes and retired centers on the next read, even with a course filter", async () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);

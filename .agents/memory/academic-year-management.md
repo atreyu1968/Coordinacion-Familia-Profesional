@@ -29,9 +29,34 @@ The teacher-confirmation list is inherently per-year (backend returns active-yea
 **Why:** the user explicitly requires teachers to complete missing profile information on entry rather than access the app with an incomplete teaching profile.
 **How to apply:** gate navigation in both web and mobile until the teaching-profile endpoint confirms completion; do not offer a dismiss path. Enforce the obligation for protected API data and realtime, not just the form. The no-teaching declaration is an explicit alternative to module assignment, not to the required center. Keep self-profile editing and annual confirmation available as repair flows; otherwise the completeness guard can prevent the very confirmation needed to supply current-year modules.
 
+**Rule:** teaching-profile completion also applies to department heads,
+coordinators and superadministrators. An administrative role is not an
+exemption from declaring center and modules (or explicitly no teaching).
+**Why:** the user clarified: "como coordinador y administrador también soy docente".
+**How to apply:** enforce the same entry check in desktop, mobile, protected
+API reads and realtime eligibility, and allow these roles to save their own
+teaching profile. Do not expand the teacher-only overdue annual-confirmation
+deactivation process to administrative accounts.
+
+**Rule:** editing personal teaching data must not enlarge administrative scope.
+Coordinators keep their assigned province; department heads keep their assigned
+management center. Superadministrator authority remains global.
+**Why:** those fields also authorize management actions; unrestricted self-editing
+would otherwise transfer administrative access without approval.
+**How to apply:** validate scope against the locked account during profile saves.
+Supporting a teaching center outside that management scope requires separating
+personal teaching data from management scope, not relaxing the authorization check.
+
 **Rule:** management indicators of profile integrity must remain informational and separate from annual confirmation and account activation.
 **Why:** the requested management visibility must not introduce automatic account deactivation based on missing profile data.
 **How to apply:** report pending center, province and active-year modules under the same access rules, without changing account status or annual confirmation records.
+
+Integrity filters and their summaries must diagnose only accounts the caller
+can manage, even though more administrative roles now have teaching profiles.
+Do not include the caller's own account or non-manageable peers in the
+complete/incomplete diagnostic filters.
+**Why:** broadening teaching roles without preserving diagnostic eligibility
+makes filtered lists include accounts whose profile details are intentionally hidden.
 
 ## "Pasar de curso" transition
 POST /academic-years/transition clones selectable blocks (groups, training offer, assignments) from a source year to a destination year and must be idempotent (re-running doesn't duplicate).

@@ -1482,7 +1482,7 @@ export const UpdateProfileResponse = zod.object({
 
 /**
  * Returns the active-year assignments and module options for the requested center. Only active-family centers and modules are included.
- * @summary Get the authenticated teacher's current teaching profile
+ * @summary Get the current teaching profile for teachers, department heads, coordinators and superadministrators
  */
 
 
@@ -1521,8 +1521,8 @@ export const GetMyTeachingProfileResponse = zod.object({
 
 
 /**
- * Changes the teacher's center immediately, derives province from that center, and reconciles active-year assignments or an explicit no-teaching declaration. The province is not accepted from the client.
- * @summary Update the teacher's center, modules, or no-teaching declaration
+ * Available to teachers, department heads, coordinators and superadministrators. Derives province from the center and reconciles active-year assignments or an explicit no-teaching declaration. Coordinators must stay in their assigned province and department heads in their assigned management center; personal teaching edits never expand management privileges. The province is not accepted from the client.
+ * @summary Update the authenticated user's teaching center, modules, or no-teaching declaration
  */
 
 
@@ -4829,6 +4829,7 @@ export const GetDashboardSummaryQueryParams = zod.object({
 
 export const GetDashboardSummaryResponse = zod.object({
   "centers": zod.number().int(),
+  "users": zod.number().int().describe('Total de cuentas activas de todos los roles dentro del ámbito autorizado y la familia profesional.'),
   "teachers": zod.number().int(),
   "resources": zod.number().int(),
   "activeSurveys": zod.number().int(),

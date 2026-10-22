@@ -74,11 +74,19 @@ if [[ "${1:-}" == "--invitations-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--profiles-only" ]]; then
+  create_test_database coordina_profiles
+  migrate_database coordina_profiles
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_profiles?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/profile.test.ts test/teaching-profile-access.test.ts test/dashboard.test.ts test/dashboard-record-links.test.ts test/dashboard-cards.test.ts
+  exit 0
+fi
+
 if [[ "${1:-}" == "--dashboard-only" ]]; then
   create_test_database coordina_dashboard
   migrate_database coordina_dashboard
   DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_dashboard?host=${SOCKET_DIR}" \
-    pnpm --filter @workspace/api-server exec vitest run test/dashboard.test.ts test/dashboard-record-links.test.ts
+    pnpm --filter @workspace/api-server exec vitest run test/dashboard.test.ts test/dashboard-record-links.test.ts test/dashboard-cards.test.ts
   exit 0
 fi
 

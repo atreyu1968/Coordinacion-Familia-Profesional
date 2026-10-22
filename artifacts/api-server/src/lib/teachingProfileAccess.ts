@@ -1,4 +1,4 @@
-import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import {
   db, centersTable, modulesTable, teachingAssignmentsTable,
   teacherYearConfirmationsTable, usersTable, type User,
@@ -7,6 +7,10 @@ import { getSettings, professionalFamilyOf } from "./settings";
 import { moduleFamilyFilter } from "./familyCatalog";
 
 export const TEACHING_PROFILE_REQUIRED = "TEACHING_PROFILE_REQUIRED";
+export const TEACHING_PROFILE_ROLES = ["teacher", "department_head", "coordinator", "superadmin"] as const;
+export function requiresTeachingProfile(role: string): boolean {
+  return (TEACHING_PROFILE_ROLES as readonly string[]).includes(role);
+}
 export const TEACHING_PROFILE_REQUIRED_MESSAGE =
   "Completa los datos obligatorios de tu perfil docente antes de continuar.";
 
@@ -68,7 +72,7 @@ export async function getTeachingProfileEligibleUserIds(
       eq(usersTable.status, "active"),
       isNull(usersTable.deletedAt),
       or(
-        ne(usersTable.role, "teacher"),
+        notInArray(usersTable.role, [...TEACHING_PROFILE_ROLES]),
         profile.complete,
       ),
     ));
@@ -78,6 +82,6 @@ export async function getTeachingProfileEligibleUserIds(
 export async function hasCompleteTeachingProfile(
   user: Pick<User, "id" | "role">,
 ): Promise<boolean> {
-  return user.role !== "teacher" ||
+  return !requiresTeachingProfile(user.role) ||
     (await getTeachingProfileEligibleUserIds([user.id])).has(user.id);
 }

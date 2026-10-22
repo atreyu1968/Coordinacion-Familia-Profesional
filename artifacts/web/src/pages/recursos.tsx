@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearch } from "wouter";
+import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListResources,
@@ -246,6 +247,7 @@ export default function RecursosPage() {
     useListResources(params);
   const centerIds = new Set((centersQuery.data ?? []).map((center) => center.id));
   const resources = allResources.filter((resource) => {
+    if (!matchesDashboardPeriod(resource.createdAt, searchParams)) return false;
     if (
       dashboardOnly &&
       (resource.centerId == null || !centerIds.has(resource.centerId))

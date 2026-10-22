@@ -210,7 +210,7 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
 router.get(
   "/auth/me/teaching-profile",
   requireAuth,
-  requireRole("teacher"),
+  requireRole("teacher", "department_head", "coordinator", "superadmin"),
   async (req, res): Promise<void> => {
     const query = GetMyTeachingProfileQueryParams.safeParse(req.query);
     if (!query.success) {
@@ -347,7 +347,7 @@ router.get(
 router.patch(
   "/auth/me/teaching-profile",
   requireAuth,
-  requireRole("teacher"),
+  requireRole("teacher", "department_head", "coordinator", "superadmin"),
   async (req, res): Promise<void> => {
     const parsed = UpdateMyTeachingProfileBody.safeParse(req.body);
     if (!parsed.success) {
@@ -382,12 +382,12 @@ router.patch(
 
     const result = await db.transaction(async (tx) => {
       const [lockedUser] = await tx
-        .select({ id: usersTable.id })
+        .select({ id: usersTable.id, provinceId: usersTable.provinceId, centerId: usersTable.centerId })
         .from(usersTable)
         .where(
           and(
             eq(usersTable.id, caller.id),
-            eq(usersTable.role, "teacher"),
+            eq(usersTable.role, caller.role),
             eq(usersTable.status, "active"),
             isNull(usersTable.deletedAt),
           ),
@@ -408,6 +408,11 @@ router.patch(
         .for("update");
       if (!center) return { kind: "center" as const };
       if (center.provinceId == null) return { kind: "province" as const };
+      // Personal teaching data must not change administrative scope.
+      if (
+        (caller.role === "coordinator" && center.provinceId !== lockedUser.provinceId) ||
+        (caller.role === "department_head" && center.id !== lockedUser.centerId)
+      ) return { kind: "center" as const };
 
       if (activeYear && moduleIds.length > 0) {
         const validModules = await tx
