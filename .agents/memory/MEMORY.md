@@ -48,6 +48,8 @@
 - [Mobile install/QR target on Replit](expo-go-qr-target.md) — what URL the QR must encode to install the mobile app.
 - [Expo typed routes & movil typecheck](expo-typed-routes.md) — a new movil screen fails typecheck until the expo dev server regenerates .expo/types/router.d.ts; restart the workflow.
 - [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
+- [React Native Web checkbox state](react-native-web-checkbox-state.md) — RN Web 0.21 ignores native accessibilityState; expose aria-checked for web assertions and screen readers.
+- [Expo export environment cache](expo-export-env-cache.md) — cached mobile bundles can retain an old API origin; private TMPDIR and network allowlists keep isolated tests safe.
 - [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.
 - [Tailwind v4 CSS var utilities](tailwind-v4-css-vars.md) — read a CSS var with `h-(--x)` not `h-[--x]`; v3 bracket form breaks shadcn calendar layout.

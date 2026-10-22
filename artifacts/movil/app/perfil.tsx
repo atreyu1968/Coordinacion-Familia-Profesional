@@ -443,6 +443,7 @@ export default function PerfilScreen() {
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: selectedNoTeaching }}
+                  aria-checked={selectedNoTeaching}
                   onPress={() => {
                     const next = !selectedNoTeaching;
                     setTeachingNoTeaching(next);
@@ -506,6 +507,7 @@ export default function PerfilScreen() {
                               key={module.id}
                               accessibilityRole="checkbox"
                               accessibilityState={{ checked: active }}
+                              aria-checked={active}
                               disabled={selectedNoTeaching}
                               onPress={() => toggleTeachingModule(module.id)}
                               style={({ pressed }) => [

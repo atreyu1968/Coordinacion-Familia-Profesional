@@ -47,6 +47,8 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
       <View style={styles.row}>
         {showBack ? (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
             onPress={() => router.back()}
             hitSlop={12}
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.5 : 1 }]}

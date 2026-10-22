@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "tsBuildInfoFile": ".profile-ui.tsbuildinfo",
+    "noEmit": true
+  },
+  "include": ["test-ui/**/*.ts", "playwright.profile.config.ts"]
+}
