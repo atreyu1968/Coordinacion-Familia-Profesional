@@ -18,6 +18,10 @@ automáticamente acuerdos o asistencia.
 **Why:** el usuario eligió expresamente análisis audiovisual y pidió hablar con la IA para aportar instrucciones e ideas.
 **How to apply:** indicar los límites del muestreo visual, conservar una revisión humana previa a publicar y no presentar ideas dictadas como evidencia de decisiones.
 
+La disponibilidad de procesamiento debe comprobarse por tipo de medio: audio/vídeo requiere ffmpeg y ffprobe; PDF requiere Poppler. La ausencia de herramientas PDF no debe bloquear grabaciones.
+**Why:** el despliegue puede tener herramientas multimedia sin Poppler, y las dependencias no son intercambiables.
+**How to apply:** validar cada archivo contra su grupo de herramientas y presentar fallos separados en la interfaz y configuración.
+
 Las respuestas tardías de IA no pueden sustituir modificaciones guardadas mientras
 se procesaban. Las autorizaciones deben comprobarse también al ejecutar trabajos
 en segundo plano, no solo al encolarlos.

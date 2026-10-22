@@ -11,6 +11,8 @@ export interface MeetingAiSettings {
   managedAvailable: boolean;
   writingConfigured: boolean;
   processingAvailable: boolean;
+  mediaProcessingAvailable: boolean;
+  pdfProcessingAvailable: boolean;
   transcriptionModel: string;
   visionModel: string;
 }

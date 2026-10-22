@@ -45,6 +45,7 @@ import { apiErrorMessage, apiErrorStatus } from "./certificate-utils";
 const MAX_SOURCES = 20;
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_REC_SECONDS = 120;
+const AUDIO_VIDEO_EXT = [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"];
 const ACCEPT_EXT = [
   ".txt", ".md", ".csv", ".docx", ".pptx", ".xlsx", ".odt", ".pdf", ".jpg", ".jpeg", ".png", ".webp",
   ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv",
@@ -632,8 +633,12 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       toast({ title: "Formato no admitido", description: "El documento definitivo debe ser PDF, DOCX u ODT.", variant: "destructive" });
       return;
     }
-    if (!finalDocument && [".pdf", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.processingAvailable) {
-      toast({ title: "Procesamiento no disponible", description: "Este servidor no tiene instaladas todas las herramientas necesarias para procesar PDF, audio o vídeo.", variant: "destructive" });
+    if (!finalDocument && ext === ".pdf" && !minutes.pdfProcessingAvailable) {
+      toast({ title: "Procesamiento de PDF no disponible", description: "Faltan Poppler (pdftotext y pdftoppm) en el servidor. Los audios y vídeos no dependen de estas herramientas.", variant: "destructive" });
+      return;
+    }
+    if (!finalDocument && AUDIO_VIDEO_EXT.includes(ext) && !minutes.mediaProcessingAvailable) {
+      toast({ title: "Procesamiento de audio/vídeo no disponible", description: "Faltan ffmpeg o ffprobe en el servidor.", variant: "destructive" });
       return;
     }
     if (!finalDocument && [".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.multimediaConfigured) {
@@ -731,7 +736,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
     ? "Autoriza el tratamiento para habilitar la grabación."
     : !minutes.multimediaConfigured
       ? "Falta configurar el proveedor multimedia en el panel de control."
-      : !minutes.processingAvailable
+      : !minutes.mediaProcessingAvailable
         ? "Faltan herramientas de audio en el servidor."
         : minutes.sources.length + uploads.length >= MAX_SOURCES
           ? "Se alcanzó el límite de fuentes."
@@ -811,12 +816,17 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                     La redacción con IA no está configurada. Puedes escribir el acta a mano; la superadministración puede configurar DeepSeek u OpenAI en Panel de Control.
             </Banner>
           )}
-          {!minutes.processingAvailable && (
+          {minutes.canManage && !minutes.mediaProcessingAvailable && (
             <Banner tone="warn">
-              El procesamiento de documentos no está disponible en este servidor. No se pueden añadir fuentes por ahora.
+              Faltan ffmpeg o ffprobe en este servidor. No se pueden procesar audios ni vídeos; los documentos de texto siguen disponibles.
             </Banner>
           )}
-          {minutes.processingAvailable && !minutes.multimediaConfigured && (
+          {minutes.canManage && !minutes.pdfProcessingAvailable && (
+            <Banner tone="warn">
+              Faltan Poppler (pdftotext y pdftoppm). No se pueden procesar PDF; los audios y vídeos no dependen de esas herramientas.
+            </Banner>
+          )}
+          {minutes.canManage && minutes.mediaProcessingAvailable && !minutes.multimediaConfigured && (
             <Banner tone="info">
               Sin proveedor multimedia (OpenAI): el audio, el vídeo y las imágenes no se podrán transcribir ni analizar. Los documentos de texto sí.
             </Banner>
@@ -1032,7 +1042,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                       <Send className="w-3.5 h-3.5" /> {minutes.draftText ? "Revisar con IA" : "Generar acta"}
                     </Button>
                     <Recorder
-                      disabled={!consent || !minutes.processingAvailable || !minutes.multimediaConfigured || minutes.sources.length + uploads.length >= MAX_SOURCES}
+                      disabled={!consent || !minutes.mediaProcessingAvailable || !minutes.multimediaConfigured || minutes.sources.length + uploads.length >= MAX_SOURCES}
                       disabledReason={micDisabledReason}
                       onRecorded={(f) => void uploadFile(f, "instruction")}
                     />

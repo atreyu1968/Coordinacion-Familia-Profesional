@@ -19,23 +19,42 @@ export async function aiConfig() {
   const [row] = await db.select().from(meetingAiSettingsTable).where(eq(meetingAiSettingsTable.id, 1));
   return row ?? { id: 1, apiKey: null, transcriptionModel: "gpt-4o-mini-transcribe", visionModel: "gpt-4o-mini" };
 }
-let toolsCache: { until: number; available: boolean } | undefined;
-export async function processingAvailable() {
-  if (toolsCache && toolsCache.until > Date.now()) return toolsCache.available;
-  const available = await Promise.all(["ffmpeg", "ffprobe", "pdftotext", "pdftoppm"].map(command =>
+let toolsCache: { until: number; media: boolean; pdf: boolean } | undefined;
+async function toolGroupAvailable(commands: string[]) {
+  return Promise.all(commands.map(command =>
     exec(command, command === "pdftotext" || command === "pdftoppm" ? ["-v"] : ["-version"], { timeout: 5000, maxBuffer: 1024 * 1024 }).then(() => true, () => false),
   )).then(results => results.every(Boolean));
-  toolsCache = { until: Date.now() + 60_000, available };
-  return available;
+}
+async function processingTools() {
+  if (toolsCache && toolsCache.until > Date.now()) return toolsCache;
+  const [media, pdf] = await Promise.all([
+    toolGroupAvailable(["ffmpeg", "ffprobe"]),
+    toolGroupAvailable(["pdftotext", "pdftoppm"]),
+  ]);
+  toolsCache = { until: Date.now() + 60_000, media, pdf };
+  return toolsCache;
+}
+export async function mediaProcessingAvailable() {
+  return (await processingTools()).media;
+}
+export async function pdfProcessingAvailable() {
+  return (await processingTools()).pdf;
+}
+export async function processingAvailable() {
+  const tools = await processingTools();
+  return tools.media && tools.pdf;
 }
 export async function aiStatus() {
   const config = await aiConfig();
   const managedAvailable = !!(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+  const [media, pdf] = await Promise.all([mediaProcessingAvailable(), pdfProcessingAvailable()]);
   return {
     apiKeyConfigured: !!config.apiKey,
     managedAvailable,
     writingConfigured: isDeepseekConfigured(await getSettings()) || !!config.apiKey || managedAvailable,
-    processingAvailable: await processingAvailable(),
+    processingAvailable: media && pdf,
+    mediaProcessingAvailable: media,
+    pdfProcessingAvailable: pdf,
     transcriptionModel: config.transcriptionModel,
     visionModel: config.visionModel,
   };
@@ -70,6 +89,8 @@ export async function workspace(eventId: number, manage: boolean) {
     writingConfigured: status?.writingConfigured ?? false,
     multimediaConfigured: !!(status?.apiKeyConfigured || status?.managedAvailable),
     processingAvailable: status?.processingAvailable ?? false,
+    mediaProcessingAvailable: status?.mediaProcessingAvailable ?? false,
+    pdfProcessingAvailable: status?.pdfProcessingAvailable ?? false,
     sources: manage ? (await db.select().from(meetingMinutesSourcesTable).where(eq(meetingMinutesSourcesTable.eventId, eventId)).orderBy(asc(meetingMinutesSourcesTable.id))).map(sourceDto) : [],
     messages: manage ? (await db.select().from(meetingMinutesMessagesTable).where(eq(meetingMinutesMessagesTable.eventId, eventId)).orderBy(desc(meetingMinutesMessagesTable.id)).limit(50)).reverse().map(m => ({
       id: m.id, role: m.role, content: m.content, createdAt: m.createdAt.toISOString(),

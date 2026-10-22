@@ -6,6 +6,7 @@ import app from "../src/app";
 import { createUser, createProvince, cleanup, authHeader } from "./helpers";
 import * as settings from "../src/lib/settings";
 import * as acl from "../src/lib/objectAcl";
+import * as minutesLib from "../src/lib/meetingMinutes";
 import { storage } from "../src/lib/meetingMinutes";
 import { processOneMinutesJob } from "../src/lib/meetingMinutesWorker";
 
@@ -80,6 +81,49 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     expect((await call("get", base(), reader)).body.sources).toEqual([]);
     expect(await processOneMinutesJob()).toBe(true);
     expect((await current()).sources[0]).toMatchObject({ status: "ready", extractedText: "Acuerdo documentado: revisar el catálogo." });
+  });
+  it("permite subir audio aunque falten las herramientas de PDF y explica el bloqueo del PDF", async () => {
+    const audioPath = "/objects/uploads/55555555-5555-4555-8555-555555555555";
+    const status = vi.spyOn(minutesLib, "aiStatus").mockResolvedValue({
+      apiKeyConfigured: true,
+      managedAvailable: false,
+      writingConfigured: true,
+      processingAvailable: false,
+      mediaProcessingAvailable: true,
+      pdfProcessingAvailable: false,
+      transcriptionModel: "gpt-4o-mini-transcribe",
+      visionModel: "gpt-4o-mini",
+    });
+    try {
+      const audio = await call("post", base() + "/sources").send({
+        objectPath: audioPath,
+        fileName: "grabacion-corta.m4a",
+        contentType: "audio/mp4",
+        size: 3,
+        purpose: "evidence",
+        consent: true,
+      });
+      expect(audio.status, JSON.stringify(audio.body)).toBe(201);
+      await processOneMinutesJob();
+      expect((await current()).sources.some((source: { fileName: string; status: string }) =>
+        source.fileName === "grabacion-corta.m4a" && source.status === "ready",
+      )).toBe(true);
+
+      const pdf = await call("post", base() + "/sources").send({
+        objectPath: "/objects/uploads/44444444-4444-4444-8444-444444444444",
+        fileName: "orden-del-dia.pdf",
+        contentType: "application/pdf",
+        size: 3,
+        purpose: "evidence",
+        consent: true,
+      });
+      expect(pdf.status).toBe(503);
+      expect(pdf.body.message.toLowerCase()).toContain("poppler");
+      const audioSource = (await current()).sources.find((source: { fileName: string }) => source.fileName === "grabacion-corta.m4a");
+      await call("delete", base() + `/sources/${audioSource.id}`);
+    } finally {
+      status.mockRestore();
+    }
   });
   it("mantiene privado el documento final hasta publicar y conserva la versión compartida al sustituirlo", async () => {
     const firstPath = "/objects/uploads/22222222-2222-4222-8222-222222222222";

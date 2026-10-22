@@ -80,7 +80,8 @@ export function MeetingAiSettingsCard() {
             <div className="flex flex-wrap gap-1.5">
               <Pill ok={s.writingConfigured} on="Redacción lista" off="Sin redacción" />
               <Pill ok={s.apiKeyConfigured || s.managedAvailable} on="Multimedia lista" off="Sin multimedia" />
-              <Pill ok={s.processingAvailable} on="Procesado disponible" off="Sin procesado" />
+              <Pill ok={s.mediaProcessingAvailable} on="Audio/vídeo listo" off="Sin ffmpeg/ffprobe" />
+              <Pill ok={s.pdfProcessingAvailable} on="PDF listo" off="Sin Poppler" />
             </div>
           )}
         </div>
@@ -89,7 +90,7 @@ export function MeetingAiSettingsCard() {
             Si está configurado, DeepSeek redacta y revisa las actas. Si no, se utiliza OpenAI, que también transcribe audio y vídeo y analiza imágenes y PDF escaneados.
           </span>
           <span className="block">
-            En Replit puede usarse la integración gestionada sin clave propia. En un servidor propio hace falta una clave de OpenAI y tener instalados ffmpeg y poppler (el instalador se encarga de los paquetes).
+            En Replit puede usarse la integración gestionada sin clave propia. En un servidor propio hace falta una clave de OpenAI, ffmpeg y ffprobe para audio/vídeo, y Poppler para PDF.
           </span>
         </CardDescription>
       </CardHeader>

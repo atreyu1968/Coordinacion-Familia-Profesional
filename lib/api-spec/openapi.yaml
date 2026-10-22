@@ -7516,9 +7516,11 @@ components:
         managedAvailable: { type: boolean }
         writingConfigured: { type: boolean }
         processingAvailable: { type: boolean }
+        mediaProcessingAvailable: { type: boolean }
+        pdfProcessingAvailable: { type: boolean }
         transcriptionModel: { type: string }
         visionModel: { type: string }
-      required: [apiKeyConfigured, managedAvailable, writingConfigured, processingAvailable, transcriptionModel, visionModel]
+      required: [apiKeyConfigured, managedAvailable, writingConfigured, processingAvailable, mediaProcessingAvailable, pdfProcessingAvailable, transcriptionModel, visionModel]
     MinutesSource:
       type: object
       properties:
@@ -7563,13 +7565,15 @@ components:
         writingConfigured: { type: boolean }
         multimediaConfigured: { type: boolean }
         processingAvailable: { type: boolean }
+        mediaProcessingAvailable: { type: boolean }
+        pdfProcessingAvailable: { type: boolean }
         sources:
           type: array
           items: { $ref: "#/components/schemas/MinutesSource" }
         messages:
           type: array
           items: { $ref: "#/components/schemas/MinutesMessage" }
-      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, draftDocument, publishedDocument, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, sources, messages]
+      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, draftDocument, publishedDocument, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, mediaProcessingAvailable, pdfProcessingAvailable, sources, messages]
     MinutesDocumentAttachment:
       type: object
       properties:

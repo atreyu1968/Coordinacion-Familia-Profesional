@@ -1894,6 +1894,8 @@ export interface MeetingAiSettings {
   managedAvailable: boolean;
   writingConfigured: boolean;
   processingAvailable: boolean;
+  mediaProcessingAvailable: boolean;
+  pdfProcessingAvailable: boolean;
   transcriptionModel: string;
   visionModel: string;
 }
@@ -1981,6 +1983,8 @@ export interface EventMinutes {
   writingConfigured: boolean;
   multimediaConfigured: boolean;
   processingAvailable: boolean;
+  mediaProcessingAvailable: boolean;
+  pdfProcessingAvailable: boolean;
   sources: MinutesSource[];
   messages: MinutesMessage[];
 }

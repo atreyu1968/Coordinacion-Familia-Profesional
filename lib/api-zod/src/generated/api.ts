@@ -3225,6 +3225,8 @@ export const GetEventMinutesResponse = zod.object({
   "writingConfigured": zod.boolean(),
   "multimediaConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "sources": zod.array(zod.object({
   "id": zod.number().int(),
   "fileName": zod.string(),
@@ -3286,6 +3288,8 @@ export const SaveEventMinutesResponse = zod.object({
   "writingConfigured": zod.boolean(),
   "multimediaConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "sources": zod.array(zod.object({
   "id": zod.number().int(),
   "fileName": zod.string(),
@@ -3411,6 +3415,8 @@ export const GenerateEventMinutesResponse = zod.object({
   "writingConfigured": zod.boolean(),
   "multimediaConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "sources": zod.array(zod.object({
   "id": zod.number().int(),
   "fileName": zod.string(),
@@ -3470,6 +3476,8 @@ export const PublishEventMinutesResponse = zod.object({
   "writingConfigured": zod.boolean(),
   "multimediaConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "sources": zod.array(zod.object({
   "id": zod.number().int(),
   "fileName": zod.string(),
@@ -3495,6 +3503,8 @@ export const GetMeetingAiSettingsResponse = zod.object({
   "managedAvailable": zod.boolean(),
   "writingConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "transcriptionModel": zod.string(),
   "visionModel": zod.string()
 })
@@ -3520,6 +3530,8 @@ export const UpdateMeetingAiSettingsResponse = zod.object({
   "managedAvailable": zod.boolean(),
   "writingConfigured": zod.boolean(),
   "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
   "transcriptionModel": zod.string(),
   "visionModel": zod.string()
 })

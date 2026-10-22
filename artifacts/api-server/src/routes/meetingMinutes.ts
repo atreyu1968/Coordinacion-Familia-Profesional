@@ -88,7 +88,8 @@ router.post("/events/:id/minutes/sources", requireAuth, wrap(async (req, res) =>
   if (data.purpose !== "final_document") {
     const status = await aiStatus();
     if ((multimediaExtension(data.fileName) || data.purpose === "instruction") && !(status.apiKeyConfigured || status.managedAvailable)) throw new AttendanceError(503, "Configura OpenAI para transcribir audio y analizar imágenes.");
-    if (/^(pdf|mp3|wav|m4a|ogg|webm|mp4|mov|mkv)$/.test(extension) && !status.processingAvailable) throw new AttendanceError(503, "Instala ffmpeg y poppler-utils en el servidor.");
+    if (extension === "pdf" && !status.pdfProcessingAvailable) throw new AttendanceError(503, "Instala poppler-utils en el servidor para procesar PDF.");
+    if (/^(mp3|wav|m4a|ogg|webm|mp4|mov|mkv)$/.test(extension) && !status.mediaProcessingAvailable) throw new AttendanceError(503, "Instala ffmpeg y ffprobe en el servidor para procesar audio y vídeo.");
   }
   await ownedSource(data.objectPath, req.user!.id, data.size);
   const created = await db.transaction(async tx => {
