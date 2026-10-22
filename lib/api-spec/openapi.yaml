@@ -3041,6 +3041,20 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/MinutesSource" }
         default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/documents/{version}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+      - { name: version, in: path, required: true, schema: { type: string, enum: [draft, published] } }
+    get:
+      operationId: downloadEventMinutesDocument
+      tags: [Events]
+      responses:
+        "200":
+          description: Privately served draft or published final document
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/AttendanceError" }
   /events/{id}/minutes/sources/{sourceId}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer } }
@@ -7471,9 +7485,9 @@ components:
         fileName: { type: string, minLength: 1, maxLength: 200 }
         contentType: { type: string, maxLength: 150 }
         size: { type: integer, minimum: 1, maximum: 104857600 }
-        purpose: { type: string, enum: [evidence, instruction] }
+        purpose: { type: string, enum: [evidence, instruction, final_document] }
         consent: { type: boolean, enum: [true] }
-      required: [objectPath, fileName, contentType, size, purpose, consent]
+      required: [objectPath, fileName, contentType, size, purpose]
     MinutesGenerateInput:
       type: object
       properties:
@@ -7512,7 +7526,7 @@ components:
         fileName: { type: string }
         contentType: { type: string }
         size: { type: integer }
-        purpose: { type: string, enum: [evidence, instruction] }
+        purpose: { type: string, enum: [evidence, instruction, final_document] }
         status: { type: string, enum: [queued, processing, ready, error] }
         extractedText: { type: string }
         error: { type: string, nullable: true }
@@ -7536,6 +7550,14 @@ components:
         draftText: { type: string, nullable: true }
         publishedText: { type: string, nullable: true }
         publishedAt: { type: string, format: date-time, nullable: true }
+        draftDocument:
+          anyOf:
+            - { $ref: "#/components/schemas/MinutesDocumentAttachment" }
+            - { type: "null" }
+        publishedDocument:
+          anyOf:
+            - { $ref: "#/components/schemas/MinutesDocumentAttachment" }
+            - { type: "null" }
         generationStatus: { type: string, enum: [idle, queued, processing, error] }
         generationError: { type: string, nullable: true }
         writingConfigured: { type: boolean }
@@ -7547,7 +7569,15 @@ components:
         messages:
           type: array
           items: { $ref: "#/components/schemas/MinutesMessage" }
-      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, sources, messages]
+      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, draftDocument, publishedDocument, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, sources, messages]
+    MinutesDocumentAttachment:
+      type: object
+      properties:
+        id: { type: integer }
+        fileName: { type: string }
+        contentType: { type: string }
+        size: { type: integer }
+      required: [id, fileName, contentType, size]
     AttendanceCertificateNotificationResult:
       type: object
       properties:

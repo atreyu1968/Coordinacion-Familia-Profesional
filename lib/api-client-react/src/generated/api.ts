@@ -12490,6 +12490,109 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getAddEventMinutesSourceMutationOptions(options), queryClient);
     }
 
+export const getDownloadEventMinutesDocumentUrl = (id: number,
+    version: 'draft' | 'published',) => {
+
+
+
+
+  return `/api/events/${id}/minutes/documents/${version}`
+}
+
+export const downloadEventMinutesDocument = async (id: number,
+    version: 'draft' | 'published', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadEventMinutesDocumentUrl(id,version),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadEventMinutesDocumentQueryKey = (id: number,
+    version: 'draft' | 'published',) => {
+    return [
+    `/api/events/${id}/minutes/documents/${version}`
+    ] as const;
+    }
+
+
+export const getDownloadEventMinutesDocumentQueryOptions = <TData = Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError = ErrorType<AttendanceErrorResponse>>(id: number,
+    version: 'draft' | 'published', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadEventMinutesDocumentQueryKey(id,version);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadEventMinutesDocument>>> = ({ signal }) => downloadEventMinutesDocument(id,version, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && version !== null && version !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type DownloadEventMinutesDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof downloadEventMinutesDocument>>>
+export type DownloadEventMinutesDocumentQueryError = ErrorType<AttendanceErrorResponse>
+
+
+export function useDownloadEventMinutesDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    version: 'draft' | 'published', options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadEventMinutesDocument>>,
+          TError,
+          Awaited<ReturnType<typeof downloadEventMinutesDocument>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDownloadEventMinutesDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    version: 'draft' | 'published', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadEventMinutesDocument>>,
+          TError,
+          Awaited<ReturnType<typeof downloadEventMinutesDocument>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDownloadEventMinutesDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    version: 'draft' | 'published', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useDownloadEventMinutesDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    version: 'draft' | 'published', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getDownloadEventMinutesDocumentQueryOptions(id,version,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getDeleteEventMinutesSourceUrl = (id: number,
     sourceId: number,) => {
 

@@ -12,4 +12,5 @@ export type MinutesSourceInputPurpose = typeof MinutesSourceInputPurpose[keyof t
 export const MinutesSourceInputPurpose = {
   evidence: 'evidence',
   instruction: 'instruction',
+  final_document: 'final_document',
 } as const;

@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 export const storage = new ObjectStorageService();
 export const exec = promisify(execFile);
 export const MAX_SOURCE_BYTES = 100 * 1024 * 1024;
-export const allowedExtensions = new Set(["txt", "md", "csv", "docx", "pptx", "xlsx", "pdf", "jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "ogg", "webm", "mp4", "mov", "mkv"]);
+export const allowedExtensions = new Set(["txt", "md", "csv", "docx", "pptx", "xlsx", "odt", "pdf", "jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "ogg", "webm", "mp4", "mov", "mkv"]);
 export const multimediaExtension = (name: string) => /\.(mp3|wav|m4a|ogg|webm|mp4|mov|mkv|jpg|jpeg|png|webp)$/i.test(name);
 export function canManageMinutes(user: { role: string; provinceId?: number | null }, event: { provinceId: number | null }): boolean {
   return user.role === "superadmin" || (user.role === "coordinator" && user.provinceId != null && event.provinceId === user.provinceId);
@@ -43,12 +43,28 @@ export async function aiStatus() {
 export async function workspace(eventId: number, manage: boolean) {
   const [row] = await db.select().from(meetingMinutesTable).where(eq(meetingMinutesTable.eventId, eventId));
   const status = manage ? await aiStatus() : null;
+  const finalDocuments = await db.select({
+      id: meetingMinutesSourcesTable.id,
+      fileName: meetingMinutesSourcesTable.fileName,
+      contentType: meetingMinutesSourcesTable.contentType,
+      size: meetingMinutesSourcesTable.size,
+      createdAt: meetingMinutesSourcesTable.createdAt,
+    }).from(meetingMinutesSourcesTable).where(and(
+      eq(meetingMinutesSourcesTable.eventId, eventId),
+      eq(meetingMinutesSourcesTable.purpose, "final_document"),
+    )).orderBy(desc(meetingMinutesSourcesTable.createdAt), desc(meetingMinutesSourcesTable.id));
+  const publishedDocument = row?.enabled && row.publishedText && row.publishedAt
+    ? finalDocuments.find((source) => source.createdAt <= row.publishedAt!)
+    : undefined;
+  const draftDocument = manage ? finalDocuments[0] : undefined;
   return {
     eventId, enabled: manage ? (row?.enabled ?? false) : !!(row?.enabled && row.publishedText),
     canManage: manage, revision: manage ? (row?.revision ?? 0) : 0,
     draftText: manage ? (row?.draftText ?? "") : null,
     publishedText: row?.enabled ? (row.publishedText ?? null) : null,
     publishedAt: row?.enabled ? (row.publishedAt?.toISOString() ?? null) : null,
+    draftDocument: draftDocument ? { id: draftDocument.id, fileName: draftDocument.fileName, contentType: draftDocument.contentType, size: draftDocument.size } : null,
+    publishedDocument: publishedDocument ? { id: publishedDocument.id, fileName: publishedDocument.fileName, contentType: publishedDocument.contentType, size: publishedDocument.size } : null,
     generationStatus: manage ? (row?.generationStatus ?? "idle") : "idle",
     generationError: manage ? (row?.generationError ?? null) : null,
     writingConfigured: status?.writingConfigured ?? false,

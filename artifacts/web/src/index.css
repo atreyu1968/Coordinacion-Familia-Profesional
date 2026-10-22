@@ -193,3 +193,44 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@media print {
+  body.minutes-print-draft * {
+    visibility: hidden !important;
+  }
+
+  body.minutes-print-draft [data-testid="preview-minutes-draft"],
+  body.minutes-print-draft [data-testid="preview-minutes-draft"] * {
+    visibility: visible !important;
+  }
+
+  body.minutes-print-draft [data-testid="preview-minutes-draft"] {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body.minutes-print-draft [data-minutes-print] {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    padding: 16mm !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #1e293b !important;
+    print-color-adjust: exact;
+  }
+
+  body.minutes-print-draft [data-minutes-print] table {
+    width: 100%;
+    border-collapse: collapse;
+    break-inside: avoid;
+  }
+
+  body.minutes-print-draft [data-minutes-print] tr,
+  body.minutes-print-draft [data-minutes-print] img {
+    break-inside: avoid;
+  }
+}

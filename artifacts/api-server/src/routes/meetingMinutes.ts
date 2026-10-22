@@ -1,4 +1,6 @@
 import { Router, type Request, type Response } from "express";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { and, eq, sql } from "drizzle-orm";
 import { db, meetingMinutesTable, meetingMinutesSourcesTable, meetingMinutesMessagesTable, meetingAiSettingsTable } from "@workspace/db";
 import { SaveEventMinutesBody, AddEventMinutesSourceBody, GenerateEventMinutesBody, PublishEventMinutesBody, UpdateMeetingAiSettingsBody } from "@workspace/api-zod";
@@ -32,6 +34,35 @@ function parsed<T>(schema: { safeParse: (v: unknown) => { success: boolean; data
 router.get("/events/:id/minutes", requireAuth, wrap(async (req, res) => {
   const { event, manage } = await eventFor(req); res.json(await workspace(event.id, manage));
 }));
+router.get("/events/:id/minutes/documents/:version", requireAuth, wrap(async (req, res) => {
+  const version = req.params.version;
+  if (version !== "draft" && version !== "published") throw new AttendanceError(400, "Versión de documento no válida.");
+  const { event, manage } = await eventFor(req, version === "draft");
+  const [minutes] = await db.select().from(meetingMinutesTable).where(eq(meetingMinutesTable.eventId, event.id)).limit(1);
+  if (!minutes?.enabled) throw new AttendanceError(404, "No hay documento disponible.");
+  if (version === "draft" && !manage) throw new AttendanceError(403, "El borrador es privado.");
+  if (version === "published" && !minutes.publishedText) throw new AttendanceError(404, "No hay acta publicada.");
+  const finalDocuments = await db.select().from(meetingMinutesSourcesTable).where(and(
+    eq(meetingMinutesSourcesTable.eventId, event.id),
+    eq(meetingMinutesSourcesTable.purpose, "final_document"),
+  )).orderBy(sql`${meetingMinutesSourcesTable.createdAt} DESC`, sql`${meetingMinutesSourcesTable.id} DESC`);
+  const source = version === "draft"
+    ? finalDocuments[0]
+    : minutes.publishedAt
+      ? finalDocuments.find((document) => document.createdAt <= minutes.publishedAt!)
+      : undefined;
+  if (!source) throw new AttendanceError(404, "No se encontró el documento adjunto.");
+  const stored = await storage.getObjectEntityFile(source.objectPath);
+  const fileResponse = await storage.downloadObject(stored, 0);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(source.fileName)}`);
+  res.status(200);
+  if (fileResponse.body) {
+    await pipeline(Readable.fromWeb(fileResponse.body as ReadableStream<Uint8Array>), res);
+  } else res.end();
+}));
 router.put("/events/:id/minutes", requireAuth, wrap(async (req, res) => {
   const { event } = await eventFor(req, true);
   const data = parsed(SaveEventMinutesBody, req.body);
@@ -49,12 +80,16 @@ router.put("/events/:id/minutes", requireAuth, wrap(async (req, res) => {
 router.post("/events/:id/minutes/sources", requireAuth, wrap(async (req, res) => {
   const { event } = await eventFor(req, true);
   const data = parsed(AddEventMinutesSourceBody, req.body);
+  if (data.purpose !== "final_document" && data.consent !== true) throw new AttendanceError(400, "Autoriza el tratamiento antes de subir evidencias o instrucciones.");
   const extension = data.fileName.split(".").pop()?.toLowerCase() ?? "";
   if (!allowedExtensions.has(extension) || /[/\\\x00-\x1f]/.test(data.fileName)) throw new AttendanceError(400, "Formato o nombre de archivo no admitido.");
+  if (data.purpose === "final_document" && !/^(pdf|docx|odt)$/.test(extension)) throw new AttendanceError(400, "El documento definitivo debe ser PDF, DOCX u ODT.");
   if (data.purpose === "instruction" && !/^(mp3|wav|m4a|ogg|webm|mp4)$/.test(extension)) throw new AttendanceError(400, "El dictado debe ser una grabación de audio.");
-  const status = await aiStatus();
-  if ((multimediaExtension(data.fileName) || data.purpose === "instruction") && !(status.apiKeyConfigured || status.managedAvailable)) throw new AttendanceError(503, "Configura OpenAI para transcribir audio y analizar imágenes.");
-  if (/^(pdf|mp3|wav|m4a|ogg|webm|mp4|mov|mkv)$/.test(extension) && !status.processingAvailable) throw new AttendanceError(503, "Instala ffmpeg y poppler-utils en el servidor.");
+  if (data.purpose !== "final_document") {
+    const status = await aiStatus();
+    if ((multimediaExtension(data.fileName) || data.purpose === "instruction") && !(status.apiKeyConfigured || status.managedAvailable)) throw new AttendanceError(503, "Configura OpenAI para transcribir audio y analizar imágenes.");
+    if (/^(pdf|mp3|wav|m4a|ogg|webm|mp4|mov|mkv)$/.test(extension) && !status.processingAvailable) throw new AttendanceError(503, "Instala ffmpeg y poppler-utils en el servidor.");
+  }
   await ownedSource(data.objectPath, req.user!.id, data.size);
   const created = await db.transaction(async tx => {
     const row = await lockMinutes(tx, event.id);
@@ -64,8 +99,21 @@ router.post("/events/:id/minutes/sources", requireAuth, wrap(async (req, res) =>
     // A domain-owned ACL prevents direct /storage access, including after the
     // uploader loses their coordinator role. No bytes are stored in PostgreSQL.
     await storage.trySetObjectEntityAclPolicy(data.objectPath, { owner: `meeting-minutes:${event.id}`, visibility: "private" });
-    const [source] = await tx.insert(meetingMinutesSourcesTable).values({ eventId: event.id, ...data, consentBy: req.user!.id }).returning();
-    await tx.update(meetingMinutesTable).set({ revision: row.revision + 1, updatedAt: new Date() }).where(eq(meetingMinutesTable.eventId, event.id));
+    const [source] = await tx.insert(meetingMinutesSourcesTable).values({
+      eventId: event.id,
+      objectPath: data.objectPath,
+      fileName: data.fileName,
+      contentType: data.contentType,
+      size: data.size,
+      purpose: data.purpose,
+      consentBy: data.purpose === "final_document" ? null : req.user!.id,
+      ...(data.purpose === "final_document" ? { status: "ready" } : {}),
+    }).returning();
+    await tx.update(meetingMinutesTable).set({
+      ...(data.purpose === "final_document" ? { draftDocumentSourceId: source!.id } : {}),
+      revision: row.revision + 1,
+      updatedAt: new Date(),
+    }).where(eq(meetingMinutesTable.eventId, event.id));
     return source!;
   });
   res.status(201).json(sourceDto(created));
@@ -76,6 +124,14 @@ router.delete("/events/:id/minutes/sources/:sourceId", requireAuth, wrap(async (
     const row = await lockMinutes(tx, event.id);
     const [source] = await tx.select().from(meetingMinutesSourcesTable).where(and(eq(meetingMinutesSourcesTable.id, id(req.params.sourceId)), eq(meetingMinutesSourcesTable.eventId, event.id))).for("update");
     if (!source) throw new AttendanceError(404, "Fuente no encontrada.");
+    const finalDocuments = await tx.select().from(meetingMinutesSourcesTable).where(and(
+      eq(meetingMinutesSourcesTable.eventId, event.id),
+      eq(meetingMinutesSourcesTable.purpose, "final_document"),
+    )).orderBy(sql`${meetingMinutesSourcesTable.createdAt} DESC`, sql`${meetingMinutesSourcesTable.id} DESC`);
+    const publishedDocument = row.publishedText && row.publishedAt
+      ? finalDocuments.find((document) => document.createdAt <= row.publishedAt!)
+      : undefined;
+    if (publishedDocument?.id === source.id) throw new AttendanceError(409, "Retira la publicación antes de eliminar el documento definitivo publicado.");
     if (source.status === "processing" && source.leaseUntil && source.leaseUntil > new Date()) throw new AttendanceError(409, "Espera a que termine el procesamiento antes de eliminar la fuente.");
     await storage.deleteObjectEntity(source.objectPath);
     await tx.delete(meetingMinutesSourcesTable).where(eq(meetingMinutesSourcesTable.id, source.id));
@@ -113,7 +169,13 @@ router.post("/events/:id/minutes/publish", requireAuth, wrap(async (req, res) =>
   await db.transaction(async tx => {
     const row = await lockMinutes(tx, event.id, data.revision);
     if (data.publish && (!row.enabled || !data.reviewed || !row.draftText.trim() || ["queued", "processing"].includes(row.generationStatus))) throw new AttendanceError(409, "Activa, revisa y guarda el borrador antes de publicarlo; espera a que termine la IA.");
-    await tx.update(meetingMinutesTable).set({ publishedText: data.publish ? row.draftText : null, publishedAt: data.publish ? new Date() : null, publishedBy: data.publish ? req.user!.id : null, revision: row.revision + 1, updatedAt: new Date() }).where(eq(meetingMinutesTable.eventId, event.id));
+    await tx.update(meetingMinutesTable).set({
+      publishedText: data.publish ? row.draftText : null,
+      publishedAt: data.publish ? new Date() : null,
+      publishedBy: data.publish ? req.user!.id : null,
+      revision: row.revision + 1,
+      updatedAt: new Date(),
+    }).where(eq(meetingMinutesTable.eventId, event.id));
   }); res.json(await workspace(event.id, true));
 }));
 router.get("/settings/meeting-ai", requireAuth, wrap(async (req, res) => {

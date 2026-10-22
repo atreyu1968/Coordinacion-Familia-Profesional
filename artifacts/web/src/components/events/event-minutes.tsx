@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   BookOpenCheck,
   Copy,
+  Download,
   FileText,
   Lock,
   Mic,
@@ -45,7 +46,7 @@ const MAX_SOURCES = 20;
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_REC_SECONDS = 120;
 const ACCEPT_EXT = [
-  ".txt", ".md", ".csv", ".docx", ".pptx", ".xlsx", ".pdf", ".jpg", ".jpeg", ".png", ".webp",
+  ".txt", ".md", ".csv", ".docx", ".pptx", ".xlsx", ".odt", ".pdf", ".jpg", ".jpeg", ".png", ".webp",
   ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv",
 ];
 const MIME_FALLBACK: Record<string, string> = {
@@ -53,6 +54,7 @@ const MIME_FALLBACK: Record<string, string> = {
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".odt": "application/vnd.oasis.opendocument.text",
   ".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
   ".webp": "image/webp", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4",
   ".ogg": "audio/ogg", ".webm": "video/webm", ".mp4": "video/mp4", ".mov": "video/quicktime",
@@ -107,14 +109,20 @@ export function minutesLink(eventId: number): string {
 // Plain text / markdown-safe renderer. Builds React text nodes only; never HTML.
 // ---------------------------------------------------------------------------
 function inline(text: string, key: string): ReactNode[] {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, i) =>
-    p.startsWith("**") && p.endsWith("**") && p.length > 4 ? (
-      <strong key={`${key}-${i}`}>{p.slice(2, -2)}</strong>
-    ) : (
-      <span key={`${key}-${i}`}>{p}</span>
-    ),
-  );
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    const k = `${key}-${i}`;
+    if ((part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"))) {
+      return <strong key={k}>{part.slice(2, -2)}</strong>;
+    }
+    if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
+      return <em key={k}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={k} className="rounded bg-slate-100 px-1 py-0.5 text-[0.9em]">{part.slice(1, -1)}</code>;
+    }
+    return <span key={k}>{part.replace(/\\\|/g, "|")}</span>;
+  });
 }
 
 export function SafeMarkdown({ text }: { text: string }) {
@@ -131,15 +139,42 @@ export function SafeMarkdown({ text }: { text: string }) {
       list = [];
     }
   };
-  lines.forEach((raw, i) => {
-    const line = raw.trimEnd();
+  const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim().replace(/\\\|/g, "|"));
+  const isTableRule = (line: string) => /^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(line.trim());
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
+    if (i + 1 < lines.length && line.includes("|") && isTableRule(lines[i + 1])) {
+      flush(i);
+      const headers = cells(line);
+      const alignments = cells(lines[i + 1]).map((cell) => cell.startsWith(":") && cell.endsWith(":") ? "text-center" : cell.endsWith(":") ? "text-right" : "text-left");
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) {
+        rows.push(cells(lines[i]));
+        i++;
+      }
+      i--;
+      out.push(
+        <div key={`table-${i}`} className="my-5 overflow-x-auto rounded-lg border border-slate-300">
+          <table className="w-full border-collapse text-left text-[13px] leading-5">
+            <thead className="bg-slate-100 text-slate-900">
+              <tr>{headers.map((cell, column) => <th key={column} className={`border-b border-slate-300 px-3 py-2 font-semibold ${alignments[column] ?? "text-left"}`}>{inline(cell, `th-${i}-${column}`)}</th>)}</tr>
+            </thead>
+            <tbody>{rows.map((row, rowIndex) => <tr key={rowIndex} className={rowIndex % 2 ? "bg-slate-50" : "bg-white"}>
+              {headers.map((_, column) => <td key={column} className={`border-b border-slate-200 px-3 py-2 align-top ${alignments[column] ?? "text-left"}`}>{inline(row[column] ?? "", `td-${i}-${rowIndex}-${column}`)}</td>)}
+            </tr>)}</tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
     const bullet = line.match(/^\s*(?:([-*])|(\d+)\.)\s+(.*)$/);
     if (bullet) {
       const currentOrdered = !!bullet[2];
       if (list.length && currentOrdered !== orderedList) flush(i);
       orderedList = currentOrdered;
       list.push(bullet[3]);
-      return;
+      continue;
     }
     flush(i);
     const h = line.match(/^(#{1,3})\s+(.*)$/);
@@ -159,12 +194,16 @@ export function SafeMarkdown({ text }: { text: string }) {
           {h[2]}
         </h2>,
       );
+    } else if (/^\s*>\s?/.test(line)) {
+      out.push(<blockquote key={i} className="my-3 border-l-2 border-primary/40 pl-4 italic text-slate-600">{inline(line.replace(/^\s*>\s?/, ""), `quote-${i}`)}</blockquote>);
+    } else if (/^\s*([-*_]\s*){3,}$/.test(line)) {
+      out.push(<hr key={i} className="my-5 border-slate-200" />);
     } else if (!line.trim()) {
-      out.push(<div key={i} className="h-1.5" />);
+      // Empty lines provide paragraph separation without showing raw markup.
     } else {
       out.push(<p key={i} className="leading-7 text-slate-700 my-2">{inline(line, `p-${i}`)}</p>);
     }
-  });
+  }
   flush(lines.length);
   return <div className="text-[15px] break-words">{out}</div>;
 }
@@ -173,7 +212,7 @@ type MinutesDocumentContext = { eventName?: string; eventStartAt?: string | null
 
 function MinutesDocument({ text, context = {} }: { text: string; context?: MinutesDocumentContext }) {
   return (
-    <div className="mx-auto max-w-[820px] min-h-[560px] bg-white px-6 py-8 sm:px-12 sm:py-12 text-slate-800 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
+    <div data-minutes-print className="mx-auto max-w-[820px] min-h-[560px] bg-white px-6 py-8 sm:px-12 sm:py-12 text-slate-800 shadow-[0_12px_40px_rgba(15,23,42,0.12)] ring-1 ring-slate-200">
       <header className="border-b-2 border-primary/70 pb-6 mb-7 text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">Coordinación educativa</p>
         <p className="mt-3 font-serif text-xl sm:text-2xl font-semibold tracking-wide text-slate-900">ACTA DE REUNIÓN</p>
@@ -220,9 +259,18 @@ function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; e
             Publicada el {formatDateTime(minutes.publishedAt)}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={copy} data-testid="button-copy-minutes-link">
-          <Copy className="w-3.5 h-3.5" /> Copiar enlace
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {minutes.publishedDocument && (
+            <Button size="sm" variant="outline" className="gap-1.5" asChild>
+              <a href={`/api/events/${eventId}/minutes/documents/published`} download={minutes.publishedDocument.fileName} data-testid="link-download-published-minutes-document">
+                <Download className="w-3.5 h-3.5" /> Descargar documento final
+              </a>
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={copy} data-testid="button-copy-minutes-link">
+            <Copy className="w-3.5 h-3.5" /> Copiar enlace
+          </Button>
+        </div>
       </header>
       <div className="bg-slate-50 px-3 py-6 sm:px-6">
         <MinutesDocument text={minutes.publishedText ?? ""} context={context} />
@@ -439,6 +487,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [openSource, setOpenSource] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const finalFileRef = useRef<HTMLInputElement>(null);
   const pendingInstr = useRef<Set<number>>(new Set());
   const usedInstr = useRef<Set<number>>(new Set());
 
@@ -567,11 +616,16 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       toast({ title: "Formato no admitido", description: file.name, variant: "destructive" });
       return;
     }
-    if ([".pdf", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.processingAvailable) {
+    const finalDocument = p === "final_document";
+    if (finalDocument && ![".pdf", ".docx", ".odt"].includes(ext)) {
+      toast({ title: "Formato no admitido", description: "El documento definitivo debe ser PDF, DOCX u ODT.", variant: "destructive" });
+      return;
+    }
+    if (!finalDocument && [".pdf", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.processingAvailable) {
       toast({ title: "Procesamiento no disponible", description: "Este servidor no tiene instaladas todas las herramientas necesarias para procesar PDF, audio o vídeo.", variant: "destructive" });
       return;
     }
-    if ([".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.multimediaConfigured) {
+    if (!finalDocument && [".jpg", ".jpeg", ".png", ".webp", ".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"].includes(ext) && !minutes.multimediaConfigured) {
       toast({ title: "Proveedor multimedia no configurado", description: "La superadministración debe configurar OpenAI para analizar imágenes, audio y vídeo.", variant: "destructive" });
       return;
     }
@@ -599,10 +653,11 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       }
       const updated = await addMut.mutateAsync({
         id: eventId,
-        data: { objectPath, fileName: file.name.slice(0, 200), contentType, size: file.size, purpose: p, consent: true },
+        data: { objectPath, fileName: file.name.slice(0, 200), contentType, size: file.size, purpose: p, ...(p === "final_document" ? {} : { consent: true as const }) },
       });
       if (p === "instruction") pendingInstr.current.add(updated.id);
       await qc.invalidateQueries({ queryKey: key });
+      if (finalDocument) toast({ title: "Documento definitivo subido", description: "Seguirá privado hasta que publiques el acta." });
     } catch (err) {
       if (abort.signal.aborted) {
         toast({ title: "Subida cancelada", description: file.name });
@@ -626,6 +681,17 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       toast({ title: "Límite de fuentes", description: `Puedes añadir ${Math.max(0, room)} más (máximo ${MAX_SOURCES}).`, variant: "destructive" });
     }
     for (const f of files.slice(0, Math.max(0, room))) await uploadFile(f, purpose);
+  };
+
+  const onFinalDocument = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (minutes.sources.length + uploads.length >= MAX_SOURCES) {
+      toast({ title: "Límite de archivos", description: `Puedes guardar hasta ${MAX_SOURCES} archivos por reunión.`, variant: "destructive" });
+      return;
+    }
+    await uploadFile(file, "final_document");
   };
 
   const onDelete = async (s: MinutesSource) => {
@@ -660,6 +726,15 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
           ? "Se alcanzó el límite de fuentes."
           : undefined;
   const publishedDiffers = minutes.publishedText != null && minutes.publishedText !== serverDraft;
+  const finalDocumentSources = minutes.sources.filter((source) => source.purpose === "final_document");
+  const printDraft = () => {
+    setDraftView("preview");
+    document.body.classList.add("minutes-print-draft");
+    window.setTimeout(() => {
+      window.print();
+      document.body.classList.remove("minutes-print-draft");
+    }, 250);
+  };
 
   return (
     <div className="space-y-5">
@@ -721,7 +796,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
               <Card>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Borrador</h4>
+                    <h4 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> 1. Borrador del acta</h4>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="font-mono text-muted-foreground">rev. {minutes.revision}</span>
                       {dirty ? <Badge variant="secondary">Sin guardar</Badge> : <Badge variant="outline">Guardado</Badge>}
@@ -748,8 +823,12 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                     <Button size="sm" variant={draftView === "edit" ? "default" : "outline"} onClick={() => setDraftView("edit")} data-testid="button-edit-minutes">
                       Editar texto
                     </Button>
-                    {draftView === "edit" && <span className="text-xs text-muted-foreground">Puedes escribir en texto normal o Markdown.</span>}
+                    {draftView === "edit" && <span className="text-xs text-muted-foreground">La vista previa convierte títulos, listas y tablas en formato de acta.</span>}
+                    <Button size="sm" variant="outline" className="gap-1.5 sm:ml-auto" onClick={printDraft} disabled={!draft.trim()} data-testid="button-download-draft-minutes">
+                      <Download className="w-3.5 h-3.5" /> Descargar borrador en PDF
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">Se abrirá la ventana de impresión; elige «Guardar como PDF» para descargarlo.</p>
                   {draftView === "edit" ? (
                     <Textarea
                       value={draft}
@@ -779,10 +858,59 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                 </CardContent>
               </Card>
 
+              {/* Final attachment: separate from the evidence sent to the writing assistant. */}
+              <Card data-testid="card-final-minutes-document">
+                <CardContent className="p-5 space-y-3">
+                  <div>
+                    <h4 className="font-semibold">2. Documento definitivo adjunto</h4>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Sube aquí el acta final revisada en PDF, DOCX u ODT. No se envía a la IA. Permanece privada hasta que publiques el acta.
+                    </p>
+                  </div>
+                  <input ref={finalFileRef} type="file" accept=".pdf,.docx,.odt" className="hidden" onChange={(e) => void onFinalDocument(e)} data-testid="input-final-minutes-document" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => finalFileRef.current?.click()}
+                    disabled={minutes.sources.length + uploads.length >= MAX_SOURCES}
+                    data-testid="button-upload-final-minutes-document"
+                  >
+                    <Upload className="w-4 h-4" /> {minutes.draftDocument ? "Sustituir documento definitivo" : "Subir documento definitivo"}
+                  </Button>
+                  {minutes.draftDocument && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+                      <span className="min-w-0 truncate font-medium">{minutes.draftDocument.fileName}</span>
+                      <a className="inline-flex items-center gap-1.5 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/documents/draft`} download={minutes.draftDocument.fileName} data-testid="link-download-draft-final-document">
+                        <Download className="h-4 w-4" /> Descargar
+                      </a>
+                    </div>
+                  )}
+                  {finalDocumentSources.length > 1 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Documentos anteriores</p>
+                      {finalDocumentSources.filter((source) => source.id !== minutes.draftDocument?.id && source.id !== minutes.publishedDocument?.id).map((source) => (
+                        <div key={source.id} className="flex items-center justify-between gap-2 rounded border px-3 py-2 text-xs">
+                          <span className="truncate">{source.fileName}</span>
+                          <Button type="button" size="sm" variant="ghost" className="h-7 text-destructive" onClick={() => void onDelete(source)} disabled={delMut.isPending}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {minutes.publishedDocument && (
+                    <p className="text-xs text-muted-foreground">
+                      Documento publicado: {minutes.publishedDocument.fileName}. Si subes una nueva versión, la anterior seguirá disponible hasta que publiques la actualización.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Publication */}
               <Card>
                 <CardContent className="p-5 space-y-3">
-                  <h4 className="font-semibold">Publicación</h4>
+                  <h4 className="font-semibold">3. Publicación</h4>
                   {minutes.publishedText != null ? (
                     <p className="text-sm text-muted-foreground">
                       Publicada el {formatDateTime(minutes.publishedAt)}.
@@ -793,7 +921,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                   )}
                   <label className="flex items-start gap-2 text-sm">
                     <Checkbox checked={reviewed} onCheckedChange={(v) => setReviewed(v === true)} data-testid="checkbox-reviewed" className="mt-0.5" />
-                    He revisado el borrador guardado y confirmo que es el acta final.
+                    He revisado el borrador guardado y confirmo que es el acta final. {minutes.draftDocument ? "También se publicará el documento definitivo adjunto." : ""}
                   </label>
                   {dirty && <p className="text-xs text-amber-700">Guarda el borrador antes de publicar: se publica la versión guardada.</p>}
                   <div className="flex flex-wrap gap-2">
@@ -802,7 +930,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                       disabled={!reviewed || dirty || !serverDraft.trim() || pubMut.isPending || generating}
                       data-testid="button-publish-minutes"
                     >
-                      {minutes.publishedText != null ? "Publicar nueva versión" : "Publicar acta"}
+                      {minutes.publishedText != null ? "Publicar nueva versión" : minutes.draftDocument ? "Publicar acta y documento definitivo" : "Publicar acta"}
                     </Button>
                     {minutes.publishedText != null && (
                       <Button variant="outline" onClick={() => void onPublish(false)} disabled={pubMut.isPending} data-testid="button-withdraw-minutes">
@@ -877,8 +1005,8 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
               <Card>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Fuentes</h4>
-                    <span className="text-xs font-mono text-muted-foreground">{minutes.sources.length}/{MAX_SOURCES}</span>
+                    <h4 className="font-semibold">Evidencias e instrucciones para la IA</h4>
+                    <span className="text-xs font-mono text-muted-foreground">{minutes.sources.filter((source) => source.purpose !== "final_document").length}/{MAX_SOURCES}</span>
                   </div>
                   <div className="flex rounded-md border p-0.5 text-xs" role="radiogroup" aria-label="Tipo de fuente">
                     {(["evidence", "instruction"] as const).map((p) => (
@@ -919,11 +1047,11 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                     </div>
                   ))}
 
-                  {minutes.sources.length === 0 && uploads.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Sin fuentes todavía.</p>
+                  {minutes.sources.every((source) => source.purpose === "final_document") && uploads.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Todavía no hay evidencias ni instrucciones. El documento definitivo se gestiona en su apartado independiente.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {minutes.sources.map((s) => (
+                      {minutes.sources.filter((s) => s.purpose !== "final_document").map((s) => (
                         <li key={s.id} className="rounded-md border p-2.5 text-xs space-y-1.5" data-testid={`row-source-${s.id}`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">

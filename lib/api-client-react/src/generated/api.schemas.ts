@@ -1833,6 +1833,7 @@ export type MinutesSourceInputPurpose = typeof MinutesSourceInputPurpose[keyof t
 export const MinutesSourceInputPurpose = {
   evidence: 'evidence',
   instruction: 'instruction',
+  final_document: 'final_document',
 } as const;
 
 export interface MinutesSourceInput {
@@ -1851,7 +1852,7 @@ export interface MinutesSourceInput {
      */
   size: number;
   purpose: MinutesSourceInputPurpose;
-  consent: true;
+  consent?: true;
 }
 
 export interface MinutesGenerateInput {
@@ -1903,6 +1904,7 @@ export type MinutesSourcePurpose = typeof MinutesSourcePurpose[keyof typeof Minu
 export const MinutesSourcePurpose = {
   evidence: 'evidence',
   instruction: 'instruction',
+  final_document: 'final_document',
 } as const;
 
 export type MinutesSourceStatus = typeof MinutesSourceStatus[keyof typeof MinutesSourceStatus];
@@ -1953,6 +1955,13 @@ export const EventMinutesGenerationStatus = {
   error: 'error',
 } as const;
 
+export interface MinutesDocumentAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+}
+
 export interface EventMinutes {
   eventId: number;
   enabled: boolean;
@@ -1964,6 +1973,8 @@ export interface EventMinutes {
   publishedText: string | null;
   /** @nullable */
   publishedAt: string | null;
+  draftDocument: MinutesDocumentAttachment | null;
+  publishedDocument: MinutesDocumentAttachment | null;
   generationStatus: EventMinutesGenerationStatus;
   /** @nullable */
   generationError: string | null;

@@ -3208,6 +3208,18 @@ export const GetEventMinutesResponse = zod.object({
   "draftText": zod.string().nullable(),
   "publishedText": zod.string().nullable(),
   "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
   "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
   "generationError": zod.string().nullable(),
   "writingConfigured": zod.boolean(),
@@ -3218,7 +3230,7 @@ export const GetEventMinutesResponse = zod.object({
   "fileName": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int(),
-  "purpose": zod.enum(['evidence', 'instruction']),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
   "status": zod.enum(['queued', 'processing', 'ready', 'error']),
   "extractedText": zod.string(),
   "error": zod.string().nullable(),
@@ -3257,6 +3269,18 @@ export const SaveEventMinutesResponse = zod.object({
   "draftText": zod.string().nullable(),
   "publishedText": zod.string().nullable(),
   "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
   "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
   "generationError": zod.string().nullable(),
   "writingConfigured": zod.boolean(),
@@ -3267,7 +3291,7 @@ export const SaveEventMinutesResponse = zod.object({
   "fileName": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int(),
-  "purpose": zod.enum(['evidence', 'instruction']),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
   "status": zod.enum(['queued', 'processing', 'ready', 'error']),
   "extractedText": zod.string(),
   "error": zod.string().nullable(),
@@ -3301,8 +3325,8 @@ export const AddEventMinutesSourceBody = zod.object({
   "fileName": zod.string().min(1).max(addEventMinutesSourceBodyFileNameMax),
   "contentType": zod.string().max(addEventMinutesSourceBodyContentTypeMax),
   "size": zod.number().int().min(1).max(addEventMinutesSourceBodySizeMax),
-  "purpose": zod.enum(['evidence', 'instruction']),
-  "consent": zod.literal(true)
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
+  "consent": zod.literal(true).optional()
 })
 
 export const AddEventMinutesSourceResponse = zod.object({
@@ -3310,12 +3334,20 @@ export const AddEventMinutesSourceResponse = zod.object({
   "fileName": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int(),
-  "purpose": zod.enum(['evidence', 'instruction']),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
   "status": zod.enum(['queued', 'processing', 'ready', 'error']),
   "extractedText": zod.string(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 })
+
+
+export const DownloadEventMinutesDocumentParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "version": zod.enum(['draft', 'published'])
+})
+
+export const DownloadEventMinutesDocumentResponse = zod.unknown()
 
 
 export const DeleteEventMinutesSourceParams = zod.object({
@@ -3362,6 +3394,18 @@ export const GenerateEventMinutesResponse = zod.object({
   "draftText": zod.string().nullable(),
   "publishedText": zod.string().nullable(),
   "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
   "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
   "generationError": zod.string().nullable(),
   "writingConfigured": zod.boolean(),
@@ -3372,7 +3416,7 @@ export const GenerateEventMinutesResponse = zod.object({
   "fileName": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int(),
-  "purpose": zod.enum(['evidence', 'instruction']),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
   "status": zod.enum(['queued', 'processing', 'ready', 'error']),
   "extractedText": zod.string(),
   "error": zod.string().nullable(),
@@ -3409,6 +3453,18 @@ export const PublishEventMinutesResponse = zod.object({
   "draftText": zod.string().nullable(),
   "publishedText": zod.string().nullable(),
   "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
   "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
   "generationError": zod.string().nullable(),
   "writingConfigured": zod.boolean(),
@@ -3419,7 +3475,7 @@ export const PublishEventMinutesResponse = zod.object({
   "fileName": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int(),
-  "purpose": zod.enum(['evidence', 'instruction']),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
   "status": zod.enum(['queued', 'processing', 'ready', 'error']),
   "extractedText": zod.string(),
   "error": zod.string().nullable(),

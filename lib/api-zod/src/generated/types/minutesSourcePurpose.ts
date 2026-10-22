@@ -12,4 +12,5 @@ export type MinutesSourcePurpose = typeof MinutesSourcePurpose[keyof typeof Minu
 export const MinutesSourcePurpose = {
   evidence: 'evidence',
   instruction: 'instruction',
+  final_document: 'final_document',
 } as const;

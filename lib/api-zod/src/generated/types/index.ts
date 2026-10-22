@@ -270,6 +270,7 @@ export * from './meetingAiSettingsInput';
 export * from './meetingTokenInput';
 export * from './message';
 export * from './messageReaction';
+export * from './minutesDocumentAttachment';
 export * from './minutesGenerateInput';
 export * from './minutesMessage';
 export * from './minutesMessageRole';

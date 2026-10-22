@@ -81,6 +81,38 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     expect(await processOneMinutesJob()).toBe(true);
     expect((await current()).sources[0]).toMatchObject({ status: "ready", extractedText: "Acuerdo documentado: revisar el catálogo." });
   });
+  it("mantiene privado el documento final hasta publicar y conserva la versión compartida al sustituirlo", async () => {
+    const firstPath = "/objects/uploads/22222222-2222-4222-8222-222222222222";
+    let result = await call("post", base() + "/sources").send({
+      objectPath: firstPath, fileName: "acta-final.pdf", contentType: "application/pdf", size: 3, purpose: "final_document",
+    });
+    expect(result.status).toBe(201);
+    const firstDocumentId = result.body.id;
+    expect(result.body).toMatchObject({ purpose: "final_document", status: "ready" });
+    expect((await current()).draftDocument).toMatchObject({ id: firstDocumentId, fileName: "acta-final.pdf" });
+    expect((await call("get", base() + "/documents/draft")).status).toBe(200);
+    expect((await call("get", base() + "/documents/draft", reader)).status).toBe(403);
+
+    let w = await current();
+    result = await call("post", base() + "/publish").send({ revision: w.revision, publish: true, reviewed: true });
+    expect(result.status).toBe(200);
+    expect((await call("get", base(), reader)).body.publishedDocument).toMatchObject({ id: firstDocumentId, fileName: "acta-final.pdf" });
+    expect((await call("get", base() + "/documents/published", reader)).status).toBe(200);
+
+    const secondPath = "/objects/uploads/33333333-3333-4333-8333-333333333333";
+    result = await call("post", base() + "/sources").send({
+      objectPath: secondPath, fileName: "acta-final-v2.pdf", contentType: "application/pdf", size: 3, purpose: "final_document",
+    });
+    expect(result.status).toBe(201);
+    const latest = await current();
+    expect(latest.draftDocument.id).toBe(result.body.id);
+    expect(latest.publishedDocument.fileName).toBe("acta-final.pdf");
+    expect((await call("get", base() + "/documents/published", reader)).status).toBe(200);
+    await call("post", base() + "/publish").send({ revision: latest.revision, publish: false, reviewed: false });
+    for (const source of latest.sources.filter((item: { purpose: string }) => item.purpose === "final_document")) {
+      await call("delete", base() + `/sources/${source.id}`);
+    }
+  });
   it("redacta en segundo plano sin publicar ni exponer conversación o fuentes", async () => {
     let w = await current();
     const result = await call("post", base() + "/generate").send({ revision: w.revision, instructions: "Redacta con los acuerdos documentados.", consent: true });

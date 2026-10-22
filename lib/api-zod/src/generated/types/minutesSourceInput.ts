@@ -23,5 +23,5 @@ export interface MinutesSourceInput {
      */
   size: number;
   purpose: MinutesSourceInputPurpose;
-  consent: true;
+  consent?: true;
 }

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EventMinutesGenerationStatus } from './eventMinutesGenerationStatus';
+import type { MinutesDocumentAttachment } from './minutesDocumentAttachment';
 import type { MinutesMessage } from './minutesMessage';
 import type { MinutesSource } from './minutesSource';
 
@@ -20,6 +21,8 @@ export interface EventMinutes {
   publishedText: string | null;
   /** @nullable */
   publishedAt: Date | null;
+  draftDocument: MinutesDocumentAttachment | null;
+  publishedDocument: MinutesDocumentAttachment | null;
   generationStatus: EventMinutesGenerationStatus;
   /** @nullable */
   generationError: string | null;
