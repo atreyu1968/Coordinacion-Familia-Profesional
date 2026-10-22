@@ -49,4 +49,5 @@ export * from "./eventAttendances";
 export * from "./eventAttendanceCertificates";
 export * from "./certificateEmailVerifications";
 export * from "./coordinatorMail";
+export * from "./coordinatorTasks";
 export * from "./aiKnowledge";

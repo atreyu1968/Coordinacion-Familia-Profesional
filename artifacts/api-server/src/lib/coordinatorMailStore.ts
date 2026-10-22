@@ -13,12 +13,12 @@ import { AttendanceError } from "./eventCertificates";
 export const CASE_PAGE_SIZE = 20;
 export const MESSAGE_PAGE_SIZE = 40;
 
-export async function requireMailCoordinator(request: Request): Promise<{ id: number; name: string; email: string; role: string }> {
+export async function requireMailCoordinator(request: Request): Promise<{ id: number; name: string; email: string; role: string; provinceId: number | null }> {
   const [id] = [Number(request.user?.id)];
   if (!Number.isSafeInteger(id) || id <= 0) throw new AttendanceError(401, "Inicia sesión para acceder a tu correo de coordinación.");
   const [user] = await db.select({
     id: usersTable.id, name: usersTable.name, email: usersTable.email,
-    role: usersTable.role, status: usersTable.status,
+    role: usersTable.role, status: usersTable.status, provinceId: usersTable.provinceId,
   }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
   if (!user || user.status !== "active") throw new AttendanceError(403, "Esta cuenta no está activa.");
   if (user.role !== "coordinator" && user.role !== "superadmin") throw new AttendanceError(403, "Solo la coordinación tiene acceso a esta sección privada.");

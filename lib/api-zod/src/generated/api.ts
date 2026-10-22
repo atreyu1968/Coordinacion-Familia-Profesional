@@ -679,6 +679,122 @@ export const UpdateCoordinatorMailAdminSettingsResponse = zod.object({
 
 
 /**
+ * @summary List the authenticated coordinator's private tasks
+ */
+export const ListCoordinatorTasksResponse = zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'in_progress', 'resolved']),
+  "reviewStatus": zod.enum(['suggested', 'accepted', 'dismissed']),
+  "sourceType": zod.enum(['manual', 'minutes', 'message', 'email']),
+  "sourceId": zod.string().nullable(),
+  "sourceLabel": zod.string().nullable(),
+  "sourceDate": zod.coerce.date().nullable(),
+  "resolution": zod.string().nullable(),
+  "revision": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "aiAvailable": zod.boolean(),
+  "gmailConnected": zod.boolean(),
+  "gmailSyncStatus": zod.enum(['idle', 'queued', 'syncing', 'error', 'needs_reauthorization', 'needs_configuration'])
+})
+
+
+/**
+ * @summary Add a task manually
+ */
+export const createCoordinatorTaskBodyTitleMax = 200;
+
+export const createCoordinatorTaskBodyDescriptionMax = 4000;
+
+
+
+export const CreateCoordinatorTaskBody = zod.object({
+  "title": zod.string().min(1).max(createCoordinatorTaskBodyTitleMax),
+  "description": zod.string().max(createCoordinatorTaskBodyDescriptionMax).optional()
+})
+
+export const CreateCoordinatorTaskResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'in_progress', 'resolved']),
+  "reviewStatus": zod.enum(['suggested', 'accepted', 'dismissed']),
+  "sourceType": zod.enum(['manual', 'minutes', 'message', 'email']),
+  "sourceId": zod.string().nullable(),
+  "sourceLabel": zod.string().nullable(),
+  "sourceDate": zod.coerce.date().nullable(),
+  "resolution": zod.string().nullable(),
+  "revision": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Reads only published final minutes within the coordinator's scope, messages received directly or in groups they belong to, and received emails in their own connected mailbox.
+ * @summary Analyze new, authorized sources and create task suggestions for review
+ */
+export const AnalyzeCoordinatorTaskSourcesResponse = zod.object({
+  "scanned": zod.number().int(),
+  "suggestionsCreated": zod.number().int(),
+  "remaining": zod.number().int(),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Update task status, resolution, or review decision
+ */
+
+
+
+export const UpdateCoordinatorTaskParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+export const updateCoordinatorTaskBodyTitleMax = 200;
+
+export const updateCoordinatorTaskBodyDescriptionMax = 4000;
+
+export const updateCoordinatorTaskBodyResolutionMax = 4000;
+
+
+
+export const UpdateCoordinatorTaskBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "title": zod.string().min(1).max(updateCoordinatorTaskBodyTitleMax).optional(),
+  "description": zod.string().max(updateCoordinatorTaskBodyDescriptionMax).optional(),
+  "status": zod.enum(['pending', 'in_progress', 'resolved']).optional(),
+  "reviewStatus": zod.enum(['accepted', 'dismissed']).optional(),
+  "resolution": zod.string().max(updateCoordinatorTaskBodyResolutionMax).nullish()
+})
+
+export const UpdateCoordinatorTaskResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['pending', 'in_progress', 'resolved']),
+  "reviewStatus": zod.enum(['suggested', 'accepted', 'dismissed']),
+  "sourceType": zod.enum(['manual', 'minutes', 'message', 'email']),
+  "sourceId": zod.string().nullable(),
+  "sourceLabel": zod.string().nullable(),
+  "sourceDate": zod.coerce.date().nullable(),
+  "resolution": zod.string().nullable(),
+  "revision": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * Returns a presigned URL for direct upload. The client sends JSON
  * metadata here, then uploads the file directly to the returned URL.
  * @summary Request a presigned URL for file upload

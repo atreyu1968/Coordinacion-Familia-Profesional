@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
   type ViewStyle,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -33,6 +34,7 @@ export function Button({
   variant = "primary",
   icon,
   style,
+  testID,
 }: {
   label: string;
   onPress: () => void;
@@ -40,7 +42,8 @@ export function Button({
   loading?: boolean;
   variant?: "primary" | "secondary" | "ghost";
   icon?: React.ComponentProps<typeof Feather>["name"];
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const colors = useColors();
   const bg =
@@ -61,6 +64,8 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
+      accessibilityRole="button"
+      testID={testID}
       style={({ pressed }) => [
         styles.btn,
         {
@@ -86,13 +91,16 @@ export function Button({
 export function Card({
   children,
   style,
+  testID,
 }: {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const colors = useColors();
   return (
     <View
+      testID={testID}
       style={[
         styles.card,
         cardShadow,

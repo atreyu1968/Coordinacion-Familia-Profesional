@@ -517,6 +517,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/event-attendance-certificates.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/meeting-minutes.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/coordinator-mail.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/coordinator-tasks.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/ai-knowledge.sql"
     verify_catalog
   else

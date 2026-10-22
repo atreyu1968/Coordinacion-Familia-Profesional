@@ -64,3 +64,4 @@
 - [Descargas HTML como DOCX](html-attachment-exports.md) — ofrecer Word junto al original en adjuntos HTML descargables; no convertir contenido SCORM ejecutable.
 - [Correo privado de coordinación](coordinator-mail.md) — OAuth de Google se configura en la app; cada coordinador autoriza y conserva aislados sus propios asuntos y tokens.
 - [Fuentes de consulta de la IA](ai-knowledge-scope.md) — debe poder consultar todo el material subido y los correos recibidos, respetando los permisos de cada usuario.
+- [Tareas pendientes de coordinación](coordinator-pending-tasks.md) — tareas privadas por coordinador; la IA propone, el coordinador confirma y añade manualmente.

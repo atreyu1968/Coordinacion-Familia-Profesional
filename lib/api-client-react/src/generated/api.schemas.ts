@@ -604,6 +604,130 @@ export interface CoordinatorMailCaseSummary {
   items: CoordinatorMailCase[];
 }
 
+export type CoordinatorTaskStatus = typeof CoordinatorTaskStatus[keyof typeof CoordinatorTaskStatus];
+
+
+export const CoordinatorTaskStatus = {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  resolved: 'resolved',
+} as const;
+
+export type CoordinatorTaskReviewStatus = typeof CoordinatorTaskReviewStatus[keyof typeof CoordinatorTaskReviewStatus];
+
+
+export const CoordinatorTaskReviewStatus = {
+  suggested: 'suggested',
+  accepted: 'accepted',
+  dismissed: 'dismissed',
+} as const;
+
+export type CoordinatorTaskSourceType = typeof CoordinatorTaskSourceType[keyof typeof CoordinatorTaskSourceType];
+
+
+export const CoordinatorTaskSourceType = {
+  manual: 'manual',
+  minutes: 'minutes',
+  message: 'message',
+  email: 'email',
+} as const;
+
+export interface CoordinatorTask {
+  id: number;
+  title: string;
+  description: string;
+  status: CoordinatorTaskStatus;
+  reviewStatus: CoordinatorTaskReviewStatus;
+  sourceType: CoordinatorTaskSourceType;
+  /** @nullable */
+  sourceId: string | null;
+  /** @nullable */
+  sourceLabel: string | null;
+  /** @nullable */
+  sourceDate: string | null;
+  /** @nullable */
+  resolution: string | null;
+  revision: number;
+  /** @nullable */
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CoordinatorTaskResponse = CoordinatorTask;
+
+export type CoordinatorTaskListGmailSyncStatus = typeof CoordinatorTaskListGmailSyncStatus[keyof typeof CoordinatorTaskListGmailSyncStatus];
+
+
+export const CoordinatorTaskListGmailSyncStatus = {
+  idle: 'idle',
+  queued: 'queued',
+  syncing: 'syncing',
+  error: 'error',
+  needs_reauthorization: 'needs_reauthorization',
+  needs_configuration: 'needs_configuration',
+} as const;
+
+export interface CoordinatorTaskList {
+  tasks: CoordinatorTask[];
+  aiAvailable: boolean;
+  gmailConnected: boolean;
+  gmailSyncStatus: CoordinatorTaskListGmailSyncStatus;
+}
+
+export interface CoordinatorTaskAnalysis {
+  scanned: number;
+  suggestionsCreated: number;
+  remaining: number;
+  warnings: string[];
+}
+
+export interface CoordinatorTaskInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 4000 */
+  description?: string;
+}
+
+export type CoordinatorTaskUpdateStatus = typeof CoordinatorTaskUpdateStatus[keyof typeof CoordinatorTaskUpdateStatus];
+
+
+export const CoordinatorTaskUpdateStatus = {
+  pending: 'pending',
+  in_progress: 'in_progress',
+  resolved: 'resolved',
+} as const;
+
+export type CoordinatorTaskUpdateReviewStatus = typeof CoordinatorTaskUpdateReviewStatus[keyof typeof CoordinatorTaskUpdateReviewStatus];
+
+
+export const CoordinatorTaskUpdateReviewStatus = {
+  accepted: 'accepted',
+  dismissed: 'dismissed',
+} as const;
+
+export interface CoordinatorTaskUpdate {
+  /** @minimum 1 */
+  revision: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /** @maxLength 4000 */
+  description?: string;
+  status?: CoordinatorTaskUpdateStatus;
+  reviewStatus?: CoordinatorTaskUpdateReviewStatus;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  resolution?: string | null;
+}
+
 export interface CoordinatorMailMessages {
   items: CoordinatorMailMessage[];
   page: number;

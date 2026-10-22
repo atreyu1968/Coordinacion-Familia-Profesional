@@ -1,6 +1,8 @@
 import {
   db,
   usersTable,
+  coordinatorTasksTable,
+  coordinatorTaskSourceScansTable,
   accountAuditTable,
   provincesTable,
   centersTable,
@@ -313,6 +315,10 @@ export function authHeader(token: string): { Authorization: string } {
 // schema uses logical (not enforced) foreign keys, but we delete children
 // first anyway to keep things tidy.
 export async function cleanup(): Promise<void> {
+  if (created.userIds.length > 0) {
+    await db.delete(coordinatorTaskSourceScansTable).where(inArray(coordinatorTaskSourceScansTable.ownerId, created.userIds));
+    await db.delete(coordinatorTasksTable).where(inArray(coordinatorTasksTable.ownerId, created.userIds));
+  }
   if (created.userIds.length > 0) {
     await db.delete(accountAuditTable).where(inArray(accountAuditTable.targetId, created.userIds));
   }

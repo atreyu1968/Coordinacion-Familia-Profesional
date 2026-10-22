@@ -46,6 +46,8 @@ tags:
     description: Videoconference meeting rooms (Jitsi)
   - name: lms
     description: Autodirigido learning courses and certificates
+  - name: coordinator-tasks
+    description: Private coordinator task follow-up from minutes, messages and email
 
 paths:
   /coordinator-mail/workspace:
@@ -311,6 +313,79 @@ paths:
               schema: { $ref: "#/components/schemas/CoordinatorMailAdminSettings" }
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+  /coordinator-tasks:
+    get:
+      operationId: listCoordinatorTasks
+      tags: [coordinator-tasks]
+      summary: List the authenticated coordinator's private tasks
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Coordinator tasks, including AI suggestions awaiting review.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorTaskList" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createCoordinatorTask
+      tags: [coordinator-tasks]
+      summary: Add a task manually
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorTaskInput" }
+      responses:
+        "201":
+          description: Manually created task.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorTask" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /coordinator-tasks/analyze:
+    post:
+      operationId: analyzeCoordinatorTaskSources
+      tags: [coordinator-tasks]
+      summary: Analyze new, authorized sources and create task suggestions for review
+      description: Reads only published final minutes within the coordinator's scope, messages received directly or in groups they belong to, and received emails in their own connected mailbox.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Analysis counts and any extraction warnings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorTaskAnalysis" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /coordinator-tasks/{id}:
+    patch:
+      operationId: updateCoordinatorTask
+      tags: [coordinator-tasks]
+      summary: Update task status, resolution, or review decision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CoordinatorTaskUpdate" }
+      responses:
+        "200":
+          description: Updated task.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CoordinatorTaskResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -5931,6 +6006,63 @@ components:
           type: array
           items: { $ref: "#/components/schemas/CoordinatorMailCase" }
       required: [ownerId, page, pageSize, total, connection, aiAvailable, items]
+    CoordinatorTask:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [pending, in_progress, resolved] }
+        reviewStatus: { type: string, enum: [suggested, accepted, dismissed] }
+        sourceType: { type: string, enum: [manual, minutes, message, email] }
+        sourceId: { type: ["string", "null"] }
+        sourceLabel: { type: ["string", "null"] }
+        sourceDate: { type: ["string", "null"], format: date-time }
+        resolution: { type: ["string", "null"] }
+        revision: { type: integer }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, title, description, status, reviewStatus, sourceType, sourceId, sourceLabel, sourceDate, resolution, revision, resolvedAt, createdAt, updatedAt]
+    CoordinatorTaskResponse:
+      allOf:
+        - $ref: "#/components/schemas/CoordinatorTask"
+    CoordinatorTaskList:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items: { $ref: "#/components/schemas/CoordinatorTask" }
+        aiAvailable: { type: boolean }
+        gmailConnected: { type: boolean }
+        gmailSyncStatus: { type: string, enum: [idle, queued, syncing, error, needs_reauthorization, needs_configuration] }
+      required: [tasks, aiAvailable, gmailConnected, gmailSyncStatus]
+    CoordinatorTaskAnalysis:
+      type: object
+      properties:
+        scanned: { type: integer }
+        suggestionsCreated: { type: integer }
+        remaining: { type: integer }
+        warnings:
+          type: array
+          items: { type: string }
+      required: [scanned, suggestionsCreated, remaining, warnings]
+    CoordinatorTaskInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+      required: [title]
+    CoordinatorTaskUpdate:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 4000 }
+        status: { type: string, enum: [pending, in_progress, resolved] }
+        reviewStatus: { type: string, enum: [accepted, dismissed] }
+        resolution: { type: ["string", "null"], maxLength: 4000 }
+      required: [revision]
     CoordinatorMailMessages:
       type: object
       properties:

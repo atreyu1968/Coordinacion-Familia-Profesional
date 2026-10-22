@@ -42,6 +42,7 @@ const AsistenteIaPage = lazy(() => import("@/pages/asistente-ia"));
 const AppMovilPage = lazy(() => import("@/pages/app-movil"));
 const MisCertificadosPage = lazy(() => import("@/pages/mis-certificados"));
 const CoordinatorMailPage = lazy(() => import("@/components/coordinator-mail/coordinator-mail"));
+const CoordinatorTasksPage = lazy(() => import("@/pages/coordinator-tasks"));
 const AsistenciaPage = lazy(() => import("@/pages/asistencia"));
 const VerificarCertificadoPage = lazy(() => import("@/pages/verificar-certificado"));
 const AutodirigidoPage = lazy(() => import("@/pages/autodirigido"));
@@ -93,6 +94,7 @@ function AuthedRoutes() {
           <Route path="/mis-certificados" component={MisCertificadosPage} />
           <Route path="/asuntos-correo" component={CoordinatorMailPage} />
           <Route path="/asuntos-correo/:id" component={CoordinatorMailPage} />
+          <Route path="/tareas-pendientes" component={CoordinatorTasksPage} />
           <Route path="/panel-control" component={ConfiguracionPage} />
           <Route component={NotFound} />
         </Switch>

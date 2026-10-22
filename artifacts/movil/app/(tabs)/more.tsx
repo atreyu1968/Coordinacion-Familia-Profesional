@@ -64,6 +64,9 @@ export default function MoreScreen() {
       onPress: () => router.push("/wiki"),
     },
     { icon: "file-text", label: "Actas de coordinación", description: "Actas publicadas de reuniones", onPress: () => router.push("/actas") },
+    ...(user?.role === "coordinator" || user?.role === "superadmin"
+      ? [{ icon: "check-square" as const, label: "Tareas pendientes", description: "Seguimiento de acuerdos y asuntos", onPress: () => router.push("/tareas-pendientes") }]
+      : []),
     { icon: "award", label: "Mis certificados", description: "Certificados de asistencia a eventos", onPress: () => router.push("/mis-certificados") },
     { icon: "maximize", label: "Escanear QR", description: "Acreditaciones y registro de asistencia", onPress: () => router.push("/scan") },
     { icon: "bar-chart-2", label: "Encuestas y votaciones", onPress: () => router.push("/surveys") },

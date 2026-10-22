@@ -37,6 +37,7 @@ import {
   Menu,
   X,
   Award,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
@@ -127,6 +128,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
     { label: "Actas publicadas", path: "/actas", icon: BookCheck, visible: role === "department_head" },
     { label: "Asuntos de correo", path: "/asuntos-correo", icon: Mail, visible: ["coordinator", "superadmin"].includes(role) },
+    { label: "Tareas pendientes", path: "/tareas-pendientes", icon: CheckSquare, visible: ["coordinator", "superadmin"].includes(role) },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
     { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
     { label: "Mensajes", path: "/chat", icon: MessageCircle, visible: true },

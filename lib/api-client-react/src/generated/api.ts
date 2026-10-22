@@ -76,6 +76,12 @@ import type {
   CoordinatorMailOutboxItem,
   CoordinatorMailSendInput,
   CoordinatorMailSettingsUpdate,
+  CoordinatorTask,
+  CoordinatorTaskAnalysis,
+  CoordinatorTaskInput,
+  CoordinatorTaskList,
+  CoordinatorTaskResponse,
+  CoordinatorTaskUpdate,
   CreateAcademicYearInput,
   CreateAccreditationInput,
   CreateAnnouncementInput,
@@ -1672,6 +1678,359 @@ export const useUpdateCoordinatorMailAdminSettings = <TError = ErrorType<ErrorRe
         TContext
       > => {
       return useMutation(getUpdateCoordinatorMailAdminSettingsMutationOptions(options), queryClient);
+    }
+
+export const getListCoordinatorTasksUrl = () => {
+
+
+
+
+  return `/api/coordinator-tasks`
+}
+
+/**
+ * @summary List the authenticated coordinator's private tasks
+ */
+export const listCoordinatorTasks = async ( options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorTaskList> => {
+
+  return customFetch<CoordinatorTaskList>(getListCoordinatorTasksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCoordinatorTasksQueryKey = () => {
+    return [
+    `/api/coordinator-tasks`
+    ] as const;
+    }
+
+
+export const getListCoordinatorTasksQueryOptions = <TData = Awaited<ReturnType<typeof listCoordinatorTasks>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCoordinatorTasksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCoordinatorTasks>>> = ({ signal }) => listCoordinatorTasks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCoordinatorTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listCoordinatorTasks>>>
+export type ListCoordinatorTasksQueryError = ErrorType<ErrorResponse>
+
+
+export function useListCoordinatorTasks<TData = Awaited<ReturnType<typeof listCoordinatorTasks>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCoordinatorTasks>>,
+          TError,
+          Awaited<ReturnType<typeof listCoordinatorTasks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCoordinatorTasks<TData = Awaited<ReturnType<typeof listCoordinatorTasks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCoordinatorTasks>>,
+          TError,
+          Awaited<ReturnType<typeof listCoordinatorTasks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCoordinatorTasks<TData = Awaited<ReturnType<typeof listCoordinatorTasks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List the authenticated coordinator's private tasks
+ */
+
+export function useListCoordinatorTasks<TData = Awaited<ReturnType<typeof listCoordinatorTasks>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCoordinatorTasks>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCoordinatorTasksQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCoordinatorTaskUrl = () => {
+
+
+
+
+  return `/api/coordinator-tasks`
+}
+
+/**
+ * @summary Add a task manually
+ */
+export const createCoordinatorTask = async (coordinatorTaskInput: CoordinatorTaskInput, options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorTask> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CoordinatorTask>(getCreateCoordinatorTaskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(coordinatorTaskInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCoordinatorTaskMutationKey = () => ['createCoordinatorTask'] as const;
+
+export const getCreateCoordinatorTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCoordinatorTask>>, TError,CreateCoordinatorTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCoordinatorTask>>, TError,CreateCoordinatorTaskMutationVariables, TContext> => {
+
+const mutationKey = getCreateCoordinatorTaskMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCoordinatorTask>>, CreateCoordinatorTaskMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCoordinatorTask(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCoordinatorTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createCoordinatorTask>>>
+    export type CreateCoordinatorTaskMutationBody = BodyType<CoordinatorTaskInput>
+    export type CreateCoordinatorTaskMutationError = ErrorType<ErrorResponse>
+    export type CreateCoordinatorTaskMutationVariables = {data: BodyType<CoordinatorTaskInput>}
+
+    /**
+ * @summary Add a task manually
+ */
+export const useCreateCoordinatorTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCoordinatorTask>>, TError,CreateCoordinatorTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCoordinatorTask>>,
+        TError,
+        CreateCoordinatorTaskMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCoordinatorTaskMutationOptions(options), queryClient);
+    }
+
+export const getAnalyzeCoordinatorTaskSourcesUrl = () => {
+
+
+
+
+  return `/api/coordinator-tasks/analyze`
+}
+
+/**
+ * Reads only published final minutes within the coordinator's scope, messages received directly or in groups they belong to, and received emails in their own connected mailbox.
+ * @summary Analyze new, authorized sources and create task suggestions for review
+ */
+export const analyzeCoordinatorTaskSources = async ( options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorTaskAnalysis> => {
+
+  return customFetch<CoordinatorTaskAnalysis>(getAnalyzeCoordinatorTaskSourcesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAnalyzeCoordinatorTaskSourcesMutationKey = () => ['analyzeCoordinatorTaskSources'] as const;
+
+export const getAnalyzeCoordinatorTaskSourcesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>, TError,void, TContext> => {
+
+const mutationKey = getAnalyzeCoordinatorTaskSourcesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>, void> = () => {
+
+
+          return  analyzeCoordinatorTaskSources(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzeCoordinatorTaskSourcesMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>>
+
+    export type AnalyzeCoordinatorTaskSourcesMutationError = ErrorType<ErrorResponse>
+
+
+    /**
+ * @summary Analyze new, authorized sources and create task suggestions for review
+ */
+export const useAnalyzeCoordinatorTaskSources = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof analyzeCoordinatorTaskSources>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAnalyzeCoordinatorTaskSourcesMutationOptions(options), queryClient);
+    }
+
+export const getUpdateCoordinatorTaskUrl = (id: number,) => {
+
+
+
+
+  return `/api/coordinator-tasks/${id}`
+}
+
+/**
+ * @summary Update task status, resolution, or review decision
+ */
+export const updateCoordinatorTask = async (id: number,
+    coordinatorTaskUpdate: CoordinatorTaskUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CoordinatorTaskResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CoordinatorTaskResponse>(getUpdateCoordinatorTaskUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(coordinatorTaskUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCoordinatorTaskMutationKey = () => ['updateCoordinatorTask'] as const;
+
+export const getUpdateCoordinatorTaskMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCoordinatorTask>>, TError,UpdateCoordinatorTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCoordinatorTask>>, TError,UpdateCoordinatorTaskMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCoordinatorTaskMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCoordinatorTask>>, UpdateCoordinatorTaskMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCoordinatorTask(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCoordinatorTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateCoordinatorTask>>>
+    export type UpdateCoordinatorTaskMutationBody = BodyType<CoordinatorTaskUpdate>
+    export type UpdateCoordinatorTaskMutationError = ErrorType<ErrorResponse>
+    export type UpdateCoordinatorTaskMutationVariables = {id: number;data: BodyType<CoordinatorTaskUpdate>}
+
+    /**
+ * @summary Update task status, resolution, or review decision
+ */
+export const useUpdateCoordinatorTask = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCoordinatorTask>>, TError,UpdateCoordinatorTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCoordinatorTask>>,
+        TError,
+        UpdateCoordinatorTaskMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCoordinatorTaskMutationOptions(options), queryClient);
     }
 
 export const getRequestUploadUrlUrl = () => {
