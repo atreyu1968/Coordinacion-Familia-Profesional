@@ -25,9 +25,9 @@ The teacher-confirmation list is inherently per-year (backend returns active-yea
 **How to apply:** keep the annual confirmation route's deadline and current-center checks. Put teacher-initiated changes on a dedicated authenticated endpoint; validate the destination against the active family, derive province server-side, reconcile only active-year assignments, and synchronize affected module chats.
 
 ## Required teacher profile before app access
-**Rule:** a teacher cannot use the application until a center is saved, its derived province matches, and at least one module is saved for the active academic year. When there is no active year, only the center/province pair is required.
+**Rule:** a teacher cannot use the application until a center is saved and its derived province matches. For the active academic year, the teacher must either save at least one module they teach or explicitly declare that they do not teach. When there is no active year, only the center/province pair is required.
 **Why:** the user explicitly requires teachers to complete missing profile information on entry rather than access the app with an incomplete teaching profile.
-**How to apply:** gate navigation in both web and mobile until the teaching-profile endpoint confirms completion; do not offer a dismiss path. Enforce the obligation for protected API data and realtime, not just the form. Keep self-profile editing and annual confirmation available as repair flows; otherwise the completeness guard can prevent the very confirmation needed to supply current-year modules.
+**How to apply:** gate navigation in both web and mobile until the teaching-profile endpoint confirms completion; do not offer a dismiss path. Enforce the obligation for protected API data and realtime, not just the form. The no-teaching declaration is an explicit alternative to module assignment, not to the required center. Keep self-profile editing and annual confirmation available as repair flows; otherwise the completeness guard can prevent the very confirmation needed to supply current-year modules.
 
 **Rule:** management indicators of profile integrity must remain informational and separate from annual confirmation and account activation.
 **Why:** the requested management visibility must not introduce automatic account deactivation based on missing profile data.

@@ -144,6 +144,47 @@ function resourceScopeFilters(
   ];
 }
 
+// Users with a center assignment belong to the active family's footprint;
+// province-level accounts without a center remain visible in their province.
+function activeUserScopeFilters(
+  scope: DashboardScope,
+  activeFamily: string,
+): SQL[] {
+  const filters: SQL[] = [
+    isNull(usersTable.deletedAt),
+    eq(usersTable.status, "active"),
+  ];
+
+  if (scope.centerId != null) {
+    filters.push(eq(usersTable.centerId, scope.centerId));
+  } else if (scope.provinceId != null) {
+    filters.push(
+      or(
+        inArray(
+          usersTable.centerId,
+          activeFamilyCenterIds(scope, activeFamily),
+        ),
+        and(
+          isNull(usersTable.centerId),
+          eq(usersTable.provinceId, scope.provinceId),
+        ),
+      )!,
+    );
+  } else {
+    filters.push(
+      or(
+        inArray(
+          usersTable.centerId,
+          activeFamilyCenterIds(scope, activeFamily),
+        ),
+        isNull(usersTable.centerId),
+      )!,
+    );
+  }
+
+  return filters;
+}
+
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
   const query = GetDashboardSummaryQueryParams.safeParse(req.query);
   if (!query.success) {
@@ -191,6 +232,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .where(
       and(
         isNull(usersTable.deletedAt),
+        eq(usersTable.status, "active"),
         eq(usersTable.role, "teacher"),
         inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
       ),
@@ -274,13 +316,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     .groupBy(resourceMonth)
     .orderBy(resourceMonth);
 
-  const userFilters: SQL[] = [isNull(usersTable.deletedAt)];
-  if (scope.provinceId != null) {
-    userFilters.push(eq(usersTable.provinceId, scope.provinceId));
-  }
-  if (scope.centerId != null) {
-    userFilters.push(eq(usersTable.centerId, scope.centerId));
-  }
+  const userFilters = activeUserScopeFilters(scope, activeFamily);
   const usersByRoleRows = await db
     .select({ role: usersTable.role, value: count() })
     .from(usersTable)
@@ -402,6 +438,7 @@ async function gatherReportStats(scope: DashboardScope, activeFamily: string) {
     .where(
       and(
         isNull(usersTable.deletedAt),
+        eq(usersTable.status, "active"),
         eq(usersTable.role, "teacher"),
         inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
       ),

@@ -34,3 +34,15 @@ empty scope + coordinator-without-province, and empty-report persistence.
 DashboardStatistics was extended with `eventsByMonth` (TimeSeriesPoint[]) and
 `surveysByStatus` (CategoryCount[]). "Matrículas" (enrollment) charts were
 **skipped — no enrollment/student-count data source exists** in the schema.
+
+## User statistics
+Dashboard user totals and users-by-role charts count active, non-deleted
+accounts only. Center-assigned accounts are limited to centers in the active
+professional-family footprint; province-level accounts without a center remain
+in their assigned province.
+
+**Why:** inactive accounts and users attached to centers outside the configured
+family make live totals disagree with the platform's usable population.
+
+**How to apply:** keep the summary teacher count and users-by-role chart on the
+same status and family-scope rules when changing dashboard aggregates.

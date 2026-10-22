@@ -2,6 +2,8 @@ import { useState } from "react";
 import {
   useGetDashboardSummary,
   useGetDashboardStatistics,
+  getGetDashboardSummaryQueryKey,
+  getGetDashboardStatisticsQueryKey,
   useListProvinces,
 } from "@workspace/api-client-react";
 import {
@@ -44,12 +46,14 @@ import {
   Bell,
   FileDown,
   FileSpreadsheet,
+  RefreshCw,
 } from "lucide-react";
 import {
   exportTablesPdf,
   exportSheetsXlsx,
   type ExportSheet,
 } from "@/lib/export";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const GLOBAL = "global";
 const PALETTE = [
@@ -75,9 +79,37 @@ export default function DashboardPage() {
       ? { provinceId: Number(provinceFilter) }
       : undefined;
 
-  const { data: summary, isLoading: summaryLoading } =
-    useGetDashboardSummary(params);
-  const { data: stats } = useGetDashboardStatistics(params);
+  const summaryQuery = useGetDashboardSummary(params, {
+    query: {
+      queryKey: getGetDashboardSummaryQueryKey(params),
+      refetchInterval: 60_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+  const statsQuery = useGetDashboardStatistics(params, {
+    query: {
+      queryKey: getGetDashboardStatisticsQueryKey(params),
+      refetchInterval: 60_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+  const { data: summary } = summaryQuery;
+  const { data: stats } = statsQuery;
+  const isRefreshing = summaryQuery.isFetching || statsQuery.isFetching;
+  const latestDataUpdatedAt = Math.max(
+    summaryQuery.dataUpdatedAt,
+    statsQuery.dataUpdatedAt,
+  );
+  const lastUpdatedLabel = latestDataUpdatedAt
+    ? new Intl.DateTimeFormat("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(latestDataUpdatedAt)
+    : null;
+
+  const refreshDashboard = async () => {
+    await Promise.all([summaryQuery.refetch(), statsQuery.refetch()]);
+  };
 
   const scopeLabel = !isSuperadmin
     ? "Ámbito de tu coordinación"
@@ -165,6 +197,17 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void refreshDashboard()}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Actualizar datos
+          </Button>
           {isSuperadmin && (
             <Select value={provinceFilter} onValueChange={setProvinceFilter}>
               <SelectTrigger className="w-[230px]" aria-label="Filtrar por ámbito">
@@ -191,6 +234,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <span>
+          Datos consultados directamente en la plataforma; actualización
+          automática cada minuto.
+        </span>
+        <span aria-live="polite">
+          {isRefreshing
+            ? "Actualizando…"
+            : lastUpdatedLabel
+              ? `Última consulta correcta: ${lastUpdatedLabel}`
+              : "Consultando datos…"}
+        </span>
+      </div>
+
+      {(summaryQuery.isError || statsQuery.isError) && (
+        <Alert variant="destructive">
+          <AlertTitle>No se pudieron actualizar todos los datos</AlertTitle>
+          <AlertDescription>
+            {summaryQuery.isError &&
+              "El resumen no está disponible. "}
+            {statsQuery.isError &&
+              "Las estadísticas y los gráficos no están disponibles. "}
+            Pulsa «Actualizar datos» para volver a intentarlo.
+            {lastUpdatedLabel &&
+              ` Se conservan los últimos datos correctos de las ${lastUpdatedLabel}.`}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
           <Card key={c.label}>
@@ -202,7 +274,11 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {summaryLoading ? "—" : (c.value ?? 0)}
+                {summaryQuery.isLoading
+                  ? "—"
+                  : summaryQuery.isError && !summary
+                    ? "No disponible"
+                    : (c.value ?? 0)}
               </div>
             </CardContent>
           </Card>
@@ -211,7 +287,11 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Recursos compartidos por mes">
-          {resourcesByMonth.length === 0 ? (
+          {statsQuery.isLoading ? (
+            <ChartMessage>Consultando datos…</ChartMessage>
+          ) : statsQuery.isError && !stats ? (
+            <ChartMessage>No se pudieron cargar los datos.</ChartMessage>
+          ) : resourcesByMonth.length === 0 ? (
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -233,7 +313,11 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Actividad de eventos por mes">
-          {eventsByMonth.length === 0 ? (
+          {statsQuery.isLoading ? (
+            <ChartMessage>Consultando datos…</ChartMessage>
+          ) : statsQuery.isError && !stats ? (
+            <ChartMessage>No se pudieron cargar los datos.</ChartMessage>
+          ) : eventsByMonth.length === 0 ? (
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -249,7 +333,11 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Usuarios por rol">
-          {usersByRole.length === 0 ? (
+          {statsQuery.isLoading ? (
+            <ChartMessage>Consultando datos…</ChartMessage>
+          ) : statsQuery.isError && !stats ? (
+            <ChartMessage>No se pudieron cargar los datos.</ChartMessage>
+          ) : usersByRole.length === 0 ? (
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -270,7 +358,11 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Centros por isla">
-          {centersByIsland.length === 0 ? (
+          {statsQuery.isLoading ? (
+            <ChartMessage>Consultando datos…</ChartMessage>
+          ) : statsQuery.isError && !stats ? (
+            <ChartMessage>No se pudieron cargar los datos.</ChartMessage>
+          ) : centersByIsland.length === 0 ? (
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -286,7 +378,11 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Encuestas por estado">
-          {surveysByStatus.length === 0 ? (
+          {statsQuery.isLoading ? (
+            <ChartMessage>Consultando datos…</ChartMessage>
+          ) : statsQuery.isError && !stats ? (
+            <ChartMessage>No se pudieron cargar los datos.</ChartMessage>
+          ) : surveysByStatus.length === 0 ? (
             <EmptyChart />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -336,6 +432,14 @@ function EmptyChart() {
   return (
     <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
       Sin datos para este ámbito.
+    </div>
+  );
+}
+
+function ChartMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+      {children}
     </div>
   );
 }
