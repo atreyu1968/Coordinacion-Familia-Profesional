@@ -9,6 +9,7 @@ import { createHtmlDocx } from "@/lib/html-docx";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 async function getDocxFiles(html: string, fileName = "material.html") {
@@ -17,6 +18,29 @@ async function getDocxFiles(html: string, fileName = "material.html") {
 }
 
 describe("createHtmlDocx", () => {
+  const webpBytes = Uint8Array.from([
+    0x52, 0x49, 0x46, 0x46, 0x04, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+  ]);
+  const webpDataUri = `data:image/webp;base64,${btoa(String.fromCharCode(...webpBytes))}`;
+  const pngBytes = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  function mockWebpRasterization() {
+    const drawImage = vi.fn();
+    const close = vi.fn();
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 1200, height: 800, close })));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage,
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => {
+      callback(new Blob([pngBytes], { type: "image/png" }));
+    });
+    return { drawImage, close };
+  }
+
+  function docxMediaFiles(zip: JSZip) {
+    return Object.keys(zip.files).filter((name) => name.startsWith("word/media/") && !zip.files[name].dir);
+  }
+
   it("preserves headings, lists, links, and table content in a valid DOCX", async () => {
     const zip = await getDocxFiles(`
       <h1>Heading from HTML</h1>
@@ -44,6 +68,86 @@ describe("createHtmlDocx", () => {
     expect(documentXml).toContain("Unsafe URL label");
     expect(relationshipsXml).toContain("https://example.test/guide");
     expect(relationshipsXml).not.toContain("javascript:");
+  });
+
+  it("converts embedded WebP images to PNG in the DOCX", async () => {
+    const { drawImage, close } = mockWebpRasterization();
+    const zip = await getDocxFiles(`<p>Before<img src="${webpDataUri}" alt="WebP embebido">After</p>`);
+    const mediaFiles = docxMediaFiles(zip);
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(mediaFiles).toHaveLength(1);
+    expect(mediaFiles[0]).toMatch(/\.png$/);
+    expect(new Uint8Array(await zip.file(mediaFiles[0])!.async("arraybuffer"))).toEqual(pngBytes);
+    expect(documentXml).toContain("WebP embebido");
+    expect(documentXml).toContain("Before");
+    expect(documentXml).toContain("After");
+    expect(drawImage).toHaveBeenCalledOnce();
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 600, 400);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("converts same-origin WebP responses and rejects external or SVG images", async () => {
+    mockWebpRasterization();
+    const fetchMock = vi.fn(async () => {
+      const response = new Response(webpBytes, { headers: { "content-type": "image/webp" } });
+      Object.defineProperty(response, "url", { value: `${window.location.origin}/local.webp` });
+      return response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const zip = await getDocxFiles(`
+      <img src="/local.webp" alt="WebP local">
+      <img src="https://images.example.test/external.webp" alt="Imagen externa">
+      <img src="data:image/svg+xml,%3Csvg%3E%3C/svg%3E" alt="SVG rechazado">
+    `);
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(docxMediaFiles(zip)).toHaveLength(1);
+    expect(docxMediaFiles(zip)[0]).toMatch(/\.png$/);
+    expect(documentXml).toContain("WebP local");
+    expect(documentXml).toContain("Imagen externa");
+    expect(documentXml).toContain("SVG rechazado");
+  });
+
+  it("keeps WebP alt text and continues when decoding fails", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => {
+      throw new Error("No se pudo decodificar");
+    }));
+    const zip = await getDocxFiles(`<p>Texto legible<img src="${webpDataUri}" alt="Descripción alternativa">El final sigue</p>`);
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(documentXml).toContain("Texto legible");
+    expect(documentXml).toContain("Descripción alternativa");
+    expect(documentXml).toContain("El final sigue");
+    expect(docxMediaFiles(zip)).toHaveLength(0);
+  });
+
+  it("keeps the alt text when a WebP fails signature validation or exceeds the download limit", async () => {
+    const invalidWebp = Uint8Array.from(webpBytes);
+    invalidWebp[0] = 0;
+    const invalidDataUri = `data:image/webp;base64,${btoa(String.fromCharCode(...invalidWebp))}`;
+    const oversizedResponse = new Response(webpBytes, {
+      headers: { "content-type": "image/webp", "content-length": String(5 * 1024 * 1024 + 1) },
+    });
+    Object.defineProperty(oversizedResponse, "url", { value: `${window.location.origin}/oversized.webp` });
+    const fetchMock = vi.fn(async () => oversizedResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    const bitmapDecoder = vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }));
+    vi.stubGlobal("createImageBitmap", bitmapDecoder);
+
+    const zip = await getDocxFiles(`
+      <img src="${invalidDataUri}" alt="WebP inválido">
+      <img src="/oversized.webp" alt="WebP demasiado grande">
+    `);
+    const documentXml = await zip.file("word/document.xml")!.async("string");
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(bitmapDecoder).not.toHaveBeenCalled();
+    expect(documentXml).toContain("WebP inválido");
+    expect(documentXml).toContain("WebP demasiado grande");
+    expect(docxMediaFiles(zip)).toHaveLength(0);
   });
 
   it("omits scripts, hidden content, and interactive controls without running script or event code", async () => {

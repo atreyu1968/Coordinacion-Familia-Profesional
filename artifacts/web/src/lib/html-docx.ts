@@ -309,11 +309,14 @@ function alignment(value?: string): ParagraphAlignment | undefined {
   }
 }
 
-function imageType(bytes: Uint8Array): ImageType | undefined {
+function imageType(bytes: Uint8Array): SourceImageType | undefined {
   if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "png";
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
   if (bytes.length >= 6 && /^GIF8[79]a$/.test(String.fromCharCode(...bytes.slice(0, 6)))) return "gif";
   if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) return "bmp";
+  if (bytes.length >= 12
+    && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF"
+    && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP") return "webp";
   return undefined;
 }
 
@@ -362,6 +365,7 @@ function cssFor(element: Element, rules: CssRule[]): CssProperties {
 }
 
 type ImageType = "png" | "jpg" | "gif" | "bmp";
+type SourceImageType = ImageType | "webp";
 
 function inheritedTextStyle(element: Element, rules: CssRule[]): TextStyle {
   const ancestors: Element[] = [];
@@ -397,7 +401,7 @@ function imageDimensions(bytes: Uint8Array, type: ImageType): { width: number; h
 }
 
 function decodeDataImage(src: string): Uint8Array | null {
-  const match = src.match(/^data:image\/(png|jpe?g|gif|bmp)(?:;(base64|charset=[^,]+))?,(.*)$/is);
+  const match = src.match(/^data:image\/(png|jpe?g|gif|bmp|webp)(?:;(base64|charset=[^,]+))?,(.*)$/is);
   if (!match || src.length > MAX_IMAGE_BYTES * 1.5) return null;
   try {
     const data = match[3].replace(/\s/g, "");
@@ -542,7 +546,7 @@ async function loadImage(
       });
       if (!response.ok || new URL(response.url).origin !== window.location.origin) return null;
       const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-      if (!contentType || !/^image\/(png|jpeg|gif|bmp)$/.test(contentType)) return null;
+      if (!contentType || !/^image\/(png|jpeg|gif|bmp|webp)$/.test(contentType)) return null;
       bytes = await readBoundedResponse(response);
     } catch {
       return null;
@@ -551,14 +555,35 @@ async function loadImage(
   if (!bytes) return null;
   const type = imageType(bytes);
   if (!type) return null;
+  let decoded: ImageBitmap | undefined;
   try {
     const imageBuffer = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(imageBuffer).set(bytes);
-    const decoded = await createImageBitmap(new Blob([imageBuffer]));
+    decoded = await createImageBitmap(new Blob([imageBuffer]));
     const valid = decoded.width > 0 && decoded.height > 0 && decoded.width <= 50_000 && decoded.height <= 50_000;
-    decoded.close();
-    return valid ? { bytes, type } : null;
+    if (!valid) return null;
+    if (type !== "webp") return { bytes, type };
+
+    // DOCX does not support WebP. Rasterize it to PNG at the largest dimensions
+    // that can be placed in this document, avoiding a full-size canvas allocation.
+    const scale = Math.min(1, MAX_DOCX_IMAGE_WIDTH / decoded.width, MAX_DOCX_IMAGE_HEIGHT / decoded.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(decoded.width * scale));
+    canvas.height = Math.max(1, Math.round(decoded.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.drawImage(decoded, 0, 0, canvas.width, canvas.height);
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!png || png.size > MAX_IMAGE_BYTES) return null;
+    const convertedBytes = new Uint8Array(await png.arrayBuffer());
+    return imageType(convertedBytes) === "png" ? { bytes: convertedBytes, type: "png" } : null;
   } catch {
     return null;
+  } finally {
+    try {
+      decoded?.close();
+    } catch {
+      // A cleanup error must not interrupt document conversion.
+    }
   }
 }
