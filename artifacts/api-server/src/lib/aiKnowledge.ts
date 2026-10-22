@@ -20,11 +20,13 @@ import { listManagedGroupFolders, listGroupFolderFiles, readGroupFolderFile, typ
 import { ObjectStorageService } from "./objectStorage";
 import { processMaterialBytes } from "./meetingMinutesMedia";
 import { sha256 } from "./coordinatorMailSecurity";
-import { moduleFolderName, moduleGroupId, independentSpaceFolderName, independentSpaceGroupId } from "./nextcloud";
+import { moduleFolderName, moduleGroupId, independentSpaceFolderName, independentSpaceGroupId, resolveNextcloudConfig, resolveNextcloudUrl } from "./nextcloud";
+import { addCoverageOmission, knowledgeSource, newCoverageObservations, summarizeKnowledgeCoverage, type CoverageObservations } from "./aiKnowledgeCoverage";
 
 type Candidate = {
   key: string; title: string; url: string; version: string; text?: string; fileName?: string;
   read?: () => Promise<Buffer>;
+  omission?: string;
 };
 const storage = new ObjectStorageService();
 const MAX_TEXT = 150_000;
@@ -77,8 +79,15 @@ async function userModules(user: User): Promise<Set<number>> {
   return ids;
 }
 
-async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Candidate[], warnings: string[]) {
+async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Candidate[], warnings: string[], coverage: CoverageObservations) {
   try {
+    const settings = await getSettings();
+    if (!resolveNextcloudConfig(settings) || !resolveNextcloudUrl(settings)) {
+      coverage.nextcloud.status = "disconnected";
+      coverage.nextcloud.notes.push("Nextcloud no está configurado. La superadministración debe configurar la conexión de solo lectura; no se requiere autorización individual.");
+      warnings.push("Nextcloud no está configurado; sus archivos no se han consultado.");
+      return;
+    }
     const { publicUrl, folders } = await listManagedGroupFolders();
     const byName = new Map(folders.map(folder => [folder.mountPoint, folder]));
     const modules = await db.select({
@@ -89,6 +98,7 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
       const mount = moduleFolderName({ moduleId: module.id, name: module.name, code: module.code });
       const folder = byName.get(mount);
       if (folder?.advancedPermissions) {
+        coverage.nextcloud.notes.push("Se omite una carpeta con permisos avanzados para no eludir restricciones de archivo. No se conoce el número de archivos omitidos en ella.");
         warnings.push(`Nextcloud: «${mount}» usa permisos avanzados; no se indexará para evitar que la cuenta técnica eluda una restricción de archivo.`);
       } else if (folder && folder.groups[moduleGroupId(module.id)] != null) {
         allowedFolders.set(folder.id, { title: `Módulo ${module.name}`, mount });
@@ -102,6 +112,7 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
       const mount = independentSpaceFolderName(space.id);
       const folder = byName.get(mount);
       if (folder?.advancedPermissions) {
+        coverage.nextcloud.notes.push("Se omite una carpeta con permisos avanzados para no eludir restricciones de archivo. No se conoce el número de archivos omitidos en ella.");
         warnings.push(`Nextcloud: «${mount}» usa permisos avanzados; no se indexará para evitar que la cuenta técnica eluda una restricción de archivo.`);
       } else if (folder && folder.groups[independentSpaceGroupId(space.id)] != null) {
         allowedFolders.set(folder.id, { title: `Espacio ${space.name}`, mount });
@@ -110,26 +121,44 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
     for (const [folderId, meta] of allowedFolders) {
       const files = await listGroupFolderFiles(folderId);
       for (const file of files) {
-        if (!SUPPORTED.test(file.fileName)) { warnings.push(`No se pudo indexar «${file.fileName}» (${meta.title}): formato no compatible.`); continue; }
+        const omission = !SUPPORTED.test(file.fileName) ? "Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar." : undefined;
+        if (omission) warnings.push(`No se pudo indexar «${file.fileName}» (${meta.title}): formato no compatible.`);
         const pathLabel = file.path.join("/");
         const href = `${publicUrl}/index.php/apps/files/?dir=${encodeURIComponent(`/${meta.mount}/${file.path.slice(0, -1).join("/")}`)}&scrollto=${encodeURIComponent(file.fileName)}`;
         out.push({
           key: `nextcloud:${folderId}:${sha256(JSON.stringify(file.path))}`,
           title: `${meta.title} / ${pathLabel}`, url: href, version: file.etag || `${file.size}`,
           fileName: file.fileName, read: () => readGroupFolderFile(file, file.etag),
+          omission,
         });
         if (out.length >= MAX_FILES) throw new Error("Se alcanzó el límite de archivos de conocimiento. La cobertura no es completa.");
       }
     }
   } catch (error) {
+    coverage.nextcloud.status = "error";
+    coverage.nextcloud.notes.push("No se pudo completar la consulta de Nextcloud. La cobertura puede ser parcial; revisa la conexión administrativa en el panel de control y actualiza el índice. No se requiere autorización individual.");
     warnings.push(error instanceof Error ? `Nextcloud: ${error.message}` : "Nextcloud no pudo consultarse; sus archivos no se usarán.");
   }
 }
 
-async function collect(user: User): Promise<{ items: Candidate[]; warnings: string[] }> {
+async function collect(user: User) {
   const items: Candidate[] = []; const warnings: string[] = [];
+  const coverage = newCoverageObservations();
   const moduleIds = await userModules(user);
-  const add = (item: Candidate) => { if (items.length < MAX_FILES) items.push(item); else warnings.push("Se alcanzó el límite de 10.000 fuentes; la cobertura no es completa."); };
+  const add = (item: Candidate) => {
+    if (items.length < MAX_FILES) {
+      if (item.read && item.text) {
+        const note = "Algunos materiales solo tienen texto descriptivo indexado; su archivo asociado no se ha extraído. «Indexado» no significa que se haya leído ese archivo.";
+        const notes = coverage[knowledgeSource(item.key)].notes;
+        if (!notes.includes(note)) notes.push(note);
+      }
+      if (!item.text && item.fileName && !SUPPORTED.test(item.fileName)) item.omission = "Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar.";
+      items.push(item);
+    } else {
+      addCoverageOmission(coverage, knowledgeSource(item.key), "Límite de 10.000 materiales alcanzado; este material no se ha incorporado al índice.");
+      warnings.push("Se alcanzó el límite de 10.000 fuentes; la cobertura no es completa.");
+    }
+  };
   const pages = await db.select({
     id: wikiPagesTable.id, title: wikiPagesTable.title, content: wikiPagesTable.content,
     moduleId: wikiPagesTable.moduleId, updatedAt: wikiPagesTable.updatedAt,
@@ -210,11 +239,18 @@ async function collect(user: User): Promise<{ items: Candidate[]; warnings: stri
   }
   const mail = await db.select().from(coordinatorMailAccountsTable).where(eq(coordinatorMailAccountsTable.userId, user.id));
   if (mail.length && ["coordinator", "superadmin"].includes(user.role)) {
-    if (mail.some(account => account.syncStatus === "queued" || account.syncStatus === "syncing" || account.lastSyncAt == null)) {
+    if (mail.some(account => !account.refreshTokenEncrypted)) {
+      coverage.gmail.status = "disconnected";
+      coverage.gmail.notes.push("Gmail está desconectado. Los recuentos solo incluyen correos conservados de importaciones anteriores.");
+    } else if (mail.some(account => account.syncStatus === "queued" || account.syncStatus === "syncing" || account.lastSyncAt == null)) {
+      coverage.gmail.status = "importing";
+      coverage.gmail.notes.push("La importación completa de Gmail sigue en curso. El total de correos aún no importados es desconocido y no está incluido en los pendientes del índice.");
       warnings.push("La importación del historial completo de Gmail sigue en curso; los correos aún no importados no se han consultado.");
     }
     for (const account of mail) {
       if (account.syncStatus === "error" || account.syncStatus === "needs_reauthorization") {
+        coverage.gmail.status = "error";
+        coverage.gmail.notes.push("La sincronización de Gmail está detenida. Solo se incluyen correos ya importados; revisa la conexión de Gmail para continuar.");
         warnings.push(`Gmail (${account.email}): la sincronización está detenida; el índice solo incluye los mensajes importados anteriormente.`);
       }
     }
@@ -229,9 +265,21 @@ async function collect(user: User): Promise<{ items: Candidate[]; warnings: stri
       });
       const attachments = await db.select().from(coordinatorMailAttachmentsTable)
         .innerJoin(coordinatorMailMessagesTable, eq(coordinatorMailMessagesTable.id, coordinatorMailAttachmentsTable.messageId))
-        .where(and(eq(coordinatorMailMessagesTable.caseId, c.id), eq(coordinatorMailAttachmentsTable.status, "ready")));
+        .where(and(eq(coordinatorMailMessagesTable.caseId, c.id), eq(coordinatorMailMessagesTable.ownerId, user.id)));
       for (const joined of attachments) {
         const attachment = joined.coordinator_mail_attachments;
+        if (attachment.status !== "ready") {
+          if (attachment.status === "error") {
+            coverage.gmail.errors = (coverage.gmail.errors ?? 0) + 1;
+            const note = "Hay adjuntos de Gmail cuya descarga falló; el índice aún no puede leerlos. Reintenta la sincronización de Gmail antes de actualizar el índice.";
+            if (!coverage.gmail.notes.includes(note)) coverage.gmail.notes.push(note);
+          } else {
+            coverage.gmail.pending = (coverage.gmail.pending ?? 0) + 1;
+            const note = "Hay adjuntos de Gmail pendientes de descarga; todavía no pueden indexarse.";
+            if (!coverage.gmail.notes.includes(note)) coverage.gmail.notes.push(note);
+          }
+          continue;
+        }
         add({
         key: key("mail-attachment", attachment.id), title: `Adjunto de correo: ${attachment.fileName}`, url: `/asuntos-correo/${c.id}`,
         version: `${attachment.objectPath}:${attachment.size}`, fileName: attachment.fileName,
@@ -239,7 +287,11 @@ async function collect(user: User): Promise<{ items: Candidate[]; warnings: stri
         });
       }
     }
-  } else if (["coordinator", "superadmin"].includes(user.role)) warnings.push("Gmail no está conectado; consulta los ajustes de Asuntos de correo.");
+  } else if (["coordinator", "superadmin"].includes(user.role)) {
+    warnings.push("Gmail no está conectado; consulta los ajustes de Asuntos de correo.");
+    coverage.gmail.status = "disconnected";
+    coverage.gmail.notes.push("Gmail no está conectado. Conecta el buzón desde Asuntos de correo para importar sus mensajes.");
+  }
   // Messages are included only while the user still participates in a chat.
   const memberships = await db.select({ id: chatGroupMembersTable.groupId }).from(chatGroupMembersTable)
     .innerJoin(chatGroupsTable, eq(chatGroupsTable.id, chatGroupMembersTable.groupId))
@@ -281,27 +333,28 @@ async function collect(user: User): Promise<{ items: Candidate[]; warnings: stri
       text: `${row.course.title}\n${row.lesson.title}\n${content}`,
       ...(row.lesson.objectPath ? { fileName: row.lesson.objectName ?? row.lesson.title, read: () => objectBytes(row.lesson.objectPath!) } : {}) });
   }
-  await filesFromGroupFolders(user, moduleIds, items, warnings);
-  return { items, warnings: [...new Set(warnings)] };
+  await filesFromGroupFolders(user, moduleIds, items, warnings, coverage);
+  return { items, warnings: [...new Set(warnings)], coverage };
 }
 
-async function recordCandidate(userId: number, item: Candidate) {
+async function recordCandidate(userId: number, item: Candidate, retryFailures = false) {
   const [existing] = await db.select().from(aiKnowledgeEntriesTable).where(and(eq(aiKnowledgeEntriesTable.userId, userId), eq(aiKnowledgeEntriesTable.sourceKey, item.key))).limit(1);
   const text = item.text?.slice(0, MAX_TEXT) ?? "";
-  const warning = item.text && item.text.length > MAX_TEXT ? "El texto indexado se ha recortado al límite de seguridad." : null;
+  const warning = item.omission ?? (item.text && item.text.length > MAX_TEXT ? "El texto indexado se ha recortado al límite de seguridad." : null);
+  const status = item.omission ? "unsupported" : item.text ? "ready" : "pending";
   if (!existing) {
     await db.insert(aiKnowledgeEntriesTable).values({ userId, sourceKey: item.key, title: item.title, url: appUrl(item.url),
-      version: item.version, text, status: item.text ? "ready" : "pending", warning });
-  } else if (existing.version !== item.version) {
+      version: item.version, text, status, warning });
+  } else if (existing.version !== item.version || retryFailures && existing.status === "error") {
     await db.update(aiKnowledgeEntriesTable).set({ title: item.title, url: appUrl(item.url), version: item.version,
-      text, status: item.text ? "ready" : "pending", warning, leaseToken: null, leaseUntil: null, updatedAt: new Date() })
+      text, status, warning, leaseToken: null, leaseUntil: null, updatedAt: new Date() })
       .where(and(eq(aiKnowledgeEntriesTable.id, existing.id), eq(aiKnowledgeEntriesTable.version, existing.version)));
   } else {
     await db.update(aiKnowledgeEntriesTable).set({ title: item.title, url: appUrl(item.url) })
       .where(eq(aiKnowledgeEntriesTable.id, existing.id));
   }
 }
-export async function synchronizeAiKnowledge(userId: number) {
+export async function synchronizeAiKnowledge(userId: number, retryFailures = false) {
   const [user] = await db.select().from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.status, "active")));
   if (!user) return { status: "consent_required", pending: 0, ready: 0, errors: 0, sources: [], warnings: [] as string[] };
   const accounts = await db.insert(aiKnowledgeAccountsTable).values({ userId, consentAt: new Date() })
@@ -316,7 +369,7 @@ export async function synchronizeAiKnowledge(userId: number) {
   }
   candidateSnapshots.set(userId, { expiresAt: Date.now() + 10 * 60_000, items: collected.items });
   const stamp = new Date();
-  for (const item of collected.items) await recordCandidate(userId, item);
+  for (const item of collected.items) await recordCandidate(userId, item, retryFailures);
   const keys = collected.items.map(i => i.key);
   if (keys.length) {
     await db.delete(aiKnowledgeEntriesTable).where(and(eq(aiKnowledgeEntriesTable.userId, userId), notInArray(aiKnowledgeEntriesTable.sourceKey, keys)));
@@ -328,6 +381,25 @@ export async function synchronizeAiKnowledge(userId: number) {
     pending: counts.filter(x => x.status === "pending" || x.status === "processing").length,
     errors: counts.filter(x => x.status === "error" || x.status === "unsupported").length,
     sources: counts.length, warnings: collected.warnings,
+  };
+}
+
+export async function getAiKnowledgeCoverage(userId: number) {
+  const [user] = await db.select().from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.status, "active")));
+  if (!user) throw new Error("Usuario no disponible.");
+  // This is a read-only scan: no consent is recorded, files are not extracted,
+  // and no material is sent to a model merely by opening the preview.
+  const collected = await collect(user);
+  const entries = await db.select({
+    sourceKey: aiKnowledgeEntriesTable.sourceKey, version: aiKnowledgeEntriesTable.version,
+    status: aiKnowledgeEntriesTable.status, warning: aiKnowledgeEntriesTable.warning,
+  }).from(aiKnowledgeEntriesTable).where(eq(aiKnowledgeEntriesTable.userId, userId));
+  const [account] = await db.select({ scannedAt: aiKnowledgeAccountsTable.scannedAt, scanError: aiKnowledgeAccountsTable.scanError })
+    .from(aiKnowledgeAccountsTable).where(eq(aiKnowledgeAccountsTable.userId, userId));
+  if (account?.scanError) collected.coverage.platform.notes.push("La última actualización del índice falló. Vuelve a actualizar antes de generar un borrador.");
+  return {
+    checkedAt: new Date().toISOString(), lastIndexedAt: account?.scannedAt?.toISOString() ?? null,
+    sources: summarizeKnowledgeCoverage(collected.items, entries, collected.coverage),
   };
 }
 

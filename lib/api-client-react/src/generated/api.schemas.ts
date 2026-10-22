@@ -1269,6 +1269,54 @@ export interface CreateResourceInput {
   centerId?: number | null;
 }
 
+export interface AiKnowledgeRefreshInput {
+  consent: true;
+}
+
+export type AiKnowledgeSourceCoverageId = typeof AiKnowledgeSourceCoverageId[keyof typeof AiKnowledgeSourceCoverageId];
+
+
+export const AiKnowledgeSourceCoverageId = {
+  platform: 'platform',
+  gmail: 'gmail',
+  nextcloud: 'nextcloud',
+} as const;
+
+export type AiKnowledgeSourceCoverageStatus = typeof AiKnowledgeSourceCoverageStatus[keyof typeof AiKnowledgeSourceCoverageStatus];
+
+
+export const AiKnowledgeSourceCoverageStatus = {
+  ready: 'ready',
+  pending: 'pending',
+  partial: 'partial',
+  importing: 'importing',
+  disconnected: 'disconnected',
+  error: 'error',
+} as const;
+
+export interface AiKnowledgeOmission {
+  reason: string;
+  count: number;
+}
+
+export interface AiKnowledgeSourceCoverage {
+  id: AiKnowledgeSourceCoverageId;
+  status: AiKnowledgeSourceCoverageStatus;
+  indexed: number;
+  pending: number;
+  omitted: number;
+  errors: number;
+  omissions: AiKnowledgeOmission[];
+  notes: string[];
+}
+
+export interface AiKnowledgeCoverage {
+  checkedAt: string;
+  /** @nullable */
+  lastIndexedAt: string | null;
+  sources: AiKnowledgeSourceCoverage[];
+}
+
 export type AiChatInputContext = typeof AiChatInputContext[keyof typeof AiChatInputContext];
 
 

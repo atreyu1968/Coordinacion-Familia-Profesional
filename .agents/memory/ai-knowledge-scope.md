@@ -8,3 +8,9 @@ La IA debe tener acceso a todo el material subido a la plataforma, los correos r
 **Why:** el usuario pidió expresamente que la IA pueda utilizar todas esas fuentes y rechazó una autorización de Nextcloud por usuario.
 
 **How to apply:** usar la conexión administrativa de Nextcloud configurada en la aplicación, solo para lectura. Recuperar fuentes pertinentes, pero aplicar siempre los permisos de plataforma y la privacidad de cada buzón; no compartir correos ni archivos entre usuarios.
+
+La vista previa de cobertura no debe equivaler a autorizar el procesamiento por proveedores de IA. El consentimiento para extraer texto con esos proveedores es distinto de una conexión individual de Nextcloud, que no debe pedirse.
+
+**Why:** se necesita conocer la cobertura antes de usar la IA; abrir una vista informativa no debe iniciar envíos de contenido ni convertir la conexión administrativa en una autorización personal.
+
+**How to apply:** mantener separadas la consulta informativa y la acción explícita de indexación. No inventar un total de correos pendientes cuando Gmail todavía está descubriendo el historial.

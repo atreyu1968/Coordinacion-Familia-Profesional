@@ -223,3 +223,15 @@
   .mail-case-row { transition:none; }
   .mail-spin { animation:none; }
 }
+.mail-knowledge { border:1px solid #dce5dc; border-radius:12px; padding:1rem; margin:1rem 0; background:#f8faf7; min-width:0; }
+.mail-knowledge h3 { margin:0 0 .5rem; font-size:1rem; font-weight:700; }
+.mail-knowledge p, .mail-knowledge li { font-size:.78rem; line-height:1.5; margin:.5rem 0; overflow-wrap:anywhere; }
+.mail-knowledge__sources { display:grid; gap:.65rem; margin:.8rem 0; }
+.mail-knowledge__sources article { padding:.75rem; background:white; border:1px solid #dce5dc; border-radius:8px; }
+.mail-knowledge__sources header { display:flex; gap:.5rem; justify-content:space-between; flex-wrap:wrap; font-size:.8rem; }
+.mail-knowledge__sources header span { color:#596653; }
+.mail-knowledge__counts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem; margin:.75rem 0 0; }
+.mail-knowledge__counts div { display:flex; gap:.5rem; justify-content:space-between; font-size:.75rem; }
+.mail-knowledge__counts dd { font-weight:700; }
+.mail-knowledge ul { padding-left:1rem; list-style:disc; }
+.mail-knowledge > button { max-width:100%; height:auto; white-space:normal; margin-top:.65rem; }

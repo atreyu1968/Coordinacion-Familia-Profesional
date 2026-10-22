@@ -2452,6 +2452,53 @@ paths:
   # ---------------------------------------------------------------------------
   # AI assistant
   # ---------------------------------------------------------------------------
+  /ai/knowledge:
+    get:
+      operationId: getAiKnowledgeCoverage
+      tags: [ai]
+      summary: Preview coverage without AI processing; counts scoped to the authenticated coordinator
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Counts and safe explanations only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiKnowledgeCoverage"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: refreshAiKnowledgeIndex
+      tags: [ai]
+      summary: Refresh authorized materials and retry failed extraction using configured providers
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiKnowledgeRefreshInput"
+      responses:
+        "200":
+          description: Updated coverage; pending files are processed in the background
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiKnowledgeCoverage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
   /ai/status:
     get:
       operationId: getAiStatus
@@ -6703,6 +6750,54 @@ components:
           type: integer
           nullable: true
       required: [title, type]
+    AiKnowledgeRefreshInput:
+      type: object
+      required: [consent]
+      properties:
+        consent:
+          type: boolean
+          enum: [true]
+    AiKnowledgeCoverage:
+      type: object
+      required: [checkedAt, lastIndexedAt, sources]
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        lastIndexedAt:
+          type: [string, "null"]
+          format: date-time
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiKnowledgeSourceCoverage"
+    AiKnowledgeSourceCoverage:
+      type: object
+      required: [id, status, indexed, pending, omitted, errors, omissions, notes]
+      properties:
+        id:
+          type: string
+          enum: [platform, gmail, nextcloud]
+        status:
+          type: string
+          enum: [ready, pending, partial, importing, disconnected, error]
+        indexed: { type: integer }
+        pending: { type: integer }
+        omitted: { type: integer }
+        errors: { type: integer }
+        omissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiKnowledgeOmission"
+        notes:
+          type: array
+          items: { type: string }
+    AiKnowledgeOmission:
+      type: object
+      required: [reason, count]
+      properties:
+        reason: { type: string }
+        count: { type: integer }
     AiChatInput:
       type: object
       properties:

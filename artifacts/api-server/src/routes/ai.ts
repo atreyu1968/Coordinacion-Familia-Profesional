@@ -3,14 +3,39 @@ import {
   GetAiStatusResponse,
   AiChatBody,
   AiChatResponse,
+  GetAiKnowledgeCoverageResponse,
+  RefreshAiKnowledgeIndexBody,
 } from "@workspace/api-zod";
 import { and, isNull, desc, inArray } from "drizzle-orm";
 import { db, gdcanResourcesTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getSettings, isDeepseekConfigured, professionalFamilyOf } from "../lib/settings";
-import { getAiKnowledgeContext, processOneAiKnowledgeJob, synchronizeAiKnowledge } from "../lib/aiKnowledge";
+import { getAiKnowledgeContext, getAiKnowledgeCoverage, processOneAiKnowledgeJob, synchronizeAiKnowledge } from "../lib/aiKnowledge";
 
 const router: IRouter = Router();
+
+router.get("/ai/knowledge", requireAuth, requireRole("coordinator", "superadmin"), async (req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  try {
+    res.json(GetAiKnowledgeCoverageResponse.parse(await getAiKnowledgeCoverage(req.user!.id)));
+  } catch {
+    res.status(503).json({ message: "No se pudo comprobar la cobertura actual. Reintenta la consulta; no se ha enviado contenido a la IA." });
+  }
+});
+
+router.post("/ai/knowledge", requireAuth, requireRole("coordinator", "superadmin"), async (req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  if (!RefreshAiKnowledgeIndexBody.safeParse(req.body).success) {
+    res.status(400).json({ message: "Debes autorizar el procesamiento de los materiales antes de actualizar el índice." });
+    return;
+  }
+  try {
+    await synchronizeAiKnowledge(req.user!.id, true);
+    res.json(GetAiKnowledgeCoverageResponse.parse(await getAiKnowledgeCoverage(req.user!.id)));
+  } catch {
+    res.status(503).json({ message: "No se pudo actualizar el índice. Reinténtalo; los originales se conservan." });
+  }
+});
 
 // Build a grounding block from the GDCAN knowledge base (manuals + FAQs) so the
 // assistant answers from the institution's own documentation rather than only

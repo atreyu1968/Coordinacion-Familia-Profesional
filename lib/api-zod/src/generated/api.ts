@@ -2619,6 +2619,54 @@ export const DeleteResourceResponse = zod.void()
 
 
 /**
+ * @summary Preview coverage without AI processing; counts scoped to the authenticated coordinator
+ */
+export const GetAiKnowledgeCoverageResponse = zod.object({
+  "checkedAt": zod.coerce.date(),
+  "lastIndexedAt": zod.coerce.date().nullable(),
+  "sources": zod.array(zod.object({
+  "id": zod.enum(['platform', 'gmail', 'nextcloud']),
+  "status": zod.enum(['ready', 'pending', 'partial', 'importing', 'disconnected', 'error']),
+  "indexed": zod.number().int(),
+  "pending": zod.number().int(),
+  "omitted": zod.number().int(),
+  "errors": zod.number().int(),
+  "omissions": zod.array(zod.object({
+  "reason": zod.string(),
+  "count": zod.number().int()
+})),
+  "notes": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary Refresh authorized materials and retry failed extraction using configured providers
+ */
+export const RefreshAiKnowledgeIndexBody = zod.object({
+  "consent": zod.literal(true)
+})
+
+export const RefreshAiKnowledgeIndexResponse = zod.object({
+  "checkedAt": zod.coerce.date(),
+  "lastIndexedAt": zod.coerce.date().nullable(),
+  "sources": zod.array(zod.object({
+  "id": zod.enum(['platform', 'gmail', 'nextcloud']),
+  "status": zod.enum(['ready', 'pending', 'partial', 'importing', 'disconnected', 'error']),
+  "indexed": zod.number().int(),
+  "pending": zod.number().int(),
+  "omitted": zod.number().int(),
+  "errors": zod.number().int(),
+  "omissions": zod.array(zod.object({
+  "reason": zod.string(),
+  "count": zod.number().int()
+})),
+  "notes": zod.array(zod.string())
+}))
+})
+
+
+/**
  * @summary Whether the DeepSeek assistant is configured
  */
 export const GetAiStatusResponse = zod.object({

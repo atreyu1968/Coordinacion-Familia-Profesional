@@ -34,6 +34,7 @@ import {
   Sparkles, Unlink, Unplug, X,
 } from "lucide-react";
 import "./coordinator-mail.css";
+import { KnowledgeCoveragePanel } from "./knowledge-coverage";
 
 const PAGE_SIZE = 20;
 const TOKEN_KEY = "coordina_adg_token";
@@ -147,6 +148,7 @@ function CoordinatorMailInbox() {
       <div className="mail-page-head__count" data-testid="text-mail-total"><strong>{query.data?.total ?? "—"}</strong><span>asuntos</span></div>
     </header>
     <ConnectionPanel />
+    <KnowledgeCoveragePanel />
     <section className="mail-list-area" aria-label="Bandeja de asuntos">
       <div className="mail-list-toolbar">
         <label className="mail-search"><Search aria-hidden="true" /><span className="sr-only">Buscar asuntos</span>
@@ -382,6 +384,7 @@ function CoordinatorMailDetail({ id }: { id: number }) {
           <label htmlFor="mail-draft-subject">Asunto</label><Input id="mail-draft-subject" value={draftSubject} onChange={(event) => setDraftSubject(event.target.value)} data-testid="input-mail-draft-subject" />
           <label htmlFor="mail-draft-body">Mensaje</label><Textarea id="mail-draft-body" value={draftBody} onChange={(event) => setDraftBody(event.target.value)} rows={9} data-testid="input-mail-draft-body" />
           <Button className="mail-full-button" variant="outline" onClick={() => void saveDraft()} disabled={!dirty || update.isPending} data-testid="button-save-mail-draft">{update.isPending ? "Guardando…" : "Guardar borrador"}</Button>
+          <KnowledgeCoveragePanel />
           {conflict && <div className="mail-conflict" role="alert" data-testid="status-mail-revision-conflict"><strong>Hay una revisión más reciente.</strong><p>Tu borrador local se conserva. Elige qué versión guardar.</p><div><Button size="sm" onClick={() => void saveDraft(true)} data-testid="button-overwrite-mail-draft">Guardar mi versión</Button><Button size="sm" variant="ghost" onClick={() => { setDraftTo(detail.draftTo); setDraftSubject(detail.draftSubject); setDraftBody(detail.draftBody); setBaseline({ to: detail.draftTo, subject: detail.draftSubject, body: detail.draftBody }); setRevision(detail.revision); setConflict(false); }} data-testid="button-load-server-mail-draft">Cargar servidor</Button></div></div>}
           <div className="mail-ai-box"><div className="mail-ai-title"><Sparkles /><strong>Asistencia para redactar</strong></div><p>Con tu autorización, la IA busca información pertinente en todos tus correos importados y en los materiales de plataforma y espacios de Nextcloud a los que ya tienes acceso. No se solicita una conexión individual a Nextcloud. Los archivos que no puedan leerse se omiten y se advierte en el historial.</p><Textarea value={instructions} onChange={(event) => setInstructions(event.target.value)} rows={2} placeholder="Indicaciones para el borrador (opcional)" data-testid="input-mail-ai-instructions" /><label className="mail-consent"><Checkbox checked={aiConsent} onCheckedChange={(value) => setAiConsent(value === true)} data-testid="checkbox-mail-ai-consent" />Autorizo enviar los mensajes y materiales pertinentes a los proveedores de IA configurados para generar este borrador.</label><Button className="mail-full-button" variant="secondary" onClick={() => void generateDraft()} disabled={!aiConsent || generate.isPending || detail.aiStatus === "queued" || detail.aiStatus === "processing"} data-testid="button-generate-mail-draft"><Sparkles /> {generate.isPending ? "Preparando…" : "Generar borrador"}</Button><span className="mail-ai-status" data-testid="status-mail-ai">{detail.aiStatus === "idle" ? "No se ha solicitado generación." : `Estado: ${detail.aiStatus}${detail.aiError ? " · No disponible" : ""}`}</span></div>
           {sendConfirm ? <div className="mail-send-confirm" role="alertdialog" aria-labelledby="mail-send-confirm-title" data-testid="dialog-confirm-mail-send"><h3 id="mail-send-confirm-title">Revisa antes de enviar</h3><p><strong>Para:</strong> {draftTo}</p><p><strong>Asunto:</strong> {draftSubject}</p><p className="mail-confirm-body">{draftBody}</p><div className="mail-send-confirm__actions"><Button variant="outline" onClick={() => setSendConfirm(false)} data-testid="button-cancel-mail-send">Volver a revisar</Button><Button onClick={() => void confirmSend()} disabled={send.isPending || dirty || !draftTo.includes("@")} data-testid="button-confirm-mail-send"><Send /> {send.isPending ? "Enviando…" : "Confirmar envío"}</Button></div></div> : <Button className="mail-full-button mail-send-button" onClick={() => { if (dirty) { setError("Guarda el borrador antes de enviarlo."); return; } setSendConfirm(true); }} disabled={!draftTo.trim() || send.isPending || detail.status === "closed"} data-testid="button-review-mail-send"><Send /> Revisar y enviar</Button>}
