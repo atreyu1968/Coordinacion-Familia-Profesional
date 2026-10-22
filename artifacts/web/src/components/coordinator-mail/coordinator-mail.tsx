@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import "./coordinator-mail.css";
 import { KnowledgeCoveragePanel } from "./knowledge-coverage";
+import { gmailOAuthErrorMessage } from "./oauth-errors";
 
 const PAGE_SIZE = 20;
 const TOKEN_KEY = "coordina_adg_token";
@@ -437,12 +438,12 @@ export function CoordinatorGmailAdminSettings() {
     try {
       const saved = await update.mutateAsync({ data: { clientId: clientId.trim(), redirectUri: redirectUri.trim(), ...(clientSecret.trim() ? { clientSecret: clientSecret.trim() } : {}) } });
       qc.setQueryData(settingsQuery.queryKey, saved); setClientSecret(""); setMessage("Configuración de Gmail guardada.");
-    } catch { setError("No se pudo guardar la configuración. Revisa los campos e inténtalo de nuevo."); }
+    } catch (error) { setError(gmailOAuthErrorMessage(error, "No se pudo guardar la configuración. Revisa los campos e inténtalo de nuevo.")); }
   };
   const connect = async () => {
     setError("");
     try { const result = await startOAuth.mutateAsync(); window.location.assign(result.authorizationUrl); }
-    catch { setError("No se pudo iniciar la autorización de Google. Comprueba la configuración OAuth."); }
+    catch (error) { setError(gmailOAuthErrorMessage(error, "No se pudo iniciar la autorización de Google. Comprueba la configuración OAuth.")); }
   };
   const { user } = useAuth();
   if (user?.role !== "superadmin") return <div className="mail-admin-denied" data-testid="status-mail-admin-access-denied"><ShieldCheck /> Solo superadministración puede configurar OAuth de Gmail.</div>;
@@ -454,6 +455,7 @@ export function CoordinatorGmailAdminSettings() {
       <p className="mail-admin-hint">El secreto nunca se precarga ni se devuelve. Déjalo vacío para conservarlo.</p>
       <label htmlFor="gmail-redirect-uri">URI de redirección autorizada</label><Input id="gmail-redirect-uri" value={redirectUri} onChange={(event) => setRedirectUri(event.target.value)} required autoComplete="url" data-testid="input-gmail-redirect-uri" />
       <p className="mail-admin-hint">Copia esta URI exacta en Google Cloud Console como URI de redirección OAuth autorizada.</p>
+      <p className="mail-admin-hint">El dominio debe coincidir con la dirección pública configurada en el servidor. Si al guardar se exige un dominio antiguo, corrige PUBLIC_APP_URL en el servidor y reinicia el servicio de la aplicación antes de volver a guardar.</p>
       <div className="mail-google-guide" data-testid="guide-google-oauth"><h3>Crear credenciales en Google Cloud</h3><ol><li>En Google Cloud Console, crea o selecciona un proyecto.</li><li>Activa <strong>Gmail API</strong> en APIs y servicios.</li><li>Configura la pantalla de consentimiento OAuth y crea un ID de cliente de tipo aplicación web.</li><li>Añade arriba la URI exacta mostrada como URI de redirección autorizada.</li><li>Guarda aquí el ID y el secreto. La primera sincronización importa todo el historial en segundo plano; después se sincroniza aproximadamente cada 5 minutos.</li></ol></div>
       {message && <p className="mail-success" role="status" data-testid="status-gmail-oauth-saved">{message}</p>}
       {error && <p className="mail-safe-error" role="alert" data-testid="status-gmail-oauth-error">{error}</p>}

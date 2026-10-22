@@ -15,7 +15,7 @@ El dominio de instalación indicado por el usuario es `coordinacionfp.org`; la U
 
 **Why:** el usuario corrigió expresamente el dominio antiguo que aparecía en la configuración OAuth.
 
-**How to apply:** usar ese dominio al orientar sobre su servidor y Google Cloud, sin fijarlo globalmente en el código reutilizable. Mantener coherentes la dirección pública del servidor y la URI guardada en la administración.
+**How to apply:** usar ese dominio al orientar sobre su servidor y Google Cloud, sin fijarlo globalmente en el código reutilizable. Mantener coherentes la dirección pública del servidor y la URI guardada en la administración. Cambiar solo el campo OAuth no cambia la URL pública: si `PUBLIC_APP_URL` conserva el dominio antiguo, hay que corregirla y reiniciar la aplicación, no relajar la validación del origen OAuth.
 
 La vinculación entre asuntos es una agrupación de presentación privada por propietario, no una fusión de registros. Mensajes, adjuntos, notas, borradores y envíos siguen en su caso original; el historial compartido atribuye cada mensaje y nota a ese origen. La IA y el borrador activo continúan limitados al caso seleccionado.
 
