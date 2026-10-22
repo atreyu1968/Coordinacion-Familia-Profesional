@@ -2684,6 +2684,189 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OkResult"
+  /events/{id}/attendance-settings:
+    get:
+      operationId: getEventAttendanceSettings
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      responses:
+        "200":
+          description: Certificate configuration and event registration QR
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventAttendanceSettings" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+    put:
+      operationId: updateEventAttendanceSettings
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventAttendanceSettingsInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventAttendanceSettings" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance:
+    get:
+      operationId: listEventAttendance
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        "200":
+          description: Private attendance register
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventAttendancePage" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance/{attendanceId}:
+    patch:
+      operationId: updateEventAttendance
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: attendanceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [pending, confirmed, rejected] }
+              required: [status]
+      responses:
+        "200":
+          description: Attendance reviewed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/attendance/{attendanceId}/certificate:
+    post:
+      operationId: generateEventAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: attendanceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Issued PDF with unique verification QR
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/certificates/{certificateId}/revoke:
+    post:
+      operationId: revokeEventAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: certificateId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+              required: [reason]
+      responses:
+        "200":
+          description: Certificate revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/certificates/{certificateId}/pdf:
+    get:
+      operationId: downloadEventAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { name: certificateId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: PDF from the immutable issuance record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/certificate-preview:
+    post:
+      operationId: previewEventAttendanceCertificate
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventAttendanceSettingsInput" }
+      responses:
+        "200":
+          description: Watermarked draft, not an issued certificate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificatePdf" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /attendance/registration/{token}:
+    get:
+      operationId: getAttendanceRegistration
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string, minLength: 43, maxLength: 43 } }
+      responses:
+        "200":
+          description: Event registration, requires an authenticated app user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceRegistrationInfo" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+    post:
+      operationId: registerEventAttendance
+      tags: [events]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string, minLength: 43, maxLength: 43 } }
+      responses:
+        "200":
+          description: Registered using only the authenticated identity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResult" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /public/certificates/{token}:
+    get:
+      operationId: verifyAttendanceCertificate
+      tags: [events]
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string, minLength: 43, maxLength: 43 } }
+      responses:
+        "200":
+          description: Minimal public verification; never exposes email or attendance lists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceCertificateVerification" }
+        default: { $ref: "#/components/responses/AttendanceError" }
   /calendar:
     get:
       operationId: listCalendarEvents
@@ -6455,6 +6638,82 @@ components:
           type: string
           format: date-time
       required: [id, name, type]
+    EventAttendanceSettingsInput:
+      type: object
+      properties:
+        signerName: { type: string, minLength: 2, maxLength: 200 }
+        signerRole: { type: string, minLength: 2, maxLength: 300 }
+        issuePlace: { type: string, minLength: 2, maxLength: 150 }
+        issueDate: { type: string, format: date, nullable: true }
+        modality: { type: string, enum: [presencial, videoconferencia, hibrida] }
+        durationMinutes: { type: integer, minimum: 1, maximum: 100000, nullable: true }
+        additionalText: { type: string, maxLength: 1000 }
+        registrationOpen: { type: boolean }
+      required: [signerName, signerRole, issuePlace, modality, additionalText, registrationOpen]
+    EventAttendanceSettings:
+      allOf:
+        - { $ref: "#/components/schemas/EventAttendanceSettingsInput" }
+        - type: object
+          properties:
+            registrationUrl: { type: string, nullable: true }
+            qrDataUrl: { type: string, nullable: true }
+          required: [registrationUrl, qrDataUrl]
+    EventAttendance:
+      type: object
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string }
+        status: { type: string, enum: [pending, confirmed, rejected] }
+        registeredAt: { type: string, format: date-time }
+        confirmedAt: { type: string, format: date-time, nullable: true }
+        certificateId: { type: integer, nullable: true }
+        certificateCode: { type: string, nullable: true }
+      required: [id, fullName, email, status, registeredAt, confirmedAt, certificateId, certificateCode]
+    EventAttendancePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EventAttendance" }
+        total: { type: integer }
+      required: [items, total]
+    AttendanceRegistrationInfo:
+      type: object
+      properties:
+        eventId: { type: integer }
+        eventName: { type: string }
+        location: { type: string, nullable: true }
+        startAt: { type: string, format: date-time, nullable: true }
+        endAt: { type: string, format: date-time, nullable: true }
+        open: { type: boolean }
+        attendanceStatus: { type: string, nullable: true, enum: [pending, confirmed, rejected] }
+      required: [eventId, eventName, location, startAt, endAt, open, attendanceStatus]
+    AttendanceCertificatePdf:
+      type: object
+      properties:
+        filename: { type: string }
+        contentBase64: { type: string }
+        certificateId: { type: integer, nullable: true }
+      required: [filename, contentBase64, certificateId]
+    AttendanceCertificateVerification:
+      type: object
+      properties:
+        code: { type: string }
+        valid: { type: boolean }
+        attendeeName: { type: string }
+        eventName: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        modality: { type: string }
+        location: { type: string, nullable: true }
+        durationMinutes: { type: integer }
+        signerName: { type: string }
+        signerRole: { type: string }
+        issueDate: { type: string }
+        issuedAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time, nullable: true }
+      required: [code, valid, attendeeName, eventName, startAt, endAt, modality, location, durationMinutes, signerName, signerRole, issueDate, issuedAt, revokedAt]
     EventDetail:
       allOf:
         - $ref: "#/components/schemas/Event"
