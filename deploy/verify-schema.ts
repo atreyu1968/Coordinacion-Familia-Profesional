@@ -49,7 +49,8 @@ type Catalog = {
 const allowMissingUpgradeColumns =
   process.argv.includes("--allow-missing-upgrade-columns");
 // Only these reviewed additive migrations may be absent during preflight.
-// An existing (even empty/incompatible) relation must still pass every check.
+// Existing relations must match their columns/defaults. Only the explicitly
+// repairable task keys/indexes below may be absent before their migration.
 const additiveTables = [
   "ai_knowledge_accounts",
   "ai_knowledge_entries",

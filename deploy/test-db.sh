@@ -141,7 +141,7 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   --command="DROP TABLE public.coordinator_mail_outbox, public.coordinator_mail_case_notes, public.coordinator_mail_attachments, public.coordinator_mail_messages, public.coordinator_mail_case_threads, public.coordinator_mail_cases, public.coordinator_mail_accounts, public.coordinator_mail_settings, public.meeting_minutes_shared_documents, public.meeting_minutes_sources, public.meeting_minutes_messages, public.meeting_minutes, public.meeting_ai_settings, public.event_attendance_certificates, public.event_attendances, public.event_attendance_settings, public.certificate_email_verifications"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit"
+  --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit, public.coordinator_tasks, public.coordinator_task_source_scans"
 migrate_database coordina_upgrade
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
@@ -189,12 +189,21 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
       (owner_id, source_type, source_id, content_hash)
       SELECT id, 'minutes', 'source-1', 'hash-1'
       FROM public.users WHERE email = 'task-constraints@example.test';
-    ALTER TABLE public.coordinator_tasks
-      DROP CONSTRAINT coordinator_tasks_pkey,
-      DROP CONSTRAINT coordinator_tasks_owner_id_fkey;
-    ALTER TABLE public.coordinator_task_source_scans
-      DROP CONSTRAINT coordinator_task_source_scans_pkey,
-      DROP CONSTRAINT coordinator_task_source_scans_owner_id_fkey;
+    DO \$drop_task_keys\$
+    DECLARE item record;
+    BEGIN
+      FOR item IN
+        SELECT conrelid::regclass AS relation, conname
+        FROM pg_catalog.pg_constraint
+        WHERE conrelid IN (
+          'public.coordinator_tasks'::regclass,
+          'public.coordinator_task_source_scans'::regclass
+        ) AND contype IN ('p', 'f')
+      LOOP
+        EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', item.relation, item.conname);
+      END LOOP;
+    END
+    \$drop_task_keys\$;
     DROP INDEX public.coordinator_tasks_owner_status_idx;
     DROP INDEX public.coordinator_tasks_owner_review_idx;
     DROP INDEX public.coordinator_tasks_source_fingerprint_uq;

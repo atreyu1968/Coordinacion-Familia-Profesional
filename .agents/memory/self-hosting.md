@@ -32,11 +32,14 @@ filesystem instead.
 - **Rule:** new schema features must include a reviewed self-hosted upgrade path,
   not only a development schema push or an isolated SQL file.
   **Why:** older installations were blocked because deployment validation
-  required newly introduced collaboration/audit tables before creating them.
+  required newly introduced tables or repairable keys/indexes before the
+  migration that creates them could run.
   **How to apply:** allow only explicitly planned absent additions during
   preflight, validate existing relations strictly (including empty name
   collisions), apply additive migrations, then run full validation. Test with
-  the new tables absent and with existing data, not only a fresh current schema.
+  new tables absent and with existing rows whose repairable keys/indexes are
+  missing, not only a fresh current schema. Never remove conflicting rows to
+  make a key fit; fail transactionally for duplicates or orphaned references.
 - Registration is invitation-only, so a fresh DB has no admin — must run the
   seed (`@workspace/scripts run seed-admin`, reads SEED_ADMIN_*).
 
