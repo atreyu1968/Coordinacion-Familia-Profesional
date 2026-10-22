@@ -1,6 +1,7 @@
 import {
   AlignmentType,
   Document,
+  ExternalHyperlink,
   Packer,
   Paragraph,
   ShadingType,
@@ -21,6 +22,7 @@ type TextStyle = {
 };
 
 type DocxBlock = Paragraph | Table;
+type InlineContent = TextRun | ExternalHyperlink;
 
 const SKIP_TAGS = new Set([
   "SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "OBJECT", "EMBED",
@@ -33,7 +35,7 @@ const BLOCK_TAGS = new Set([
   "P", "PRE", "SECTION",
 ]);
 
-function inlineRuns(node: Node, style: TextStyle = {}): TextRun[] {
+function inlineRuns(node: Node, style: TextStyle = {}): InlineContent[] {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? "";
     return text.trim() ? [new TextRun({ text, font: "Aptos", ...style })] : [];
@@ -46,16 +48,28 @@ function inlineRuns(node: Node, style: TextStyle = {}): TextRun[] {
     const alt = node.getAttribute("alt")?.trim();
     return alt ? [new TextRun({ text: `[${alt}]`, italics: true, color: "64748B", ...style })] : [];
   }
+  if (tag === "A") {
+    const linkStyle: TextStyle = { ...style, color: "0563C1", underline: { type: "single" } };
+    const children = Array.from(node.childNodes).flatMap((child) => inlineRuns(child, linkStyle));
+    const href = node.getAttribute("href")?.trim();
+    if (href) {
+      try {
+        const url = new URL(href);
+        if (["http:", "https:", "mailto:"].includes(url.protocol)) {
+          return [new ExternalHyperlink({ link: href, children })];
+        }
+      } catch {
+        // Keep non-absolute or malformed links as styled text only.
+      }
+    }
+    return children;
+  }
 
   const next: TextStyle = { ...style };
   if (["B", "STRONG"].includes(tag)) next.bold = true;
   if (["I", "EM", "CITE", "DFN"].includes(tag)) next.italics = true;
   if (["CODE", "KBD", "SAMP", "TT"].includes(tag)) next.font = "Consolas";
   if (tag === "U") next.underline = { type: "single" };
-  if (tag === "A") {
-    next.color = "0563C1";
-    next.underline = { type: "single" };
-  }
   return Array.from(node.childNodes).flatMap((child) => inlineRuns(child, next));
 }
 
