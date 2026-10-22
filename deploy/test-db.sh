@@ -74,6 +74,14 @@ if [[ "${1:-}" == "--invitations-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--dashboard-only" ]]; then
+  create_test_database coordina_dashboard
+  migrate_database coordina_dashboard
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_dashboard?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/dashboard.test.ts test/dashboard-record-links.test.ts
+  exit 0
+fi
+
 run_test_teacher_cleanup_tests() {
   create_test_database coordina_test_teacher_cleanup
   migrate_database coordina_test_teacher_cleanup

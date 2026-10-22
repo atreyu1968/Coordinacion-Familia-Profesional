@@ -41,6 +41,32 @@ afterAll(async () => {
 });
 
 describe("dashboard data", () => {
+  it("reflects account status changes and retired centers on the next read, even with a course filter", async () => {
+    const provinceId = await createProvince();
+    const centerId = await createCenter(provinceId);
+    const admin = await createUser({ role: "superadmin" });
+    const teacher = await createUser({ role: "teacher", centerId });
+    const unassigned = await createUser({ role: "teacher", provinceId, centerId: null });
+    const filters = { provinceId, startDate: "2099-09-01", endDate: "2100-08-31" };
+    const summary = () => request(app).get("/api/dashboard/summary").query(filters).set(authHeader(admin.token));
+    const initial = await summary();
+    expect(initial.status).toBe(200);
+    expect(initial.body).toMatchObject({ centers: 1, teachers: 2 });
+    await db.update(usersTable).set({ status: "inactive" }).where(inArray(usersTable.id, [teacher.user.id]));
+    expect((await summary()).body.teachers).toBe(1);
+    await db.update(usersTable).set({ status: "active" }).where(inArray(usersTable.id, [teacher.user.id]));
+    expect((await summary()).body.teachers).toBe(2);
+    await db.update(centersTable).set({ families: [] }).where(inArray(centersTable.id, [centerId]));
+    expect((await summary()).body).toMatchObject({ centers: 0, teachers: 1 });
+    const chart = await request(app).get("/api/dashboard/statistics").query(filters).set(authHeader(admin.token));
+    expect(chart.body.usersByRole).toContainEqual({ label: "Profesorado", value: 1 });
+    const directory = await request(app).get("/api/users/management")
+      .query({ provinceId, role: "teacher", status: "active" }).set(authHeader(admin.token));
+    expect(directory.status).toBe(200);
+    expect(directory.body.total).toBe(1);
+    expect(directory.body.users.map((user: { id: number }) => user.id)).toEqual([unassigned.user.id]);
+  });
+
   it("counts active users in the active-family footprint and excludes inactive accounts", async () => {
     const admin = await createUser({ role: "superadmin" });
     const headers = authHeader(admin.token);
@@ -58,6 +84,7 @@ describe("dashboard data", () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
     await createUser({ centerId, role: "teacher" });
+    await createUser({ provinceId, role: "teacher", centerId: null });
     await createUser({ centerId, role: "teacher", status: "inactive" });
 
     const afterSummary = await request(app)
@@ -69,7 +96,9 @@ describe("dashboard data", () => {
 
     expect(afterSummary.status).toBe(200);
     expect(afterStatistics.status).toBe(200);
-    expect(afterSummary.body.teachers - beforeSummary.body.teachers).toBe(1);
+    expect(afterSummary.body.teachers - beforeSummary.body.teachers).toBe(2);
+    expect(afterSummary.headers["cache-control"]).toBe("private, no-store");
+    expect(afterStatistics.headers["cache-control"]).toBe("private, no-store");
 
     const teachersBefore = beforeStatistics.body.usersByRole.find(
       (item: { label: string }) => item.label === "Profesorado",
@@ -77,16 +106,22 @@ describe("dashboard data", () => {
     const teachersAfter = afterStatistics.body.usersByRole.find(
       (item: { label: string }) => item.label === "Profesorado",
     )?.value ?? 0;
-    expect(teachersAfter - teachersBefore).toBe(1);
+    expect(teachersAfter - teachersBefore).toBe(2);
   });
 
   it("applies inclusive date boundaries and keeps the caller's center scope", async () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
     const otherCenterId = await createCenter(provinceId);
+    const olderCenterId = await createCenter(provinceId);
+    const olderTeacher = await createUser({ role: "teacher", centerId: olderCenterId });
+    await db.update(centersTable).set({ createdAt: new Date("2000-01-01T00:00:00Z") })
+      .where(inArray(centersTable.id, [olderCenterId]));
+    await db.update(usersTable).set({ createdAt: new Date("2000-01-01T00:00:00Z") })
+      .where(inArray(usersTable.id, [olderTeacher.user.id]));
     const admin = await createUser({ role: "superadmin" });
     const teacher = await createUser({ role: "teacher", centerId });
-    const period = { startDate: "2098-09-01", endDate: "2098-09-30" };
+    const period = { startDate: "2098-09-01", endDate: "2098-09-30", provinceId };
     await db
       .update(centersTable)
       .set({ createdAt: new Date("2098-09-01T00:00:00.000Z") })
@@ -158,8 +193,8 @@ describe("dashboard data", () => {
       .set(authHeader(admin.token));
 
     expect(summary.status).toBe(200);
-    expect(summary.body.centers).toBe(2);
-    expect(summary.body.teachers).toBe(1);
+    expect(summary.body.centers).toBe(3);
+    expect(summary.body.teachers).toBe(2);
     expect(summary.body.resources).toBe(3);
     expect(summary.body.activeSurveys).toBe(1);
     expect(summary.body.upcomingEvents).toBe(2);
@@ -179,11 +214,11 @@ describe("dashboard data", () => {
     });
     expect(statistics.body.usersByRole).toContainEqual({
       label: "Profesorado",
-      value: 1,
+      value: 2,
     });
     expect(statistics.body.centersByIsland).toContainEqual({
       label: "Sin isla",
-      value: 2,
+      value: 3,
     });
     expect(statistics.body.surveysByStatus).toContainEqual({
       label: "Abierta",
@@ -195,6 +230,8 @@ describe("dashboard data", () => {
       .query(period)
       .set(authHeader(teacher.token));
     expect(scopedSummary.status).toBe(200);
+    expect(scopedSummary.body.centers).toBe(1);
+    expect(scopedSummary.body.teachers).toBe(1);
     expect(scopedSummary.body.resources).toBe(2);
   });
 

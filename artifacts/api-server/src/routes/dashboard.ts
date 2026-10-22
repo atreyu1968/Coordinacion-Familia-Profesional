@@ -153,12 +153,10 @@ function resourceScopeFilters(
 function activeUserScopeFilters(
   scope: DashboardScope,
   activeFamily: string,
-  period?: DashboardPeriod,
 ): SQL[] {
   const filters: SQL[] = [
     isNull(usersTable.deletedAt),
     eq(usersTable.status, "active"),
-    ...periodFilters(usersTable.createdAt, period),
   ];
 
   if (scope.centerId != null) {
@@ -197,6 +195,7 @@ function activeUserScopeFilters(
 }
 
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
+  res.set("Cache-Control", "private, no-store");
   const query = GetDashboardSummaryQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.message });
@@ -232,7 +231,6 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   const centerFilters: SQL[] = [
     isNull(centersTable.deletedAt),
     centerInActiveFamily(activeFamily),
-    ...periodFilters(centersTable.createdAt, period),
   ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
@@ -245,18 +243,16 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     .from(centersTable)
     .where(and(...centerFilters));
 
-  // Teachers hang off a center; restrict to staff at the active-family centers
-  // within scope so the figure matches the locked family.
+  // Current population, not registrations within the activity period. Use the
+  // same scope as the role chart and user directory, including center-less
+  // accounts only where the caller's scope permits seeing them.
   const [teachersCount] = await db
     .select({ value: count() })
     .from(usersTable)
     .where(
       and(
-        isNull(usersTable.deletedAt),
-        eq(usersTable.status, "active"),
+        ...activeUserScopeFilters(scope, activeFamily),
         eq(usersTable.role, "teacher"),
-        inArray(usersTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
-        ...periodFilters(usersTable.createdAt, period),
       ),
     );
 
@@ -314,6 +310,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
 });
 
 router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void> => {
+  res.set("Cache-Control", "private, no-store");
   const query = GetDashboardStatisticsQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.message });
@@ -353,7 +350,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     .groupBy(resourceMonth)
     .orderBy(resourceMonth);
 
-  const userFilters = activeUserScopeFilters(scope, activeFamily, period);
+  const userFilters = activeUserScopeFilters(scope, activeFamily);
   const usersByRoleRows = await db
     .select({ role: usersTable.role, value: count() })
     .from(usersTable)
@@ -363,7 +360,6 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
   const centerFilters: SQL[] = [
     isNull(centersTable.deletedAt),
     centerInActiveFamily(activeFamily),
-    ...periodFilters(centersTable.createdAt, period),
   ];
   if (scope.provinceId != null) {
     centerFilters.push(eq(centersTable.provinceId, scope.provinceId));

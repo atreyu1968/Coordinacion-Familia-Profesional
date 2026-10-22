@@ -4814,6 +4814,7 @@ export const RegisterPushTokenResponse = zod.object({
 
 
 /**
+ * Centers and active teachers are current population totals regardless of creation date. Date bounds filter resources, surveys and alerts by creation date and events by event date. All figures respect the caller's scope and active professional family.
  * @summary Headline counts for the dashboard
  */
 export const getDashboardSummaryQueryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
@@ -4837,6 +4838,7 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
+ * Users by role and centers by island show current population regardless of creation date. Date bounds apply to resources, events and surveys only. All figures respect the caller's scope and active professional family.
  * @summary Time series and grouped stats for charts
  */
 export const getDashboardStatisticsQueryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');

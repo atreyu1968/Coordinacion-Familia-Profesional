@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
+import { buildDashboardHref } from "@/lib/dashboard-links";
 import {
   Card,
   CardContent,
@@ -126,22 +127,28 @@ export default function DashboardPage() {
     query: {
       queryKey: getGetDashboardSummaryQueryKey(queryParams),
       enabled: periodReady,
-      refetchInterval: 60_000,
-      refetchOnWindowFocus: true,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: "always",
     },
   });
   const statsQuery = useGetDashboardStatistics(queryParams, {
     query: {
       queryKey: getGetDashboardStatisticsQueryKey(queryParams),
       enabled: periodReady,
-      refetchInterval: 60_000,
-      refetchOnWindowFocus: true,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: "always",
     },
   });
   const { data: summary } = summaryQuery;
   const { data: stats } = statsQuery;
+  const canExport = periodReady && !!summary && !!stats &&
+    !summaryQuery.isError && !statsQuery.isError;
   const isRefreshing = summaryQuery.isFetching || statsQuery.isFetching;
-  const latestDataUpdatedAt = Math.max(
+  const latestDataUpdatedAt = Math.min(
     summaryQuery.dataUpdatedAt,
     statsQuery.dataUpdatedAt,
   );
@@ -179,13 +186,13 @@ export default function DashboardPage() {
 
   const cards = [
     {
-      label: isPeriodFiltered ? "Centros dados de alta" : "Centros",
+      label: "Centros de la red",
       value: summary?.centers,
       icon: Building2,
       href: dashboardHref("/centros", { dashboard: "centers" }),
     },
     {
-      label: isPeriodFiltered ? "Profesorado dado de alta" : "Profesorado",
+      label: "Profesorado activo",
       value: summary?.teachers,
       icon: Users,
       href: canViewUserDirectory
@@ -230,15 +237,12 @@ export default function DashboardPage() {
   ];
 
   function dashboardHref(path: string, filters: Record<string, string>) {
-    const query = new URLSearchParams(filters);
-    if (isSuperadmin && provinceFilter !== GLOBAL) {
-      query.set("provinceId", provinceFilter);
-    }
-    if (selectedRange && hasValidPeriod) {
-      query.set("startDate", selectedRange.startDate);
-      query.set("endDate", selectedRange.endDate);
-    }
-    return `${path}?${query.toString()}`;
+    return buildDashboardHref(
+      path,
+      filters,
+      isSuperadmin && provinceFilter !== GLOBAL ? Number(provinceFilter) : undefined,
+      selectedRange && hasValidPeriod ? selectedRange : undefined,
+    );
   }
 
   const usersByRole = (stats?.usersByRole ?? []) as Point[];
@@ -254,7 +258,16 @@ export default function DashboardPage() {
       {
         name: "Resumen",
         columns: ["Indicador", "Valor"],
-        rows: cards.map((c) => [c.label, c.value ?? 0]),
+        rows: cards.map((c) => [c.label, c.value ?? "Sin datos"]),
+      },
+      {
+        name: "Criterios",
+        columns: ["Criterio", "Descripción"],
+        rows: [
+          ["Ámbito", scopeLabel],
+          ["Periodo de actividad", periodLabel],
+          ["Centros y usuarios", "Totales actuales, incluidos los dados de alta en cursos anteriores; no es una instantánea histórica."],
+        ],
       },
       { name: "Usuarios por rol", columns: ["Rol", "Total"], rows: toRows(usersByRole) },
       {
@@ -288,13 +301,18 @@ export default function DashboardPage() {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")}`;
 
-  const onExportPdf = () =>
-    exportTablesPdf(
+  const onExportPdf = () => {
+    if (!canExport) return;
+    return exportTablesPdf(
       `Estadísticas · ${professionalFamily} — ${scopeLabel} — ${periodLabel}`,
       buildSheets(),
       `${fileBase}.pdf`,
     );
-  const onExportXlsx = () => exportSheetsXlsx(buildSheets(), `${fileBase}.xlsx`);
+  };
+  const onExportXlsx = () => {
+    if (!canExport) return;
+    return exportSheetsXlsx(buildSheets(), `${fileBase}.xlsx`);
+  };
 
   return (
     <div className="space-y-8">
@@ -390,11 +408,11 @@ export default function DashboardPage() {
               />
             </div>
           )}
-          <Button variant="outline" size="sm" onClick={onExportPdf}>
+          <Button variant="outline" size="sm" onClick={onExportPdf} disabled={!canExport}>
             <FileDown className="mr-2 h-4 w-4" />
             PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={onExportXlsx}>
+          <Button variant="outline" size="sm" onClick={onExportXlsx} disabled={!canExport}>
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Excel
           </Button>
@@ -404,8 +422,9 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>
           Periodo consultado: <strong data-testid="text-dashboard-period">{periodLabel}</strong>.
-          Las altas se cuentan por fecha de creación y los eventos por su fecha
-          de celebración. Los indicadores reflejan el estado actual.
+          Los centros y usuarios muestran los totales actuales, aunque se dieran
+          de alta en cursos anteriores. El periodo filtra los recursos, encuestas
+          y avisos por fecha de creación, y los eventos por su celebración.
         </span>
         <span aria-live="polite">
           {isRefreshing
@@ -560,7 +579,7 @@ export default function DashboardPage() {
           />
         </ChartCard>
 
-        <ChartCard title="Usuarios dados de alta por rol">
+        <ChartCard title="Usuarios activos por rol">
           {statsQuery.isLoading ? (
             <ChartMessage>Consultando datos…</ChartMessage>
           ) : statsQuery.isError && !stats ? (
@@ -600,7 +619,7 @@ export default function DashboardPage() {
           />
         </ChartCard>
 
-        <ChartCard title="Centros dados de alta por isla">
+        <ChartCard title="Centros de la red por isla">
           {statsQuery.isLoading ? (
             <ChartMessage>Consultando datos…</ChartMessage>
           ) : statsQuery.isError && !stats ? (

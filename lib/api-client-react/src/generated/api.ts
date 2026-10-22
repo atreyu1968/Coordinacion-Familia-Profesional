@@ -17362,6 +17362,7 @@ export const getGetDashboardSummaryUrl = (params?: GetDashboardSummaryParams,) =
 }
 
 /**
+ * Centers and active teachers are current population totals regardless of creation date. Date bounds filter resources, surveys and alerts by creation date and events by event date. All figures respect the caller's scope and active professional family.
  * @summary Headline counts for the dashboard
  */
 export const getDashboardSummary = async (params?: GetDashboardSummaryParams, options?: Parameters<typeof customFetch>[1]): Promise<DashboardSummary> => {
@@ -17470,6 +17471,7 @@ export const getGetDashboardStatisticsUrl = (params?: GetDashboardStatisticsPara
 }
 
 /**
+ * Users by role and centers by island show current population regardless of creation date. Date bounds apply to resources, events and surveys only. All figures respect the caller's scope and active professional family.
  * @summary Time series and grouped stats for charts
  */
 export const getDashboardStatistics = async (params?: GetDashboardStatisticsParams, options?: Parameters<typeof customFetch>[1]): Promise<DashboardStatistics> => {
