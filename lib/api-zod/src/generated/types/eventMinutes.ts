@@ -8,6 +8,7 @@
 import type { EventMinutesGenerationStatus } from './eventMinutesGenerationStatus';
 import type { MinutesDocumentAttachment } from './minutesDocumentAttachment';
 import type { MinutesMessage } from './minutesMessage';
+import type { MinutesSharedDocument } from './minutesSharedDocument';
 import type { MinutesSource } from './minutesSource';
 
 export interface EventMinutes {
@@ -33,4 +34,5 @@ export interface EventMinutes {
   pdfProcessingAvailable: boolean;
   sources: MinutesSource[];
   messages: MinutesMessage[];
+  sharedDocuments: MinutesSharedDocument[];
 }

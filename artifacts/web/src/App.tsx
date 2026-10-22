@@ -27,6 +27,7 @@ const FctPage = lazy(() => import("@/pages/fct"));
 const EncuestasPage = lazy(() => import("@/pages/encuestas"));
 const FormulariosPage = lazy(() => import("@/pages/formularios"));
 const EventosPage = lazy(() => import("@/pages/eventos"));
+const ActasPage = lazy(() => import("@/pages/actas"));
 const VideoconferenciasPage = lazy(() => import("@/pages/videoconferencias"));
 const AnunciosPage = lazy(() => import("@/pages/anuncios"));
 const ChatPage = lazy(() => import("@/pages/chat"));
@@ -77,6 +78,7 @@ function AuthedRoutes() {
           <Route path="/encuestas" component={EncuestasPage} />
           <Route path="/formularios" component={FormulariosPage} />
           <Route path="/eventos" component={EventosPage} />
+          <Route path="/actas" component={ActasPage} />
           <Route path="/videoconferencias" component={VideoconferenciasPage} />
           <Route path="/anuncios" component={AnunciosPage} />
           <Route path="/chat" component={ChatPage} />

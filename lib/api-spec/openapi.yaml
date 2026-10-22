@@ -3023,6 +3023,65 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EventMinutes" }
         default: { $ref: "#/components/responses/AttendanceError" }
+  /minutes/published:
+    get:
+      operationId: listPublishedMinutes
+      tags: [Events]
+      responses:
+        "200":
+          description: Official uploaded minutes and explicitly shared attachments for department heads
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PublishedMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/shared-documents:
+    post:
+      operationId: addEventMinutesSharedDocument
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MinutesSharedDocumentInput" }
+      responses:
+        "201":
+          description: Shared document added, still private until the acta is published
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/shared-documents/{documentId}:
+    delete:
+      operationId: deleteEventMinutesSharedDocument
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: documentId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Removed from the next publication
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventMinutes" }
+        default: { $ref: "#/components/responses/AttendanceError" }
+  /events/{id}/minutes/shared-documents/{documentId}/download:
+    get:
+      operationId: downloadEventMinutesSharedDocument
+      tags: [Events]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: documentId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Privately served shared file, available only with a published acta
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/AttendanceError" }
   /events/{id}/minutes/sources:
     post:
       operationId: addEventMinutesSource
@@ -7488,6 +7547,17 @@ components:
         purpose: { type: string, enum: [evidence, instruction, final_document] }
         consent: { type: boolean, enum: [true] }
       required: [objectPath, fileName, contentType, size, purpose]
+    MinutesSharedDocumentInput:
+      type: object
+      properties:
+        kind: { type: string, enum: [file, link] }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        objectPath: { type: string, maxLength: 300 }
+        fileName: { type: string, minLength: 1, maxLength: 200 }
+        contentType: { type: string, maxLength: 150 }
+        size: { type: integer, minimum: 1, maximum: 104857600 }
+        url: { type: string, format: uri, maxLength: 2048 }
+      required: [kind, title]
     MinutesGenerateInput:
       type: object
       properties:
@@ -7573,7 +7643,10 @@ components:
         messages:
           type: array
           items: { $ref: "#/components/schemas/MinutesMessage" }
-      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, draftDocument, publishedDocument, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, mediaProcessingAvailable, pdfProcessingAvailable, sources, messages]
+        sharedDocuments:
+          type: array
+          items: { $ref: "#/components/schemas/MinutesSharedDocument" }
+      required: [eventId, enabled, canManage, revision, draftText, publishedText, publishedAt, draftDocument, publishedDocument, generationStatus, generationError, writingConfigured, multimediaConfigured, processingAvailable, mediaProcessingAvailable, pdfProcessingAvailable, sources, messages, sharedDocuments]
     MinutesDocumentAttachment:
       type: object
       properties:
@@ -7582,6 +7655,32 @@ components:
         contentType: { type: string }
         size: { type: integer }
       required: [id, fileName, contentType, size]
+    MinutesSharedDocument:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [file, link] }
+        title: { type: string }
+        url: { type: ["string", "null"] }
+        fileName: { type: ["string", "null"] }
+        contentType: { type: ["string", "null"] }
+        size: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+        removedAt: { type: ["string", "null"], format: date-time }
+      required: [id, kind, title, url, fileName, contentType, size, createdAt, removedAt]
+    PublishedMinutes:
+      type: object
+      properties:
+        eventId: { type: integer }
+        eventName: { type: string }
+        eventStartAt: { type: ["string", "null"], format: date-time }
+        eventLocation: { type: ["string", "null"] }
+        publishedAt: { type: string, format: date-time }
+        actaDocument: { $ref: "#/components/schemas/MinutesDocumentAttachment" }
+        sharedDocuments:
+          type: array
+          items: { $ref: "#/components/schemas/MinutesSharedDocument" }
+      required: [eventId, eventName, eventStartAt, eventLocation, publishedAt, actaDocument, sharedDocuments]
     AttendanceCertificateNotificationResult:
       type: object
       properties:

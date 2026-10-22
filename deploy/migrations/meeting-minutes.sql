@@ -32,6 +32,28 @@ CREATE TABLE IF NOT EXISTS meeting_minutes_sources (
   lease_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS meeting_minutes_shared_documents (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER NOT NULL REFERENCES meeting_minutes(event_id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  object_path TEXT UNIQUE,
+  url TEXT,
+  file_name TEXT,
+  content_type TEXT,
+  size INTEGER,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  removed_at TIMESTAMPTZ,
+  CONSTRAINT meeting_minutes_shared_documents_kind_check CHECK (
+    (kind = 'file' AND object_path IS NOT NULL AND url IS NULL
+      AND file_name IS NOT NULL AND content_type IS NOT NULL AND size > 0)
+    OR (kind = 'link' AND object_path IS NULL AND url IS NOT NULL
+      AND file_name IS NULL AND content_type IS NULL AND size IS NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS meeting_minutes_shared_documents_event_idx
+  ON meeting_minutes_shared_documents (event_id, created_at);
 CREATE TABLE IF NOT EXISTS meeting_minutes_messages (
   id SERIAL PRIMARY KEY,
   event_id INTEGER NOT NULL REFERENCES meeting_minutes(event_id) ON DELETE CASCADE,

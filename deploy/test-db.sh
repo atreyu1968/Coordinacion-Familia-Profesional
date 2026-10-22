@@ -138,7 +138,7 @@ DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SO
 echo "==> Applying the upgrade to the existing database"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  --command="DROP TABLE public.coordinator_mail_outbox, public.coordinator_mail_case_notes, public.coordinator_mail_attachments, public.coordinator_mail_messages, public.coordinator_mail_case_threads, public.coordinator_mail_cases, public.coordinator_mail_accounts, public.coordinator_mail_settings, public.meeting_minutes_sources, public.meeting_minutes_messages, public.meeting_minutes, public.meeting_ai_settings, public.event_attendance_certificates, public.event_attendances, public.event_attendance_settings, public.certificate_email_verifications"
+  --command="DROP TABLE public.coordinator_mail_outbox, public.coordinator_mail_case_notes, public.coordinator_mail_attachments, public.coordinator_mail_messages, public.coordinator_mail_case_threads, public.coordinator_mail_cases, public.coordinator_mail_accounts, public.coordinator_mail_settings, public.meeting_minutes_shared_documents, public.meeting_minutes_sources, public.meeting_minutes_messages, public.meeting_minutes, public.meeting_ai_settings, public.event_attendance_certificates, public.event_attendances, public.event_attendance_settings, public.certificate_email_verifications"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit"

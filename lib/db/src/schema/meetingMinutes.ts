@@ -1,5 +1,6 @@
-import { pgTable, integer, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, integer, serial, text, timestamp, boolean, check, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import { eventsTable } from "./events";
 import { usersTable } from "./users";
 
@@ -36,6 +37,28 @@ export const meetingMinutesSourcesTable = pgTable("meeting_minutes_sources", {
   leaseUntil: timestamp("lease_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+export const meetingMinutesSharedDocumentsTable = pgTable("meeting_minutes_shared_documents", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => meetingMinutesTable.eventId, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  objectPath: text("object_path").unique(),
+  url: text("url"),
+  fileName: text("file_name"),
+  contentType: text("content_type"),
+  size: integer("size"),
+  createdBy: integer("created_by").references(() => usersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+}, (table) => [
+  index("meeting_minutes_shared_documents_event_idx").on(table.eventId, table.createdAt),
+  check("meeting_minutes_shared_documents_kind_check", sql`
+    (${table.kind} = 'file' AND ${table.objectPath} IS NOT NULL AND ${table.url} IS NULL
+      AND ${table.fileName} IS NOT NULL AND ${table.contentType} IS NOT NULL AND ${table.size} > 0)
+    OR (${table.kind} = 'link' AND ${table.objectPath} IS NULL AND ${table.url} IS NOT NULL
+      AND ${table.fileName} IS NULL AND ${table.contentType} IS NULL AND ${table.size} IS NULL)
+  `),
+]);
 export const meetingMinutesMessagesTable = pgTable("meeting_minutes_messages", {
   id: serial("id").primaryKey(),
   eventId: integer("event_id").notNull().references(() => meetingMinutesTable.eventId, { onDelete: "cascade" }),
@@ -52,7 +75,9 @@ export const meetingAiSettingsTable = pgTable("meeting_ai_settings", {
 });
 export const insertMeetingMinutesSchema = createInsertSchema(meetingMinutesTable);
 export const insertMeetingMinutesSourceSchema = createInsertSchema(meetingMinutesSourcesTable);
+export const insertMeetingMinutesSharedDocumentSchema = createInsertSchema(meetingMinutesSharedDocumentsTable);
 export const insertMeetingMinutesMessageSchema = createInsertSchema(meetingMinutesMessagesTable);
 export const insertMeetingAiSettingsSchema = createInsertSchema(meetingAiSettingsTable);
 export type MeetingMinutesRow = typeof meetingMinutesTable.$inferSelect;
 export type MinutesSourceRow = typeof meetingMinutesSourcesTable.$inferSelect;
+export type MinutesSharedDocumentRow = typeof meetingMinutesSharedDocumentsTable.$inferSelect;

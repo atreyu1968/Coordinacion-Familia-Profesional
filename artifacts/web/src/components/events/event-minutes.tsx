@@ -8,11 +8,14 @@ import {
   useRetryEventMinutesSource,
   useGenerateEventMinutes,
   usePublishEventMinutes,
+  useAddEventMinutesSharedDocument,
+  useDeleteEventMinutesSharedDocument,
   useRequestUploadUrl,
   getGetEventMinutesQueryKey,
   type EventMinutes,
   type MinutesSource,
   type MinutesSourceInputPurpose,
+  type MinutesSharedDocument,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import {
   BookOpenCheck,
   Copy,
   Download,
+  ExternalLink,
   FileText,
   Lock,
   Mic,
@@ -278,14 +282,39 @@ function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; e
               </a>
             </Button>
           )}
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={copy} data-testid="button-copy-minutes-link">
-            <Copy className="w-3.5 h-3.5" /> Copiar enlace
-          </Button>
+          {minutes.publishedText && (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={copy} data-testid="button-copy-minutes-link">
+              <Copy className="w-3.5 h-3.5" /> Copiar enlace
+            </Button>
+          )}
         </div>
       </header>
-      <div className="bg-slate-50 px-3 py-6 sm:px-6">
-        <MinutesDocument text={minutes.publishedText ?? ""} context={context} />
-      </div>
+      {minutes.publishedText && (
+        <div className="bg-slate-50 px-3 py-6 sm:px-6">
+          <MinutesDocument text={minutes.publishedText} context={context} />
+        </div>
+      )}
+      {minutes.sharedDocuments.length > 0 && (
+        <section className="px-6 py-4 border-t" aria-label="Documentos compartidos con el acta">
+          <h3 className="text-sm font-semibold mb-2">Documentos compartidos</h3>
+          <ul className="space-y-2">
+            {minutes.sharedDocuments.map((document) => (
+              <li key={document.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+                <span className="min-w-0 truncate">{document.title}</span>
+                {document.kind === "link" && document.url ? (
+                  <a className="inline-flex items-center gap-1 text-primary underline underline-offset-4" href={document.url} target="_blank" rel="noopener noreferrer">
+                    Abrir enlace <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <a className="inline-flex items-center gap-1 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/shared-documents/${document.id}/download`} download={document.fileName ?? undefined}>
+                    Descargar archivo <Download className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </article>
   );
 }
@@ -484,6 +513,8 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
   const retryMut = useRetryEventMinutesSource();
   const genMut = useGenerateEventMinutes();
   const pubMut = usePublishEventMinutes();
+  const addSharedMut = useAddEventMinutesSharedDocument();
+  const deleteSharedMut = useDeleteEventMinutesSharedDocument();
   const uploadUrlMut = useRequestUploadUrl();
 
   const [draft, setDraft] = useState(minutes.draftText ?? "");
@@ -498,8 +529,11 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
   const [purpose, setPurpose] = useState<MinutesSourceInputPurpose>("evidence");
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [openSource, setOpenSource] = useState<number | null>(null);
+  const [sharedLinkTitle, setSharedLinkTitle] = useState("");
+  const [sharedLinkUrl, setSharedLinkUrl] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const finalFileRef = useRef<HTMLInputElement>(null);
+  const sharedFileRef = useRef<HTMLInputElement>(null);
   const pendingInstr = useRef<Set<number>>(new Set());
   const usedInstr = useRef<Set<number>>(new Set());
 
@@ -717,6 +751,77 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
       await qc.invalidateQueries({ queryKey: key });
     } catch (err) {
       void handleErr(err, "No se pudo eliminar la fuente.");
+    }
+  };
+
+  const onSharedFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size <= 0 || file.size > MAX_BYTES) {
+      toast({ title: "Archivo demasiado grande", description: `${file.name}: máximo 100 MB.`, variant: "destructive" });
+      return;
+    }
+    const ext = extOf(file.name);
+    if (!ACCEPT_EXT.includes(ext)) {
+      toast({ title: "Formato no admitido", description: file.name, variant: "destructive" });
+      return;
+    }
+    const contentType = file.type || MIME_FALLBACK[ext] || "application/octet-stream";
+    try {
+      const { uploadURL, objectPath } = await uploadUrlMut.mutateAsync({
+        data: { name: file.name, size: file.size, contentType },
+      });
+      const response = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
+      if (!response.ok) throw new Error(`El almacenamiento rechazó la subida (HTTP ${response.status}).`);
+      await addSharedMut.mutateAsync({
+        id: eventId,
+        data: {
+          kind: "file",
+          title: file.name.slice(0, 200),
+          objectPath,
+          fileName: file.name.slice(0, 200),
+          contentType,
+          size: file.size,
+        },
+      });
+      await qc.invalidateQueries({ queryKey: key });
+      toast({ title: "Documento añadido", description: "Se compartirá cuando publiques el acta." });
+    } catch (err) {
+      toast({
+        title: "No se pudo añadir el archivo",
+        description: err instanceof Error ? err.message : apiErrorMessage(err, "Revisa la conexión y vuelve a intentarlo."),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onAddSharedLink = async () => {
+    const title = sharedLinkTitle.trim();
+    const url = sharedLinkUrl.trim();
+    if (!title || !url) return;
+    try {
+      await addSharedMut.mutateAsync({ id: eventId, data: { kind: "link", title, url } });
+      setSharedLinkTitle("");
+      setSharedLinkUrl("");
+      await qc.invalidateQueries({ queryKey: key });
+      toast({ title: "Enlace añadido", description: "Se compartirá cuando publiques el acta." });
+    } catch (err) {
+      void handleErr(err, "No se pudo añadir el enlace.");
+    }
+  };
+
+  const onDeleteShared = async (document: MinutesSharedDocument) => {
+    const message = minutes.publishedAt
+      ? "Se retirará de la próxima publicación; seguirá disponible en la versión actualmente publicada hasta que vuelvas a publicarla. ¿Continuar?"
+      : "¿Retirar este documento del acta?";
+    if (!window.confirm(message)) return;
+    try {
+      await deleteSharedMut.mutateAsync({ id: eventId, documentId: document.id });
+      await qc.invalidateQueries({ queryKey: key });
+      toast({ title: "Documento retirado", description: "El cambio se aplicará a la próxima publicación." });
+    } catch (err) {
+      void handleErr(err, "No se pudo retirar el documento.");
     }
   };
 
@@ -957,10 +1062,96 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                 </CardContent>
               </Card>
 
+              <Card data-testid="card-shared-minutes-documents">
+                <CardContent className="p-5 space-y-4">
+                  <div>
+                    <h4 className="font-semibold">3. Documentos que acompañan al acta</h4>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Añade archivos o enlaces que quieras compartir. Solo estarán disponibles junto con la publicación y no se enviarán a la IA.
+                    </p>
+                  </div>
+                  <input
+                    ref={sharedFileRef}
+                    type="file"
+                    accept={ACCEPT_EXT.join(",")}
+                    className="hidden"
+                    onChange={(e) => void onSharedFile(e)}
+                    data-testid="input-shared-minutes-document"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => sharedFileRef.current?.click()}
+                    disabled={addSharedMut.isPending || minutes.sharedDocuments.filter((d) => !d.removedAt).length >= 30}
+                    data-testid="button-upload-shared-minutes-document"
+                  >
+                    <Upload className="h-4 w-4" /> Subir archivo
+                  </Button>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                    <input
+                      value={sharedLinkTitle}
+                      onChange={(e) => setSharedLinkTitle(e.target.value)}
+                      maxLength={200}
+                      placeholder="Título del enlace"
+                      aria-label="Título del enlace compartido"
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                    <input
+                      type="url"
+                      value={sharedLinkUrl}
+                      onChange={(e) => setSharedLinkUrl(e.target.value)}
+                      placeholder="https://…"
+                      aria-label="URL del enlace compartido"
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="gap-1.5"
+                      onClick={() => void onAddSharedLink()}
+                      disabled={!sharedLinkTitle.trim() || !sharedLinkUrl.trim() || addSharedMut.isPending || minutes.sharedDocuments.filter((d) => !d.removedAt).length >= 30}
+                    >
+                      <ExternalLink className="h-4 w-4" /> Añadir enlace
+                    </Button>
+                  </div>
+                  {minutes.sharedDocuments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Aún no hay archivos ni enlaces complementarios.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {minutes.sharedDocuments.map((document) => (
+                        <li key={document.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{document.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {document.kind === "file" ? `${document.fileName} · ${formatSize(document.size ?? 0)}` : document.url}
+                              {document.removedAt ? " · Retirado de la próxima publicación" : ""}
+                            </p>
+                          </div>
+                          {!document.removedAt && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1 text-destructive"
+                              onClick={() => void onDeleteShared(document)}
+                              disabled={deleteSharedMut.isPending}
+                              aria-label={`Retirar ${document.title}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Retirar
+                            </Button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Publication */}
               <Card>
                 <CardContent className="p-5 space-y-3">
-                  <h4 className="font-semibold">3. Publicación</h4>
+                  <h4 className="font-semibold">4. Publicación</h4>
                   {minutes.publishedText != null ? (
                     <p className="text-sm text-muted-foreground">
                       Publicada el {formatDateTime(minutes.publishedAt)}.
@@ -1188,7 +1379,9 @@ export function EventMinutesSection({ eventId, eventName, eventStartAt, eventLoc
   }
   const context: MinutesDocumentContext = { eventName, eventStartAt, eventLocation };
   if (content.canManage) return <Workspace eventId={eventId} minutes={content} context={context} />;
-  if (content.enabled && content.publishedText) return <PublishedActa minutes={content} eventId={eventId} context={context} />;
+  if (content.enabled && (content.publishedText || content.publishedDocument)) {
+    return <PublishedActa minutes={content} eventId={eventId} context={context} />;
+  }
   return (
     <div className="rounded-xl border border-dashed py-12 text-center px-6" data-testid="status-no-minutes">
       <FileText className="w-8 h-8 mx-auto text-muted-foreground/60" />

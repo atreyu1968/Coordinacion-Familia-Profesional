@@ -1855,6 +1855,39 @@ export interface MinutesSourceInput {
   consent?: true;
 }
 
+export type MinutesSharedDocumentInputKind = typeof MinutesSharedDocumentInputKind[keyof typeof MinutesSharedDocumentInputKind];
+
+
+export const MinutesSharedDocumentInputKind = {
+  file: 'file',
+  link: 'link',
+} as const;
+
+export interface MinutesSharedDocumentInput {
+  kind: MinutesSharedDocumentInputKind;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 300 */
+  objectPath?: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fileName?: string;
+  /** @maxLength 150 */
+  contentType?: string;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  size?: number;
+  /** @maxLength 2048 */
+  url?: string;
+}
+
 export interface MinutesGenerateInput {
   /** @minimum 0 */
   revision: number;
@@ -1964,6 +1997,31 @@ export interface MinutesDocumentAttachment {
   size: number;
 }
 
+export type MinutesSharedDocumentKind = typeof MinutesSharedDocumentKind[keyof typeof MinutesSharedDocumentKind];
+
+
+export const MinutesSharedDocumentKind = {
+  file: 'file',
+  link: 'link',
+} as const;
+
+export interface MinutesSharedDocument {
+  id: number;
+  kind: MinutesSharedDocumentKind;
+  title: string;
+  /** @nullable */
+  url: string | null;
+  /** @nullable */
+  fileName: string | null;
+  /** @nullable */
+  contentType: string | null;
+  /** @nullable */
+  size: number | null;
+  createdAt: string;
+  /** @nullable */
+  removedAt: string | null;
+}
+
 export interface EventMinutes {
   eventId: number;
   enabled: boolean;
@@ -1987,6 +2045,19 @@ export interface EventMinutes {
   pdfProcessingAvailable: boolean;
   sources: MinutesSource[];
   messages: MinutesMessage[];
+  sharedDocuments: MinutesSharedDocument[];
+}
+
+export interface PublishedMinutes {
+  eventId: number;
+  eventName: string;
+  /** @nullable */
+  eventStartAt: string | null;
+  /** @nullable */
+  eventLocation: string | null;
+  publishedAt: string;
+  actaDocument: MinutesDocumentAttachment;
+  sharedDocuments: MinutesSharedDocument[];
 }
 
 export interface AttendanceCertificateNotificationResult {

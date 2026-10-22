@@ -13,7 +13,7 @@ import { processOneMinutesJob } from "../src/lib/meetingMinutesWorker";
 const fake = vi.hoisted(() => ({ process: vi.fn(async () => "Acuerdo documentado: revisar el catálogo."), draft: vi.fn(async () => "# Acta IA\nAcuerdo: revisar el catálogo. Plazo pendiente de confirmar.") }));
 vi.mock("../src/lib/meetingMinutesMedia", () => ({ processMinutesSource: fake.process, draftMinutes: fake.draft }));
 type Person = Awaited<ReturnType<typeof createUser>>;
-let admin: Person, coordinator: Person, outside: Person, reader: Person, noProvince: Person;
+let admin: Person, coordinator: Person, outside: Person, reader: Person, noProvince: Person, outsideHead: Person;
 let eventId: number, otherId: number, globalId: number;
 const path = "/objects/uploads/11111111-1111-4111-8111-111111111111";
 const call = (method: "get" | "put" | "post" | "delete", path: string, user = coordinator) => request(app)[method](`/api${path}`).set(authHeader(user.token));
@@ -26,6 +26,7 @@ beforeAll(async () => {
   outside = await createUser({ role: "coordinator", provinceId: await createProvince() });
   reader = await createUser({ role: "teacher", provinceId: province });
   noProvince = await createUser({ role: "coordinator", provinceId: null });
+  outsideHead = await createUser({ role: "department_head", provinceId: await createProvince() });
   [eventId, otherId, globalId] = (await db.insert(eventsTable).values([
     { name: "Prueba actas", type: "coordination_meeting", provinceId: province },
     { name: "Otra actividad", type: "other", provinceId: province },
@@ -137,11 +138,61 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     expect((await call("get", base() + "/documents/draft")).status).toBe(200);
     expect((await call("get", base() + "/documents/draft", reader)).status).toBe(403);
 
+    const sharedFilePath = "/objects/uploads/66666666-6666-4666-8666-666666666666";
+    const sharedFile = await call("post", base() + "/shared-documents").send({
+      kind: "file",
+      title: "Orden del día",
+      objectPath: sharedFilePath,
+      fileName: "orden-del-dia.pdf",
+      contentType: "application/pdf",
+      size: 3,
+    });
+    expect(sharedFile.status).toBe(201);
+    const sharedFileId = sharedFile.body.sharedDocuments[0].id;
+    const sharedLink = await call("post", base() + "/shared-documents").send({
+      kind: "link", title: "Material de apoyo", url: "https://example.org/material",
+    });
+    expect(sharedLink.status).toBe(201);
+    expect((await call("post", base() + "/shared-documents").send({
+      kind: "link", title: "Inseguro", url: "http://example.org",
+    })).status).toBe(400);
+
     let w = await current();
     result = await call("post", base() + "/publish").send({ revision: w.revision, publish: true, reviewed: true });
     expect(result.status).toBe(200);
     expect((await call("get", base(), reader)).body.publishedDocument).toMatchObject({ id: firstDocumentId, fileName: "acta-final.pdf" });
     expect((await call("get", base() + "/documents/published", reader)).status).toBe(200);
+    const headWorkspace = (await call("get", base(), outsideHead)).body;
+    expect(headWorkspace).toMatchObject({
+      enabled: true,
+      canManage: false,
+      publishedText: null,
+      draftText: null,
+      sources: [],
+      messages: [],
+      publishedDocument: { id: firstDocumentId, fileName: "acta-final.pdf" },
+    });
+    expect(headWorkspace.sharedDocuments).toHaveLength(2);
+    expect(headWorkspace.sharedDocuments.some((doc: { url: string | null }) => doc.url === "https://example.org/material")).toBe(true);
+    expect((await call("get", `/events/${eventId}/minutes/documents/published`, outsideHead)).status).toBe(200);
+    expect((await call("get", `/events/${eventId}/minutes/shared-documents/${sharedFileId}/download`, outsideHead)).status).toBe(200);
+    expect((await call("get", "/minutes/published", outsideHead)).body).toEqual([
+      expect.objectContaining({
+        eventId,
+        actaDocument: { id: firstDocumentId, fileName: "acta-final.pdf", contentType: "application/pdf", size: 3 },
+        sharedDocuments: expect.arrayContaining([
+          expect.objectContaining({ kind: "link", title: "Material de apoyo", url: "https://example.org/material" }),
+        ]),
+      }),
+    ]);
+    expect((await call("get", "/minutes/published", outside)).status).toBe(403);
+    expect(JSON.stringify((await call("get", "/minutes/published", outsideHead)).body)).not.toContain("publishedText");
+
+    await call("delete", base() + `/shared-documents/${sharedFileId}`);
+    expect((await call("get", "/minutes/published", outsideHead)).body[0].sharedDocuments).toHaveLength(2);
+    const afterRemoving = await current();
+    await call("post", base() + "/publish").send({ revision: afterRemoving.revision, publish: true, reviewed: true });
+    expect((await call("get", "/minutes/published", outsideHead)).body[0].sharedDocuments).toHaveLength(1);
 
     const secondPath = "/objects/uploads/33333333-3333-4333-8333-333333333333";
     result = await call("post", base() + "/sources").send({

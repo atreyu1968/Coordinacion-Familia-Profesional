@@ -11,6 +11,10 @@ Los cambios del borrador no alteran automáticamente esa versión compartida.
 **Why:** el usuario pidió que la opción fuera visible solo para el coordinador y eligió que este pudiera compartir el acta final.
 **How to apply:** distinguir siempre gestión privada y lectura de la instantánea publicada; no exponer fuentes ni conversaciones a los lectores del acta.
 
+Todas las jefaturas de departamento pueden consultar las actas publicadas aunque pertenezcan a otra provincia o no asistieran. En esta vista transversal solo se ofrece el documento definitivo subido por la coordinación y los archivos o enlaces que esta compartió al publicar; no se muestran borradores, texto generado por IA, evidencias, mensajes, asistencia ni otros datos del evento. Los cambios en los documentos compartidos se hacen efectivos en la siguiente publicación.
+**Why:** el usuario pidió acceso para todas las jefaturas, pero precisó que solo debían acceder al acta publicada subida por la coordinación y a documentos expresamente compartidos junto a ella.
+**How to apply:** conservar una ruta de lectura específica para actas publicadas, separada de la autorización general del evento; limitar su respuesta y descargas a la instantánea oficial.
+
 La IA debe trabajar con documentos y audios y, en vídeos, con lo hablado
 **y** las diapositivas e imágenes. Un análisis meramente de audio no satisface el alcance elegido.
 El micrófono permite aportar instrucciones e ideas y revisar el acta, no acreditar

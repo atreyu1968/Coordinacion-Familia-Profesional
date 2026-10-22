@@ -1,5 +1,5 @@
 import { and, eq, asc, desc, sql } from "drizzle-orm";
-import { db, eventsTable, meetingMinutesTable, meetingMinutesSourcesTable, meetingMinutesMessagesTable, meetingAiSettingsTable } from "@workspace/db";
+import { db, eventsTable, meetingMinutesTable, meetingMinutesSourcesTable, meetingMinutesSharedDocumentsTable, meetingMinutesMessagesTable, meetingAiSettingsTable } from "@workspace/db";
 import { getSettings, isDeepseekConfigured } from "./settings";
 import { AttendanceError } from "./eventCertificates";
 import { getObjectAclPolicy } from "./objectAcl";
@@ -59,7 +59,7 @@ export async function aiStatus() {
     visionModel: config.visionModel,
   };
 }
-export async function workspace(eventId: number, manage: boolean) {
+export async function workspace(eventId: number, manage: boolean, departmentHeadView = false) {
   const [row] = await db.select().from(meetingMinutesTable).where(eq(meetingMinutesTable.eventId, eventId));
   const status = manage ? await aiStatus() : null;
   const finalDocuments = await db.select({
@@ -75,13 +75,28 @@ export async function workspace(eventId: number, manage: boolean) {
   const publishedDocument = row?.enabled && row.publishedText && row.publishedAt
     ? finalDocuments.find((source) => source.createdAt <= row.publishedAt!)
     : undefined;
+  const sharedDocuments = await db.select().from(meetingMinutesSharedDocumentsTable)
+    .where(eq(meetingMinutesSharedDocumentsTable.eventId, eventId))
+    .orderBy(asc(meetingMinutesSharedDocumentsTable.createdAt), asc(meetingMinutesSharedDocumentsTable.id));
+  const publicationVisible = !!(row?.enabled && row.publishedText && row.publishedAt &&
+    (!departmentHeadView || publishedDocument));
+  const visibleSharedDocuments = manage
+    ? sharedDocuments.map((document) => sharedDocumentDto(document, true))
+    : publicationVisible
+      ? sharedDocuments
+        .filter((document) =>
+          document.createdAt <= row!.publishedAt! &&
+          (!document.removedAt || document.removedAt > row!.publishedAt!),
+        )
+        .map((document) => sharedDocumentDto(document, false))
+      : [];
   const draftDocument = manage ? finalDocuments[0] : undefined;
   return {
-    eventId, enabled: manage ? (row?.enabled ?? false) : !!(row?.enabled && row.publishedText),
+    eventId, enabled: manage ? (row?.enabled ?? false) : publicationVisible,
     canManage: manage, revision: manage ? (row?.revision ?? 0) : 0,
     draftText: manage ? (row?.draftText ?? "") : null,
-    publishedText: row?.enabled ? (row.publishedText ?? null) : null,
-    publishedAt: row?.enabled ? (row.publishedAt?.toISOString() ?? null) : null,
+    publishedText: row?.enabled && !departmentHeadView ? (row.publishedText ?? null) : null,
+    publishedAt: publicationVisible ? (row?.publishedAt?.toISOString() ?? null) : null,
     draftDocument: draftDocument ? { id: draftDocument.id, fileName: draftDocument.fileName, contentType: draftDocument.contentType, size: draftDocument.size } : null,
     publishedDocument: publishedDocument ? { id: publishedDocument.id, fileName: publishedDocument.fileName, contentType: publishedDocument.contentType, size: publishedDocument.size } : null,
     generationStatus: manage ? (row?.generationStatus ?? "idle") : "idle",
@@ -92,9 +107,26 @@ export async function workspace(eventId: number, manage: boolean) {
     mediaProcessingAvailable: status?.mediaProcessingAvailable ?? false,
     pdfProcessingAvailable: status?.pdfProcessingAvailable ?? false,
     sources: manage ? (await db.select().from(meetingMinutesSourcesTable).where(eq(meetingMinutesSourcesTable.eventId, eventId)).orderBy(asc(meetingMinutesSourcesTable.id))).map(sourceDto) : [],
+    sharedDocuments: visibleSharedDocuments,
     messages: manage ? (await db.select().from(meetingMinutesMessagesTable).where(eq(meetingMinutesMessagesTable.eventId, eventId)).orderBy(desc(meetingMinutesMessagesTable.id)).limit(50)).reverse().map(m => ({
       id: m.id, role: m.role, content: m.content, createdAt: m.createdAt.toISOString(),
     })) : [],
+  };
+}
+export function sharedDocumentDto(
+  document: typeof meetingMinutesSharedDocumentsTable.$inferSelect,
+  includeRemovedAt: boolean,
+) {
+  return {
+    id: document.id,
+    kind: document.kind,
+    title: document.title,
+    url: document.kind === "link" ? document.url : null,
+    fileName: document.fileName,
+    contentType: document.contentType,
+    size: document.size,
+    createdAt: document.createdAt.toISOString(),
+    removedAt: includeRemovedAt ? document.removedAt?.toISOString() ?? null : null,
   };
 }
 export function sourceDto(s: typeof meetingMinutesSourcesTable.$inferSelect) {

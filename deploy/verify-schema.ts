@@ -55,6 +55,7 @@ const additiveTables = [
   "ai_knowledge_entries",
   "meeting_minutes",
   "meeting_minutes_sources",
+  "meeting_minutes_shared_documents",
   "meeting_minutes_messages",
   "meeting_ai_settings",
   "coordinator_mail_settings",

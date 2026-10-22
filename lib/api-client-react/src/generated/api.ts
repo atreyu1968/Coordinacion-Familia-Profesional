@@ -206,6 +206,7 @@ import type {
   MinutesGenerateInput,
   MinutesPublishInput,
   MinutesSaveInput,
+  MinutesSharedDocumentInput,
   MinutesSource,
   MinutesSourceInput,
   MobileAppAccess,
@@ -223,6 +224,7 @@ import type {
   OpenConfirmationResult,
   PinForumThreadInput,
   Province,
+  PublishedMinutes,
   ReactToMessageInput,
   RegisterInput,
   RegisterPushTokenInput,
@@ -12406,6 +12408,357 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSaveEventMinutesMutationOptions(options), queryClient);
     }
+
+export const getListPublishedMinutesUrl = () => {
+
+
+
+
+  return `/api/minutes/published`
+}
+
+export const listPublishedMinutes = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublishedMinutes[]> => {
+
+  return customFetch<PublishedMinutes[]>(getListPublishedMinutesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPublishedMinutesQueryKey = () => {
+    return [
+    `/api/minutes/published`
+    ] as const;
+    }
+
+
+export const getListPublishedMinutesQueryOptions = <TData = Awaited<ReturnType<typeof listPublishedMinutes>>, TError = ErrorType<AttendanceErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPublishedMinutesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPublishedMinutes>>> = ({ signal }) => listPublishedMinutes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPublishedMinutesQueryResult = NonNullable<Awaited<ReturnType<typeof listPublishedMinutes>>>
+export type ListPublishedMinutesQueryError = ErrorType<AttendanceErrorResponse>
+
+
+export function useListPublishedMinutes<TData = Awaited<ReturnType<typeof listPublishedMinutes>>, TError = ErrorType<AttendanceErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPublishedMinutes>>,
+          TError,
+          Awaited<ReturnType<typeof listPublishedMinutes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPublishedMinutes<TData = Awaited<ReturnType<typeof listPublishedMinutes>>, TError = ErrorType<AttendanceErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPublishedMinutes>>,
+          TError,
+          Awaited<ReturnType<typeof listPublishedMinutes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPublishedMinutes<TData = Awaited<ReturnType<typeof listPublishedMinutes>>, TError = ErrorType<AttendanceErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListPublishedMinutes<TData = Awaited<ReturnType<typeof listPublishedMinutes>>, TError = ErrorType<AttendanceErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublishedMinutes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPublishedMinutesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddEventMinutesSharedDocumentUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/minutes/shared-documents`
+}
+
+export const addEventMinutesSharedDocument = async (id: number,
+    minutesSharedDocumentInput: MinutesSharedDocumentInput, options?: Parameters<typeof customFetch>[1]): Promise<EventMinutes> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EventMinutes>(getAddEventMinutesSharedDocumentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(minutesSharedDocumentInput)
+  }
+);}
+
+
+
+
+
+export const getAddEventMinutesSharedDocumentMutationKey = () => ['addEventMinutesSharedDocument'] as const;
+
+export const getAddEventMinutesSharedDocumentMutationOptions = <TError = ErrorType<AttendanceErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEventMinutesSharedDocument>>, TError,AddEventMinutesSharedDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addEventMinutesSharedDocument>>, TError,AddEventMinutesSharedDocumentMutationVariables, TContext> => {
+
+const mutationKey = getAddEventMinutesSharedDocumentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addEventMinutesSharedDocument>>, AddEventMinutesSharedDocumentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addEventMinutesSharedDocument(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddEventMinutesSharedDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof addEventMinutesSharedDocument>>>
+    export type AddEventMinutesSharedDocumentMutationBody = BodyType<MinutesSharedDocumentInput>
+    export type AddEventMinutesSharedDocumentMutationError = ErrorType<AttendanceErrorResponse>
+    export type AddEventMinutesSharedDocumentMutationVariables = {id: number;data: BodyType<MinutesSharedDocumentInput>}
+
+    export const useAddEventMinutesSharedDocument = <TError = ErrorType<AttendanceErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEventMinutesSharedDocument>>, TError,AddEventMinutesSharedDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addEventMinutesSharedDocument>>,
+        TError,
+        AddEventMinutesSharedDocumentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddEventMinutesSharedDocumentMutationOptions(options), queryClient);
+    }
+
+export const getDeleteEventMinutesSharedDocumentUrl = (id: number,
+    documentId: number,) => {
+
+
+
+
+  return `/api/events/${id}/minutes/shared-documents/${documentId}`
+}
+
+export const deleteEventMinutesSharedDocument = async (id: number,
+    documentId: number, options?: Parameters<typeof customFetch>[1]): Promise<EventMinutes> => {
+
+  return customFetch<EventMinutes>(getDeleteEventMinutesSharedDocumentUrl(id,documentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteEventMinutesSharedDocumentMutationKey = () => ['deleteEventMinutesSharedDocument'] as const;
+
+export const getDeleteEventMinutesSharedDocumentMutationOptions = <TError = ErrorType<AttendanceErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>, TError,DeleteEventMinutesSharedDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>, TError,DeleteEventMinutesSharedDocumentMutationVariables, TContext> => {
+
+const mutationKey = getDeleteEventMinutesSharedDocumentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>, DeleteEventMinutesSharedDocumentMutationVariables> = (props) => {
+          const {id,documentId} = props ?? {};
+
+          return  deleteEventMinutesSharedDocument(id,documentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEventMinutesSharedDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>>
+
+    export type DeleteEventMinutesSharedDocumentMutationError = ErrorType<AttendanceErrorResponse>
+    export type DeleteEventMinutesSharedDocumentMutationVariables = {id: number;documentId: number}
+
+    export const useDeleteEventMinutesSharedDocument = <TError = ErrorType<AttendanceErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>, TError,DeleteEventMinutesSharedDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEventMinutesSharedDocument>>,
+        TError,
+        DeleteEventMinutesSharedDocumentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteEventMinutesSharedDocumentMutationOptions(options), queryClient);
+    }
+
+export const getDownloadEventMinutesSharedDocumentUrl = (id: number,
+    documentId: number,) => {
+
+
+
+
+  return `/api/events/${id}/minutes/shared-documents/${documentId}/download`
+}
+
+export const downloadEventMinutesSharedDocument = async (id: number,
+    documentId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadEventMinutesSharedDocumentUrl(id,documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadEventMinutesSharedDocumentQueryKey = (id: number,
+    documentId: number,) => {
+    return [
+    `/api/events/${id}/minutes/shared-documents/${documentId}/download`
+    ] as const;
+    }
+
+
+export const getDownloadEventMinutesSharedDocumentQueryOptions = <TData = Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError = ErrorType<AttendanceErrorResponse>>(id: number,
+    documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadEventMinutesSharedDocumentQueryKey(id,documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>> = ({ signal }) => downloadEventMinutesSharedDocument(id,documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && documentId !== null && documentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type DownloadEventMinutesSharedDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>>
+export type DownloadEventMinutesSharedDocumentQueryError = ErrorType<AttendanceErrorResponse>
+
+
+export function useDownloadEventMinutesSharedDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    documentId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>,
+          TError,
+          Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDownloadEventMinutesSharedDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>,
+          TError,
+          Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDownloadEventMinutesSharedDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useDownloadEventMinutesSharedDocument<TData = Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError = ErrorType<AttendanceErrorResponse>>(
+ id: number,
+    documentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadEventMinutesSharedDocument>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getDownloadEventMinutesSharedDocumentQueryOptions(id,documentId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getAddEventMinutesSourceUrl = (id: number,) => {
 

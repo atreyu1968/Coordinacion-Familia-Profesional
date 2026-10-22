@@ -1,13 +1,24 @@
 import { Router, type Request, type Response } from "express";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { and, eq, sql } from "drizzle-orm";
-import { db, meetingMinutesTable, meetingMinutesSourcesTable, meetingMinutesMessagesTable, meetingAiSettingsTable } from "@workspace/db";
-import { SaveEventMinutesBody, AddEventMinutesSourceBody, GenerateEventMinutesBody, PublishEventMinutesBody, UpdateMeetingAiSettingsBody } from "@workspace/api-zod";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { db, eventsTable, meetingMinutesTable, meetingMinutesSourcesTable, meetingMinutesSharedDocumentsTable, meetingMinutesMessagesTable, meetingAiSettingsTable } from "@workspace/db";
+import {
+  AddEventMinutesSharedDocumentBody,
+  AddEventMinutesSharedDocumentResponse,
+  DeleteEventMinutesSharedDocumentResponse,
+  GetEventMinutesResponse,
+  ListPublishedMinutesResponse,
+  SaveEventMinutesBody,
+  AddEventMinutesSourceBody,
+  GenerateEventMinutesBody,
+  PublishEventMinutesBody,
+  UpdateMeetingAiSettingsBody,
+} from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { loadAccessibleEvent } from "./events";
 import { AttendanceError } from "../lib/eventCertificates";
-import { aiStatus, canManageMinutes, workspace, lockMinutes, ownedSource, storage, sourceDto, allowedExtensions, multimediaExtension } from "../lib/meetingMinutes";
+import { aiStatus, canManageMinutes, workspace, lockMinutes, ownedSource, storage, sourceDto, sharedDocumentDto, allowedExtensions, multimediaExtension } from "../lib/meetingMinutes";
 
 const router = Router();
 type Handler = (req: Request, res: Response) => Promise<unknown>;
@@ -28,29 +39,57 @@ async function eventFor(req: Request, write = false) {
   if (write && !manage) throw new AttendanceError(403, "Solo la coordinación con permiso sobre esta reunión puede gestionar el acta.");
   return { event, manage };
 }
+async function publishedReaderEventFor(req: Request) {
+  if (req.user!.role !== "department_head") return { ...(await eventFor(req)), departmentHeadView: false };
+  const [event] = await db.select().from(eventsTable).where(and(
+    eq(eventsTable.id, id(req.params.id)),
+    isNull(eventsTable.deletedAt),
+  )).limit(1);
+  if (!event) throw new AttendanceError(404, "Evento no encontrado.");
+  if (event.type !== "coordination_meeting") throw new AttendanceError(400, "Las actas están disponibles en reuniones de coordinación.");
+  return { event, manage: false, departmentHeadView: true };
+}
+async function publishedFinalDocument(eventId: number, publishedAt: Date | null | undefined) {
+  if (!publishedAt) return undefined;
+  const documents = await db.select().from(meetingMinutesSourcesTable).where(and(
+    eq(meetingMinutesSourcesTable.eventId, eventId),
+    eq(meetingMinutesSourcesTable.purpose, "final_document"),
+  )).orderBy(desc(meetingMinutesSourcesTable.createdAt), desc(meetingMinutesSourcesTable.id));
+  return documents.find((document) => document.createdAt <= publishedAt);
+}
+function isVisibleInPublication(document: {
+  createdAt: Date;
+  removedAt: Date | null;
+}, publishedAt: Date) {
+  return document.createdAt <= publishedAt && (!document.removedAt || document.removedAt > publishedAt);
+}
 function parsed<T>(schema: { safeParse: (v: unknown) => { success: boolean; data?: T } }, body: unknown): T {
   const p = schema.safeParse(body); if (!p.success) throw new AttendanceError(400, "Revisa los datos, la revisión y la autorización de tratamiento."); return p.data!;
 }
 router.get("/events/:id/minutes", requireAuth, wrap(async (req, res) => {
-  const { event, manage } = await eventFor(req); res.json(await workspace(event.id, manage));
+  const { event, manage, departmentHeadView } = await publishedReaderEventFor(req);
+  res.json(GetEventMinutesResponse.parse(await workspace(event.id, manage, departmentHeadView)));
 }));
 router.get("/events/:id/minutes/documents/:version", requireAuth, wrap(async (req, res) => {
   const version = req.params.version;
   if (version !== "draft" && version !== "published") throw new AttendanceError(400, "Versión de documento no válida.");
-  const { event, manage } = await eventFor(req, version === "draft");
+  const { event, manage, departmentHeadView } = version === "published"
+    ? await publishedReaderEventFor(req)
+    : { ...(await eventFor(req, true)), departmentHeadView: false };
   const [minutes] = await db.select().from(meetingMinutesTable).where(eq(meetingMinutesTable.eventId, event.id)).limit(1);
   if (!minutes?.enabled) throw new AttendanceError(404, "No hay documento disponible.");
   if (version === "draft" && !manage) throw new AttendanceError(403, "El borrador es privado.");
-  if (version === "published" && !minutes.publishedText) throw new AttendanceError(404, "No hay acta publicada.");
-  const finalDocuments = await db.select().from(meetingMinutesSourcesTable).where(and(
-    eq(meetingMinutesSourcesTable.eventId, event.id),
-    eq(meetingMinutesSourcesTable.purpose, "final_document"),
-  )).orderBy(sql`${meetingMinutesSourcesTable.createdAt} DESC`, sql`${meetingMinutesSourcesTable.id} DESC`);
+  if (version === "published" && (!minutes.publishedText || !minutes.publishedAt)) throw new AttendanceError(404, "No hay acta publicada.");
+  const finalDocuments = version === "draft"
+    ? await db.select().from(meetingMinutesSourcesTable).where(and(
+      eq(meetingMinutesSourcesTable.eventId, event.id),
+      eq(meetingMinutesSourcesTable.purpose, "final_document"),
+    )).orderBy(sql`${meetingMinutesSourcesTable.createdAt} DESC`, sql`${meetingMinutesSourcesTable.id} DESC`)
+    : [];
   const source = version === "draft"
     ? finalDocuments[0]
-    : minutes.publishedAt
-      ? finalDocuments.find((document) => document.createdAt <= minutes.publishedAt!)
-      : undefined;
+    : await publishedFinalDocument(event.id, minutes.publishedAt);
+  if (version === "published" && departmentHeadView && !source) throw new AttendanceError(404, "No hay acta oficial subida y publicada.");
   if (!source) throw new AttendanceError(404, "No se encontró el documento adjunto.");
   const stored = await storage.getObjectEntityFile(source.objectPath);
   const fileResponse = await storage.downloadObject(stored, 0);
@@ -62,6 +101,156 @@ router.get("/events/:id/minutes/documents/:version", requireAuth, wrap(async (re
   if (fileResponse.body) {
     await pipeline(Readable.fromWeb(fileResponse.body as ReadableStream<Uint8Array>), res);
   } else res.end();
+}));
+router.get("/minutes/published", requireAuth, wrap(async (req, res) => {
+  if (req.user!.role !== "department_head") throw new AttendanceError(403, "Esta lista está disponible para jefaturas de departamento.");
+  const candidates = await db.select({
+    eventId: eventsTable.id,
+    eventName: eventsTable.name,
+    eventStartAt: eventsTable.startAt,
+    eventLocation: eventsTable.location,
+    publishedText: meetingMinutesTable.publishedText,
+    publishedAt: meetingMinutesTable.publishedAt,
+  }).from(eventsTable).innerJoin(meetingMinutesTable, eq(meetingMinutesTable.eventId, eventsTable.id))
+    .where(and(
+      eq(eventsTable.type, "coordination_meeting"),
+      isNull(eventsTable.deletedAt),
+      eq(meetingMinutesTable.enabled, true),
+    )).orderBy(desc(meetingMinutesTable.publishedAt));
+  const published = [];
+  for (const candidate of candidates) {
+    if (!candidate.publishedText || !candidate.publishedAt) continue;
+    const actaDocument = await publishedFinalDocument(candidate.eventId, candidate.publishedAt);
+    if (!actaDocument) continue;
+    const documents = await db.select().from(meetingMinutesSharedDocumentsTable)
+      .where(eq(meetingMinutesSharedDocumentsTable.eventId, candidate.eventId))
+      .orderBy(meetingMinutesSharedDocumentsTable.createdAt);
+    published.push({
+      eventId: candidate.eventId,
+      eventName: candidate.eventName,
+      eventStartAt: candidate.eventStartAt?.toISOString() ?? null,
+      eventLocation: candidate.eventLocation,
+      publishedAt: candidate.publishedAt.toISOString(),
+      actaDocument: {
+        id: actaDocument.id,
+        fileName: actaDocument.fileName,
+        contentType: actaDocument.contentType,
+        size: actaDocument.size,
+      },
+      sharedDocuments: documents
+        .filter((document) => isVisibleInPublication(document, candidate.publishedAt!))
+        .map((document) => sharedDocumentDto(document, false)),
+    });
+  }
+  res.json(ListPublishedMinutesResponse.parse(published));
+}));
+router.post("/events/:id/minutes/shared-documents", requireAuth, wrap(async (req, res) => {
+  const { event } = await eventFor(req, true);
+  const data = parsed(AddEventMinutesSharedDocumentBody, req.body);
+  if (!data.title.trim()) throw new AttendanceError(400, "Escribe un título para el documento compartido.");
+  let fileValues: {
+    objectPath: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+  } | undefined;
+  let linkUrl: string | undefined;
+  if (data.kind === "link") {
+    if (!data.url || data.objectPath || data.fileName || data.contentType || data.size != null) {
+      throw new AttendanceError(400, "Para compartir un enlace, indica solo un enlace HTTPS y su título.");
+    }
+    let parsedUrl: URL;
+    try { parsedUrl = new URL(data.url); } catch { throw new AttendanceError(400, "El enlace no es válido."); }
+    if (parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password) {
+      throw new AttendanceError(400, "El enlace debe usar HTTPS y no puede incluir credenciales.");
+    }
+    linkUrl = parsedUrl.toString();
+  } else {
+    if (!data.objectPath || !data.fileName || !data.contentType || data.size == null ||
+      data.url || /[/\\\x00-\x1f]/.test(data.fileName)) {
+      throw new AttendanceError(400, "Para compartir un archivo, falta su archivo o metadato.");
+    }
+    const extension = data.fileName.split(".").pop()?.toLowerCase() ?? "";
+    if (!allowedExtensions.has(extension)) throw new AttendanceError(400, "Formato de archivo no admitido.");
+    await ownedSource(data.objectPath, req.user!.id, data.size);
+    fileValues = {
+      objectPath: data.objectPath,
+      fileName: data.fileName,
+      contentType: data.contentType,
+      size: data.size,
+    };
+  }
+  await db.transaction(async (tx) => {
+    const row = await lockMinutes(tx, event.id);
+    if (!row.enabled) throw new AttendanceError(409, "Activa primero el acta para compartir documentos.");
+    const activeDocs = await tx.select({ id: meetingMinutesSharedDocumentsTable.id })
+      .from(meetingMinutesSharedDocumentsTable)
+      .where(and(
+        eq(meetingMinutesSharedDocumentsTable.eventId, event.id),
+        isNull(meetingMinutesSharedDocumentsTable.removedAt),
+      ));
+    if (activeDocs.length >= 30) throw new AttendanceError(400, "Se admiten hasta 30 documentos compartidos por reunión.");
+    if (fileValues) {
+      await storage.trySetObjectEntityAclPolicy(fileValues.objectPath, { owner: `meeting-minutes:${event.id}`, visibility: "private" });
+    }
+    await tx.insert(meetingMinutesSharedDocumentsTable).values({
+      eventId: event.id,
+      kind: data.kind,
+      title: data.title.trim(),
+      ...(fileValues ?? {}),
+      ...(linkUrl ? { url: linkUrl } : {}),
+      createdBy: req.user!.id,
+    });
+    await tx.update(meetingMinutesTable).set({ revision: row.revision + 1, updatedAt: new Date() })
+      .where(eq(meetingMinutesTable.eventId, event.id));
+  });
+  res.status(201).json(AddEventMinutesSharedDocumentResponse.parse(await workspace(event.id, true)));
+}));
+router.delete("/events/:id/minutes/shared-documents/:documentId", requireAuth, wrap(async (req, res) => {
+  const { event } = await eventFor(req, true);
+  await db.transaction(async (tx) => {
+    const row = await lockMinutes(tx, event.id);
+    const [document] = await tx.select().from(meetingMinutesSharedDocumentsTable).where(and(
+      eq(meetingMinutesSharedDocumentsTable.id, id(req.params.documentId)),
+      eq(meetingMinutesSharedDocumentsTable.eventId, event.id),
+    )).for("update");
+    if (!document || document.removedAt) throw new AttendanceError(404, "El documento compartido no existe o ya se retiró.");
+    await tx.update(meetingMinutesSharedDocumentsTable).set({ removedAt: new Date() })
+      .where(eq(meetingMinutesSharedDocumentsTable.id, document.id));
+    await tx.update(meetingMinutesTable).set({ revision: row.revision + 1, updatedAt: new Date() })
+      .where(eq(meetingMinutesTable.eventId, event.id));
+  });
+  res.json(DeleteEventMinutesSharedDocumentResponse.parse(await workspace(event.id, true)));
+}));
+router.get("/events/:id/minutes/shared-documents/:documentId/download", requireAuth, wrap(async (req, res) => {
+  const { event, manage, departmentHeadView } = await publishedReaderEventFor(req);
+  const [minutes] = await db.select().from(meetingMinutesTable)
+    .where(eq(meetingMinutesTable.eventId, event.id)).limit(1);
+  if (!manage) {
+    if (!minutes?.enabled || !minutes.publishedText || !minutes.publishedAt) {
+      throw new AttendanceError(404, "No hay documentos publicados junto al acta.");
+    }
+    if (departmentHeadView && !(await publishedFinalDocument(event.id, minutes.publishedAt))) {
+      throw new AttendanceError(404, "No hay acta oficial subida y publicada.");
+    }
+  }
+  const [document] = await db.select().from(meetingMinutesSharedDocumentsTable).where(and(
+    eq(meetingMinutesSharedDocumentsTable.id, id(req.params.documentId)),
+    eq(meetingMinutesSharedDocumentsTable.eventId, event.id),
+  )).limit(1);
+  if (!document || document.kind !== "file") throw new AttendanceError(404, "No se encontró el archivo compartido.");
+  if (!manage && !isVisibleInPublication(document, minutes!.publishedAt!)) {
+    throw new AttendanceError(404, "El archivo no forma parte de la publicación vigente.");
+  }
+  const stored = await storage.getObjectEntityFile(document.objectPath!);
+  const fileResponse = await storage.downloadObject(stored, 0);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(document.fileName!)}`);
+  res.status(200);
+  if (fileResponse.body) await pipeline(Readable.fromWeb(fileResponse.body as ReadableStream<Uint8Array>), res);
+  else res.end();
 }));
 router.put("/events/:id/minutes", requireAuth, wrap(async (req, res) => {
   const { event } = await eventFor(req, true);

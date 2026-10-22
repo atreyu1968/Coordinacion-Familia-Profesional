@@ -3243,6 +3243,17 @@ export const GetEventMinutesResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
 }))
 })
 
@@ -3306,8 +3317,203 @@ export const SaveEventMinutesResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
 }))
 })
+
+
+export const ListPublishedMinutesResponseItem = zod.object({
+  "eventId": zod.number().int(),
+  "eventName": zod.string(),
+  "eventStartAt": zod.coerce.date().nullable(),
+  "eventLocation": zod.string().nullable(),
+  "publishedAt": zod.coerce.date(),
+  "actaDocument": zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
+}))
+})
+export const ListPublishedMinutesResponse = zod.array(ListPublishedMinutesResponseItem)
+
+
+export const AddEventMinutesSharedDocumentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const addEventMinutesSharedDocumentBodyTitleMax = 200;
+
+export const addEventMinutesSharedDocumentBodyObjectPathMax = 300;
+
+export const addEventMinutesSharedDocumentBodyFileNameMax = 200;
+
+export const addEventMinutesSharedDocumentBodyContentTypeMax = 150;
+
+export const addEventMinutesSharedDocumentBodySizeMax = 104857600;
+
+export const addEventMinutesSharedDocumentBodyUrlMax = 2048;
+
+
+
+export const AddEventMinutesSharedDocumentBody = zod.object({
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string().min(1).max(addEventMinutesSharedDocumentBodyTitleMax),
+  "objectPath": zod.string().max(addEventMinutesSharedDocumentBodyObjectPathMax).optional(),
+  "fileName": zod.string().min(1).max(addEventMinutesSharedDocumentBodyFileNameMax).optional(),
+  "contentType": zod.string().max(addEventMinutesSharedDocumentBodyContentTypeMax).optional(),
+  "size": zod.number().int().min(1).max(addEventMinutesSharedDocumentBodySizeMax).optional(),
+  "url": zod.string().url().max(addEventMinutesSharedDocumentBodyUrlMax).optional()
+})
+
+export const AddEventMinutesSharedDocumentResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
+}))
+})
+
+
+export const DeleteEventMinutesSharedDocumentParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "documentId": zod.coerce.number().int()
+})
+
+export const DeleteEventMinutesSharedDocumentResponse = zod.object({
+  "eventId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "canManage": zod.boolean(),
+  "revision": zod.number().int(),
+  "draftText": zod.string().nullable(),
+  "publishedText": zod.string().nullable(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "draftDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "publishedDocument": zod.union([zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int()
+}),zod.null()]),
+  "generationStatus": zod.enum(['idle', 'queued', 'processing', 'error']),
+  "generationError": zod.string().nullable(),
+  "writingConfigured": zod.boolean(),
+  "multimediaConfigured": zod.boolean(),
+  "processingAvailable": zod.boolean(),
+  "mediaProcessingAvailable": zod.boolean(),
+  "pdfProcessingAvailable": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "purpose": zod.enum(['evidence', 'instruction', 'final_document']),
+  "status": zod.enum(['queued', 'processing', 'ready', 'error']),
+  "extractedText": zod.string(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
+}))
+})
+
+
+export const DownloadEventMinutesSharedDocumentParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "documentId": zod.coerce.number().int()
+})
+
+export const DownloadEventMinutesSharedDocumentResponse = zod.unknown()
 
 
 export const AddEventMinutesSourceParams = zod.object({
@@ -3433,6 +3639,17 @@ export const GenerateEventMinutesResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
 }))
 })
 
@@ -3494,6 +3711,17 @@ export const PublishEventMinutesResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "sharedDocuments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['file', 'link']),
+  "title": zod.string(),
+  "url": zod.string().nullable(),
+  "fileName": zod.string().nullable(),
+  "contentType": zod.string().nullable(),
+  "size": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "removedAt": zod.coerce.date().nullable()
 }))
 })
 
