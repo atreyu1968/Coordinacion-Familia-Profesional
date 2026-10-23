@@ -42,6 +42,7 @@ import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { teachingCenterId } from "../lib/teachingProfileAccess";
 import { logger } from "../lib/logger";
+import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
 
 const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
@@ -447,6 +448,10 @@ router.patch(
       if (!updatedUser) return { kind: "user" as const };
 
       const touchedModuleIds = new Set<number>();
+      let previousAssignments: (typeof teachingAssignmentsTable.$inferSelect)[] = [];
+      let previousConfirmation:
+        | typeof teacherYearConfirmationsTable.$inferSelect
+        | undefined;
       if (activeYear) {
         const assignments = await tx
           .select()
@@ -458,6 +463,7 @@ router.patch(
             ),
           )
           .for("update");
+        previousAssignments = assignments;
         const selectedModules = new Set(moduleIds);
         const activeAssignments = assignments.filter(
           (assignment) => assignment.deletedAt == null,
@@ -526,6 +532,7 @@ router.patch(
           )
           .for("update");
         if (confirmation) {
+          previousConfirmation = confirmation;
           await tx
             .update(teacherYearConfirmationsTable)
             .set({
@@ -555,6 +562,10 @@ router.patch(
         moduleIds: activeYear ? moduleIds : [],
         doesNotTeach: activeYear ? doesNotTeach : false,
         touchedModuleIds: [...touchedModuleIds],
+          previousAssignments,
+          previousConfirmation,
+          previousCenterId: lockedUser.centerId,
+          previousProvinceId: lockedUser.provinceId,
       };
     });
 
@@ -581,7 +592,103 @@ router.patch(
       return;
     }
 
-    for (const moduleId of new Set([...result.touchedModuleIds, ...result.moduleIds])) {
+    const syncedModuleIds = [
+      ...new Set([...result.touchedModuleIds, ...result.moduleIds]),
+    ];
+    try {
+      for (const moduleId of syncedModuleIds) {
+        await syncModuleNextcloudMembership(moduleId);
+      }
+    } catch (err) {
+      await db.transaction(async (tx) => {
+        if (activeYear) {
+          const previousIds = new Set(result.previousAssignments.map((row) => row.id));
+          const current = await tx
+            .select({ id: teachingAssignmentsTable.id })
+            .from(teachingAssignmentsTable)
+            .where(
+              and(
+                eq(teachingAssignmentsTable.teacherId, caller.id),
+                eq(teachingAssignmentsTable.schoolYear, activeYear),
+              ),
+            );
+          const insertedIds = current
+            .map((row) => row.id)
+            .filter((id) => !previousIds.has(id));
+          if (insertedIds.length > 0) {
+            await tx
+              .delete(teachingAssignmentsTable)
+              .where(inArray(teachingAssignmentsTable.id, insertedIds));
+          }
+          for (const assignment of result.previousAssignments) {
+            await tx
+              .update(teachingAssignmentsTable)
+              .set({
+                teacherId: assignment.teacherId,
+                moduleId: assignment.moduleId,
+                groupId: assignment.groupId,
+                centerId: assignment.centerId,
+                schoolYear: assignment.schoolYear,
+                deletedAt: assignment.deletedAt,
+              })
+              .where(eq(teachingAssignmentsTable.id, assignment.id));
+          }
+          const [confirmation] = await tx
+            .select()
+            .from(teacherYearConfirmationsTable)
+            .where(
+              and(
+                eq(teacherYearConfirmationsTable.teacherId, caller.id),
+                eq(teacherYearConfirmationsTable.schoolYear, activeYear),
+              ),
+            );
+          if (result.previousConfirmation) {
+            await tx
+              .update(teacherYearConfirmationsTable)
+              .set({
+                status: result.previousConfirmation.status,
+                centerId: result.previousConfirmation.centerId,
+                doesNotTeach: result.previousConfirmation.doesNotTeach,
+                deadline: result.previousConfirmation.deadline,
+                confirmedAt: result.previousConfirmation.confirmedAt,
+              })
+              .where(eq(teacherYearConfirmationsTable.id, result.previousConfirmation.id));
+          } else if (confirmation) {
+            await tx
+              .delete(teacherYearConfirmationsTable)
+              .where(eq(teacherYearConfirmationsTable.id, confirmation.id));
+          }
+        }
+        await tx
+          .update(usersTable)
+          .set({
+            centerId: result.previousCenterId,
+            provinceId: result.previousProvinceId,
+          })
+          .where(eq(usersTable.id, caller.id));
+      });
+      for (const moduleId of syncedModuleIds) {
+        try {
+          await syncModuleNextcloudMembership(moduleId);
+        } catch (restoreErr) {
+          logger.error(
+            { err: restoreErr, moduleId },
+            "syncModuleNextcloudMembership (profile rollback) failed",
+          );
+        }
+      }
+      logger.error(
+        { err, moduleIds: syncedModuleIds },
+        "syncModuleNextcloudMembership (teacher profile) failed",
+      );
+      res.status(502).json({
+        message:
+          "No se pudo confirmar la actualización de permisos en Nextcloud; se restauró el perfil anterior",
+      });
+      return;
+    }
+
+    for (const moduleId of syncedModuleIds) {
       try {
         await syncModuleChatGroup(moduleId);
       } catch (err) {

@@ -89,6 +89,7 @@ import {
   toResource,
 } from "../lib/mappers";
 import { syncModuleChatGroup } from "@workspace/db";
+import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
 import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import { cycleFamilyFilter, moduleFamilyFilter } from "../lib/familyCatalog";
 
@@ -1757,6 +1758,28 @@ router.post(
       })
       .returning();
 
+    try {
+      await syncModuleNextcloudMembership(parsed.data.moduleId);
+    } catch (err) {
+      await db
+        .delete(teachingAssignmentsTable)
+        .where(eq(teachingAssignmentsTable.id, created!.id));
+      try {
+        await syncModuleNextcloudMembership(parsed.data.moduleId);
+      } catch (restoreErr) {
+        console.error(
+          "syncModuleNextcloudMembership (create rollback) failed",
+          restoreErr,
+        );
+      }
+      console.error("syncModuleNextcloudMembership (create) failed", err);
+      res.status(502).json({
+        message:
+          "No se pudo confirmar la actualización de permisos en Nextcloud; la asignación no se guardó",
+      });
+      return;
+    }
+
     // Keep the module's group chat membership in sync with its teachers.
     // Best-effort: a sync failure must not break the assignment itself.
     try {
@@ -1854,7 +1877,11 @@ router.post(
 
     // Capture the modules whose membership will shift, before the update.
     const affected = await db
-      .selectDistinct({ moduleId: teachingAssignmentsTable.moduleId })
+      .select({
+        id: teachingAssignmentsTable.id,
+        teacherId: teachingAssignmentsTable.teacherId,
+        moduleId: teachingAssignmentsTable.moduleId,
+      })
       .from(teachingAssignmentsTable)
       .where(and(...conditions));
 
@@ -1863,8 +1890,43 @@ router.post(
       .set({ teacherId: toTeacherId })
       .where(and(...conditions));
 
+    const affectedModuleIds = [...new Set(affected.map((row) => row.moduleId))];
+    try {
+      for (const moduleId of affectedModuleIds) {
+        await syncModuleNextcloudMembership(moduleId);
+      }
+    } catch (err) {
+      for (const row of affected) {
+        await db
+          .update(teachingAssignmentsTable)
+          .set({ teacherId: row.teacherId })
+          .where(
+            and(
+              eq(teachingAssignmentsTable.id, row.id),
+              eq(teachingAssignmentsTable.teacherId, toTeacherId),
+            ),
+          );
+      }
+      for (const moduleId of affectedModuleIds) {
+        try {
+          await syncModuleNextcloudMembership(moduleId);
+        } catch (restoreErr) {
+          console.error(
+            "syncModuleNextcloudMembership (transfer rollback) failed",
+            restoreErr,
+          );
+        }
+      }
+      console.error("syncModuleNextcloudMembership (transfer) failed", err);
+      res.status(502).json({
+        message:
+          "No se pudo confirmar la actualización de permisos en Nextcloud; no se transfirieron las asignaciones",
+      });
+      return;
+    }
+
     // Best-effort resync of every affected module's group chat.
-    for (const { moduleId } of affected) {
+    for (const moduleId of affectedModuleIds) {
       try {
         await syncModuleChatGroup(moduleId);
       } catch (err) {

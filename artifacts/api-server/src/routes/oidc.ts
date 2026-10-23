@@ -25,7 +25,7 @@ import {
   type OidcClaims,
 } from "../lib/oidc";
 import type { IntegrationSettings } from "@workspace/db";
-import { getSettings } from "../lib/settings";
+import { getActiveAcademicYear, getSettings } from "../lib/settings";
 import {
   resolveNextcloudOidcClient,
   resolveNextcloudUrl,
@@ -221,6 +221,7 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
         .where(eq(centersTable.id, mod.centerId));
       moduleProvinceId = center?.provinceId ?? null;
     }
+    const activeYear = await getActiveAcademicYear();
     const [assignment] = await db
       .select({ id: teachingAssignmentsTable.id })
       .from(teachingAssignmentsTable)
@@ -228,6 +229,9 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
         eq(teachingAssignmentsTable.moduleId, mod.id),
         eq(teachingAssignmentsTable.teacherId, user.id),
         isNull(teachingAssignmentsTable.deletedAt),
+        ...(activeYear
+          ? [eq(teachingAssignmentsTable.schoolYear, activeYear)]
+          : []),
       ));
     const allowed = decideModuleAccess({
       role: user.role,

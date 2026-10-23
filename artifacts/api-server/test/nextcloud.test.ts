@@ -332,6 +332,9 @@ describe("OCS provisioning (statuscode handling)", () => {
             ocsResponse(100, { "1": { id: 5, mount_point: "M1" } }),
           );
         }
+        if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
+          return Promise.resolve(ocsResponse(100, { users: [] }));
+        }
         // User creation -> already exists.
         if (method === "POST" && url.endsWith("/ocs/v2.php/cloud/users")) {
           return Promise.resolve(ocsResponse(102));
@@ -371,6 +374,9 @@ describe("OCS provisioning (statuscode handling)", () => {
               },
             }),
           );
+        }
+        if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
+          return Promise.resolve(ocsResponse(100, { users: [] }));
         }
         // Adding the group to the folder fails with the duplicate 500 if called.
         if (method === "POST" && /\/folders\/5\/groups\?/.test(url)) {
@@ -427,6 +433,9 @@ describe("OCS provisioning (statuscode handling)", () => {
             ocsResponse(100, { "1": { id: 5, mount_point: "M1" } }),
           );
         }
+        if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
+          return Promise.resolve(ocsResponse(100, { users: [] }));
+        }
         if (method === "POST" && /\/folders\/5\/groups\?/.test(url)) {
           return Promise.resolve({
             ok: false,
@@ -453,6 +462,7 @@ describe("OCS provisioning (statuscode handling)", () => {
 
   it("revokes access for members no longer in the desired set (reconciliation)", async () => {
     const removed: Array<{ uid: string; groupId: string }> = [];
+    let groupMembers = ["coordina-7", "coordina-99"];
     vi.spyOn(globalThis, "fetch").mockImplementation(
       (input: string | URL | Request, init?: RequestInit) => {
         const url = String(input);
@@ -465,9 +475,7 @@ describe("OCS provisioning (statuscode handling)", () => {
         }
         // Current group members: the desired user (7) plus a stale user (99).
         if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
-          return Promise.resolve(
-            ocsResponse(100, { users: ["coordina-7", "coordina-99"] }),
-          );
+          return Promise.resolve(ocsResponse(100, { users: groupMembers }));
         }
         // Capture the removal of the stale member.
         if (method === "DELETE" && /\/cloud\/users\/[^/]+\/groups/.test(url)) {
@@ -477,6 +485,9 @@ describe("OCS provisioning (statuscode handling)", () => {
             uid: decodeURIComponent(m?.[1] || ""),
             groupId: params.get("groupid") || "",
           });
+          groupMembers = groupMembers.filter(
+            (uid) => uid !== decodeURIComponent(m?.[1] || ""),
+          );
           return Promise.resolve(ocsResponse(100));
         }
         return Promise.resolve(ocsResponse(100));
@@ -491,5 +502,66 @@ describe("OCS provisioning (statuscode handling)", () => {
 
     // The stale user (99) is removed; the desired user (7) is kept.
     expect(removed).toEqual([{ uid: "coordina-99", groupId: "coordina-mod-1" }]);
+    expect(groupMembers).toEqual(["coordina-7"]);
+  });
+
+  it("fails reconciliation when Nextcloud cannot confirm a stale-member revocation", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        if (method === "GET" && url.includes("/apps/groupfolders/folders")) {
+          return Promise.resolve(
+            ocsResponse(100, { "1": { id: 5, mount_point: "M1" } }),
+          );
+        }
+        if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
+          return Promise.resolve(
+            ocsResponse(100, { users: ["coordina-99"] }),
+          );
+        }
+        if (method === "DELETE" && /\/cloud\/users\/[^/]+\/groups/.test(url)) {
+          return Promise.resolve(ocsResponse(997));
+        }
+        return Promise.resolve(ocsResponse(100));
+      },
+    );
+
+    await expect(
+      provisionModuleSpace(config, {
+        moduleId: 1,
+        mount: "M1",
+        members: [],
+      }),
+    ).rejects.toThrow(/no pudo confirmar la sincronización/i);
+  });
+
+  it("does not treat a successful delete response as proof if the member remains", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method || "GET").toUpperCase();
+        if (method === "GET" && url.includes("/apps/groupfolders/folders")) {
+          return Promise.resolve(
+            ocsResponse(100, { "1": { id: 5, mount_point: "M1" } }),
+          );
+        }
+        if (method === "GET" && /\/cloud\/groups\/[^/]+\/users/.test(url)) {
+          // The mocked server acknowledges DELETE but continues reporting access.
+          return Promise.resolve(
+            ocsResponse(100, { users: ["coordina-99"] }),
+          );
+        }
+        return Promise.resolve(ocsResponse(100));
+      },
+    );
+
+    await expect(
+      provisionModuleSpace(config, {
+        moduleId: 1,
+        mount: "M1",
+        members: [],
+      }),
+    ).rejects.toThrow(/no confirmó la revocación/i);
   });
 });

@@ -1,18 +1,17 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq, isNull, inArray } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
   modulesTable,
   centersTable,
   teachingAssignmentsTable,
-  usersTable,
 } from "@workspace/db";
 import {
   GetCollabStatusResponse,
   OpenModuleSpaceResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { getSettings } from "../lib/settings";
+import { getActiveAcademicYear, getSettings } from "../lib/settings";
 import {
   isNextcloudConfigured,
   resolveNextcloudConfig,
@@ -20,8 +19,8 @@ import {
   decideModuleAccess,
   moduleFolderName,
   provisionModuleSpace,
-  type ProvisionMember,
 } from "../lib/nextcloud";
+import { getModuleNextcloudMembers } from "../lib/moduleNextcloudSync";
 import { createTicket } from "../lib/oidc";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
@@ -37,75 +36,6 @@ router.get("/collab/status", requireAuth, async (_req, res): Promise<void> => {
     }),
   );
 });
-
-/**
- * Compute the set of users who should be members of a module's collaborative
- * space: the teachers assigned to it, the department heads of its center, and
- * the coordinators of its province. The caller is always included.
- */
-async function computeMembers(
-  module: { id: number; centerId: number | null },
-  provinceId: number | null,
-  callerId: number,
-): Promise<ProvisionMember[]> {
-  const memberIds = new Set<number>([callerId]);
-
-  const assignments = await db
-    .select({ teacherId: teachingAssignmentsTable.teacherId })
-    .from(teachingAssignmentsTable)
-    .where(
-      and(
-        eq(teachingAssignmentsTable.moduleId, module.id),
-        isNull(teachingAssignmentsTable.deletedAt),
-      ),
-    );
-  for (const a of assignments) memberIds.add(a.teacherId);
-
-  if (module.centerId != null) {
-    const heads = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.role, "department_head"),
-          eq(usersTable.centerId, module.centerId),
-          eq(usersTable.status, "active"),
-          isNull(usersTable.deletedAt),
-        ),
-      );
-    for (const h of heads) memberIds.add(h.id);
-  }
-
-  if (provinceId != null) {
-    const coords = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.role, "coordinator"),
-          eq(usersTable.provinceId, provinceId),
-          eq(usersTable.status, "active"),
-          isNull(usersTable.deletedAt),
-        ),
-      );
-    for (const c of coords) memberIds.add(c.id);
-  }
-
-  const rows = await db
-    .select({
-      id: usersTable.id,
-      name: usersTable.name,
-      email: usersTable.email,
-    })
-    .from(usersTable)
-    .where(
-      and(
-        inArray(usersTable.id, [...memberIds]),
-        isNull(usersTable.deletedAt),
-      ),
-    );
-  return rows.map((r) => ({ userId: r.id, name: r.name, email: r.email }));
-}
 
 router.post(
   "/collab/modules/:moduleId/space",
@@ -145,6 +75,7 @@ router.post(
       moduleProvinceId = center?.provinceId ?? null;
     }
 
+    const activeYear = await getActiveAcademicYear();
     const [assignment] = await db
       .select({ id: teachingAssignmentsTable.id })
       .from(teachingAssignmentsTable)
@@ -153,6 +84,9 @@ router.post(
           eq(teachingAssignmentsTable.moduleId, moduleId),
           eq(teachingAssignmentsTable.teacherId, caller.id),
           isNull(teachingAssignmentsTable.deletedAt),
+          ...(activeYear
+            ? [eq(teachingAssignmentsTable.schoolYear, activeYear)]
+            : []),
         ),
       );
 
@@ -175,7 +109,9 @@ router.post(
       code: module.code,
     });
     try {
-      const members = await computeMembers(module, moduleProvinceId, caller.id);
+      const members = await getModuleNextcloudMembers(module, moduleProvinceId, {
+        includeUserId: caller.id,
+      });
       await provisionModuleSpace(config, {
         moduleId: module.id,
         mount,

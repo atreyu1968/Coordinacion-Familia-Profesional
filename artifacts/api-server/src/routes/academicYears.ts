@@ -53,6 +53,7 @@ import { sendEmail, buildYearConfirmationEmail } from "../lib/email";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
 
 const router: IRouter = Router();
 
@@ -201,6 +202,52 @@ router.put(
       res.status(404).json({ message: "Curso no encontrado" });
       return;
     }
+    const currentYear = await getActiveAcademicYear();
+    if (currentYear !== name) {
+      const yearNames = [currentYear, name].filter(
+        (value): value is string => Boolean(value),
+      );
+      if (yearNames.length > 0) {
+        const affected = await db
+          .selectDistinct({ moduleId: teachingAssignmentsTable.moduleId })
+          .from(teachingAssignmentsTable)
+          .where(
+            and(
+              isNull(teachingAssignmentsTable.deletedAt),
+              inArray(teachingAssignmentsTable.schoolYear, yearNames),
+            ),
+          );
+        try {
+          for (const { moduleId } of affected) {
+            await syncModuleNextcloudMembership(moduleId, {
+              schoolYear: name,
+            });
+          }
+        } catch (err) {
+          logger.error(
+            { err, fromYear: currentYear, toYear: name },
+            "Failed to sync Nextcloud before changing the active academic year",
+          );
+          for (const { moduleId } of affected) {
+            try {
+              await syncModuleNextcloudMembership(moduleId, {
+                schoolYear: currentYear,
+              });
+            } catch (restoreErr) {
+              logger.error(
+                { err: restoreErr, moduleId, schoolYear: currentYear },
+                "Failed to restore Nextcloud membership after active-year sync failure",
+              );
+            }
+          }
+          res.status(502).json({
+            message:
+              "No se pudo confirmar la actualización de permisos en Nextcloud; el curso activo no ha cambiado",
+          });
+          return;
+        }
+      }
+    }
     await setActiveYear(name);
     res.json(await buildYearsResponse());
   },
@@ -252,6 +299,24 @@ router.post(
       await copyAcademicYearData({
         fromYear, toYear, copyGroups, copyTrainingOffer, copyAssignments,
       });
+
+    if ((await getActiveAcademicYear()) === toYear) {
+      try {
+        for (const moduleId of touchedModuleIds) {
+          await syncModuleNextcloudMembership(moduleId);
+        }
+      } catch (err) {
+        logger.error(
+          { err, moduleIds: touchedModuleIds },
+          "syncModuleNextcloudMembership (transition) failed",
+        );
+        res.status(502).json({
+          message:
+            "No se pudo confirmar la actualización de permisos en Nextcloud; revisa el curso antes de volver a intentarlo",
+        });
+        return;
+      }
+    }
 
     for (const moduleId of touchedModuleIds) {
       try {
@@ -731,12 +796,93 @@ router.post(
         })
         .where(eq(teacherYearConfirmationsTable.id, confirmation.id))
         .returning();
-      return result;
+      if (!result) return undefined;
+      return {
+        confirmation: result,
+        previousAssignments: assignments,
+        previousConfirmation: lockedConfirmation,
+      };
     });
     if (!updated) {
       res.status(409).json({
         message:
           "La confirmación, el plazo o tu centro han cambiado; vuelve a cargar e inténtalo de nuevo",
+      });
+      return;
+    }
+
+    try {
+      for (const moduleId of touchedModuleIds) {
+        await syncModuleNextcloudMembership(moduleId);
+      }
+    } catch (err) {
+      await db.transaction(async (tx) => {
+        const previousIds = new Set(
+          updated.previousAssignments.map((row) => row.id),
+        );
+        const current = await tx
+          .select({ id: teachingAssignmentsTable.id })
+          .from(teachingAssignmentsTable)
+          .where(
+            and(
+              eq(teachingAssignmentsTable.teacherId, caller.id),
+              eq(teachingAssignmentsTable.schoolYear, year),
+            ),
+          );
+        const insertedIds = current
+          .map((row) => row.id)
+          .filter((id) => !previousIds.has(id));
+        if (insertedIds.length > 0) {
+          await tx
+            .delete(teachingAssignmentsTable)
+            .where(inArray(teachingAssignmentsTable.id, insertedIds));
+        }
+        for (const assignment of updated.previousAssignments) {
+          await tx
+            .update(teachingAssignmentsTable)
+            .set({
+              teacherId: assignment.teacherId,
+              moduleId: assignment.moduleId,
+              groupId: assignment.groupId,
+              centerId: assignment.centerId,
+              schoolYear: assignment.schoolYear,
+              deletedAt: assignment.deletedAt,
+            })
+            .where(eq(teachingAssignmentsTable.id, assignment.id));
+        }
+        await tx
+          .update(teacherYearConfirmationsTable)
+          .set({
+            status: updated.previousConfirmation.status,
+            centerId: updated.previousConfirmation.centerId,
+            doesNotTeach: updated.previousConfirmation.doesNotTeach,
+            deadline: updated.previousConfirmation.deadline,
+            confirmedAt: updated.previousConfirmation.confirmedAt,
+          })
+          .where(
+            eq(
+              teacherYearConfirmationsTable.id,
+              updated.previousConfirmation.id,
+            ),
+          );
+      });
+      for (const moduleId of touchedModuleIds) {
+        try {
+          await syncModuleNextcloudMembership(moduleId);
+        } catch (restoreErr) {
+          logger.error(
+            { err: restoreErr, moduleId },
+            "syncModuleNextcloudMembership (confirmation rollback) failed",
+          );
+        }
+      }
+      logger.error(
+        { err, moduleIds: [...touchedModuleIds] },
+        "syncModuleNextcloudMembership (confirm) failed",
+      );
+      res.status(502).json({
+        message:
+          "No se pudo confirmar la actualización de permisos en Nextcloud; se restauraron las asignaciones anteriores",
       });
       return;
     }
@@ -753,7 +899,10 @@ router.post(
     }
 
     res.json(
-      toTeacherYearConfirmation({ ...updated, teacherName: caller.name }),
+      toTeacherYearConfirmation({
+        ...updated.confirmation,
+        teacherName: caller.name,
+      }),
     );
   },
 );

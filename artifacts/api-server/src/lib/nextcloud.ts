@@ -510,6 +510,8 @@ export async function provisionModuleSpace(
 
   const desired = new Set(opts.members.map((m) => nextcloudUid(m.userId)));
 
+  const failures: Error[] = [];
+
   // Add / create the desired members.
   for (const m of opts.members) {
     const uid = nextcloudUid(m.userId);
@@ -525,6 +527,7 @@ export async function provisionModuleSpace(
         { err, uid, moduleId: opts.moduleId },
         "Failed to provision Nextcloud member",
       );
+      failures.push(err instanceof Error ? err : new Error(String(err)));
     }
   }
 
@@ -532,7 +535,7 @@ export async function provisionModuleSpace(
   // The group is fully app-managed (coordina-mod-*), so anyone outside the
   // desired set should not be a member.
   try {
-    const current = await getGroupMembers(config, groupId);
+    const current = await getGroupMembers(config, groupId, true);
     for (const uid of current) {
       if (desired.has(uid)) continue;
       try {
@@ -542,12 +545,35 @@ export async function provisionModuleSpace(
           { err, uid, moduleId: opts.moduleId },
           "Failed to remove stale Nextcloud member",
         );
+        failures.push(err instanceof Error ? err : new Error(String(err)));
       }
+    }
+
+    // A successful HTTP/OCS response is not enough to claim a revocation if
+    // the member is still present in the remote group.
+    const remaining = await getGroupMembers(config, groupId, true);
+    const stale = remaining.filter((uid) => !desired.has(uid));
+    if (stale.length > 0) {
+      failures.push(
+        new Error(
+          `Nextcloud no confirmó la revocación de estos miembros: ${stale.join(", ")}`,
+        ),
+      );
     }
   } catch (err) {
     logger.error(
       { err, moduleId: opts.moduleId },
       "Failed to reconcile Nextcloud group membership",
+    );
+    failures.push(err instanceof Error ? err : new Error(String(err)));
+  }
+
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      `Nextcloud no pudo confirmar la sincronización del módulo ${opts.moduleId}: ${failures
+        .map((failure) => failure.message)
+        .join("; ")}`,
     );
   }
 }
