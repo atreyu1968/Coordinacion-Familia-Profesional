@@ -187,7 +187,8 @@ export default function EspacioColaborativoPage() {
         <p className="text-muted-foreground">
           Cada módulo dispone de una carpeta compartida (Nextcloud) y un editor
           de documentos en tiempo real (Collabora). Entra sin volver a iniciar
-          sesión.
+          sesión. Los PDF se muestran en el visor de Nextcloud dentro de esta
+          ventana y siguen sujetos a los permisos actuales del espacio.
         </p>
       </div>
 

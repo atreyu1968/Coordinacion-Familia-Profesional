@@ -1,6 +1,14 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, usersTable, modulesTable, collaborativeSpacesTable, collaborativeSpaceMembersTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  modulesTable,
+  centersTable,
+  teachingAssignmentsTable,
+  collaborativeSpacesTable,
+  collaborativeSpaceMembersTable,
+} from "@workspace/db";
 import type { User } from "@workspace/db";
 import {
   buildDiscovery,
@@ -24,6 +32,7 @@ import {
   nextcloudUid,
   moduleFolderName,
   independentSpaceFolderName,
+  decideModuleAccess,
 } from "../lib/nextcloud";
 import type { OidcTarget } from "../lib/oidc";
 import { getAppBaseUrl, readCookie } from "../lib/appUrl";
@@ -191,18 +200,47 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
       return;
     }
   }
-  setSsoCookie();
-
   // Where the user should land inside Nextcloud after SSO completes.
   let target = "/apps/files";
   if (rec.spaceId != null) {
     target = `/apps/files/?dir=/${encodeURIComponent(independentSpaceFolderName(rec.spaceId))}`;
   } else {
-  const [mod] = await db
-    .select()
-    .from(modulesTable)
-    .where(eq(modulesTable.id, rec.moduleId));
-  if (mod) {
+    const [mod] = await db
+      .select()
+      .from(modulesTable)
+      .where(and(eq(modulesTable.id, rec.moduleId), isNull(modulesTable.deletedAt)));
+    if (!mod) {
+      res.status(404).send("Módulo no encontrado");
+      return;
+    }
+    let moduleProvinceId: number | null = null;
+    if (mod.centerId != null) {
+      const [center] = await db
+        .select({ provinceId: centersTable.provinceId })
+        .from(centersTable)
+        .where(eq(centersTable.id, mod.centerId));
+      moduleProvinceId = center?.provinceId ?? null;
+    }
+    const [assignment] = await db
+      .select({ id: teachingAssignmentsTable.id })
+      .from(teachingAssignmentsTable)
+      .where(and(
+        eq(teachingAssignmentsTable.moduleId, mod.id),
+        eq(teachingAssignmentsTable.teacherId, user.id),
+        isNull(teachingAssignmentsTable.deletedAt),
+      ));
+    const allowed = decideModuleAccess({
+      role: user.role,
+      userCenterId: user.centerId,
+      userProvinceId: user.provinceId,
+      moduleCenterId: mod.centerId,
+      moduleProvinceId,
+      isAssigned: Boolean(assignment),
+    });
+    if (!allowed) {
+      res.status(403).send("Ya no tienes acceso a este módulo");
+      return;
+    }
     const mount = moduleFolderName({
       moduleId: mod.id,
       name: mod.name,
@@ -210,7 +248,8 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
     });
     target = `/apps/files/?dir=/${encodeURIComponent(mount)}`;
   }
-  }
+
+  setSsoCookie();
 
   // Provider id is assigned by Nextcloud when the OIDC provider is registered
   // (the first one is 1). Configurable for installs that add more providers.

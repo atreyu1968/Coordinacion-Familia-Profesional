@@ -14,6 +14,7 @@
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500, not OCS 102; guard before re-provision.
 - [Independent collaborative spaces](independent-collaborative-spaces.md) — manual enrollment, stable remote folders and confirmed revocation without deleting accounts or files.
 - [Black Nextcloud iframe on self-host](nextcloud-iframe-sso-https.md) — usually Mixed Content; fix overwriteprotocol+PUBLIC_APP_URL; DB nextcloud_url overrides env.
+- [Nextcloud PDF previews](nextcloud-pdf-previews.md) — use the user's one-use SSO session in an embedded Nextcloud view; never proxy files with an admin account or public links.
 - [Backup & restore (server migration)](backup-restore-migration.md) — fail-closed DB restore needs matching external object bytes and fresh session IDs.
 - [SCORM certificate policy](scorm-certificate-policy.md) — browser CMI is self-reported; no automatic academic certificate without trusted verification.
 - [Contract-driven workflow](contract-driven-workflow.md) — the OpenAPI-first edit/codegen/db-push loop for the monorepo.
