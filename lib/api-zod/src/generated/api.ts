@@ -16,7 +16,6 @@ export const getCoordinatorMailWorkspaceQueryPageDefault = 1;
 export const getCoordinatorMailWorkspaceQuerySearchMax = 100;
 
 
-
 export const GetCoordinatorMailWorkspaceQueryParams = zod.object({
   "page": zod.coerce.number().int().min(1).default(getCoordinatorMailWorkspaceQueryPageDefault),
   "status": zod.enum(['open', 'waiting', 'closed']).optional(),
@@ -68,7 +67,6 @@ export const GetCoordinatorMailCaseParams = zod.object({
 })
 
 export const getCoordinatorMailCaseQueryMessagePageDefault = 1;
-
 
 
 export const GetCoordinatorMailCaseQueryParams = zod.object({
@@ -155,7 +153,6 @@ export const updateCoordinatorMailCaseBodyDraftSubjectMax = 998;
 export const updateCoordinatorMailCaseBodyDraftBodyMax = 25000;
 
 
-
 export const UpdateCoordinatorMailCaseBody = zod.object({
   "revision": zod.number().int().min(1),
   "title": zod.string().min(1).max(updateCoordinatorMailCaseBodyTitleMax).optional(),
@@ -237,8 +234,6 @@ export const AddCoordinatorMailCaseLinkParams = zod.object({
 })
 
 
-
-
 export const AddCoordinatorMailCaseLinkBody = zod.object({
   "targetCaseId": zod.number().int().min(1)
 })
@@ -309,7 +304,6 @@ export const AddCoordinatorMailCaseLinkResponse = zod.object({
 /**
  * @summary Unlink a case from the authenticated coordinator's private group
  */
-
 
 
 export const RemoveCoordinatorMailCaseLinkParams = zod.object({
@@ -390,7 +384,6 @@ export const AddCoordinatorMailCaseNoteParams = zod.object({
 export const addCoordinatorMailCaseNoteBodyContentMax = 5000;
 
 
-
 export const AddCoordinatorMailCaseNoteBody = zod.object({
   "content": zod.string().min(1).max(addCoordinatorMailCaseNoteBodyContentMax)
 })
@@ -469,7 +462,6 @@ export const GenerateCoordinatorMailReplyDraftParams = zod.object({
 export const generateCoordinatorMailReplyDraftBodyInstructionsMax = 10000;
 
 
-
 export const GenerateCoordinatorMailReplyDraftBody = zod.object({
   "revision": zod.number().int().min(1),
   "instructions": zod.string().max(generateCoordinatorMailReplyDraftBodyInstructionsMax),
@@ -545,8 +537,6 @@ export const GenerateCoordinatorMailReplyDraftResponse = zod.object({
 export const SendCoordinatorMailReplyParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const SendCoordinatorMailReplyBody = zod.object({
@@ -662,7 +652,6 @@ export const updateCoordinatorMailAdminSettingsBodyClientSecretMax = 4096;
 export const updateCoordinatorMailAdminSettingsBodyRedirectUriMax = 500;
 
 
-
 export const UpdateCoordinatorMailAdminSettingsBody = zod.object({
   "clientId": zod.string().min(1).max(updateCoordinatorMailAdminSettingsBodyClientIdMax),
   "clientSecret": zod.string().max(updateCoordinatorMailAdminSettingsBodyClientSecretMax).optional(),
@@ -712,7 +701,6 @@ export const createCoordinatorTaskBodyTitleMax = 200;
 export const createCoordinatorTaskBodyDescriptionMax = 4000;
 
 
-
 export const CreateCoordinatorTaskBody = zod.object({
   "title": zod.string().min(1).max(createCoordinatorTaskBodyTitleMax),
   "description": zod.string().max(createCoordinatorTaskBodyDescriptionMax).optional()
@@ -753,7 +741,6 @@ export const AnalyzeCoordinatorTaskSourcesResponse = zod.object({
  */
 
 
-
 export const UpdateCoordinatorTaskParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
@@ -764,7 +751,6 @@ export const updateCoordinatorTaskBodyTitleMax = 200;
 export const updateCoordinatorTaskBodyDescriptionMax = 4000;
 
 export const updateCoordinatorTaskBodyResolutionMax = 4000;
-
 
 
 export const UpdateCoordinatorTaskBody = zod.object({
@@ -801,18 +787,11 @@ export const UpdateCoordinatorTaskResponse = zod.object({
  */
 
 
-
-
-
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.number().int().min(1),
   "contentType": zod.string().min(1)
 })
-
-
-
-
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -862,9 +841,6 @@ export const ListDocumentFormsResponse = zod.array(ListDocumentFormsResponseItem
 /**
  * @summary Create a document form with its fields
  */
-
-
-
 
 
 export const CreateDocumentFormBody = zod.object({
@@ -1216,8 +1192,6 @@ export const ListForumThreadsResponse = zod.array(ListForumThreadsResponseItem)
  */
 
 
-
-
 export const CreateForumThreadBody = zod.object({
   "moduleId": zod.number().int(),
   "title": zod.string().min(1),
@@ -1248,8 +1222,6 @@ export const CreateForumThreadResponse = zod.object({
 export const UpdateForumThreadParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateForumThreadBody = zod.object({
@@ -1350,8 +1322,6 @@ export const CreateForumPostParams = zod.object({
 })
 
 
-
-
 export const CreateForumPostBody = zod.object({
   "content": zod.string().min(1)
 })
@@ -1373,8 +1343,6 @@ export const CreateForumPostResponse = zod.object({
 export const UpdateForumPostParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateForumPostBody = zod.object({
@@ -1459,7 +1427,6 @@ export const GetCurrentUserResponse = zod.object({
 export const updateProfileBodyNewPasswordMin = 8;
 
 
-
 export const UpdateProfileBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().email().optional(),
@@ -1487,7 +1454,6 @@ export const UpdateProfileResponse = zod.object({
  * Returns the active-year assignments and module options for the requested center. Only active-family centers and modules are included.
  * @summary Get the current teaching profile for teachers, department heads, coordinators and superadministrators
  */
-
 
 
 export const GetMyTeachingProfileQueryParams = zod.object({
@@ -1530,8 +1496,6 @@ export const GetMyTeachingProfileResponse = zod.object({
  */
 
 
-
-
 export const UpdateMyTeachingProfileBody = zod.object({
   "centerId": zod.number().int().min(1),
   "moduleIds": zod.array(zod.number().int().min(1)),
@@ -1565,8 +1529,6 @@ export const GetInvitationByTokenParams = zod.object({
 })
 
 
-
-
 export const GetInvitationByTokenResponse = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "inviterName": zod.string().optional(),
@@ -1579,7 +1541,6 @@ export const GetInvitationByTokenResponse = zod.object({
 /**
  * @summary Complete registration using an invitation token
  */
-
 
 
 export const RegisterWithTokenBody = zod.object({
@@ -1630,7 +1591,6 @@ export const resetPasswordBodyCodeMax = 6;
 export const resetPasswordBodyNewPasswordMin = 8;
 
 
-
 export const ResetPasswordBody = zod.object({
   "email": zod.string().email(),
   "code": zod.string().min(resetPasswordBodyCodeMin).max(resetPasswordBodyCodeMax),
@@ -1651,7 +1611,6 @@ export const ListInvitationsQueryParams = zod.object({
 
 
 export const listInvitationsResponseUsedCountMin = 0;
-
 
 
 export const ListInvitationsResponseItem = zod.object({
@@ -1680,7 +1639,6 @@ export const createInvitationBodyMaxUsesDefault = 1;
 export const createInvitationBodyMaxUsesMax = 1000;
 
 
-
 export const CreateInvitationBody = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
   "provinceId": zod.number().int().nullish(),
@@ -1691,7 +1649,6 @@ export const CreateInvitationBody = zod.object({
 
 
 export const createInvitationResponseInvitationUsedCountMin = 0;
-
 
 
 export const CreateInvitationResponse = zod.object({
@@ -1732,7 +1689,6 @@ export const ResendInvitationParams = zod.object({
 
 
 export const resendInvitationResponseInvitationUsedCountMin = 0;
-
 
 
 export const ResendInvitationResponse = zod.object({
@@ -1827,7 +1783,6 @@ export const listManagedUsersQueryPageSizeDefault = 25;
 export const listManagedUsersQueryPageSizeMax = 100;
 
 
-
 export const ListManagedUsersQueryParams = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
   "provinceId": zod.coerce.number().int().optional(),
@@ -1871,7 +1826,6 @@ export const ListUserAuditParams = zod.object({
 
 export const listUserAuditQueryPageDefault = 1;
 export const listUserAuditQueryPageMax = 1000000;
-
 
 
 export const ListUserAuditQueryParams = zod.object({
@@ -1918,7 +1872,6 @@ export const UpdateUserParams = zod.object({
 })
 
 export const updateUserBodyNameMax = 200;
-
 
 
 export const UpdateUserBody = zod.object({
@@ -2515,9 +2468,6 @@ export const CreateLearningOutcomeParams = zod.object({
 })
 
 
-
-
-
 export const CreateLearningOutcomeBody = zod.object({
   "code": zod.string().min(1),
   "description": zod.string().min(1),
@@ -2546,9 +2496,6 @@ export const CreateLearningOutcomeResponse = zod.object({
 export const UpdateLearningOutcomeParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
-
 
 
 export const UpdateLearningOutcomeBody = zod.object({
@@ -2591,9 +2538,6 @@ export const CreateEvaluationCriterionParams = zod.object({
 })
 
 
-
-
-
 export const CreateEvaluationCriterionBody = zod.object({
   "code": zod.string().min(1),
   "description": zod.string().min(1),
@@ -2615,9 +2559,6 @@ export const CreateEvaluationCriterionResponse = zod.object({
 export const UpdateEvaluationCriterionParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
-
 
 
 export const UpdateEvaluationCriterionBody = zod.object({
@@ -3434,7 +3375,6 @@ export const saveEventMinutesBodyRevisionMin = 0;
 export const saveEventMinutesBodyDraftTextMax = 120000;
 
 
-
 export const SaveEventMinutesBody = zod.object({
   "revision": zod.number().int().min(saveEventMinutesBodyRevisionMin),
   "enabled": zod.boolean().optional(),
@@ -3541,7 +3481,6 @@ export const addEventMinutesSharedDocumentBodyContentTypeMax = 150;
 export const addEventMinutesSharedDocumentBodySizeMax = 104857600;
 
 export const addEventMinutesSharedDocumentBodyUrlMax = 2048;
-
 
 
 export const AddEventMinutesSharedDocumentBody = zod.object({
@@ -3696,7 +3635,6 @@ export const addEventMinutesSourceBodyContentTypeMax = 150;
 export const addEventMinutesSourceBodySizeMax = 104857600;
 
 
-
 export const AddEventMinutesSourceBody = zod.object({
   "objectPath": zod.string().max(addEventMinutesSourceBodyObjectPathMax),
   "fileName": zod.string().min(1).max(addEventMinutesSourceBodyFileNameMax),
@@ -3754,7 +3692,6 @@ export const GenerateEventMinutesParams = zod.object({
 export const generateEventMinutesBodyRevisionMin = 0;
 
 export const generateEventMinutesBodyInstructionsMax = 12000;
-
 
 
 export const GenerateEventMinutesBody = zod.object({
@@ -3826,7 +3763,6 @@ export const PublishEventMinutesParams = zod.object({
 })
 
 export const publishEventMinutesBodyRevisionMin = 0;
-
 
 
 export const PublishEventMinutesBody = zod.object({
@@ -3912,7 +3848,6 @@ export const updateMeetingAiSettingsBodyTranscriptionModelMax = 100;
 export const updateMeetingAiSettingsBodyVisionModelMax = 100;
 
 
-
 export const UpdateMeetingAiSettingsBody = zod.object({
   "apiKey": zod.string().max(updateMeetingAiSettingsBodyApiKeyMax).optional(),
   "clearApiKey": zod.boolean().optional(),
@@ -3950,7 +3885,6 @@ export const getEventAttendanceSettingsResponseOneDurationMinutesMax = 100000;
 export const getEventAttendanceSettingsResponseOneAdditionalTextMax = 1000;
 
 
-
 export const GetEventAttendanceSettingsResponse = zod.object({
   "signerName": zod.string().min(getEventAttendanceSettingsResponseOneSignerNameMin).max(getEventAttendanceSettingsResponseOneSignerNameMax),
   "signerRole": zod.string().min(getEventAttendanceSettingsResponseOneSignerRoleMin).max(getEventAttendanceSettingsResponseOneSignerRoleMax),
@@ -3984,7 +3918,6 @@ export const updateEventAttendanceSettingsBodyDurationMinutesMax = 100000;
 export const updateEventAttendanceSettingsBodyAdditionalTextMax = 1000;
 
 
-
 export const UpdateEventAttendanceSettingsBody = zod.object({
   "signerName": zod.string().min(updateEventAttendanceSettingsBodySignerNameMin).max(updateEventAttendanceSettingsBodySignerNameMax),
   "signerRole": zod.string().min(updateEventAttendanceSettingsBodySignerRoleMin).max(updateEventAttendanceSettingsBodySignerRoleMax),
@@ -4008,7 +3941,6 @@ export const updateEventAttendanceSettingsResponseOneIssuePlaceMax = 150;
 export const updateEventAttendanceSettingsResponseOneDurationMinutesMax = 100000;
 
 export const updateEventAttendanceSettingsResponseOneAdditionalTextMax = 1000;
-
 
 
 export const UpdateEventAttendanceSettingsResponse = zod.object({
@@ -4036,7 +3968,6 @@ export const listEventAttendanceQueryPageSizeDefault = 50;
 export const listEventAttendanceQueryPageSizeMax = 100;
 
 
-
 export const ListEventAttendanceQueryParams = zod.object({
   "page": zod.coerce.number().int().min(1).default(listEventAttendanceQueryPageDefault),
   "pageSize": zod.coerce.number().int().min(1).max(listEventAttendanceQueryPageSizeMax).default(listEventAttendanceQueryPageSizeDefault)
@@ -4057,9 +3988,6 @@ export const ListEventAttendanceResponse = zod.object({
 })
 
 
-
-
-
 export const UpdateEventAttendanceParams = zod.object({
   "id": zod.coerce.number().int(),
   "attendanceId": zod.coerce.number().int().min(1)
@@ -4074,9 +4002,6 @@ export const UpdateEventAttendanceResponse = zod.object({
 })
 
 
-
-
-
 export const GenerateEventAttendanceCertificateParams = zod.object({
   "id": zod.coerce.number().int(),
   "attendanceId": zod.coerce.number().int().min(1)
@@ -4089,9 +4014,6 @@ export const GenerateEventAttendanceCertificateResponse = zod.object({
 })
 
 
-
-
-
 export const RevokeEventAttendanceCertificateParams = zod.object({
   "id": zod.coerce.number().int(),
   "certificateId": zod.coerce.number().int().min(1)
@@ -4101,7 +4023,6 @@ export const revokeEventAttendanceCertificateBodyReasonMin = 3;
 export const revokeEventAttendanceCertificateBodyReasonMax = 500;
 
 
-
 export const RevokeEventAttendanceCertificateBody = zod.object({
   "reason": zod.string().min(revokeEventAttendanceCertificateBodyReasonMin).max(revokeEventAttendanceCertificateBodyReasonMax)
 })
@@ -4109,9 +4030,6 @@ export const RevokeEventAttendanceCertificateBody = zod.object({
 export const RevokeEventAttendanceCertificateResponse = zod.object({
   "ok": zod.boolean()
 })
-
-
-
 
 
 export const DownloadEventAttendanceCertificateParams = zod.object({
@@ -4144,7 +4062,6 @@ export const previewEventAttendanceCertificateBodyDurationMinutesMax = 100000;
 export const previewEventAttendanceCertificateBodyAdditionalTextMax = 1000;
 
 
-
 export const PreviewEventAttendanceCertificateBody = zod.object({
   "signerName": zod.string().min(previewEventAttendanceCertificateBodySignerNameMin).max(previewEventAttendanceCertificateBodySignerNameMax),
   "signerRole": zod.string().min(previewEventAttendanceCertificateBodySignerRoleMin).max(previewEventAttendanceCertificateBodySignerRoleMax),
@@ -4167,7 +4084,6 @@ export const getAttendanceRegistrationPathTokenMin = 43;
 export const getAttendanceRegistrationPathTokenMax = 43;
 
 
-
 export const GetAttendanceRegistrationParams = zod.object({
   "token": zod.coerce.string().min(getAttendanceRegistrationPathTokenMin).max(getAttendanceRegistrationPathTokenMax)
 })
@@ -4187,7 +4103,6 @@ export const registerEventAttendancePathTokenMin = 43;
 export const registerEventAttendancePathTokenMax = 43;
 
 
-
 export const RegisterEventAttendanceParams = zod.object({
   "token": zod.coerce.string().min(registerEventAttendancePathTokenMin).max(registerEventAttendancePathTokenMax)
 })
@@ -4199,7 +4114,6 @@ export const RegisterEventAttendanceResponse = zod.object({
 
 export const verifyAttendanceCertificatePathTokenMin = 43;
 export const verifyAttendanceCertificatePathTokenMax = 43;
-
 
 
 export const VerifyAttendanceCertificateParams = zod.object({
@@ -4231,7 +4145,6 @@ export const PreviewEventAttendanceCsvParams = zod.object({
 export const previewEventAttendanceCsvBodyCsvMax = 250000;
 
 
-
 export const PreviewEventAttendanceCsvBody = zod.object({
   "csv": zod.string().min(1).max(previewEventAttendanceCsvBodyCsvMax)
 })
@@ -4255,7 +4168,6 @@ export const ImportEventAttendanceCsvParams = zod.object({
 })
 
 export const importEventAttendanceCsvBodyOneCsvMax = 250000;
-
 
 
 export const ImportEventAttendanceCsvBody = zod.object({
@@ -4303,9 +4215,6 @@ export const SendAttendanceEmailCodeResponse = zod.object({
 })
 
 
-
-
-
 export const IssueMyAttendanceCertificateBody = zod.object({
   "eventId": zod.number().int().min(1)
 })
@@ -4327,9 +4236,6 @@ export const VerifyAttendanceEmailBody = zod.object({
 export const VerifyAttendanceEmailResponse = zod.object({
   "ok": zod.boolean()
 })
-
-
-
 
 
 export const DownloadMyAttendanceCertificateParams = zod.object({
@@ -4394,7 +4300,6 @@ export const CreateCalendarEntryResponse = zod.object({
 export const listChatContactsQuerySearchMax = 100;
 
 
-
 export const ListChatContactsQueryParams = zod.object({
   "search": zod.coerce.string().max(listChatContactsQuerySearchMax).optional()
 })
@@ -4407,7 +4312,12 @@ export const ListChatContactsResponseItem = zod.object({
 })
 export const ListChatContactsResponse = zod.array(ListChatContactsResponseItem)
 
-
+/**
+ * @summary List the caller's visible or hidden conversations
+ */
+export const ListChatGroupsQueryParams = zod.object({
+  "hidden": zod.coerce.boolean().optional().describe('When true, list only conversations hidden by the caller. Defaults to false.')
+})
 export const ListChatGroupsResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
@@ -4469,6 +4379,13 @@ export const HideChatGroupForMeParams = zod.object({
 
 export const HideChatGroupForMeResponse = zod.void()
 
+/**
+ * @summary Restore a conversation to the caller's list without changing membership or history
+ */
+export const RestoreChatGroupForMeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
 
 /**
  * @summary Mark a chat group as read for the caller
@@ -4502,8 +4419,6 @@ export const ListChatMembersResponse = zod.array(ListChatMembersResponseItem)
 export const ListGroupMessagesParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const ListGroupMessagesQueryParams = zod.object({
@@ -4629,8 +4544,6 @@ export const EditMessageParams = zod.object({
 })
 
 
-
-
 export const EditMessageBody = zod.object({
   "content": zod.string().min(1)
 })
@@ -4754,8 +4667,6 @@ export const ReactToMessageParams = zod.object({
 })
 
 
-
-
 export const ReactToMessageBody = zod.object({
   "emoji": zod.string().min(1)
 })
@@ -4853,10 +4764,6 @@ export const ListAnnouncementsResponseItem = zod.object({
   "createdAt": zod.coerce.date().optional()
 })
 export const ListAnnouncementsResponse = zod.array(ListAnnouncementsResponseItem)
-
-
-
-
 
 
 export const CreateAnnouncementBody = zod.object({
@@ -5178,7 +5085,6 @@ export const createCollaborativeSpaceBodyTwoUserIdsMax = 1000;
 export const createCollaborativeSpaceBodyTwoCenterIdsMax = 200;
 
 
-
 export const CreateCollaborativeSpaceBody = zod.object({
   "name": zod.string().min(1).max(createCollaborativeSpaceBodyOneNameMax),
   "description": zod.string().max(createCollaborativeSpaceBodyOneDescriptionMax).optional()
@@ -5222,7 +5128,6 @@ export const GetCollaborativeSpaceCandidatesResponse = zod.object({
  */
 
 
-
 export const GetCollaborativeSpaceParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
@@ -5252,7 +5157,6 @@ export const GetCollaborativeSpaceResponse = zod.object({
  */
 
 
-
 export const UpdateCollaborativeSpaceParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
@@ -5260,7 +5164,6 @@ export const UpdateCollaborativeSpaceParams = zod.object({
 export const updateCollaborativeSpaceBodyNameMax = 160;
 
 export const updateCollaborativeSpaceBodyDescriptionMax = 2000;
-
 
 
 export const UpdateCollaborativeSpaceBody = zod.object({
@@ -5283,7 +5186,6 @@ export const UpdateCollaborativeSpaceResponse = zod.object({
  */
 
 
-
 export const GetCollaborativeSpaceHistoryParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
@@ -5293,7 +5195,6 @@ export const getCollaborativeSpaceHistoryQueryPageMax = 1000000;
 
 export const getCollaborativeSpaceHistoryQueryPageSizeDefault = 20;
 export const getCollaborativeSpaceHistoryQueryPageSizeMax = 100;
-
 
 
 export const GetCollaborativeSpaceHistoryQueryParams = zod.object({
@@ -5342,7 +5243,6 @@ export const GetCollaborativeSpaceHistoryResponse = zod.object({
  */
 
 
-
 export const AddCollaborativeSpaceMembersParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
@@ -5352,7 +5252,6 @@ export const addCollaborativeSpaceMembersBodyUserIdsMax = 1000;
 
 
 export const addCollaborativeSpaceMembersBodyCenterIdsMax = 200;
-
 
 
 export const AddCollaborativeSpaceMembersBody = zod.object({
@@ -5375,8 +5274,6 @@ export const AddCollaborativeSpaceMembersResponse = zod.object({
  */
 
 
-
-
 export const RemoveCollaborativeSpaceMemberParams = zod.object({
   "id": zod.coerce.number().int().min(1),
   "userId": zod.coerce.number().int().min(1)
@@ -5388,7 +5285,6 @@ export const RemoveCollaborativeSpaceMemberResponse = zod.void()
 /**
  * @summary Open an independent space as administrator or explicit member
  */
-
 
 
 export const OpenCollaborativeSpaceParams = zod.object({
@@ -5441,7 +5337,6 @@ export const createWikiPageBodyTagsItemMax = 40;
 export const createWikiPageBodyTagsMax = 20;
 
 
-
 export const CreateWikiPageBody = zod.object({
   "moduleId": zod.number().int().nullable(),
   "parentId": zod.number().int().nullable(),
@@ -5491,7 +5386,6 @@ export const requestWikiUploadUrlBodyFileNameMax = 240;
 export const requestWikiUploadUrlBodyContentTypeMax = 200;
 
 export const requestWikiUploadUrlBodySizeMax = 52428800;
-
 
 
 export const RequestWikiUploadUrlBody = zod.object({
@@ -5563,7 +5457,6 @@ export const updateWikiPageBodyTagsItemMax = 40;
 export const updateWikiPageBodyTagsMax = 20;
 
 
-
 export const UpdateWikiPageBody = zod.object({
   "title": zod.string().min(1).max(updateWikiPageBodyTitleMax).optional(),
   "content": zod.string().max(updateWikiPageBodyContentMax).optional(),
@@ -5628,7 +5521,6 @@ export const addWikiAttachmentBodyContentTypeMax = 200;
 export const addWikiAttachmentBodySizeMax = 52428800;
 
 
-
 export const AddWikiAttachmentBody = zod.object({
   "fileName": zod.string().min(1).max(addWikiAttachmentBodyFileNameMax),
   "objectPath": zod.string().min(1).max(addWikiAttachmentBodyObjectPathMax),
@@ -5678,7 +5570,6 @@ export const AddWikiExternalLinkParams = zod.object({
 export const addWikiExternalLinkBodyTitleMax = 240;
 
 export const addWikiExternalLinkBodyUrlMax = 2048;
-
 
 
 export const AddWikiExternalLinkBody = zod.object({
@@ -5837,7 +5728,6 @@ export const createWikiPermissionGroupBodyNameMin = 2;
 export const createWikiPermissionGroupBodyNameMax = 80;
 
 
-
 export const CreateWikiPermissionGroupBody = zod.object({
   "name": zod.string().min(createWikiPermissionGroupBodyNameMin).max(createWikiPermissionGroupBodyNameMax),
   "permissions": zod.object({
@@ -5867,7 +5757,6 @@ export const UpdateWikiPermissionGroupParams = zod.object({
 
 export const updateWikiPermissionGroupBodyNameMin = 2;
 export const updateWikiPermissionGroupBodyNameMax = 80;
-
 
 
 export const UpdateWikiPermissionGroupBody = zod.object({
@@ -5940,7 +5829,6 @@ export const ListAcademicYearsResponse = zod.object({
  */
 
 
-
 export const CreateAcademicYearBody = zod.object({
   "name": zod.string().min(1)
 })
@@ -5958,7 +5846,6 @@ export const CreateAcademicYearResponse = zod.object({
 /**
  * @summary Set the active course (superadmin, double confirmation in UI)
  */
-
 
 
 export const SetActiveAcademicYearBody = zod.object({
@@ -5983,8 +5870,6 @@ export const SetActiveAcademicYearResponse = zod.object({
  */
 
 
-
-
 export const TransitionAcademicYearBody = zod.object({
   "fromYear": zod.string().min(1),
   "toYear": zod.string().min(1),
@@ -6003,7 +5888,6 @@ export const TransitionAcademicYearResponse = zod.object({
 /**
  * @summary Open the annual teacher confirmation window for a year (superadmin)
  */
-
 
 
 export const OpenYearConfirmationBody = zod.object({
@@ -6084,8 +5968,6 @@ export const RenameAcademicYearParams = zod.object({
 })
 
 
-
-
 export const RenameAcademicYearBody = zod.object({
   "name": zod.string().min(1)
 })
@@ -6142,9 +6024,6 @@ export const ListLmsCoursesResponseItem = zod.object({
   "certificateAvailable": zod.boolean()
 })
 export const ListLmsCoursesResponse = zod.array(ListLmsCoursesResponseItem)
-
-
-
 
 
 export const CreateLmsCourseBody = zod.object({
@@ -6231,8 +6110,6 @@ export const GetLmsCourseResponse = zod.object({
 export const UpdateLmsCourseParams = zod.object({
   "courseId": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateLmsCourseBody = zod.object({
@@ -6328,8 +6205,6 @@ export const CreateLmsLessonParams = zod.object({
 })
 
 
-
-
 export const CreateLmsLessonBody = zod.object({
   "title": zod.string().min(1),
   "kind": zod.enum(['text', 'file', 'video', 'quiz', 'scorm12', 'scorm2004']),
@@ -6362,8 +6237,6 @@ export const CreateLmsLessonResponse = zod.object({
 export const UpdateLmsLessonParams = zod.object({
   "lessonId": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateLmsLessonBody = zod.object({
@@ -6402,11 +6275,7 @@ export const DeleteLmsLessonParams = zod.object({
 export const DeleteLmsLessonResponse = zod.void()
 
 
-
-
 export const requestLmsUploadUrlBodySizeMax = 104857600;
-
-
 
 
 export const RequestLmsUploadUrlBody = zod.object({
@@ -6432,9 +6301,6 @@ export const CreateLmsLessonDownloadTokenResponse = zod.object({
   "url": zod.string(),
   "expiresAt": zod.coerce.date()
 })
-
-
-
 
 
 export const DownloadLmsLessonFileQueryParams = zod.object({
@@ -6570,9 +6436,6 @@ export const CreateLmsLessonScormSessionResponse = zod.object({
 })
 
 
-
-
-
 export const GetLmsScormSessionQueryParams = zod.object({
   "token": zod.coerce.string().min(1)
 })
@@ -6584,9 +6447,6 @@ export const GetLmsScormSessionResponse = zod.object({
   "expiresAt": zod.coerce.date(),
   "cmiData": zod.record(zod.string(), zod.unknown())
 })
-
-
-
 
 
 export const CommitLmsScormSessionQueryParams = zod.object({
@@ -6616,3 +6476,4 @@ export const GetLmsScormContentParams = zod.object({
 export const GetLmsScormContentResponse = zod.unknown()
 
 
+export const RestoreChatGroupForMeResponse = zod.void()

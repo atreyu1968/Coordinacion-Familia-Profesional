@@ -58,7 +58,7 @@ export function BadgesProvider({ children }: { children: React.ReactNode }) {
     (n) => !n.readAt,
   ).length;
 
-  const { data: chatGroups } = useListChatGroups({
+  const { data: chatGroups } = useListChatGroups(undefined, {
     query: { queryKey: getListChatGroupsQueryKey(), enabled: !!token },
   });
   const unreadChats = (chatGroups ?? []).filter(

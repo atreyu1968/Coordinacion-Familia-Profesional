@@ -23,6 +23,7 @@ import {
   getListHiddenGroupMessagesQueryKey,
   useRestoreHiddenMessage,
   useHideChatGroupForMe,
+  useRestoreChatGroupForMe,
   useReactToMessage,
   useForwardMessage,
   useMarkChatRead,
@@ -82,6 +83,7 @@ import {
   MoreVertical,
   ArrowLeft,
   EyeOff,
+  Eye,
   FileText,
   Image as ImageIcon,
 } from "lucide-react";
@@ -1466,6 +1468,20 @@ export default function ChatPage() {
   const moduleParam = useModuleParam();
   const token = useMemo(() => localStorage.getItem(TOKEN_KEY), []);
   const { data: groups = [], isLoading, refetch } = useListChatGroups();
+  const {
+    data: hiddenGroups = [],
+    isLoading: hiddenLoading,
+    isError: hiddenError,
+    refetch: refetchHidden,
+  } = useListChatGroups(
+    { hidden: true },
+    {
+      query: {
+        queryKey: getListChatGroupsQueryKey({ hidden: true }),
+        staleTime: 0,
+      },
+    },
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
   const [contactsOpen, setContactsOpen] = useState(false);
@@ -1481,7 +1497,8 @@ export default function ChatPage() {
   });
   const createDirect = useCreateChatGroup();
   const hideConversationMut = useHideChatGroupForMe();
-  const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
+  const restoreConversationMut = useRestoreChatGroupForMe();
+  const [activeTab, setActiveTab] = useState<"people" | "groups" | "hidden">("people");
   const [didPreselect, setDidPreselect] = useState(false);
 
   useEffect(() => {
@@ -1500,6 +1517,7 @@ export default function ChatPage() {
     const socket = connectSocket(token);
     const onChatUpdate = () => {
       void refetch();
+      void refetchHidden();
     };
     socket.on("chat_update", onChatUpdate);
     socket.on("message", onChatUpdate);
@@ -1507,15 +1525,16 @@ export default function ChatPage() {
       socket.off("chat_update", onChatUpdate);
       socket.off("message", onChatUpdate);
     };
-  }, [token, refetch]);
+  }, [token, refetch, refetchHidden]);
 
   const sorted = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    return [...groups]
+    return [...(activeTab === "hidden" ? hiddenGroups : groups)]
       .filter((group) =>
-        activeTab === "people"
+        activeTab === "hidden" ||
+        (activeTab === "people"
           ? group.type === "direct"
-          : group.type !== "direct",
+          : group.type !== "direct"),
       )
       .filter((g) => !q || g.name.toLowerCase().includes(q))
       .sort((a, b) => {
@@ -1523,9 +1542,12 @@ export default function ChatPage() {
         const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
         return tb - ta;
       });
-  }, [groups, filter, activeTab]);
+  }, [groups, hiddenGroups, filter, activeTab]);
 
-  const selected = groups.find((g) => g.id === selectedId) ?? null;
+  const selected =
+    groups.find((g) => g.id === selectedId) ??
+    hiddenGroups.find((g) => g.id === selectedId) ??
+    null;
   const matchingContacts = contacts.filter((contact) =>
     `${contact.name} ${contact.centerName ?? ""}`.toLocaleLowerCase()
       .includes(contactSearch.trim().toLocaleLowerCase()),
@@ -1569,8 +1591,13 @@ export default function ChatPage() {
             getListChatGroupsQueryKey(),
             (previous = []) => previous.filter((conversation) => conversation.id !== group.id),
           );
+          queryClient.setQueryData<ChatGroup[]>(
+            getListChatGroupsQueryKey({ hidden: true }),
+            (previous = []) => [group, ...previous.filter((conversation) => conversation.id !== group.id)],
+          );
           if (selectedId === group.id) setSelectedId(null);
           void refetch();
+          void refetchHidden();
         },
         onError: () =>
           toast({
@@ -1578,6 +1605,32 @@ export default function ChatPage() {
             description: "Inténtalo de nuevo.",
             variant: "destructive",
           }),
+      },
+    );
+  };
+
+  const restoreConversation = (group: ChatGroup) => {
+    restoreConversationMut.mutate(
+      { id: group.id },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData<ChatGroup[]>(
+            getListChatGroupsQueryKey({ hidden: true }),
+            (previous = []) => previous.filter((conversation) => conversation.id !== group.id),
+          );
+          queryClient.setQueryData<ChatGroup[]>(
+            getListChatGroupsQueryKey(),
+            (previous = []) => [group, ...previous.filter((conversation) => conversation.id !== group.id)],
+          );
+          void refetch();
+          void refetchHidden();
+          toast({ title: "Conversación restaurada" });
+        },
+        onError: () => toast({
+          title: "No se pudo restaurar la conversación",
+          description: "Inténtalo de nuevo.",
+          variant: "destructive",
+        }),
       },
     );
   };
@@ -1664,18 +1717,23 @@ export default function ChatPage() {
                 selected ? "hidden md:flex" : "flex"
               }`}
             >
-              <div className="grid grid-cols-2 gap-2 p-3 border-b shrink-0">
+              <div className="grid grid-cols-3 gap-2 p-3 border-b shrink-0">
                 {(
                   [
                     ["people", "Personas"],
                     ["groups", "Grupos"],
+                    ["hidden", "Ocultas"],
                   ] as const
                 ).map(([tab, label]) => {
                   const count = groups.filter((group) =>
                     tab === "people"
                       ? group.type === "direct"
-                      : group.type !== "direct",
+                      : tab === "groups"
+                        ? group.type !== "direct"
+                        : false,
                   ).length;
+                  const tabCount =
+                    tab === "hidden" ? hiddenGroups.length : count;
                   const selectedTab = activeTab === tab;
                   return (
                     <button
@@ -1693,7 +1751,7 @@ export default function ChatPage() {
                           : "border-border bg-background text-muted-foreground hover:bg-accent"
                       }`}
                     >
-                      {label} <span className="opacity-80">· {count}</span>
+                      {label} <span className="opacity-80">· {tabCount}</span>
                     </button>
                   );
                 })}
@@ -1710,7 +1768,18 @@ export default function ChatPage() {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
-                {isLoading ? (
+                {activeTab === "hidden" && hiddenLoading ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    Cargando conversaciones ocultas…
+                  </p>
+                ) : activeTab === "hidden" && hiddenError ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No se pudieron cargar.{" "}
+                    <button type="button" onClick={() => void refetchHidden()} className="text-primary underline">
+                      Reintentar
+                    </button>
+                  </p>
+                ) : isLoading ? (
                   <p className="text-sm text-muted-foreground py-8 text-center">
                     Cargando…
                   </p>
@@ -1718,9 +1787,11 @@ export default function ChatPage() {
                   <p className="text-sm text-muted-foreground py-8 text-center px-4">
                     {filter.trim()
                       ? "No se encontraron conversaciones."
-                      : activeTab === "people"
-                        ? "No tienes conversaciones. Pulsa «Nuevo mensaje» para ver las personas registradas."
-                        : "Aún no perteneces a ningún grupo."}
+                      : activeTab === "hidden"
+                        ? "No tienes conversaciones ocultas."
+                        : activeTab === "people"
+                          ? "No tienes conversaciones. Pulsa «Nuevo mensaje» para ver las personas registradas."
+                          : "Aún no perteneces a ningún grupo."}
                   </p>
                 ) : (
                   <ul>
@@ -1778,10 +1849,22 @@ export default function ChatPage() {
                               className="shrink-0 self-center text-muted-foreground"
                               aria-label={`Ocultar conversación ${g.name}`}
                               title="Ocultar solo de mi lista"
-                              disabled={hideConversationMut.isPending}
-                              onClick={() => hideConversation(g)}
+                              disabled={
+                                activeTab === "hidden"
+                                  ? restoreConversationMut.isPending
+                                  : hideConversationMut.isPending
+                              }
+                              onClick={() =>
+                                activeTab === "hidden"
+                                  ? restoreConversation(g)
+                                  : hideConversation(g)
+                              }
                             >
-                              <EyeOff className="h-4 w-4" />
+                              {activeTab === "hidden" ? (
+                                <Eye className="h-4 w-4" />
+                              ) : (
+                                <EyeOff className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </li>

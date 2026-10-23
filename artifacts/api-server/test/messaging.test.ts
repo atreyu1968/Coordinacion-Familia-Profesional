@@ -686,6 +686,104 @@ describe("messages", () => {
       expect.objectContaining({ id: group.body.id }),
     );
   });
+
+  it("lists hidden conversations and restores them only for the caller", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const other = await createUser({ role: "teacher" });
+    const outsider = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({ name: "Grupo privado", type: "group", memberIds: [other.user.id] });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+
+    const message = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(other.token))
+      .send({ content: "Historial conservado" });
+    expect(message.status).toBe(201);
+
+    const hidden = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/hide`)
+      .set(authHeader(caller.token));
+    expect(hidden.status).toBe(204);
+
+    const hiddenList = await request(app)
+      .get("/api/chat/groups?hidden=true")
+      .set(authHeader(caller.token));
+    expect(hiddenList.status).toBe(200);
+    expect(hiddenList.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    const otherHiddenList = await request(app)
+      .get("/api/chat/groups?hidden=true")
+      .set(authHeader(other.token));
+    expect(otherHiddenList.body).not.toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    const invalidFilter = await request(app)
+      .get("/api/chat/groups?hidden=anything")
+      .set(authHeader(caller.token));
+    expect(invalidFilter.status).toBe(400);
+
+    const otherHide = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/hide`)
+      .set(authHeader(other.token));
+    expect(otherHide.status).toBe(204);
+    const outsiderRestore = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/restore`)
+      .set(authHeader(outsider.token));
+    expect(outsiderRestore.status).toBe(403);
+
+    const beforeRestoreMemberships = await db
+      .select()
+      .from(chatGroupMembersTable)
+      .where(eq(chatGroupMembersTable.groupId, group.body.id));
+    expect(beforeRestoreMemberships).toHaveLength(2);
+    const restored = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/restore`)
+      .set(authHeader(caller.token));
+    expect(restored.status).toBe(204);
+
+    const callerList = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+    expect(callerList.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    const otherList = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(other.token));
+    expect(otherList.body).not.toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    const otherHiddenAfterRestore = await request(app)
+      .get("/api/chat/groups?hidden=true")
+      .set(authHeader(other.token));
+    expect(otherHiddenAfterRestore.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    const afterRestoreMemberships = await db
+      .select()
+      .from(chatGroupMembersTable)
+      .where(eq(chatGroupMembersTable.groupId, group.body.id));
+    expect(afterRestoreMemberships).toHaveLength(2);
+    const callerMembership = afterRestoreMemberships.find(
+      (membership) => membership.userId === caller.user.id,
+    );
+    expect(callerMembership?.hiddenAt).toBeNull();
+
+    const messages = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(caller.token));
+    expect(messages.body).toContainEqual(
+      expect.objectContaining({
+        id: message.body.id,
+        content: "Historial conservado",
+      }),
+    );
+  });
 });
 
 describe("notifications", () => {

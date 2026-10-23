@@ -3728,11 +3728,18 @@ paths:
     get:
       operationId: listChatGroups
       tags: [messaging]
+      summary: List the caller's visible or hidden conversations
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: hidden
+          description: When true, list only conversations hidden by the caller. Defaults to false.
+          schema:
+            type: boolean
       responses:
         "200":
-          description: Chat groups
+          description: Conversations visible or hidden in the caller's own list
           content:
             application/json:
               schema:
@@ -3809,6 +3816,24 @@ paths:
       responses:
         "204":
           description: Hidden for the caller
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /chat/groups/{id}/restore:
+    post:
+      operationId: restoreChatGroupForMe
+      tags: [messaging]
+      summary: Restore a conversation to the caller's list without changing membership or history
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Restored for the caller
         "400":
           $ref: "#/components/responses/Error"
         "403":

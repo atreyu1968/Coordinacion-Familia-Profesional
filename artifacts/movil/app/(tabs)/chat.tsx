@@ -14,7 +14,9 @@ import { router, useFocusEffect } from "expo-router";
 
 import {
   useListChatGroups,
+  getListChatGroupsQueryKey,
   useHideChatGroupForMe,
+  useRestoreChatGroupForMe,
   useSyncModuleChatGroups,
   type ChatGroup,
 } from "@workspace/api-client-react";
@@ -45,8 +47,18 @@ export default function ChatListScreen() {
   const colors = useColors();
   const { user } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useListChatGroups();
+  const {
+    data: hiddenData,
+    isLoading: hiddenLoading,
+    isError: hiddenError,
+    refetch: refetchHidden,
+    isRefetching: isHiddenRefetching,
+  } = useListChatGroups(
+    { hidden: true },
+    { query: { queryKey: getListChatGroupsQueryKey({ hidden: true }), staleTime: 0 } },
+  );
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
+  const [activeTab, setActiveTab] = useState<"people" | "groups" | "hidden">("people");
 
   const canManageModules =
     user?.role === "superadmin" ||
@@ -54,6 +66,7 @@ export default function ChatListScreen() {
     user?.role === "department_head";
   const syncModules = useSyncModuleChatGroups();
   const hideConversationMutation = useHideChatGroupForMe();
+  const restoreConversationMutation = useRestoreChatGroupForMe();
 
   const generateModuleGroups = () => {
     if (syncModules.isPending) return;
@@ -84,7 +97,10 @@ export default function ChatListScreen() {
             hideConversationMutation.mutate(
               { id: group.id },
               {
-                onSuccess: () => void refetch(),
+                onSuccess: () => {
+                  void refetch();
+                  void refetchHidden();
+                },
                 onError: () =>
                   Alert.alert("Error", "No se pudo ocultar la conversación."),
               },
@@ -94,20 +110,36 @@ export default function ChatListScreen() {
     );
   };
 
+  const restoreConversation = (group: ChatGroup) => {
+    restoreConversationMutation.mutate(
+      { id: group.id },
+      {
+        onSuccess: () => {
+          void refetch();
+          void refetchHidden();
+        },
+        onError: () =>
+          Alert.alert("Error", "No se pudo restaurar la conversación."),
+      },
+    );
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       void refetch();
-    }, [refetch]),
+      void refetchHidden();
+    }, [refetch, refetchHidden]),
   );
 
   const bottomPad = Platform.OS === "web" ? 100 : 90;
 
   const conversations = useMemo(() => {
-    const groups = data ?? [];
+    const groups = activeTab === "hidden" ? hiddenData ?? [] : data ?? [];
     return groups.filter((group) =>
-      activeTab === "people" ? group.type === "direct" : group.type !== "direct",
+      activeTab === "hidden" ||
+      (activeTab === "people" ? group.type === "direct" : group.type !== "direct"),
     );
-  }, [activeTab, data]);
+  }, [activeTab, data, hiddenData]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -150,8 +182,8 @@ export default function ChatListScreen() {
           data={filtered}
           keyExtractor={(item: ChatGroup) => String(item.id)}
           contentContainerStyle={{ paddingBottom: bottomPad, flexGrow: 1 }}
-          onRefresh={refetch}
-          refreshing={isRefetching}
+          onRefresh={activeTab === "hidden" ? refetchHidden : refetch}
+          refreshing={activeTab === "hidden" ? isHiddenRefetching : isRefetching}
           scrollEnabled={filtered.length > 0}
           ListHeaderComponent={
             <View>
@@ -160,13 +192,16 @@ export default function ChatListScreen() {
                   [
                     ["people", "Personas"],
                     ["groups", "Grupos"],
+                    ["hidden", "Ocultas"],
                   ] as const
                 ).map(([tab, label]) => {
                   const selected = activeTab === tab;
                   const count =
                     tab === "people"
                       ? (data ?? []).filter((group) => group.type === "direct").length
-                      : (data ?? []).filter((group) => group.type !== "direct").length;
+                      : tab === "groups"
+                        ? (data ?? []).filter((group) => group.type !== "direct").length
+                        : (hiddenData ?? []).length;
                   return (
                     <Pressable
                       key={tab}
@@ -256,7 +291,13 @@ export default function ChatListScreen() {
             </View>
           }
           ListEmptyComponent={
-            search.trim() ? (
+            (activeTab === "hidden" ? hiddenLoading || hiddenError : false) ? (
+              <EmptyState
+                icon="message-circle"
+                title={hiddenError ? "No se pudieron cargar" : "Cargando…"}
+                message={hiddenError ? "Desliza hacia abajo para reintentar." : ""}
+              />
+            ) : search.trim() ? (
               <EmptyState
                 icon="search"
                 title="Sin resultados"
@@ -265,9 +306,17 @@ export default function ChatListScreen() {
             ) : (
               <EmptyState
                 icon={activeTab === "people" ? "user" : "users"}
-                title={activeTab === "people" ? "Sin conversaciones" : "Sin grupos"}
+                title={
+                  activeTab === "hidden"
+                    ? "Sin conversaciones ocultas"
+                    : activeTab === "people"
+                      ? "Sin conversaciones"
+                      : "Sin grupos"
+                }
                 message={
-                  activeTab === "people"
+                  activeTab === "hidden"
+                    ? "Las conversaciones que ocultes aparecerán aquí."
+                    : activeTab === "people"
                     ? "Pulsa el icono de redacción para iniciar una conversación."
                     : "Aún no perteneces a ningún grupo."
                 }
@@ -337,17 +386,41 @@ export default function ChatListScreen() {
                   </View>
                 </Pressable>
                 <Pressable
-                  onPress={() => hideConversation(item)}
-                  disabled={hideConversationMutation.isPending}
+                  onPress={() =>
+                    activeTab === "hidden"
+                      ? restoreConversation(item)
+                      : hideConversation(item)
+                  }
+                  disabled={
+                    activeTab === "hidden"
+                      ? restoreConversationMutation.isPending
+                      : hideConversationMutation.isPending
+                  }
                   accessibilityRole="button"
-                  accessibilityLabel={`Ocultar conversación ${item.name}`}
+                  accessibilityLabel={
+                    activeTab === "hidden"
+                      ? `Restaurar conversación ${item.name}`
+                      : `Ocultar conversación ${item.name}`
+                  }
+                  testID={`${activeTab === "hidden" ? "restore" : "hide"}-conversation-${item.id}`}
                   hitSlop={8}
                   style={({ pressed }) => [
                     styles.hideAction,
-                    { opacity: pressed || hideConversationMutation.isPending ? 0.5 : 1 },
+                    {
+                      opacity:
+                        pressed ||
+                        restoreConversationMutation.isPending ||
+                        hideConversationMutation.isPending
+                          ? 0.5
+                          : 1,
+                    },
                   ]}
                 >
-                  <Feather name="eye-off" size={18} color={colors.mutedForeground} />
+                  <Feather
+                    name={activeTab === "hidden" ? "eye" : "eye-off"}
+                    size={18}
+                    color={colors.mutedForeground}
+                  />
                 </Pressable>
               </View>
             );

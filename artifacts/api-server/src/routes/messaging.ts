@@ -455,6 +455,16 @@ router.get("/chat/contacts", requireAuth, async (req, res): Promise<void> => {
 router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   await deleteEmptyChatGroups();
   const caller = req.user!;
+  const hiddenFilter = req.query.hidden;
+  if (
+    hiddenFilter !== undefined &&
+    hiddenFilter !== "true" &&
+    hiddenFilter !== "false"
+  ) {
+    res.status(400).json({ message: "Filtro de conversaciones no válido" });
+    return;
+  }
+  const listHidden = hiddenFilter === "true";
   const memberships = await db
     .select({
       groupId: chatGroupMembersTable.groupId,
@@ -532,7 +542,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   // A direct thread is only visible while both participants still have active
   // accounts. Keep the stored history intact; it is simply omitted from inboxes.
   const visibleGroups = groups.filter((group) => {
-    if (hiddenGroupIds.has(group.id)) return false;
+    if (hiddenGroupIds.has(group.id) !== listHidden) return false;
     if (group.type !== "direct") return true;
     const members = membersByGroup.get(group.id) ?? [];
     return (
@@ -791,6 +801,40 @@ router.post(
       return;
     }
     emitToUser(caller.id, "chat_update", { groupId, hidden: true });
+    res.status(204).end();
+  },
+);
+
+router.post(
+  "/chat/groups/:id/restore",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = HideChatGroupForMeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: "Conversación no válida" });
+      return;
+    }
+    const caller = req.user!;
+    const groupId = params.data.id;
+    if (!(await isGroupMember(groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a esta conversación" });
+      return;
+    }
+    const [membership] = await db
+      .update(chatGroupMembersTable)
+      .set({ hiddenAt: null })
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, groupId),
+          eq(chatGroupMembersTable.userId, caller.id),
+        ),
+      )
+      .returning({ id: chatGroupMembersTable.id });
+    if (!membership) {
+      res.status(404).json({ message: "Conversación no encontrada" });
+      return;
+    }
+    emitToUser(caller.id, "chat_update", { groupId, hidden: false });
     res.status(204).end();
   },
 );

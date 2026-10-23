@@ -358,7 +358,7 @@ export default function ChatDetailScreen() {
       enabled: Number.isInteger(groupId),
     },
   });
-  const groupsQuery = useListChatGroups({
+  const groupsQuery = useListChatGroups(undefined, {
     query: {
       queryKey: getListChatGroupsQueryKey(),
       enabled: Number.isInteger(groupId),

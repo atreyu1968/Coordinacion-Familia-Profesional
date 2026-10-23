@@ -214,6 +214,7 @@ export * from './learningOutcome';
 export * from './listCalendarEventsParams';
 export * from './listCentersParams';
 export * from './listChatContactsParams';
+export * from './listChatGroupsParams';
 export * from './listCompanyAlertsParams';
 export * from './listCyclesParams';
 export * from './listDocumentFormsParams';

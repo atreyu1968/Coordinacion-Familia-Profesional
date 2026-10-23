@@ -3773,6 +3773,12 @@ export type ListChatContactsParams = {
 search?: string;
 };
 
+export type ListChatGroupsParams = {
+/**
+ * When true, list only conversations hidden by the caller. Defaults to false.
+ */
+hidden?: boolean;
+};
 export type ListGroupMessagesParams = {
 /**
  * Return up to 200 messages older than this message id.
@@ -3866,4 +3872,3 @@ export type CommitLmsScormSessionParams = {
  */
 token: LmsTokenQueryParameter;
 };
-
