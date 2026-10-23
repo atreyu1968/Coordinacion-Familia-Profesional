@@ -1,3 +1,4 @@
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useRef,
   useState,
@@ -393,7 +394,7 @@ function AlertsTab() {
                   )}
                   {a.description && (
                     <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
-                      {a.description}
+                      <AutoLinkText text={a.description} />
                     </p>
                   )}
                 </div>
@@ -658,7 +659,7 @@ function GdcanTab() {
                   <h3 className="font-semibold leading-tight">{r.title}</h3>
                   {r.content && (
                     <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-4">
-                      {r.content}
+                      <AutoLinkText text={r.content} />
                     </p>
                   )}
                 </div>
@@ -782,7 +783,7 @@ function BotTab() {
                         : "bg-muted"
                     }`}
                   >
-                    {m.content}
+                    <AutoLinkText text={m.content} />
                   </div>
                 </div>
               ))

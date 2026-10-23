@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useSearch } from "wouter";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { useQueryClient } from "@tanstack/react-query";
@@ -384,7 +385,7 @@ export default function RecursosPage() {
                     <h3 className="font-semibold leading-tight">{r.title}</h3>
                     {r.description && (
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
-                        {r.description}
+                        <AutoLinkText text={r.description} />
                       </p>
                     )}
                   </div>

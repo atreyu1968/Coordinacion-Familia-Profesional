@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
   Alert,
@@ -1410,7 +1411,7 @@ function MessageBubble({
             ) : null}
 
             {message.content ? (
-              <Text style={[styles.msgText, { color: fg }]}>{message.content}</Text>
+              <Text style={[styles.msgText, { color: fg }]}><AutoLinkText text={message.content} /></Text>
             ) : null}
           </>
         )}

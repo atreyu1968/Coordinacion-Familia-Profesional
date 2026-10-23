@@ -1,3 +1,4 @@
+import { AutoLinkText } from "@/components/auto-link-text";
 import { Link, useRoute } from "wouter";
 import { useListModules } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
@@ -200,7 +201,7 @@ export default function ModuloDetallePage() {
                     <div className="min-w-0">
                       <p className="font-medium">{t.label}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t.description}
+                        <AutoLinkText text={t.description} />
                       </p>
                     </div>
                   </CardContent>

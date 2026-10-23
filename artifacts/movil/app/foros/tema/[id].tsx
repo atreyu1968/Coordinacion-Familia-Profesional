@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   FlatList,
   Platform,
@@ -228,7 +229,7 @@ export default function ForoTemaScreen() {
                     </View>
                   ) : (
                     <Text style={[styles.postText, { color: colors.foreground }]}>
-                      {item.content}
+                      <AutoLinkText text={item.content} />
                     </Text>
                   )}
                 </View>

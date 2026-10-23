@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
   Alert,
@@ -188,7 +189,7 @@ export default function WikiPageScreen() {
                   selectable
                   style={[styles.body, { color: colors.foreground }]}
                 >
-                  {page.content}
+                  <AutoLinkText text={page.content} />
                 </Text>
               </Card>
             ) : (

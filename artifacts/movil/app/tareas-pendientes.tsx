@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   Platform,
   Pressable,
@@ -114,13 +115,13 @@ function TaskCard({
       </View>
 
       {task.description ? (
-        <Text style={[styles.description, { color: colors.mutedForeground }]}>{task.description}</Text>
+        <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={task.description} /></Text>
       ) : null}
 
       {task.status === "resolved" && task.resolution ? (
         <View style={[styles.resolutionBox, { backgroundColor: colors.muted }]}>
           <Text style={[styles.resolutionLabel, { color: colors.foreground }]}>Resolución</Text>
-          <Text style={[styles.description, { color: colors.mutedForeground }]}>{task.resolution}</Text>
+          <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={task.resolution} /></Text>
         </View>
       ) : null}
 

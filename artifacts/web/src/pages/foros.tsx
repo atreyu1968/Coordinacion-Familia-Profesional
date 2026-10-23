@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListForumModules,
@@ -396,7 +397,7 @@ function PostCard({
             </div>
           </div>
         ) : (
-          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+          <p className="text-sm whitespace-pre-wrap"><AutoLinkText text={post.content} /></p>
         )}
       </CardContent>
     </Card>

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListLearningOutcomes,
@@ -177,7 +178,7 @@ function CriterionRow({
           {criterion.code}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          {criterion.description}
+          <AutoLinkText text={criterion.description} />
         </span>
       </div>
       {canEdit && (
@@ -292,7 +293,7 @@ function OutcomeBlock({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0">
           <Badge className="shrink-0 mt-0.5">{outcome.code}</Badge>
-          <span className="text-sm font-medium">{outcome.description}</span>
+          <span className="text-sm font-medium"><AutoLinkText text={outcome.description} /></span>
         </div>
         {canEdit && (
           <div className="flex items-center gap-1 shrink-0">

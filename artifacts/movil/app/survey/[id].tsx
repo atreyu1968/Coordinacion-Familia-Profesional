@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   Platform,
   Pressable,
@@ -210,7 +211,7 @@ export default function SurveyDetailScreen() {
           <Text style={[styles.surveyTitle, { color: colors.foreground }]}>{data.title}</Text>
           {data.description ? (
             <Text style={[styles.surveyDesc, { color: colors.mutedForeground }]}>
-              {data.description}
+              <AutoLinkText text={data.description} />
             </Text>
           ) : null}
 
@@ -225,7 +226,7 @@ export default function SurveyDetailScreen() {
           {(data.questions ?? []).map((q, idx) => (
             <Card key={q.id} style={styles.qCard}>
               <Text style={[styles.qText, { color: colors.foreground }]}>
-                {idx + 1}. {q.text}
+                {idx + 1}. <AutoLinkText text={q.text} />
               </Text>
               <QuestionInput
                 question={q}

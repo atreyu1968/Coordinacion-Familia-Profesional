@@ -1,4 +1,5 @@
 import React from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import {
@@ -126,7 +127,7 @@ export default function BoardScreen() {
                 {item.title}
               </Text>
               <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                {item.body}
+                <AutoLinkText text={item.body} />
               </Text>
               {item.attachments && item.attachments.length > 0 && (
                 <View style={styles.attachments}>

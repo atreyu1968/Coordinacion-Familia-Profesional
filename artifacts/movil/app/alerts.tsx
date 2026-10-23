@@ -1,4 +1,5 @@
 import React from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { useListCompanyAlerts, type CompanyAlert } from "@workspace/api-client-react";
@@ -51,7 +52,7 @@ export default function AlertsScreen() {
               ) : null}
               {item.description ? (
                 <Text style={[styles.desc, { color: colors.mutedForeground }]}>
-                  {item.description}
+                  <AutoLinkText text={item.description} />
                 </Text>
               ) : null}
               <View style={styles.metaRow}>

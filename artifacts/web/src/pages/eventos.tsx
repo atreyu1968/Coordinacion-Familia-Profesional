@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListEvents,
@@ -1211,7 +1212,7 @@ function EventDetailView({
       </div>
 
       {event.description && (
-        <p className="text-sm text-muted-foreground">{event.description}</p>
+        <p className="text-sm text-muted-foreground"><AutoLinkText text={event.description} /></p>
       )}
 
       <Tabs

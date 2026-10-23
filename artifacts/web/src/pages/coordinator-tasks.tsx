@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -152,7 +153,7 @@ function TaskCard({
             </h3>
             {task.description && (
               <p className="mt-1.5 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground" data-testid={`task-description-${task.id}`}>
-                {task.description}
+                <AutoLinkText text={task.description} />
               </p>
             )}
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

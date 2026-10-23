@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { Bell } from "lucide-react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,16 +39,18 @@ export function SpaceNotifications({ userId }: { userId: number }) {
           : notices.isError ? <div className="text-sm">No se pudieron cargar los avisos. <Button variant="link" onClick={() => void notices.refetch()}>Reintentar</Button></div>
           : items.length === 0 ? <p className="text-sm text-muted-foreground">No tienes avisos de nuevos espacios.</p>
           : items.map((item) => (
-            <Link key={item.id} href="/espacio"
-              className={`block rounded-md p-3 mb-1 hover:bg-accent ${!item.readAt ? "bg-accent/60" : ""}`}
-              onClick={() => {
-                if (!item.readAt) markRead.mutate({ id: item.id });
-                setOpen(false);
-              }}>
+              <div key={item.id}
+              className={`rounded-md p-3 mb-1 hover:bg-accent ${!item.readAt ? "bg-accent/60" : ""}`}>
               <p className="text-sm font-medium">{item.title}</p>
-              <p className="text-sm text-muted-foreground">{item.body}</p>
-              <span className="text-xs underline">Ir a Espacio colaborativo</span>
-            </Link>
+              <p className="text-sm text-muted-foreground"><AutoLinkText text={item.body} /></p>
+              <Link href="/espacio" className="text-xs underline"
+                onClick={() => {
+                  if (!item.readAt) markRead.mutate({ id: item.id });
+                  setOpen(false);
+                }}>
+                Ir a Espacio colaborativo
+              </Link>
+            </div>
           ))}
       </PopoverContent>
     </Popover>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
@@ -81,7 +82,7 @@ export default function VideoconferenciasScreen() {
                     style={[styles.desc, { color: colors.mutedForeground }]}
                     numberOfLines={2}
                   >
-                    {item.description}
+                    <AutoLinkText text={item.description} />
                   </Text>
                 ) : null}
                 <View style={styles.metaRow}>

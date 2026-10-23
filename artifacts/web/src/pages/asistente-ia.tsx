@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useGetAiStatus,
   useAiChat,
@@ -173,7 +174,7 @@ export default function AsistenteIaPage() {
                         : "bg-muted"
                     }`}
                   >
-                    {m.content}
+                    <AutoLinkText text={m.content} />
                   </div>
                 </div>
               ))

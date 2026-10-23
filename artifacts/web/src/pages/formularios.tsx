@@ -1,6 +1,9 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  AutoLinkText,
+} from "@/components/auto-link-text";
+import {
   useListDocumentForms,
   useCreateDocumentForm,
   useDeleteDocumentForm,
@@ -890,7 +893,7 @@ function FillFormDialog({
               </div>
               <DialogTitle className="pt-1">{form.title}</DialogTitle>
               {form.description && (
-                <DialogDescription>{form.description}</DialogDescription>
+                <DialogDescription><AutoLinkText text={form.description} /></DialogDescription>
               )}
             </DialogHeader>
 
@@ -1114,7 +1117,7 @@ export default function FormulariosPage() {
                   <h3 className="font-semibold leading-tight">{f.title}</h3>
                   {f.description && (
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {f.description}
+                      <AutoLinkText text={f.description} />
                     </p>
                   )}
                 </div>

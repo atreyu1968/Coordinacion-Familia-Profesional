@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useListCollaborativeSpaces,
   getListCollaborativeSpacesQueryKey,
@@ -92,7 +93,7 @@ export function IndependentSpacesSection({
                     </Badge>
                   </div>
                   {s.description && (
-                    <div className="text-xs text-muted-foreground line-clamp-2">{s.description}</div>
+                    <div className="text-xs text-muted-foreground line-clamp-2"><AutoLinkText text={s.description} /></div>
                   )}
                 </div>
                 <div className="flex gap-2">

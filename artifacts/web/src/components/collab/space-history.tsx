@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useGetCollaborativeSpaceHistory, getGetCollaborativeSpaceHistoryQueryKey,
   type CollaborativeSpaceAuditReference,
@@ -54,7 +55,7 @@ export function SpaceHistory({ spaceId }: { spaceId: number }) {
           {" · "}{event.actorName} (#{event.actorId}, {event.actorRole})
         </div>
         <p className={event.action === "member_removal_failed" ? "font-medium text-destructive" : "font-medium"}>
-          {event.summary}
+          <AutoLinkText text={event.summary} />
         </p>
         <p className="text-xs text-muted-foreground">Espacio: {event.spaceName} (#{event.spaceId})</p>
         <details>

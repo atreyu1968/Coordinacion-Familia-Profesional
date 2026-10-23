@@ -1,4 +1,5 @@
 import React from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, Platform, StyleSheet, Text, View, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -86,7 +87,7 @@ export default function FormulariosScreen() {
                   <Text style={[styles.title, { color: colors.foreground }]}>{item.title}</Text>
                   {item.description ? (
                     <Text style={[styles.desc, { color: colors.mutedForeground }]} numberOfLines={2}>
-                      {item.description}
+                      <AutoLinkText text={item.description} />
                     </Text>
                   ) : null}
                   {item.closesAt ? (

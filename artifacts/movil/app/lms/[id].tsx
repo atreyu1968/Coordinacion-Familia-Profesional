@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
@@ -146,7 +147,7 @@ export default function LmsDetailScreen() {
           <View style={styles.actions}><Button label="Guardar" icon="check" onPress={saveCourse} loading={update.isPending} /><Button label="Cancelar" variant="secondary" onPress={() => setEditing(false)} /></View>
         </Card> : <>
           <Text style={[styles.title, { color: colors.foreground }]}>{course.data.title}</Text>
-          {course.data.description ? <Text style={[styles.description, { color: colors.mutedForeground }]}>{course.data.description}</Text> : null}
+          {course.data.description ? <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={course.data.description} /></Text> : null}
           <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${requiredProgress}%` }]} /></View>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>{completedRequired} de {requiredLessons.length} lecciones obligatorias completadas</Text>
         </>}
@@ -208,7 +209,7 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
   const text = typeof lesson.content.text === "string" ? lesson.content.text : typeof lesson.content.body === "string" ? lesson.content.body : "";
   return <Card style={styles.lesson}>
     <View style={styles.lessonHeader}><View style={{ flex: 1 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
-    {lesson.kind === "text" ? <Text style={[styles.lessonBody, { color: colors.foreground }]}>{text}</Text> : null}
+     {lesson.kind === "text" ? <Text style={[styles.lessonBody, { color: colors.foreground }]}><AutoLinkText text={text} /></Text> : null}
     {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => void Linking.openURL(lesson.content.url as string)} /> : null}
     {lesson.kind === "file" ? <View style={{ flexDirection: "row", gap: 8 }}>
       <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="download" variant="secondary" onPress={openFile} loading={download.isPending} />

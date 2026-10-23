@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListMeetings,
@@ -200,7 +201,7 @@ function MeetingRow({
           <div className="font-medium truncate">{item.title}</div>
           {item.description && (
             <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
-              {item.description}
+              <AutoLinkText text={item.description} />
             </p>
           )}
         </div>

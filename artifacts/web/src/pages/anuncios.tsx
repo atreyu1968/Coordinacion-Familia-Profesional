@@ -1,4 +1,5 @@
 import { useState, useRef, type FormEvent } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAnnouncements,
@@ -310,7 +311,7 @@ function AnnouncementCard({
         <div className="min-w-0">
           <div className="font-medium">{item.title}</div>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
-            {item.body}
+            <AutoLinkText text={item.body} />
           </p>
         </div>
         {canDelete && (

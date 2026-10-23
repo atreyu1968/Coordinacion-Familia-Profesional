@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { Link, useRoute } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -355,7 +356,7 @@ function CoordinatorMailDetail({ id }: { id: number }) {
           {timeline.map((entry) => entry.kind === "email" ? <article className={`mail-message mail-message--${entry.item.direction}`} key={`m-${entry.item.id}`} data-testid={`card-mail-message-${entry.item.id}`}>
             <div className="mail-message__line"><span className="mail-message__dot" /><div className="mail-message__who"><strong>{entry.item.senderName || entry.item.senderEmail}</strong><span>{entry.item.direction === "received" ? "Recibido" : "Enviado"} · {safeDate(entry.item.receivedAt)}</span></div></div>
             <div className="mail-message__content"><p className="mail-source">Caso original: {entry.item.caseTitle}</p><div className="mail-message__recipient">De: {entry.item.senderEmail}<br />Para: {entry.item.toEmails || "—"}{entry.item.ccEmails ? <><br />CC: {entry.item.ccEmails}</> : null}</div>
-              <h3>{entry.item.subject || "Sin asunto"}</h3><p className="mail-inert-body" data-testid={`text-mail-message-body-${entry.item.id}`}>{entry.item.bodyText}{entry.item.bodyTruncated ? "\n\n[Contenido recortado]" : ""}</p>
+              <h3>{entry.item.subject || "Sin asunto"}</h3><p className="mail-inert-body" data-testid={`text-mail-message-body-${entry.item.id}`}><AutoLinkText text={`${entry.item.bodyText}${entry.item.bodyTruncated ? "\n\n[Contenido recortado]" : ""}`} /></p>
               {entry.item.attachments.length > 0 && <div className="mail-attachments"><p>Adjuntos · no se comparten con la IA</p>{entry.item.attachments.map((file) => <div className="mail-attachment-row" key={file.id}>
                 <button className="mail-attachment" disabled={file.status !== "ready"} onClick={() => void attachmentDownload(file.id, file.fileName)} data-testid={`button-download-attachment-${file.id}`}><ArrowDownToLine /><span>{file.fileName}</span><small>{file.status === "ready" ? formatBytes(file.size) : "No disponible"}</small></button>
                 {file.status === "ready" && isHtmlDocumentName(file.fileName) && <HtmlDocxDownloadButton
@@ -378,7 +379,7 @@ function CoordinatorMailDetail({ id }: { id: number }) {
                 />}
               </div>)}</div>}
             </div>
-          </article> : <article className="mail-note" key={`n-${entry.item.id}`} data-testid={`card-mail-note-${entry.item.id}`}><div className="mail-message__line"><span className="mail-message__dot mail-message__dot--note" /><div className="mail-message__who"><strong>Nota privada · {entry.item.author}</strong><span>{safeDate(entry.item.createdAt)}</span></div></div><p className="mail-source">Caso original: {entry.item.caseTitle}</p><p>{entry.item.content}</p></article>)}
+          </article> : <article className="mail-note" key={`n-${entry.item.id}`} data-testid={`card-mail-note-${entry.item.id}`}><div className="mail-message__line"><span className="mail-message__dot mail-message__dot--note" /><div className="mail-message__who"><strong>Nota privada · {entry.item.author}</strong><span>{safeDate(entry.item.createdAt)}</span></div></div><p className="mail-source">Caso original: {entry.item.caseTitle}</p><p><AutoLinkText text={entry.item.content} /></p></article>)}
         </div>
         <nav className="mail-pagination mail-pagination--thread" aria-label="Paginación de mensajes" data-testid="pagination-mail-messages">
           <span data-testid="text-mail-message-page">Página {messagePage} de {maxPages}</span><div><Button variant="outline" size="sm" disabled={messagePage <= 1} onClick={() => setMessagePage((p) => Math.max(1, p - 1))} data-testid="button-mail-message-previous"><ArrowLeft /> Anterior</Button><Button variant="outline" size="sm" disabled={messagePage >= maxPages} onClick={() => setMessagePage((p) => Math.min(maxPages, p + 1))} data-testid="button-mail-message-next">Siguiente <ArrowRight /></Button></div>

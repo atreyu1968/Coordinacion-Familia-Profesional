@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListReports,
@@ -291,7 +292,7 @@ export default function MemoriasPage() {
           {viewing && (
             <>
               <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {viewing.content}
+                <AutoLinkText text={viewing.content} />
               </div>
               <div className="flex justify-end pt-2">
                 <Button

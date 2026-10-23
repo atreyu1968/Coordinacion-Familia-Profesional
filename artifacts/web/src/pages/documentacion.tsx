@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   getGetWikiPageQueryKey,
   getListWikiPagesQueryKey,
@@ -126,7 +127,7 @@ function inlineText(line: string) {
   const chunks = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return chunks.map((chunk, index) => {
     if (chunk.startsWith("**") && chunk.endsWith("**")) {
-      return <strong key={index}>{chunk.slice(2, -2)}</strong>;
+      return <strong key={index}><AutoLinkText text={chunk.slice(2, -2)} /></strong>;
     }
     if (chunk.startsWith("`") && chunk.endsWith("`")) {
       return (
@@ -135,7 +136,7 @@ function inlineText(line: string) {
         </code>
       );
     }
-    return <span key={index}>{chunk}</span>;
+    return <span key={index}><AutoLinkText text={chunk} /></span>;
   });
 }
 

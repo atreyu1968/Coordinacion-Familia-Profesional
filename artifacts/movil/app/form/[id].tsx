@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
   Platform,
@@ -279,7 +280,7 @@ export default function FormDetailScreen() {
           </Text>
           {data.description ? (
             <Text style={[styles.formDesc, { color: colors.mutedForeground }]}>
-              {data.description}
+              <AutoLinkText text={data.description} />
             </Text>
           ) : null}
           {!canSubmit ? (
@@ -301,7 +302,7 @@ export default function FormDetailScreen() {
           {(data.fields ?? []).map((field, idx) => (
             <Card key={field.id} style={styles.fieldCard}>
               <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                {idx + 1}. {field.label}
+                {idx + 1}. <AutoLinkText text={field.label} />
                 {field.required ? <Text style={{ color: colors.destructive }}> *</Text> : null}
               </Text>
               <FieldInput

@@ -1,3 +1,4 @@
+import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useState,
   useEffect,
@@ -342,7 +343,7 @@ function MessageBubble({
               )}
               {message.content && (
                 <div className="whitespace-pre-wrap break-words">
-                  {message.content}
+                  <AutoLinkText text={message.content} />
                 </div>
               )}
             </>

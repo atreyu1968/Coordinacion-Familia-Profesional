@@ -1,4 +1,5 @@
 import React from "react";
+import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
   FlatList,
@@ -276,7 +277,7 @@ export default function NotificationsScreen() {
                   </Text>
                   {item.body ? (
                     <Text style={[styles.text, { color: colors.mutedForeground }]}>
-                      {item.body}
+                      <AutoLinkText text={item.body} />
                     </Text>
                   ) : null}
                   <Text style={[styles.time, { color: colors.mutedForeground }]}>

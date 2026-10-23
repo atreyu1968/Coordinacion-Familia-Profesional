@@ -3,6 +3,9 @@ import { useSearch } from "wouter";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  AutoLinkText,
+} from "@/components/auto-link-text";
+import {
   useListSurveys,
   useCreateSurvey,
   useGetSurvey,
@@ -652,7 +655,7 @@ function VoteForm({
       {questions.map((q, qi) => (
         <div key={q.id} className="space-y-3">
           <p className="font-medium">
-            {qi + 1}. {q.text}
+            {qi + 1}. <AutoLinkText text={q.text} />
           </p>
           {q.type === "single" && (
             <RadioGroup
@@ -827,7 +830,7 @@ function ResultsView({ surveyId }: { surveyId: number }) {
         return (
           <div key={q.questionId} className="space-y-3">
             <p className="font-medium">
-              {qi + 1}. {q.text}
+              {qi + 1}. <AutoLinkText text={q.text} />
             </p>
             {q.options && q.options.length > 0 && (
               <div className="space-y-2">
@@ -952,7 +955,7 @@ function SurveyDetailDialog({
               </div>
               <DialogTitle className="pt-1">{survey.title}</DialogTitle>
               {survey.description && (
-                <DialogDescription>{survey.description}</DialogDescription>
+                <DialogDescription><AutoLinkText text={survey.description} /></DialogDescription>
               )}
             </DialogHeader>
 
@@ -1140,7 +1143,7 @@ export default function EncuestasPage() {
                   <h3 className="font-semibold leading-tight">{s.title}</h3>
                   {s.description && (
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {s.description}
+                      <AutoLinkText text={s.description} />
                     </p>
                   )}
                 </div>

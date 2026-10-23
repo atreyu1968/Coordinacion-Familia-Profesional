@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetEventMinutes,
@@ -138,15 +139,15 @@ function inline(text: string, key: string): ReactNode[] {
   return parts.map((part, i) => {
     const k = `${key}-${i}`;
     if ((part.startsWith("**") && part.endsWith("**")) || (part.startsWith("__") && part.endsWith("__"))) {
-      return <strong key={k}>{part.slice(2, -2)}</strong>;
+      return <strong key={k}><AutoLinkText text={part.slice(2, -2)} /></strong>;
     }
     if ((part.startsWith("*") && part.endsWith("*")) || (part.startsWith("_") && part.endsWith("_"))) {
-      return <em key={k}>{part.slice(1, -1)}</em>;
+      return <em key={k}><AutoLinkText text={part.slice(1, -1)} /></em>;
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return <code key={k} className="rounded bg-slate-100 px-1 py-0.5 text-[0.9em]">{part.slice(1, -1)}</code>;
     }
-    return <span key={k}>{part.replace(/\\\|/g, "|")}</span>;
+    return <span key={k}><AutoLinkText text={part.replace(/\\\|/g, "|")} /></span>;
   });
 }
 
@@ -216,7 +217,7 @@ export function SafeMarkdown({ text }: { text: string }) {
                 : "font-semibold text-sm uppercase tracking-[0.12em] text-slate-600 mt-5 mb-2"
           }
         >
-          {h[2]}
+          {inline(h[2], `heading-${i}`)}
         </h2>,
       );
     } else if (/^\s*>\s?/.test(line)) {
@@ -1244,7 +1245,7 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                           <span className="block text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                             {m.role === "user" ? "Instrucción" : "IA"}
                           </span>
-                          {m.content}
+                          <AutoLinkText text={m.content} />
                         </div>
                       ))}
                     </div>
