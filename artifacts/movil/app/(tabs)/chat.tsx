@@ -14,6 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 
 import {
   useListChatGroups,
+  useHideChatGroupForMe,
   useSyncModuleChatGroups,
   type ChatGroup,
 } from "@workspace/api-client-react";
@@ -52,6 +53,7 @@ export default function ChatListScreen() {
     user?.role === "coordinator" ||
     user?.role === "department_head";
   const syncModules = useSyncModuleChatGroups();
+  const hideConversationMutation = useHideChatGroupForMe();
 
   const generateModuleGroups = () => {
     if (syncModules.isPending) return;
@@ -67,6 +69,29 @@ export default function ChatListScreen() {
         Alert.alert("Error", "No se pudieron generar los grupos.");
       },
     });
+  };
+
+  const hideConversation = (group: ChatGroup) => {
+    Alert.alert(
+      "Ocultar conversación",
+      "Solo desaparecerá de tu lista. El historial de las demás personas no se borrará y volverá a aparecer cuando haya actividad nueva.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Ocultar",
+          style: "destructive",
+          onPress: () =>
+            hideConversationMutation.mutate(
+              { id: group.id },
+              {
+                onSuccess: () => void refetch(),
+                onError: () =>
+                  Alert.alert("Error", "No se pudo ocultar la conversación."),
+              },
+            ),
+        },
+      ],
+    );
   };
 
   useFocusEffect(
@@ -252,62 +277,79 @@ export default function ChatListScreen() {
           renderItem={({ item }) => {
             const meta = chatTypeMeta(item.type, colors);
             return (
-            <Pressable
-              onPress={() =>
-                router.push({ pathname: "/chat/[id]", params: { id: String(item.id), name: item.name } })
-              }
-              style={({ pressed }) => [
-                styles.row,
-                { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 },
-              ]}
-            >
-              <View
-                style={[
-                  styles.typeAvatar,
-                  { backgroundColor: meta.color + "22", borderColor: meta.color },
-                ]}
-              >
-                {item.type === "direct" ? (
-                  <Text style={[styles.typeAvatarText, { color: meta.color }]}>
-                    {initials(item.name)}
-                  </Text>
-                ) : (
-                  <Feather name={meta.icon} size={20} color={meta.color} />
-                )}
-              </View>
-              <View style={styles.rowBody}>
-                <Text
-                  style={[styles.name, { color: colors.foreground }]}
-                  numberOfLines={1}
+              <View style={[styles.row, { borderBottomColor: colors.border }]}>
+                <Pressable
+                  onPress={() =>
+                    router.push({ pathname: "/chat/[id]", params: { id: String(item.id), name: item.name } })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Abrir conversación con ${item.name}`}
+                  style={({ pressed }) => [
+                    styles.rowMain,
+                    { opacity: pressed ? 0.6 : 1 },
+                  ]}
                 >
-                  {item.name}
-                </Text>
-                <View style={styles.previewRow}>
-                  <View style={[styles.typeBadge, { backgroundColor: meta.color + "22" }]}>
-                    <Feather name={meta.icon} size={10} color={meta.color} />
-                    <Text style={[styles.typeBadgeText, { color: meta.color }]}>
-                      {meta.label}
-                    </Text>
+                  <View
+                    style={[
+                      styles.typeAvatar,
+                      { backgroundColor: meta.color + "22", borderColor: meta.color },
+                    ]}
+                  >
+                    {item.type === "direct" ? (
+                      <Text style={[styles.typeAvatarText, { color: meta.color }]}>
+                        {initials(item.name)}
+                      </Text>
+                    ) : (
+                      <Feather name={meta.icon} size={20} color={meta.color} />
+                    )}
                   </View>
-                </View>
-              </View>
-              <View style={styles.rowEnd}>
-                {item.lastMessageAt ? (
-                  <Text style={[styles.time, { color: colors.mutedForeground }]}>
-                    {formatRelative(item.lastMessageAt)}
-                  </Text>
-                ) : null}
-                {(item.unreadCount ?? 0) > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                  <View style={styles.rowBody}>
                     <Text
-                      style={[styles.badgeText, { color: colors.primaryForeground }]}
+                      style={[styles.name, { color: colors.foreground }]}
+                      numberOfLines={1}
                     >
-                      {(item.unreadCount ?? 0) > 99 ? "99+" : item.unreadCount}
+                      {item.name}
                     </Text>
+                    <View style={styles.previewRow}>
+                      <View style={[styles.typeBadge, { backgroundColor: meta.color + "22" }]}>
+                        <Feather name={meta.icon} size={10} color={meta.color} />
+                        <Text style={[styles.typeBadgeText, { color: meta.color }]}>
+                          {meta.label}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                ) : null}
+                  <View style={styles.rowEnd}>
+                    {item.lastMessageAt ? (
+                      <Text style={[styles.time, { color: colors.mutedForeground }]}>
+                        {formatRelative(item.lastMessageAt)}
+                      </Text>
+                    ) : null}
+                    {(item.unreadCount ?? 0) > 0 ? (
+                      <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                        <Text
+                          style={[styles.badgeText, { color: colors.primaryForeground }]}
+                        >
+                          {(item.unreadCount ?? 0) > 99 ? "99+" : item.unreadCount}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => hideConversation(item)}
+                  disabled={hideConversationMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ocultar conversación ${item.name}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.hideAction,
+                    { opacity: pressed || hideConversationMutation.isPending ? 0.5 : 1 },
+                  ]}
+                >
+                  <Feather name="eye-off" size={18} color={colors.mutedForeground} />
+                </Pressable>
               </View>
-            </Pressable>
             );
           }}
         />
@@ -360,6 +402,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  hideAction: {
+    minWidth: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowBody: { flex: 1, gap: 4 },
   rowEnd: { alignItems: "flex-end", gap: 6 },

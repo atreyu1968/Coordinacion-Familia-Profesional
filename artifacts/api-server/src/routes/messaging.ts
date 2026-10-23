@@ -18,6 +18,7 @@ import {
   chatGroupsTable,
   chatGroupMembersTable,
   messagesTable,
+  messageUserHidesTable,
   messageReactionsTable,
   announcementsTable,
   announcementAttachmentsTable,
@@ -45,6 +46,8 @@ import {
   EditMessageParams,
   EditMessageBody,
   DeleteMessageParams,
+  HideChatGroupForMeParams,
+  HideMessageForMeParams,
   ReactToMessageParams,
   ReactToMessageBody,
   ForwardMessageParams,
@@ -318,6 +321,7 @@ async function assembleMessages(
     number,
     { content: string; senderName: string | null; deletedAt: Date | null }
   >();
+  const hiddenReplyIds = new Set<number>();
   if (replyIds.length) {
     const rrows = await db
       .select({
@@ -330,6 +334,17 @@ async function assembleMessages(
       .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
       .where(inArray(messagesTable.id, replyIds));
     for (const rr of rrows) replyMap.set(rr.id, rr);
+
+    const hiddenReplies = await db
+      .select({ messageId: messageUserHidesTable.messageId })
+      .from(messageUserHidesTable)
+      .where(
+        and(
+          eq(messageUserHidesTable.userId, callerId),
+          inArray(messageUserHidesTable.messageId, replyIds),
+        ),
+      );
+    for (const hidden of hiddenReplies) hiddenReplyIds.add(hidden.messageId);
   }
 
   return rows.map((row) => {
@@ -346,10 +361,14 @@ async function assembleMessages(
     if (row.replyToId != null) {
       const rp = replyMap.get(row.replyToId);
       if (rp) {
-        replyToContent = rp.deletedAt
-          ? "Mensaje eliminado"
-          : rp.content || "Archivo adjunto";
-        replyToSenderName = rp.senderName;
+        if (hiddenReplyIds.has(row.replyToId)) {
+          replyToContent = "Mensaje oculto";
+        } else {
+          replyToContent = rp.deletedAt
+            ? "Mensaje eliminado"
+            : rp.content || "Archivo adjunto";
+          replyToSenderName = rp.senderName;
+        }
       }
     }
     // A member (other than the sender) has "read" a message when their read
@@ -433,10 +452,17 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   await deleteEmptyChatGroups();
   const caller = req.user!;
   const memberships = await db
-    .select({ groupId: chatGroupMembersTable.groupId })
+    .select({
+      groupId: chatGroupMembersTable.groupId,
+      hiddenAt: chatGroupMembersTable.hiddenAt,
+    })
     .from(chatGroupMembersTable)
     .where(eq(chatGroupMembersTable.userId, caller.id));
   const groupIds = memberships.map((m) => m.groupId);
+  const hiddenGroupIds = new Set(
+    memberships.filter((membership) => membership.hiddenAt != null)
+      .map((membership) => membership.groupId),
+  );
   if (groupIds.length === 0) {
     res.json([]);
     return;
@@ -502,6 +528,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
   // A direct thread is only visible while both participants still have active
   // accounts. Keep the stored history intact; it is simply omitted from inboxes.
   const visibleGroups = groups.filter((group) => {
+    if (hiddenGroupIds.has(group.id)) return false;
     if (group.type !== "direct") return true;
     const members = membersByGroup.get(group.id) ?? [];
     return (
@@ -616,6 +643,15 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
           .from(chatGroupsTable)
           .where(eq(chatGroupsTable.id, shared[0]!.groupId));
         if (existing) {
+          await db
+            .update(chatGroupMembersTable)
+            .set({ hiddenAt: null })
+            .where(
+              and(
+                eq(chatGroupMembersTable.groupId, existing.id),
+                eq(chatGroupMembersTable.userId, caller.id),
+              ),
+            );
           const [other] = await db
             .select({ name: usersTable.name })
             .from(usersTable)
@@ -720,6 +756,40 @@ router.post("/chat/groups/:id/leave", requireAuth, async (req, res): Promise<voi
   for (const member of members) emitToUser(member.id, "chat_update", { groupId: group.id });
   res.status(204).end();
 });
+
+router.post(
+  "/chat/groups/:id/hide",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = HideChatGroupForMeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: "Conversación no válida" });
+      return;
+    }
+    const caller = req.user!;
+    const groupId = params.data.id;
+    if (!(await isGroupMember(groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a esta conversación" });
+      return;
+    }
+    const [membership] = await db
+      .update(chatGroupMembersTable)
+      .set({ hiddenAt: new Date() })
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, groupId),
+          eq(chatGroupMembersTable.userId, caller.id),
+        ),
+      )
+      .returning({ id: chatGroupMembersTable.id });
+    if (!membership) {
+      res.status(404).json({ message: "Conversación no encontrada" });
+      return;
+    }
+    emitToUser(caller.id, "chat_update", { groupId, hidden: true });
+    res.status(204).end();
+  },
+);
 
 // Provision/sync a group chat for every teaching module within the caller's
 // scope, with the module's assigned teachers as members. Idempotent: creating
@@ -844,7 +914,20 @@ router.get(
       return;
     }
 
-    const filters = [eq(messagesTable.groupId, groupId)];
+    const filters = [
+      eq(messagesTable.groupId, groupId),
+      notExists(
+        db
+          .select({ id: messageUserHidesTable.id })
+          .from(messageUserHidesTable)
+          .where(
+            and(
+              eq(messageUserHidesTable.messageId, messagesTable.id),
+              eq(messageUserHidesTable.userId, caller.id),
+            ),
+          ),
+      ),
+    ];
     if (cursor.beforeId != null) {
       const [anchor] = await db
         .select({ id: messagesTable.id })
@@ -909,10 +992,16 @@ router.get(
         userId: chatGroupMembersTable.userId,
         name: usersTable.name,
         role: usersTable.role,
+        centerName: centersTable.name,
         lastReadAt: chatGroupMembersTable.lastReadAt,
       })
       .from(chatGroupMembersTable)
       .leftJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+      .leftJoin(centersTable, and(
+        eq(centersTable.id, sql<number>`case when ${usersTable.role} = 'teacher'
+          then ${usersTable.centerId} else coalesce(${usersTable.teachingCenterId}, ${usersTable.centerId}) end`),
+        isNull(centersTable.deletedAt),
+      ))
       .where(eq(chatGroupMembersTable.groupId, groupId))
       .orderBy(asc(usersTable.name));
 
@@ -1016,6 +1105,10 @@ router.post(
       .update(chatGroupsTable)
       .set({ lastMessageAt: created!.createdAt })
       .where(eq(chatGroupsTable.id, groupId));
+    await db
+      .update(chatGroupMembersTable)
+      .set({ hiddenAt: null })
+      .where(eq(chatGroupMembersTable.groupId, groupId));
 
     const reads = await groupMemberReads(groupId);
     const [mapped] = await assembleMessages(
@@ -1173,6 +1266,54 @@ router.delete(
       await emitToGroup(msg.groupId, "message_deleted", mapped, caller.id);
     }
     res.json(mapped);
+  },
+);
+
+router.post(
+  "/chat/messages/:id/hide",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = HideMessageForMeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [message] = await db
+      .select({
+        id: messagesTable.id,
+        groupId: messagesTable.groupId,
+        senderId: messagesTable.senderId,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!message || message.groupId == null) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    if (!(await isGroupMember(message.groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a esta conversación" });
+      return;
+    }
+    if (message.senderId !== caller.id) {
+      res.status(403).json({ message: "Solo puedes ocultar tus propios mensajes" });
+      return;
+    }
+    if (message.deletedAt) {
+      res.status(409).json({ message: "El mensaje ya fue eliminado para todos" });
+      return;
+    }
+
+    await db
+      .insert(messageUserHidesTable)
+      .values({ messageId: message.id, userId: caller.id })
+      .onConflictDoNothing();
+    emitToUser(caller.id, "message_hidden_for_me", {
+      groupId: message.groupId,
+      messageId: message.id,
+    });
+    res.status(204).end();
   },
 );
 

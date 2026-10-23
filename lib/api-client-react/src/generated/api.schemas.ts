@@ -2695,11 +2695,13 @@ export interface Message {
 export interface ChatMember {
   userId: number;
   /** @nullable */
-  name?: string | null;
+  name: string | null;
   /** @nullable */
-  role?: string | null;
+  role: string | null;
   /** @nullable */
-  lastReadAt?: string | null;
+  centerName: string | null;
+  /** @nullable */
+  lastReadAt: string | null;
 }
 
 export interface SendMessageInput {

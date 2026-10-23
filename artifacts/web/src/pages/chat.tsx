@@ -18,6 +18,8 @@ import {
   useSendGroupMessage,
   useEditMessage,
   useDeleteMessage,
+  useHideMessageForMe,
+  useHideChatGroupForMe,
   useReactToMessage,
   useForwardMessage,
   useMarkChatRead,
@@ -76,6 +78,7 @@ import {
   Download,
   MoreVertical,
   ArrowLeft,
+  EyeOff,
   FileText,
   Image as ImageIcon,
 } from "lucide-react";
@@ -274,21 +277,40 @@ function AttachmentView({ message }: { message: Message }) {
 // ---------------------------------------------------------------------------
 // Single message bubble
 // ---------------------------------------------------------------------------
+function chatMemberRole(role: string | null | undefined): string {
+  switch (role) {
+    case "teacher":
+      return "Docente";
+    case "coordinator":
+      return "Coordinador/a";
+    case "department_head":
+      return "Jefe/a de departamento";
+    case "superadmin":
+      return "Administrador/a";
+    default:
+      return role?.replaceAll("_", " ") || "Cargo no indicado";
+  }
+}
+
 function MessageBubble({
   message,
   mine,
+  senderMeta,
   onReact,
   onReply,
   onEdit,
   onDelete,
+  onHideForMe,
   onForward,
 }: {
   message: Message;
   mine: boolean;
+  senderMeta?: Pick<ChatMember, "role" | "centerName">;
   onReact: (emoji: string) => void;
   onReply: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onHideForMe: () => void;
   onForward: () => void;
 }) {
   const deleted = message.deleted === true;
@@ -304,8 +326,13 @@ function MessageBubble({
           }`}
         >
           {!mine && !deleted && (
-            <div className="text-xs font-semibold mb-0.5 opacity-80">
-              {message.senderName ?? "Usuario"}
+            <div className="mb-0.5">
+              <div className="text-xs font-semibold opacity-80">
+                {message.senderName ?? "Usuario"}
+              </div>
+              <div className="text-[10px] opacity-65">
+                {chatMemberRole(senderMeta?.role)} · {senderMeta?.centerName ?? "Sin centro indicado"}
+              </div>
             </div>
           )}
 
@@ -390,7 +417,7 @@ function MessageBubble({
 
         {/* Action toolbar (hidden until hover) */}
         {!deleted && (
-          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -441,10 +468,17 @@ function MessageBubble({
                 )}
                 {mine && (
                   <DropdownMenuItem
+                    onClick={onHideForMe}
+                  >
+                    <EyeOff className="w-4 h-4 mr-2" /> Ocultar solo para mí
+                  </DropdownMenuItem>
+                )}
+                {mine && (
+                  <DropdownMenuItem
                     onClick={onDelete}
                     className="text-destructive focus:text-destructive"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" /> Eliminar
+                    <Trash2 className="w-4 h-4 mr-2" /> Eliminar para todos
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -515,11 +549,9 @@ function MembersDialog({
                         <span className="text-xs text-muted-foreground"> (tú)</span>
                       )}
                     </div>
-                    {m.role && (
-                      <div className="text-xs text-muted-foreground capitalize">
-                        {m.role.replace("_", " ")}
-                      </div>
-                    )}
+                    <div className="text-xs text-muted-foreground">
+                      {chatMemberRole(m.role)} · {m.centerName ?? "Sin centro indicado"}
+                    </div>
                   </div>
                 </li>
               );
@@ -632,6 +664,21 @@ function ConversationView({
   const { user } = useAuth();
   const token = useMemo(() => localStorage.getItem(TOKEN_KEY), []);
   const groupId = group.id;
+  const membersQuery = useListChatMembers(groupId, {
+    query: {
+      queryKey: getListChatMembersQueryKey(groupId),
+      enabled: Number.isInteger(groupId),
+    },
+  });
+  const members = membersQuery.data ?? [];
+  const membersByUserId = useMemo(
+    () => new Map(members.map((member) => [member.userId, member])),
+    [members],
+  );
+  const directParticipant =
+    group.type === "direct"
+      ? members.find((member) => member.userId !== user?.id)
+      : undefined;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -652,6 +699,7 @@ function ConversationView({
   const sendMut = useSendGroupMessage();
   const editMut = useEditMessage();
   const deleteMut = useDeleteMessage();
+  const hideMessageMut = useHideMessageForMe();
   const reactMut = useReactToMessage();
   const markReadMut = useMarkChatRead();
   const uploadMut = useRequestUploadUrl();
@@ -755,6 +803,12 @@ function ConversationView({
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
     };
+    const onHiddenForMe = (event: { groupId: number; messageId: number }) => {
+      if (event.groupId !== groupId) return;
+      setMessages((previous) =>
+        previous.filter((message) => message.id !== event.messageId),
+      );
+    };
     const onTyping = (p: { groupId: number; userId: number; name: string }) => {
       if (p.groupId !== groupId || p.userId === meId) return;
       setTypingNames((prev) => ({ ...prev, [p.userId]: p.name }));
@@ -772,6 +826,7 @@ function ConversationView({
     socket.on("message_edited", onUpdate);
     socket.on("message_deleted", onUpdate);
     socket.on("message_reaction", onUpdate);
+    socket.on("message_hidden_for_me", onHiddenForMe);
     socket.on("typing", onTyping);
     socket.on("stop_typing", onStopTyping);
 
@@ -781,6 +836,7 @@ function ConversationView({
       socket.off("message_edited", onUpdate);
       socket.off("message_deleted", onUpdate);
       socket.off("message_reaction", onUpdate);
+      socket.off("message_hidden_for_me", onHiddenForMe);
       socket.off("typing", onTyping);
       socket.off("stop_typing", onStopTyping);
       if (isTypingRef.current) {
@@ -971,6 +1027,13 @@ function ConversationView({
   };
 
   const onDelete = (message: Message) => {
+    if (
+      !window.confirm(
+        "Se sustituirá este mensaje por «Mensaje eliminado» para todas las personas de la conversación. ¿Continuar?",
+      )
+    ) {
+      return;
+    }
     deleteMut.mutate(
       { id: message.id },
       {
@@ -979,6 +1042,24 @@ function ConversationView({
           toast({
             title: "Error",
             description: "No se pudo eliminar el mensaje.",
+            variant: "destructive",
+          }),
+      },
+    );
+  };
+
+  const onHideForMe = (message: Message) => {
+    hideMessageMut.mutate(
+      { id: message.id },
+      {
+        onSuccess: () =>
+          setMessages((previous) =>
+            previous.filter((candidate) => candidate.id !== message.id),
+          ),
+        onError: () =>
+          toast({
+            title: "Error",
+            description: "No se pudo ocultar el mensaje para ti.",
             variant: "destructive",
           }),
       },
@@ -1014,7 +1095,9 @@ function ConversationView({
         <div className="min-w-0 flex-1">
           <div className="font-semibold truncate">{group.name}</div>
           <div className="text-xs text-muted-foreground">
-            {typeLabel(group.type)}
+            {directParticipant
+              ? `${chatMemberRole(directParticipant.role)} · ${directParticipant.centerName ?? "Sin centro indicado"}`
+              : typeLabel(group.type)}
           </div>
         </div>
         <Button
@@ -1025,16 +1108,14 @@ function ConversationView({
         >
           <Search className="w-5 h-5" />
         </Button>
-        {!isDirect(group.type) && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowMembers(true)}
-            aria-label="Ver miembros"
-          >
-            <Users className="w-5 h-5" />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowMembers(true)}
+          aria-label="Ver participantes"
+        >
+          <Users className="w-5 h-5" />
+        </Button>
         <LeaveChatGroupButton group={group} onLeft={onBack} />
       </div>
 
@@ -1086,6 +1167,7 @@ function ConversationView({
                   key={m.id}
                   message={m}
                   mine={m.senderId === meId}
+                  senderMeta={membersByUserId.get(m.senderId)}
                   onReact={(emoji) => onReact(m, emoji)}
                   onReply={() => {
                     setEditing(null);
@@ -1093,6 +1175,7 @@ function ConversationView({
                   }}
                   onEdit={() => startEdit(m)}
                   onDelete={() => onDelete(m)}
+                  onHideForMe={() => onHideForMe(m)}
                   onForward={() => setForwardMsg(m)}
                 />
               ))
@@ -1283,6 +1366,7 @@ export default function ChatPage() {
     query: { queryKey: getListChatContactsQueryKey(), enabled: contactsOpen, staleTime: 0 },
   });
   const createDirect = useCreateChatGroup();
+  const hideConversationMut = useHideChatGroupForMe();
   const [activeTab, setActiveTab] = useState<"people" | "groups">("people");
   const [didPreselect, setDidPreselect] = useState(false);
 
@@ -1351,6 +1435,35 @@ export default function ChatPage() {
           description: "Comprueba la conexión y vuelve a intentarlo.",
           variant: "destructive",
         }),
+      },
+    );
+  };
+
+  const hideConversation = (group: ChatGroup) => {
+    if (
+      !window.confirm(
+        "La conversación se ocultará solo de tu lista. El historial de las demás personas no se borrará y volverá a aparecer cuando haya actividad nueva. ¿Continuar?",
+      )
+    ) {
+      return;
+    }
+    hideConversationMut.mutate(
+      { id: group.id },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData<ChatGroup[]>(
+            getListChatGroupsQueryKey(),
+            (previous = []) => previous.filter((conversation) => conversation.id !== group.id),
+          );
+          if (selectedId === group.id) setSelectedId(null);
+          void refetch();
+        },
+        onError: () =>
+          toast({
+            title: "No se pudo ocultar la conversación",
+            description: "Inténtalo de nuevo.",
+            variant: "destructive",
+          }),
       },
     );
   };
@@ -1501,48 +1614,62 @@ export default function ChatPage() {
                       const active = g.id === selectedId;
                       return (
                         <li key={g.id}>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedId(g.id)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent transition-colors border-l-2 ${
-                              active
-                                ? "bg-accent border-primary"
-                                : "border-transparent"
-                            }`}
-                          >
-                            <Avatar className="h-10 w-10 shrink-0">
-                              <AvatarFallback
-                                className={`text-xs ${accentClasses(g.type)}`}
-                              >
-                                {initials(g.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-medium truncate">
-                                  {g.name}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground shrink-0">
-                                  {formatListTime(g.lastMessageAt)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] px-1.5 py-0 ${accentClasses(
-                                    g.type,
-                                  )} border-transparent`}
+                          <div className="flex items-stretch">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedId(g.id)}
+                              className={`min-w-0 flex-1 flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent transition-colors border-l-2 ${
+                                active
+                                  ? "bg-accent border-primary"
+                                  : "border-transparent"
+                              }`}
+                            >
+                              <Avatar className="h-10 w-10 shrink-0">
+                                <AvatarFallback
+                                  className={`text-xs ${accentClasses(g.type)}`}
                                 >
-                                  {typeLabel(g.type)}
-                                </Badge>
-                                {(g.unreadCount ?? 0) > 0 && (
-                                  <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
-                                    {g.unreadCount}
+                                  {initials(g.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium truncate">
+                                    {g.name}
                                   </span>
-                                )}
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    {formatListTime(g.lastMessageAt)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 ${accentClasses(
+                                      g.type,
+                                    )} border-transparent`}
+                                  >
+                                    {typeLabel(g.type)}
+                                  </Badge>
+                                  {(g.unreadCount ?? 0) > 0 && (
+                                    <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
+                                      {g.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </button>
+                            </button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="shrink-0 self-center text-muted-foreground"
+                              aria-label={`Ocultar conversación ${g.name}`}
+                              title="Ocultar solo de mi lista"
+                              disabled={hideConversationMut.isPending}
+                              onClick={() => hideConversation(g)}
+                            >
+                              <EyeOff className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </li>
                       );
                     })}

@@ -440,6 +440,163 @@ describe("messages", () => {
       "segundo",
     ]);
   });
+
+  it("includes a participant's role and personal teaching center", async () => {
+    const centerId = await createCenter(await createProvince());
+    const [center] = await db
+      .select({ name: centersTable.name })
+      .from(centersTable)
+      .where(eq(centersTable.id, centerId));
+    const teacher = await createUser({ role: "teacher" });
+    const coordinator = await createUser({ role: "coordinator" });
+    await db
+      .update(usersTable)
+      .set({ teachingCenterId: centerId })
+      .where(eq(usersTable.id, coordinator.user.id));
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(teacher.token))
+      .send({
+        name: coordinator.user.name,
+        type: "direct",
+        memberIds: [coordinator.user.id],
+      });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+
+    const members = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/members`)
+      .set(authHeader(teacher.token));
+    expect(members.status).toBe(200);
+    expect(members.body).toContainEqual(
+      expect.objectContaining({
+        userId: coordinator.user.id,
+        role: "coordinator",
+        centerName: center!.name,
+      }),
+    );
+  });
+
+  it("hides an author's message only for that author while preserving global deletion", async () => {
+    const author = await createUser({ role: "teacher" });
+    const recipient = await createUser({ role: "teacher" });
+    const outsider = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(author.token))
+      .send({ name: "Chat", type: "direct", memberIds: [recipient.user.id] });
+    trackGroup(group.body.id);
+
+    const hidden = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(author.token))
+      .send({ content: "Solo para la otra persona" });
+    expect(hidden.status).toBe(201);
+
+    const ownHide = await request(app)
+      .post(`/api/chat/messages/${hidden.body.id}/hide`)
+      .set(authHeader(author.token));
+    expect(ownHide.status).toBe(204);
+    const otherHide = await request(app)
+      .post(`/api/chat/messages/${hidden.body.id}/hide`)
+      .set(authHeader(recipient.token));
+    expect(otherHide.status).toBe(403);
+    const outsiderHide = await request(app)
+      .post(`/api/chat/messages/${hidden.body.id}/hide`)
+      .set(authHeader(outsider.token));
+    expect(outsiderHide.status).toBe(403);
+
+    const authorMessages = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(author.token));
+    const recipientMessages = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(recipient.token));
+    expect(authorMessages.body).not.toContainEqual(
+      expect.objectContaining({ id: hidden.body.id }),
+    );
+    expect(recipientMessages.body).toContainEqual(
+      expect.objectContaining({ id: hidden.body.id, content: "Solo para la otra persona" }),
+    );
+
+    const forEveryone = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(author.token))
+      .send({ content: "Para eliminar para todos" });
+    const globalDelete = await request(app)
+      .delete(`/api/chat/messages/${forEveryone.body.id}`)
+      .set(authHeader(author.token));
+    expect(globalDelete.status).toBe(200);
+    const recipientAfterDelete = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(recipient.token));
+    expect(recipientAfterDelete.body).toContainEqual(
+      expect.objectContaining({
+        id: forEveryone.body.id,
+        deleted: true,
+      }),
+    );
+  });
+
+  it("hides a conversation only for its caller and resurfaces it after activity or reopening", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const other = await createUser({ role: "teacher" });
+    const outsider = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({ name: "Chat", type: "direct", memberIds: [other.user.id] });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+
+    const hidden = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/hide`)
+      .set(authHeader(caller.token));
+    expect(hidden.status).toBe(204);
+    const outsiderHide = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/hide`)
+      .set(authHeader(outsider.token));
+    expect(outsiderHide.status).toBe(403);
+
+    const callerList = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+    const otherList = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(other.token));
+    expect(callerList.body).not.toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+    expect(otherList.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+
+    await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(other.token))
+      .send({ content: "Nueva actividad" });
+    const afterActivity = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+    expect(afterActivity.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+
+    await request(app)
+      .post(`/api/chat/groups/${group.body.id}/hide`)
+      .set(authHeader(caller.token));
+    const reopened = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({ name: other.user.name, type: "direct", memberIds: [other.user.id] });
+    expect(reopened.status).toBe(200);
+    const afterReopening = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+    expect(afterReopening.body).toContainEqual(
+      expect.objectContaining({ id: group.body.id }),
+    );
+  });
 });
 
 describe("notifications", () => {

@@ -4461,6 +4461,16 @@ export const LeaveChatGroupResponse = zod.void()
 
 
 /**
+ * @summary Hide a conversation from the caller's list without deleting history
+ */
+export const HideChatGroupForMeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const HideChatGroupForMeResponse = zod.void()
+
+
+/**
  * @summary Mark a chat group as read for the caller
  */
 export const MarkChatReadParams = zod.object({
@@ -4481,9 +4491,10 @@ export const ListChatMembersParams = zod.object({
 
 export const ListChatMembersResponseItem = zod.object({
   "userId": zod.number().int(),
-  "name": zod.string().nullish(),
-  "role": zod.string().nullish(),
-  "lastReadAt": zod.coerce.date().nullish()
+  "name": zod.string().nullable(),
+  "role": zod.string().nullable(),
+  "centerName": zod.string().nullable(),
+  "lastReadAt": zod.coerce.date().nullable()
 })
 export const ListChatMembersResponse = zod.array(ListChatMembersResponseItem)
 
@@ -4650,6 +4661,16 @@ export const DeleteMessageResponse = zod.object({
 })).optional(),
   "createdAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary Hide one's own message from the caller's view
+ */
+export const HideMessageForMeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const HideMessageForMeResponse = zod.void()
 
 
 /**

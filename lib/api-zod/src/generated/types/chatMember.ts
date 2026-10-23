@@ -9,9 +9,11 @@
 export interface ChatMember {
   userId: number;
   /** @nullable */
-  name?: string | null;
+  name: string | null;
   /** @nullable */
-  role?: string | null;
+  role: string | null;
   /** @nullable */
-  lastReadAt?: Date | null;
+  centerName: string | null;
+  /** @nullable */
+  lastReadAt: Date | null;
 }

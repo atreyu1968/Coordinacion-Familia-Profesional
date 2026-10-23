@@ -426,12 +426,14 @@ export function toChatMember(row: {
   userId: number;
   name?: string | null;
   role?: string | null;
+  centerName?: string | null;
   lastReadAt?: Date | null;
 }) {
   return {
     userId: row.userId,
     name: row.name ?? null,
     role: row.role ?? null,
+    centerName: row.centerName ?? null,
     lastReadAt: row.lastReadAt ?? null,
   };
 }

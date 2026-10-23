@@ -13,6 +13,7 @@ export const chatGroupMembersTable = pgTable(
     groupId: integer("group_id").notNull(),
     userId: integer("user_id").notNull(),
     lastReadAt: timestamp("last_read_at", { withTimezone: true }),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

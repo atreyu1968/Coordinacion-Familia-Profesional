@@ -38,6 +38,7 @@ import {
   getListChatMembersQueryKey,
   listGroupMessages,
   useDeleteMessage,
+  useHideMessageForMe,
   useEditMessage,
   useForwardMessage,
   useListChatGroups,
@@ -339,6 +340,7 @@ export default function ChatDetailScreen() {
   const sendMutation = useSendGroupMessage();
   const editMutation = useEditMessage();
   const deleteMutation = useDeleteMessage();
+  const hideMessageMutation = useHideMessageForMe();
   const reactMutation = useReactToMessage();
   const forwardMutation = useForwardMessage();
   const requestUpload = useRequestUploadUrl();
@@ -346,7 +348,7 @@ export default function ChatDetailScreen() {
   const membersQuery = useListChatMembers(groupId, {
     query: {
       queryKey: getListChatMembersQueryKey(groupId),
-      enabled: showMembers && Number.isInteger(groupId),
+      enabled: Number.isInteger(groupId),
     },
   });
   const groupsQuery = useListChatGroups({
@@ -356,6 +358,16 @@ export default function ChatDetailScreen() {
       staleTime: 0,
     },
   });
+  const members = membersQuery.data ?? [];
+  const membersByUserId = useMemo(
+    () => new Map(members.map((member) => [member.userId, member])),
+    [members],
+  );
+  const currentGroup = groupsQuery.data?.find((group) => group.id === groupId);
+  const directParticipant =
+    currentGroup?.type === "direct"
+      ? members.find((member) => member.userId !== user?.id)
+      : undefined;
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
@@ -440,6 +452,12 @@ export default function ChatDetailScreen() {
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
     };
+    const onHiddenForMe = (event: { groupId: number; messageId: number }) => {
+      if (event.groupId !== groupId) return;
+      setMessages((previous) =>
+        previous.filter((message) => message.id !== event.messageId),
+      );
+    };
     const onTyping = (payload: { groupId: number; userId: number; name?: string }) => {
       if (payload.groupId !== groupId || payload.userId === user?.id) return;
       setTypingUsers((prev) => ({
@@ -460,6 +478,7 @@ export default function ChatDetailScreen() {
     socket.on("message_edited", onEdited);
     socket.on("message_deleted", onDeleted);
     socket.on("message_reaction", onReaction);
+    socket.on("message_hidden_for_me", onHiddenForMe);
     socket.on("typing", onTyping);
     socket.on("stop_typing", onStopTyping);
 
@@ -473,6 +492,7 @@ export default function ChatDetailScreen() {
       socket.off("message_edited", onEdited);
       socket.off("message_deleted", onDeleted);
       socket.off("message_reaction", onReaction);
+      socket.off("message_hidden_for_me", onHiddenForMe);
       socket.off("typing", onTyping);
       socket.off("stop_typing", onStopTyping);
       markChatRead(groupId);
@@ -698,7 +718,10 @@ export default function ChatDetailScreen() {
 
   const onDelete = (message: Message) => {
     setActionMessage(null);
-    Alert.alert("Eliminar mensaje", "¿Seguro que quieres eliminarlo?", [
+    Alert.alert(
+      "Eliminar para todos",
+      "El mensaje se sustituirá por «Mensaje eliminado» para todas las personas de la conversación.",
+      [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Eliminar",
@@ -709,7 +732,23 @@ export default function ChatDetailScreen() {
             { onSuccess: (msg) => mergeMessages([msg]) },
           ),
       },
-    ]);
+      ],
+    );
+  };
+
+  const onHideForMe = (message: Message) => {
+    setActionMessage(null);
+    hideMessageMutation.mutate(
+      { id: message.id },
+      {
+        onSuccess: () =>
+          setMessages((previous) =>
+            previous.filter((candidate) => candidate.id !== message.id),
+          ),
+        onError: () =>
+          Alert.alert("Error", "No se pudo ocultar el mensaje para ti."),
+      },
+    );
   };
 
   const onStartForward = (message: Message) => {
@@ -771,7 +810,7 @@ export default function ChatDetailScreen() {
         showBack
         right={
           <View style={styles.headerActions}>
-            <LeaveChatGroupAction group={groupsQuery.data?.find((group) => group.id === groupId)} onLeft={() => router.replace("/(tabs)/chat")} />
+            <LeaveChatGroupAction group={currentGroup} onLeft={() => router.replace("/(tabs)/chat")} />
             <Pressable
               onPress={() => {
                 setShowSearch((v) => !v);
@@ -794,6 +833,18 @@ export default function ChatDetailScreen() {
           </View>
         }
       />
+      {directParticipant ? (
+        <View
+          style={[
+            styles.conversationMeta,
+            { borderBottomColor: colors.border, backgroundColor: colors.card },
+          ]}
+        >
+          <Text style={[styles.conversationMetaText, { color: colors.mutedForeground }]}>
+            {roleLabel(directParticipant.role)} · {directParticipant.centerName ?? "Sin centro indicado"}
+          </Text>
+        </View>
+      ) : null}
       {showSearch ? (
         <View
           style={[
@@ -873,6 +924,7 @@ export default function ChatDetailScreen() {
               <MessageBubble
                 message={item}
                 mine={item.senderId === user?.id}
+                senderMeta={membersByUserId.get(item.senderId)}
                 colors={colors}
                 onLongPress={() => setActionMessage(item)}
                 onReact={(emoji) => onReact(item, emoji)}
@@ -1176,11 +1228,20 @@ export default function ChatDetailScreen() {
                     ) : null}
                     <Pressable
                       style={styles.sheetItem}
+                      onPress={() => onHideForMe(actionMessage)}
+                    >
+                      <Feather name="eye-off" size={20} color={colors.foreground} />
+                      <Text style={[styles.sheetText, { color: colors.foreground }]}>
+                        Ocultar solo para mí
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.sheetItem}
                       onPress={() => onDelete(actionMessage)}
                     >
                       <Feather name="trash-2" size={20} color={colors.destructive} />
                       <Text style={[styles.sheetText, { color: colors.destructive }]}>
-                        Eliminar
+                        Eliminar para todos
                       </Text>
                     </Pressable>
                   </>
@@ -1295,11 +1356,9 @@ export default function ChatDetailScreen() {
                           {item.name ?? "Usuario"}
                           {self ? " (tú)" : ""}
                         </Text>
-                        {item.role ? (
-                          <Text style={[styles.memberRole, { color: colors.mutedForeground }]}>
-                            {roleLabel(item.role)}
-                          </Text>
-                        ) : null}
+                        <Text style={[styles.memberRole, { color: colors.mutedForeground }]}>
+                          {roleLabel(item.role)} · {item.centerName ?? "Sin centro indicado"}
+                        </Text>
                       </View>
                       {self ? (
                         <View style={[styles.selfBadge, { backgroundColor: colors.primary }]}>
@@ -1323,12 +1382,14 @@ export default function ChatDetailScreen() {
 function MessageBubble({
   message,
   mine,
+  senderMeta,
   colors,
   onLongPress,
   onReact,
 }: {
   message: Message;
   mine: boolean;
+  senderMeta?: Pick<ChatMember, "role" | "centerName">;
   colors: ReturnType<typeof useColors>;
   onLongPress: () => void;
   onReact: (emoji: string) => void;
@@ -1360,9 +1421,14 @@ function MessageBubble({
         ]}
       >
         {!mine ? (
-          <Text style={[styles.sender, { color: colors.primary }]}>
-            {message.senderName ?? "Usuario"}
-          </Text>
+          <View style={{ marginBottom: 2 }}>
+            <Text style={[styles.sender, { color: colors.primary }]}>
+              {message.senderName ?? "Usuario"}
+            </Text>
+            <Text style={[styles.memberRole, { color: colors.mutedForeground }]}>
+              {roleLabel(senderMeta?.role)} · {senderMeta?.centerName ?? "Sin centro indicado"}
+            </Text>
+          </View>
         ) : null}
 
         {message.forwardedFrom ? (
@@ -1475,6 +1541,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  conversationMeta: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  conversationMetaText: {
+    textAlign: "center",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
   bubbleRow: { flexDirection: "row" },
   bubble: {
     maxWidth: "82%",

@@ -20,3 +20,9 @@ Mobile notices must cover creation, updates and cancellation of calendar events,
 **Why:** The user emphasized notifications for all events on mobile, not only their creation.
 
 **How to apply:** Preserve in-app notices and use both configured push channels. Do not promise device delivery without notification permission and a working device subscription or native push credentials.
+
+For a user's own messages, support both hiding only from that user's view and deleting for everyone. Hiding a conversation affects only that user's list; preserve the membership and history for everyone else.
+
+**Why:** The user explicitly chose both message deletion options and hiding conversations only for themselves.
+
+**How to apply:** Keep private message hides scoped to the caller. Do not hard-delete shared history or remove group membership when hiding a conversation; new activity or reopening a direct chat may make it visible again to the caller.

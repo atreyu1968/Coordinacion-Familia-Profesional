@@ -3797,6 +3797,24 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           $ref: "#/components/responses/Error"
+  /chat/groups/{id}/hide:
+    post:
+      operationId: hideChatGroupForMe
+      tags: [messaging]
+      summary: Hide a conversation from the caller's list without deleting history
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Hidden for the caller
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /chat/groups/{id}/read:
     post:
       operationId: markChatRead
@@ -3960,6 +3978,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /chat/messages/{id}/hide:
+    post:
+      operationId: hideMessageForMe
+      tags: [messaging]
+      summary: Hide one's own message from the caller's view
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Hidden for the caller
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /chat/messages/{id}/react:
     post:
       operationId: reactToMessage
@@ -8519,11 +8557,14 @@ components:
         role:
           type: string
           nullable: true
+        centerName:
+          type: string
+          nullable: true
         lastReadAt:
           type: string
           format: date-time
           nullable: true
-      required: [userId]
+      required: [userId, name, role, centerName, lastReadAt]
     SendMessageInput:
       type: object
       properties:

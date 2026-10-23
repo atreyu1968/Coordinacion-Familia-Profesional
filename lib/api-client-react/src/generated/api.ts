@@ -16233,6 +16233,80 @@ export const useLeaveChatGroup = <TError = ErrorType<ErrorResponse>,
       return useMutation(getLeaveChatGroupMutationOptions(options), queryClient);
     }
 
+export const getHideChatGroupForMeUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/groups/${id}/hide`
+}
+
+/**
+ * @summary Hide a conversation from the caller's list without deleting history
+ */
+export const hideChatGroupForMe = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getHideChatGroupForMeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getHideChatGroupForMeMutationKey = () => ['hideChatGroupForMe'] as const;
+
+export const getHideChatGroupForMeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideChatGroupForMe>>, TError,HideChatGroupForMeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hideChatGroupForMe>>, TError,HideChatGroupForMeMutationVariables, TContext> => {
+
+const mutationKey = getHideChatGroupForMeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hideChatGroupForMe>>, HideChatGroupForMeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  hideChatGroupForMe(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HideChatGroupForMeMutationResult = NonNullable<Awaited<ReturnType<typeof hideChatGroupForMe>>>
+
+    export type HideChatGroupForMeMutationError = ErrorType<ErrorResponse>
+    export type HideChatGroupForMeMutationVariables = {id: number}
+
+    /**
+ * @summary Hide a conversation from the caller's list without deleting history
+ */
+export const useHideChatGroupForMe = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideChatGroupForMe>>, TError,HideChatGroupForMeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof hideChatGroupForMe>>,
+        TError,
+        HideChatGroupForMeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHideChatGroupForMeMutationOptions(options), queryClient);
+    }
+
 export const getMarkChatReadUrl = (id: number,) => {
 
 
@@ -16762,6 +16836,80 @@ export const useDeleteMessage = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getDeleteMessageMutationOptions(options), queryClient);
+    }
+
+export const getHideMessageForMeUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}/hide`
+}
+
+/**
+ * @summary Hide one's own message from the caller's view
+ */
+export const hideMessageForMe = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getHideMessageForMeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getHideMessageForMeMutationKey = () => ['hideMessageForMe'] as const;
+
+export const getHideMessageForMeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideMessageForMe>>, TError,HideMessageForMeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hideMessageForMe>>, TError,HideMessageForMeMutationVariables, TContext> => {
+
+const mutationKey = getHideMessageForMeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hideMessageForMe>>, HideMessageForMeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  hideMessageForMe(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HideMessageForMeMutationResult = NonNullable<Awaited<ReturnType<typeof hideMessageForMe>>>
+
+    export type HideMessageForMeMutationError = ErrorType<ErrorResponse>
+    export type HideMessageForMeMutationVariables = {id: number}
+
+    /**
+ * @summary Hide one's own message from the caller's view
+ */
+export const useHideMessageForMe = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideMessageForMe>>, TError,HideMessageForMeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof hideMessageForMe>>,
+        TError,
+        HideMessageForMeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHideMessageForMeMutationOptions(options), queryClient);
     }
 
 export const getReactToMessageUrl = (id: number,) => {
