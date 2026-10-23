@@ -47,6 +47,8 @@ import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
 const APP_VERSION = "4.0";
+const CORPORATE_EMAIL_URL =
+  "https://www3.gobiernodecanarias.org/sso/login?service=https%3A%2F%2Fecorreo.gobiernodecanarias.org%2Fpublic%2Fpreauth.jsp";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -134,6 +136,7 @@ export function AppLayout({ children }: LayoutProps) {
     { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
     { label: "Actas publicadas", path: "/actas", icon: BookCheck, visible: role === "department_head" },
     { label: "Asuntos de correo", path: "/asuntos-correo", icon: Mail, visible: ["coordinator", "superadmin"].includes(role) },
+    { label: "Correo corporativo", path: CORPORATE_EMAIL_URL, icon: Mail, visible: true },
     { label: "Tareas pendientes", path: "/tareas-pendientes", icon: CheckSquare, visible: ["coordinator", "superadmin"].includes(role) },
     { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
     { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
@@ -219,17 +222,34 @@ export function AppLayout({ children }: LayoutProps) {
           <div className="grid grid-cols-2 gap-2">
             {navItems.filter((item) => item.visible).map((item) => {
               const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+              const className = `flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
+              }`;
+              if (item.path.startsWith("https://")) {
+                return (
+                  <a
+                    key={item.path}
+                    href={item.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${item.label} (se abre en una pestaña nueva)`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={className}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </a>
+                );
+              }
               return (
                 <Link
                   key={item.path}
                   href={item.path}
                   aria-current={isActive ? "page" : undefined}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  className={className}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{item.label}</span>
@@ -257,19 +277,40 @@ export function AppLayout({ children }: LayoutProps) {
             <nav className="flex-1 py-3 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2">
               {navItems.filter((i) => i.visible).map((item) => {
                 const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+                const className = `flex items-center gap-3 rounded-md transition-colors text-sm font-medium ${
+                  expanded ? "px-3 py-2" : "justify-center px-0 py-2.5"
+                } ${
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                }`;
+                if (item.path.startsWith("https://")) {
+                  return (
+                    <a
+                      key={item.path}
+                      href={item.path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={item.label}
+                      aria-label={`${item.label} (se abre en una pestaña nueva)`}
+                      className={className}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      {expanded ? (
+                        <span className="truncate">{item.label}</span>
+                      ) : (
+                        <span className="sr-only">{item.label}</span>
+                      )}
+                    </a>
+                  );
+                }
                 return (
                   <Link
                     key={item.path}
                     href={item.path}
                     title={item.label}
                     aria-label={item.label}
-                    className={`flex items-center gap-3 rounded-md transition-colors text-sm font-medium ${
-                      expanded ? "px-3 py-2" : "justify-center px-0 py-2.5"
-                    } ${
-                      isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    }`}
+                    className={className}
                   >
                     <item.icon className="w-4 h-4 shrink-0" />
                     {expanded ? (

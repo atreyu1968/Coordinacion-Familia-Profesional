@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import JSZip from "jszip";
 import {
   db,
+  announcementsTable,
   lmsCoursesTable,
   lmsLessonsTable,
   lmsCourseManagersTable,
@@ -39,6 +40,8 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { resolveAudienceUserIds } from "../lib/audience";
+import { notifyUsers } from "../lib/notify";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const router: IRouter = Router();
@@ -294,10 +297,47 @@ router.post("/lms/courses/:courseId/publish", requireAuth, async (req, res): Pro
   const [course] = await db.select().from(lmsCoursesTable).where(and(eq(lmsCoursesTable.id, id), isNull(lmsCoursesTable.deletedAt)));
   if (!course) { res.status(404).json({ message: "Curso no encontrado" }); return; }
   if (!(await canManageCourse(req.user!, course))) { res.status(403).json({ message: "Permiso denegado" }); return; }
-  const [lesson] = await db.select({ id: lmsLessonsTable.id }).from(lmsLessonsTable)
-    .where(and(eq(lmsLessonsTable.courseId, id), isNull(lmsLessonsTable.deletedAt))).limit(1);
-  if (!lesson) { res.status(409).json({ message: "Añade al menos una lección antes de publicar el curso" }); return; }
-  await db.update(lmsCoursesTable).set({ status: "published", publishedAt: new Date(), updatedAt: new Date() }).where(eq(lmsCoursesTable.id, id));
+  if (course.status !== "published") {
+    const [lesson] = await db.select({ id: lmsLessonsTable.id }).from(lmsLessonsTable)
+      .where(and(eq(lmsLessonsTable.courseId, id), isNull(lmsLessonsTable.deletedAt))).limit(1);
+    if (!lesson) { res.status(409).json({ message: "Añade al menos una lección antes de publicar el curso" }); return; }
+
+    const recipientIds = (await resolveAudienceUserIds("all", []))
+      .filter((userId) => userId !== req.user!.id);
+    const now = new Date();
+    const announcement = await db.transaction(async (tx) => {
+      const [published] = await tx.update(lmsCoursesTable)
+        .set({ status: "published", publishedAt: now, updatedAt: now })
+        .where(and(
+          eq(lmsCoursesTable.id, id),
+          eq(lmsCoursesTable.status, course.status),
+          isNull(lmsCoursesTable.deletedAt),
+        ))
+        .returning({ id: lmsCoursesTable.id });
+      if (!published) return undefined;
+
+      const description = course.description.trim();
+      const [created] = await tx.insert(announcementsTable).values({
+        title: `Nuevo curso autodirigido: ${course.title}`,
+        body: description
+          ? `Se ha publicado el curso «${course.title}».\n\n${description}\n\nYa está disponible en la sección Autodirigido.`
+          : `Se ha publicado el curso «${course.title}». Ya está disponible en la sección Autodirigido.`,
+        authorId: req.user!.id,
+        audienceType: "all",
+        audienceIds: [],
+      }).returning({ id: announcementsTable.id });
+      return created;
+    });
+
+    if (announcement) {
+      await notifyUsers(recipientIds, {
+        title: `Nuevo curso: ${course.title}`,
+        body: "Ya está disponible en Cursos autodirigidos.",
+        type: "lms_course",
+        data: { courseId: id, announcementId: announcement.id },
+      });
+    }
+  }
   res.json(await courseDetail(id, req.user!));
 });
 

@@ -214,7 +214,7 @@ export default function NotificationsScreen() {
             <EmptyState
               icon="bell"
               title="Sin avisos"
-              message="Aquí verás avisos de mensajes, eventos, actas, certificados y comunicados."
+              message="Aquí verás avisos de cursos, mensajes, eventos, actas, certificados y comunicados."
             />
           }
           renderItem={({ item }) => {
@@ -255,6 +255,9 @@ export default function NotificationsScreen() {
                     case "collaborative_space":
                       // Documents live in the web app; it rechecks current access.
                       void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
+                      break;
+                    case "lms_course":
+                      router.push("/lms");
                       break;
                     case "event":
                     case "calendar":

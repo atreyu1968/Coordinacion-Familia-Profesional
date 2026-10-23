@@ -39,6 +39,8 @@ function destination(type: string | null | undefined, role: string) {
       return { href: "/academica", label: "Ver coordinación académica" };
     case "announcement":
       return { href: "/anuncios", label: "Ver anuncios" };
+    case "lms_course":
+      return { href: "/autodirigido", label: "Ver cursos autodirigidos" };
     case "event":
     case "calendar":
       return { href: "/eventos", label: "Ver eventos" };

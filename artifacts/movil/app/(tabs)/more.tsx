@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {
+  Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +19,9 @@ import { Avatar, Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { initials, roleLabel } from "@/lib/format";
+
+const CORPORATE_EMAIL_URL =
+  "https://www3.gobiernodecanarias.org/sso/login?service=https%3A%2F%2Fecorreo.gobiernodecanarias.org%2Fpublic%2Fpreauth.jsp";
 
 export default function MoreScreen() {
   const colors = useColors();
@@ -48,6 +53,16 @@ export default function MoreScreen() {
     }
   };
 
+  const openCorporateEmail = () => {
+    if (Platform.OS === "web") {
+      window.open(CORPORATE_EMAIL_URL, "_blank", "noopener,noreferrer");
+      return;
+    }
+    void Linking.openURL(CORPORATE_EMAIL_URL).catch(() => {
+      Alert.alert("No se pudo abrir el correo", "Inténtalo de nuevo desde el navegador de tu dispositivo.");
+    });
+  };
+
   const items: {
     icon: React.ComponentProps<typeof Feather>["name"];
     label: string;
@@ -58,6 +73,7 @@ export default function MoreScreen() {
     { icon: "book-open", label: "Mis módulos", onPress: () => router.push("/modulos") },
     { icon: "folder", label: "Espacios colaborativos", description: "Archivos y PDF de Nextcloud", onPress: () => router.push("/espacios-colaborativos") },
     { icon: "award", label: "Cursos autodirigidos", description: "Aprende a tu ritmo y consigue certificados", onPress: () => router.push("/lms") },
+    { icon: "mail", label: "Correo corporativo", description: "Abre el correo del Gobierno de Canarias", onPress: openCorporateEmail },
     {
       icon: "file-text",
       label: "Documentación",
