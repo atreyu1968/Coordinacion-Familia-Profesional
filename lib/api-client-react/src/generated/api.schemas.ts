@@ -3779,6 +3779,7 @@ export type ListChatGroupsParams = {
  */
 hidden?: boolean;
 };
+
 export type ListGroupMessagesParams = {
 /**
  * Return up to 200 messages older than this message id.
@@ -3872,3 +3873,4 @@ export type CommitLmsScormSessionParams = {
  */
 token: LmsTokenQueryParameter;
 };
+
