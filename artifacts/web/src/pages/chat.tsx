@@ -79,6 +79,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import { CreateChatGroupDialog, LeaveChatGroupButton } from "@/components/chat-group-actions";
 
 const TOKEN_KEY = "coordina_adg_token";
@@ -236,6 +237,17 @@ function AttachmentView({ message }: { message: Message }) {
           </span>
         )}
       </a>
+      {isPdfDocument(message.attachmentName, message.attachmentType) && (
+        <PdfPreviewDialog
+          title={message.attachmentName ?? "Documento PDF"}
+          loadPdf={async () => {
+            if (!blobUrl) throw new Error("El archivo todavía no está disponible.");
+            const response = await fetch(blobUrl);
+            if (!response.ok) throw new Error("No se pudo abrir el archivo adjunto.");
+            return response.blob();
+          }}
+        />
+      )}
       {isHtmlDocumentName(message.attachmentName ?? "") && (
         <HtmlDocxDownloadButton
           fileName={message.attachmentName ?? "documento.html"}

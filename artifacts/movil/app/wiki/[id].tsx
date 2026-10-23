@@ -23,6 +23,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card, ErrorState } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
+import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -283,20 +284,20 @@ export default function WikiPageScreen() {
                 {page.attachments.map((attachment) => {
                   const isDownloading = downloadingId === attachment.id;
                   return (
-                    <Pressable
-                      key={`attachment-${attachment.id}`}
-                      testID={`wiki-attachment-${attachment.id}`}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Descargar ${attachment.fileName}`}
-                      accessibilityHint="Descarga el archivo y abre las opciones para compartirlo"
-                      accessibilityState={{ busy: isDownloading, disabled: isDownloading }}
-                      disabled={isDownloading}
-                      onPress={() => void handleDownload(attachment.id, attachment.fileName)}
-                      style={({ pressed }) => [
-                        styles.resourcePressable,
-                        { opacity: pressed || isDownloading ? 0.65 : 1 },
-                      ]}
-                    >
+                    <View key={`attachment-${attachment.id}`} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Pressable
+                        testID={`wiki-attachment-${attachment.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Descargar ${attachment.fileName}`}
+                        accessibilityHint="Descarga el archivo y abre las opciones para compartirlo"
+                        accessibilityState={{ busy: isDownloading, disabled: isDownloading }}
+                        disabled={isDownloading}
+                        onPress={() => void handleDownload(attachment.id, attachment.fileName)}
+                        style={({ pressed }) => [
+                          styles.resourcePressable,
+                          { flex: 1, opacity: pressed || isDownloading ? 0.65 : 1 },
+                        ]}
+                      >
                       <Card style={styles.attachmentCard}>
                         <View
                           style={[
@@ -336,7 +337,11 @@ export default function WikiPageScreen() {
                           color={colors.mutedForeground}
                         />
                       </Card>
-                    </Pressable>
+                      </Pressable>
+                      {isPdfDocument(attachment.fileName) ? (
+                        <PdfPreviewButton uri={`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/wiki/attachments/${attachment.id}/download`} title={attachment.fileName} compact />
+                      ) : null}
+                    </View>
                   );
                 })}
               </View>

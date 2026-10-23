@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   Megaphone,
   Plus,
@@ -330,6 +331,20 @@ function AnnouncementCard({
         <div className="flex flex-wrap gap-2 pt-1">
           {item.attachments.map((att) => (
             <div key={att.id} className="inline-flex flex-wrap items-center gap-1.5">
+              {isPdfDocument(att.fileName, att.contentType) && (
+                <PdfPreviewDialog
+                  title={att.fileName}
+                  loadPdf={async () => {
+                    const token = localStorage.getItem(TOKEN_KEY);
+                    const response = await fetch(
+                      `${import.meta.env.BASE_URL}api/announcements/attachments/${att.id}/file`,
+                      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+                    );
+                    if (!response.ok) throw new Error("Comprueba tus permisos e inténtalo de nuevo.");
+                    return response.blob();
+                  }}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => downloadAttachment(att.id, att.fileName)}

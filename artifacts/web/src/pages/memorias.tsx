@@ -34,7 +34,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { exportTextPdf } from "@/lib/export";
+import { createTextPdfBlob, exportTextPdf } from "@/lib/export";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { FileText, Sparkles, FileDown, Eye, AlertTriangle } from "lucide-react";
 
 const GLOBAL = "global";
@@ -262,6 +263,13 @@ export default function MemoriasPage() {
                       <FileDown className="mr-2 h-4 w-4" />
                       PDF
                     </Button>
+                    <PdfPreviewDialog
+                      title={`Memoria anual ${report.schoolYear}`}
+                      loadPdf={async () => createTextPdfBlob(
+                        `Memoria anual ${report.schoolYear} — ${ambitoLabel(report, provinceName(report.provinceId))}`,
+                        report.content,
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -294,6 +302,13 @@ export default function MemoriasPage() {
                   <FileDown className="mr-2 h-4 w-4" />
                   Exportar PDF
                 </Button>
+                <PdfPreviewDialog
+                  title={`Memoria anual ${viewing.schoolYear}`}
+                  loadPdf={async () => createTextPdfBlob(
+                    `Memoria anual ${viewing.schoolYear} — ${ambitoLabel(viewing, provinceName(viewing.provinceId))}`,
+                    viewing.content,
+                  )}
+                />
               </div>
             </>
           )}

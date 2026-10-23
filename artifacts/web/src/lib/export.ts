@@ -14,6 +14,14 @@ export function exportTablesPdf(
   sections: ExportSheet[],
   filename: string,
 ): void {
+  buildTablesPdf(title, sections).save(filename);
+}
+
+export function createTablesPdfBlob(title: string, sections: ExportSheet[]): Blob {
+  return buildTablesPdf(title, sections).output("blob");
+}
+
+function buildTablesPdf(title: string, sections: ExportSheet[]): jsPDF {
   const doc = new jsPDF();
   const margin = 14;
   doc.setFontSize(15);
@@ -38,7 +46,7 @@ export function exportTablesPdf(
       .lastAutoTable;
     cursorY = (lastTable?.finalY ?? cursorY) + 12;
   }
-  doc.save(filename);
+  return doc;
 }
 
 // Export one or more tabular datasets to an Excel workbook (one sheet each).
@@ -60,6 +68,14 @@ export function exportTextPdf(
   body: string,
   filename: string,
 ): void {
+  buildTextPdf(title, body).save(filename);
+}
+
+export function createTextPdfBlob(title: string, body: string): Blob {
+  return buildTextPdf(title, body).output("blob");
+}
+
+function buildTextPdf(title: string, body: string): jsPDF {
   const doc = new jsPDF();
   const margin = 14;
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -82,5 +98,5 @@ export function exportTextPdf(
     doc.text(line, margin, y);
     y += lineHeight;
   }
-  doc.save(filename);
+  return doc;
 }

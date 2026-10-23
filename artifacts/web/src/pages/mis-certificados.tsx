@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { Award, Download, MailCheck, ShieldCheck, Ban, Clock } from "lucide-react";
 import {
   apiErrorMessage,
@@ -135,9 +136,21 @@ function CertificateRow({ c }: { c: MyAttendanceCertificate }) {
           <Ban className="w-3 h-3" /> Revocado el {formatLongDate(c.revokedAt)}
         </Badge>
       ) : (
-        <Button size="sm" variant="outline" className="gap-2 shrink-0" onClick={onDownload} disabled={busy}>
-          <Download className="w-4 h-4" /> {busy ? "Preparando..." : "Descargar PDF"}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <PdfPreviewDialog
+            title={`Certificado · ${c.eventName}`}
+            loadPdf={async () => {
+              const pdf = await downloadMyAttendanceCertificate(c.id);
+              const binary = atob(pdf.contentBase64);
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              return new Blob([bytes], { type: "application/pdf" });
+            }}
+          />
+          <Button size="sm" variant="outline" className="gap-2" onClick={onDownload} disabled={busy}>
+            <Download className="w-4 h-4" /> {busy ? "Preparando..." : "Descargar PDF"}
+          </Button>
+        </div>
       )}
     </div>
   );

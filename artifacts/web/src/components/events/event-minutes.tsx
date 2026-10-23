@@ -46,8 +46,10 @@ import {
 } from "lucide-react";
 import { apiErrorMessage, apiErrorStatus } from "./certificate-utils";
 import { useBranding } from "@/lib/branding";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 
 const MAX_SOURCES = 20;
+const TOKEN_KEY = "coordina_adg_token";
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_REC_SECONDS = 120;
 const AUDIO_VIDEO_EXT = [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".mp4", ".mov", ".mkv"];
@@ -66,6 +68,13 @@ const MIME_FALLBACK: Record<string, string> = {
   ".ogg": "audio/ogg", ".webm": "video/webm", ".mp4": "video/mp4", ".mov": "video/quicktime",
   ".mkv": "video/x-matroska",
 };
+
+async function fetchMinutesPdf(path: string): Promise<Blob> {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const response = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!response.ok) throw new Error("Comprueba tus permisos e inténtalo de nuevo.");
+  return response.blob();
+}
 const REC_MIME_CANDIDATES = [
   "audio/webm;codecs=opus",
   "audio/webm",
@@ -282,11 +291,19 @@ function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; e
         </div>
         <div className="flex flex-wrap gap-2">
           {minutes.publishedDocument && (
-            <Button size="sm" variant="outline" className="gap-1.5" asChild>
-              <a href={`/api/events/${eventId}/minutes/documents/published`} download={minutes.publishedDocument.fileName} data-testid="link-download-published-minutes-document">
-                <Download className="w-3.5 h-3.5" /> Descargar documento final
-              </a>
-            </Button>
+            <>
+              {isPdfDocument(minutes.publishedDocument.fileName) && (
+                <PdfPreviewDialog
+                  title={minutes.publishedDocument.fileName}
+                  loadPdf={() => fetchMinutesPdf(`/api/events/${eventId}/minutes/documents/published`)}
+                />
+              )}
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={`/api/events/${eventId}/minutes/documents/published`} download={minutes.publishedDocument.fileName} data-testid="link-download-published-minutes-document">
+                  <Download className="w-3.5 h-3.5" /> Descargar documento final
+                </a>
+              </Button>
+            </>
           )}
           {minutes.publishedText && (
             <Button size="sm" variant="outline" className="gap-1.5" onClick={copy} data-testid="button-copy-minutes-link">
@@ -312,9 +329,17 @@ function PublishedActa({ minutes, eventId, context }: { minutes: EventMinutes; e
                     Abrir enlace <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : (
-                  <a className="inline-flex items-center gap-1 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/shared-documents/${document.id}/download`} download={document.fileName ?? undefined}>
-                    Descargar archivo <Download className="h-3.5 w-3.5" />
-                  </a>
+                  <span className="inline-flex items-center gap-2">
+                    {isPdfDocument(document.fileName) && (
+                      <PdfPreviewDialog
+                        title={document.fileName ?? document.title}
+                        loadPdf={() => fetchMinutesPdf(`/api/events/${eventId}/minutes/shared-documents/${document.id}/download`)}
+                      />
+                    )}
+                    <a className="inline-flex items-center gap-1 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/shared-documents/${document.id}/download`} download={document.fileName ?? undefined}>
+                      Descargar archivo <Download className="h-3.5 w-3.5" />
+                    </a>
+                  </span>
                 )}
               </li>
             ))}
@@ -1042,9 +1067,17 @@ function Workspace({ eventId, minutes, context }: { eventId: number; minutes: Ev
                   {minutes.draftDocument && (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-3 text-sm">
                       <span className="min-w-0 truncate font-medium">{minutes.draftDocument.fileName}</span>
-                      <a className="inline-flex items-center gap-1.5 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/documents/draft`} download={minutes.draftDocument.fileName} data-testid="link-download-draft-final-document">
-                        <Download className="h-4 w-4" /> Descargar
-                      </a>
+                      <span className="inline-flex items-center gap-2">
+                        {isPdfDocument(minutes.draftDocument.fileName) && (
+                          <PdfPreviewDialog
+                            title={minutes.draftDocument.fileName}
+                            loadPdf={() => fetchMinutesPdf(`/api/events/${eventId}/minutes/documents/draft`)}
+                          />
+                        )}
+                        <a className="inline-flex items-center gap-1.5 text-primary underline underline-offset-4" href={`/api/events/${eventId}/minutes/documents/draft`} download={minutes.draftDocument.fileName} data-testid="link-download-draft-final-document">
+                          <Download className="h-4 w-4" /> Descargar
+                        </a>
+                      </span>
                     </div>
                   )}
                   {finalDocumentSources.length > 1 && (

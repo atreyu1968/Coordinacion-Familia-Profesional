@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import {
   Award,
   Copy,
@@ -491,6 +492,17 @@ function AttendeeList({ eventId }: { eventId: number }) {
                     )}
                     {a.certificateId && (
                       <>
+                        <PdfPreviewDialog
+                          title={`Certificado · ${a.fullName}`}
+                          disabled={busy}
+                          loadPdf={async () => {
+                            const pdf = await downloadEventAttendanceCertificate(eventId, a.certificateId!);
+                            const binary = atob(pdf.contentBase64);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                            return new Blob([bytes], { type: "application/pdf" });
+                          }}
+                        />
                         <Button size="sm" variant="outline" className="h-8 gap-1" disabled={busy} onClick={() => onDownload(a)}>
                           <Download className="w-3.5 h-3.5" /> PDF
                         </Button>

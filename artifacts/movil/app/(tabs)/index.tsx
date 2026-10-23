@@ -24,6 +24,7 @@ import { Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { formatRelative } from "@/lib/format";
+import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 
 function apiBase(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -130,35 +131,31 @@ export default function BoardScreen() {
               {item.attachments && item.attachments.length > 0 && (
                 <View style={styles.attachments}>
                   {item.attachments.map((att) => (
-                    <Pressable
-                      key={att.id}
-                      onPress={() => downloadAttachment(att)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Descargar ${att.fileName}`}
-                      style={({ pressed }) => [
-                        styles.attachment,
-                        {
-                          borderColor: colors.border,
-                          backgroundColor: colors.muted,
-                          opacity: pressed ? 0.6 : 1,
-                        },
-                      ]}
-                    >
-                      <Feather name="download" size={14} color={colors.primary} />
-                      <Text
-                        numberOfLines={1}
-                        style={[styles.attachmentName, { color: colors.foreground }]}
+                    <View key={att.id} style={styles.attachmentRow}>
+                      <Pressable
+                        onPress={() => downloadAttachment(att)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Descargar ${att.fileName}`}
+                        style={({ pressed }) => [
+                          styles.attachment,
+                          {
+                            flex: 1,
+                            borderColor: colors.border,
+                            backgroundColor: colors.muted,
+                            opacity: pressed ? 0.6 : 1,
+                          },
+                        ]}
                       >
-                        {att.fileName}
-                      </Text>
-                      {att.size != null && (
-                        <Text
-                          style={[styles.attachmentSize, { color: colors.mutedForeground }]}
-                        >
-                          {formatSize(att.size)}
+                        <Feather name="download" size={14} color={colors.primary} />
+                        <Text numberOfLines={1} style={[styles.attachmentName, { color: colors.foreground }]}>
+                          {att.fileName}
                         </Text>
-                      )}
-                    </Pressable>
+                        {att.size != null ? <Text style={[styles.attachmentSize, { color: colors.mutedForeground }]}>{formatSize(att.size)}</Text> : null}
+                      </Pressable>
+                      {isPdfDocument(att.fileName, att.contentType) ? (
+                        <PdfPreviewButton uri={`${apiBase()}/announcements/attachments/${att.id}/file`} title={att.fileName} compact />
+                      ) : null}
+                    </View>
                   ))}
                 </View>
               )}
@@ -185,6 +182,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   body: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
   attachments: { gap: 6, marginTop: 2 },
+  attachmentRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   attachment: {
     flexDirection: "row",
     alignItems: "center",

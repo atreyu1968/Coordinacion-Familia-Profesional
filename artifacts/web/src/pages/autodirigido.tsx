@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   Award, BookOpen, CheckCircle2, ChevronLeft, FileUp, GraduationCap,
   Pencil, Play, Plus, Send, Upload, Video, X,
@@ -178,9 +179,16 @@ function CertificateDownloadButton({ courseId }: { courseId: number }) {
     }
   };
 
-  return <Button variant="outline" onClick={download} disabled={downloading}>
-    <Award className="mr-2 h-4 w-4" />{downloading ? "Preparando certificado..." : "Descargar certificado"}
-  </Button>;
+  return <div className="flex flex-wrap items-center gap-2">
+    <PdfPreviewDialog
+      title="Certificado del curso"
+      disabled={downloading}
+      loadPdf={() => downloadLmsCertificate(courseId)}
+    />
+    <Button variant="outline" onClick={download} disabled={downloading}>
+      <Award className="mr-2 h-4 w-4" />{downloading ? "Preparando certificado..." : "Descargar certificado"}
+    </Button>
+  </div>;
 }
 
 function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; lesson: LmsLesson; onRefresh: () => void }) {
@@ -239,8 +247,18 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
       <CardContent className="space-y-4">
         {lesson.kind === "text" && <div className="whitespace-pre-wrap text-sm leading-7">{String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")}</div>}
         {lesson.kind === "video" && Boolean(lesson.content.url || lesson.content.embedUrl) && <video controls className="max-h-[420px] w-full rounded-md bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />}
-        {lesson.kind === "file" && <div className="flex flex-wrap gap-2">
+         {lesson.kind === "file" && <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
+           {isPdfDocument(lesson.objectName) && <PdfPreviewDialog
+             title={lesson.objectName ?? lesson.title}
+             disabled={download.isPending}
+             loadPdf={async () => {
+               const result = await download.mutateAsync({ lessonId: lesson.id });
+               const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
+               if (!response.ok) throw new Error("No se pudo abrir el PDF.");
+               return response.blob();
+             }}
+           />}
           {htmlDownloadAvailable && <HtmlDocxDownloadButton
             fileName={lesson.objectName ?? "documento.html"}
             testId={`button-download-lesson-docx-${lesson.id}`}

@@ -65,6 +65,7 @@
 - [Certificados de asistencia](attendance-certificates.md) — QR solo con sesión; CSV ligado a correo verificado, descarga personal móvil/web y anulación sin autoexpedición.
 - [Actas de coordinación](coordination-minutes.md) — borrador y fuentes privados; publicación revisada, vídeo con audio e imágenes y dictado de instrucciones.
 - [Descargas HTML como DOCX](html-attachment-exports.md) — ofrecer Word junto al original en adjuntos HTML descargables; no convertir contenido SCORM ejecutable.
+- [Vista previa integrada de PDF](pdf-viewer.md) — cubrir escritorio/PWA y móvil; usa rutas autenticadas y requiere nueva compilación nativa para distribuir el visor móvil.
 - [Correo privado de coordinación](coordinator-mail.md) — OAuth de Google se configura en la app; cada coordinador autoriza y conserva aislados sus propios asuntos y tokens.
 - [Fuentes de consulta de la IA](ai-knowledge-scope.md) — debe poder consultar todo el material subido y los correos recibidos, respetando los permisos de cada usuario.
 - [Tareas pendientes de coordinación](coordinator-pending-tasks.md) — tareas privadas por coordinador; la IA propone, el coordinador confirma y añade manualmente.

@@ -52,9 +52,11 @@ import {
 } from "lucide-react";
 import {
   exportTablesPdf,
+  createTablesPdfBlob,
   exportSheetsXlsx,
   type ExportSheet,
 } from "@/lib/export";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { useAcademicYears } from "@/components/year-selector";
@@ -409,6 +411,14 @@ export default function DashboardPage() {
             <FileDown className="mr-2 h-4 w-4" />
             PDF
           </Button>
+          <PdfPreviewDialog
+            title={`Estadísticas · ${professionalFamily} — ${scopeLabel} — ${periodLabel}`}
+            disabled={!canExport}
+            loadPdf={async () => createTablesPdfBlob(
+              `Estadísticas · ${professionalFamily} — ${scopeLabel} — ${periodLabel}`,
+              buildSheets(),
+            )}
+          />
           <Button variant="outline" size="sm" onClick={onExportXlsx} disabled={!canExport}>
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Excel

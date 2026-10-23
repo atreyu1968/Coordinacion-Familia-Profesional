@@ -46,6 +46,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { WikiPermissionEditorDialog } from "@/components/WikiPermissionEditorDialog";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   BookText,
   Download,
@@ -990,6 +991,19 @@ export default function DocumentacionPage() {
                                 {formatSize(attachment.size)} · {attachmentStatus(attachment.indexStatus)}
                               </div>
                             </div>
+                            {isPdfDocument(attachment.fileName) && (
+                              <PdfPreviewDialog
+                                title={attachment.fileName}
+                                loadPdf={async () => {
+                                  const response = await fetch(
+                                    `${import.meta.env.BASE_URL}api/wiki/attachments/${attachment.id}/download`,
+                                    { headers: authHeaders() },
+                                  );
+                                  if (!response.ok) throw new Error("Comprueba tus permisos e inténtalo de nuevo.");
+                                  return response.blob();
+                                }}
+                              />
+                            )}
                             <Button
                               data-testid={`button-download-wiki-attachment-${attachment.id}`}
                               size="icon"

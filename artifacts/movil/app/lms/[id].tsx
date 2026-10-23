@@ -26,6 +26,7 @@ import { getAuthToken } from "@/contexts/AuthContext";
 import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { isPdfDocument, PdfPreviewButton } from "@/components/PdfPreviewButton";
 
 const API_HOST = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 const kindLabels: Record<string, string> = { text: "Lectura", file: "Archivo", video: "Vídeo", quiz: "Cuestionario", scorm12: "SCORM 1.2", scorm2004: "SCORM 2004" };
@@ -195,6 +196,11 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
   const [selected, setSelected] = useState<number[]>([]);
   const questions = Array.isArray(lesson.content.questions) ? lesson.content.questions as Array<{ prompt?: string; question?: string; options?: string[] }> : [];
   const openFile = () => download.mutate({ lessonId: lesson.id }, { onSuccess: (result) => void Linking.openURL(result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`) });
+  const lessonFileName = typeof lesson.content.fileName === "string" ? lesson.content.fileName : lesson.title;
+  const openPdf = () => download.mutate({ lessonId: lesson.id }, { onSuccess: (result) => router.push({
+    pathname: "/pdf-viewer",
+    params: { uri: result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`, title: lessonFileName },
+  }) });
   const openScorm = () => scorm.mutate({ lessonId: lesson.id }, { onSuccess: (session) => {
     const url = `${API_HOST}/scorm-player?token=${encodeURIComponent(session.token)}`;
     if (Platform.OS === "web") void Linking.openURL(url); else void WebBrowser.openBrowserAsync(url);
@@ -204,7 +210,12 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
     <View style={styles.lessonHeader}><View style={{ flex: 1 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
     {lesson.kind === "text" ? <Text style={[styles.lessonBody, { color: colors.foreground }]}>{text}</Text> : null}
     {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => void Linking.openURL(lesson.content.url as string)} /> : null}
-    {(lesson.kind === "file") ? <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="download" variant="secondary" onPress={openFile} loading={download.isPending} /> : null}
+    {lesson.kind === "file" ? <View style={{ flexDirection: "row", gap: 8 }}>
+      <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="download" variant="secondary" onPress={openFile} loading={download.isPending} />
+      {isPdfDocument(lessonFileName, typeof lesson.content.contentType === "string" ? lesson.content.contentType : undefined)
+        ? <Button label="Ver PDF" icon="eye" variant="secondary" onPress={openPdf} loading={download.isPending} />
+        : null}
+    </View> : null}
     {(lesson.kind === "scorm12" || lesson.kind === "scorm2004") ? <View style={styles.scorm}><Text style={[styles.meta, { color: colors.mutedForeground }]}>El reproductor SCORM se abrirá en el navegador seguro del dispositivo.</Text><Button label="Abrir SCORM" icon="external-link" onPress={openScorm} loading={scorm.isPending} /></View> : null}
     {lesson.kind === "quiz" ? <View style={styles.quiz}>{questions.map((question, index) => <View key={index} style={styles.question}><Text style={[styles.questionText, { color: colors.foreground }]}>{question.prompt ?? question.question ?? `Pregunta ${index + 1}`}</Text>{(question.options ?? []).map((option, optionIndex) => <Pressable key={optionIndex} onPress={() => setSelected((prev) => { const next = [...prev]; next[index] = optionIndex; return next; })} style={[styles.option, { borderColor: selected[index] === optionIndex ? colors.primary : colors.border, backgroundColor: selected[index] === optionIndex ? colors.accent : colors.background }]}><Feather name={selected[index] === optionIndex ? "check-circle" : "circle"} size={17} color={selected[index] === optionIndex ? colors.primary : colors.mutedForeground} /><Text style={[styles.optionText, { color: colors.foreground }]}>{option}</Text></Pressable>)}</View>)}<Button label="Enviar respuestas" icon="check" onPress={() => quiz.mutate({ lessonId: lesson.id, data: { selectedIndexes: selected } }, { onSuccess: (result) => { Alert.alert(result.passed ? "¡Superado!" : "A seguir practicando", `Puntuación: ${result.score}%`); onRefresh(); } })} loading={quiz.isPending} disabled={selected.length !== questions.length || questions.length === 0} /></View> : null}
     {lesson.kind !== "quiz" && lesson.kind !== "scorm12" && lesson.kind !== "scorm2004" && progress?.status !== "completed" ? <Button label="Marcar como completada" icon="check" variant="secondary" onPress={() => complete.mutate({ lessonId: lesson.id }, { onSuccess: onRefresh })} loading={complete.isPending} /> : null}
@@ -241,7 +252,12 @@ function CertificateButton({ courseId }: { courseId: number }) {
       Alert.alert("No se pudo descargar el certificado", error instanceof Error ? error.message : "Inténtalo de nuevo.");
     }
   };
-  return <Pressable onPress={open} accessibilityRole="button"><Text style={styles.certificateLink}>Descargar PDF</Text></Pressable>;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <Pressable onPress={open} accessibilityRole="button"><Text style={styles.certificateLink}>Descargar PDF</Text></Pressable>
+      <PdfPreviewButton uri={`${API_HOST}/api/lms/courses/${courseId}/certificate`} title="Certificado del curso" />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

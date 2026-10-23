@@ -51,6 +51,7 @@ import {
 
 import { AppHeader } from "@/components/AppHeader";
 import { LeaveChatGroupAction } from "@/components/LeaveChatGroupAction";
+import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -205,30 +206,23 @@ function FileBubble({
     }
   };
   return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.fileChip,
-        { backgroundColor: mine ? "rgba(255,255,255,0.15)" : colors.muted },
-      ]}
-    >
-      <Feather name="file" size={20} color={fg} />
-      <View style={styles.flex}>
-        <Text style={[styles.fileName, { color: fg }]} numberOfLines={1}>
-          {name || "Documento"}
-        </Text>
-        {size ? (
-          <Text style={[styles.fileSize, { color: mutedFg }]}>
-            {formatSize(size)}
-          </Text>
-        ) : null}
-      </View>
-      {busy ? (
-        <ActivityIndicator size="small" color={fg} />
-      ) : (
-        <Feather name="download" size={18} color={mutedFg} />
-      )}
-    </Pressable>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.fileChip,
+          { flex: 1, backgroundColor: mine ? "rgba(255,255,255,0.15)" : colors.muted },
+        ]}
+      >
+        <Feather name="file" size={20} color={fg} />
+        <View style={styles.flex}>
+          <Text style={[styles.fileName, { color: fg }]} numberOfLines={1}>{name || "Documento"}</Text>
+          {size ? <Text style={[styles.fileSize, { color: mutedFg }]}>{formatSize(size)}</Text> : null}
+        </View>
+        {busy ? <ActivityIndicator size="small" color={fg} /> : <Feather name="download" size={18} color={mutedFg} />}
+      </Pressable>
+      {isPdfDocument(name) ? <PdfPreviewButton uri={url} title={name} color={fg} compact /> : null}
+    </View>
   );
 }
 

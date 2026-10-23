@@ -74,6 +74,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
+import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   FileText,
   FileCheck2,
@@ -556,6 +557,20 @@ function ValueCell({
           <Download className="w-3.5 h-3.5" />
           <span className="max-w-[160px] truncate">{fileName}</span>
         </Button>
+        {isPdfDocument(fileName, value.contentType) && (
+          <PdfPreviewDialog
+            title={fileName}
+            loadPdf={async () => {
+              const token = localStorage.getItem(TOKEN_KEY);
+              const response = await fetch(
+                `${import.meta.env.BASE_URL}api/document-forms/submission-values/${value.id}/file`,
+                { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+              );
+              if (!response.ok) throw new Error("Comprueba tus permisos e inténtalo de nuevo.");
+              return response.blob();
+            }}
+          />
+        )}
         {isHtmlDocumentName(fileName) && (
           <HtmlDocxDownloadButton
             fileName={fileName}

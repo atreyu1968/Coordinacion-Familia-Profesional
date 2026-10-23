@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -18,6 +19,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { PdfPreviewButton } from "@/components/PdfPreviewButton";
 
 
 function errMsg(err: unknown, fallback: string): string {
@@ -54,6 +56,24 @@ async function savePdf(filename: string, base64: string) {
   } else {
     Alert.alert("Certificado guardado", "El PDF se ha guardado en el almacenamiento de la app.");
   }
+}
+
+async function previewPdf(filename: string, base64: string) {
+  const safeName = filename.replace(/[^A-Za-z0-9._-]/g, "_");
+  let uri: string;
+  if (Platform.OS === "web") {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    uri = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  } else {
+    const FileSystem = await import("expo-file-system/legacy");
+    const directory = FileSystem.cacheDirectory;
+    if (!directory) throw new Error("No hay una carpeta temporal disponible.");
+    uri = `${directory}preview-${Date.now()}-${safeName}`;
+    await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  }
+  router.push({ pathname: "/pdf-viewer", params: { uri, title: filename } });
 }
 
 function Verify({ email }: { email: string }) {
@@ -143,6 +163,17 @@ function CertCard({ c }: { c: MyAttendanceCertificate }) {
       setBusy(false);
     }
   };
+  const onPreview = async () => {
+    setBusy(true);
+    try {
+      const pdf = await downloadMyAttendanceCertificate(c.id);
+      await previewPdf(pdf.filename, pdf.contentBase64);
+    } catch (e) {
+      Alert.alert("No se pudo abrir el PDF", errMsg(e, "Inténtalo de nuevo."));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Card style={{ gap: 6, borderLeftWidth: 4, borderLeftColor: revoked ? colors.destructive : colors.primary }}>
       <Text style={[styles.title, { color: colors.foreground, fontSize: 16 }]}>{c.eventName}</Text>
@@ -154,7 +185,14 @@ function CertCard({ c }: { c: MyAttendanceCertificate }) {
           Revocado el {fmtDate(c.revokedAt)}. Ya no es válido.
         </Text>
       ) : (
-        <Button label="Guardar o compartir PDF" icon="download" variant="secondary" onPress={() => void onDownload()} loading={busy} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Button label="Guardar o compartir PDF" icon="download" variant="secondary" onPress={() => void onDownload()} loading={busy} />
+          <PdfPreviewButton
+            title={c.eventName}
+            color={colors.primary}
+            onPress={() => void onPreview()}
+          />
+        </View>
       )}
     </Card>
   );

@@ -15,6 +15,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { ErrorState } from "@/components/ui";
 import { getAuthToken, useAuth } from "@/contexts/AuthContext";
+import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { useColors } from "@/hooks/useColors";
 
 async function downloadPrivateFile(path: string, fileName: string) {
@@ -139,42 +140,51 @@ export default function ActaScreen() {
               </Text>
             ) : null}
             {publishedDocument ? (
-              <Pressable
-                testID="button-download-published-acta"
-                accessibilityRole="button"
-                accessibilityLabel={`Descargar acta ${publishedDocument.fileName}`}
-                disabled={downloading === "acta"}
-                onPress={() => void onDownload("acta", `/api/events/${eventId}/minutes/documents/published`, publishedDocument.fileName)}
-                style={({ pressed }) => [styles.fileAction, { backgroundColor: colors.primary, opacity: pressed || downloading === "acta" ? 0.75 : 1 }]}
-              >
-                <Feather name="download" size={17} color={colors.primaryForeground} />
-                <Text style={[styles.fileActionText, { color: colors.primaryForeground }]} numberOfLines={2}>
-                  {downloading === "acta" ? "Preparando descarga…" : `Descargar acta · ${publishedDocument.fileName}`}
-                </Text>
-              </Pressable>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Pressable
+                  testID="button-download-published-acta"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Descargar acta ${publishedDocument.fileName}`}
+                  disabled={downloading === "acta"}
+                  onPress={() => void onDownload("acta", `/api/events/${eventId}/minutes/documents/published`, publishedDocument.fileName)}
+                  style={({ pressed }) => [styles.fileAction, { flex: 1, backgroundColor: colors.primary, opacity: pressed || downloading === "acta" ? 0.75 : 1 }]}
+                >
+                  <Feather name="download" size={17} color={colors.primaryForeground} />
+                  <Text style={[styles.fileActionText, { color: colors.primaryForeground }]} numberOfLines={2}>
+                    {downloading === "acta" ? "Preparando descarga…" : `Descargar acta · ${publishedDocument.fileName}`}
+                  </Text>
+                </Pressable>
+                {isPdfDocument(publishedDocument.fileName) ? (
+                  <PdfPreviewButton uri={`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/events/${eventId}/minutes/documents/published`} title={publishedDocument.fileName} />
+                ) : null}
+              </View>
             ) : null}
             {sharedDocuments.length > 0 ? (
               <View style={[styles.sharedSection, { borderTopColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Documentos compartidos</Text>
                 {sharedDocuments.map((document: MinutesSharedDocument) => (
-                  <Pressable
-                    key={document.id}
-                    testID={`shared-acta-document-${document.id}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={document.kind === "link" ? `Abrir ${document.title}` : `Descargar ${document.title}`}
-                    onPress={() => document.kind === "link" && document.url
-                      ? void onOpenLink(document.url)
-                      : void onDownload(
-                        `shared-${document.id}`,
-                        `/api/events/${eventId}/minutes/shared-documents/${document.id}/download`,
-                        document.fileName ?? document.title,
-                      )}
-                    style={({ pressed }) => [styles.sharedRow, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <Feather name={document.kind === "link" ? "external-link" : "file-text"} size={17} color={colors.primary} />
-                    <Text style={[styles.sharedTitle, { color: colors.foreground }]} numberOfLines={2}>{document.title}</Text>
-                    <Feather name={document.kind === "link" ? "arrow-up-right" : "download"} size={16} color={colors.mutedForeground} />
-                  </Pressable>
+                  <View key={document.id} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Pressable
+                      testID={`shared-acta-document-${document.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={document.kind === "link" ? `Abrir ${document.title}` : `Descargar ${document.title}`}
+                      onPress={() => document.kind === "link" && document.url
+                        ? void onOpenLink(document.url)
+                        : void onDownload(
+                          `shared-${document.id}`,
+                          `/api/events/${eventId}/minutes/shared-documents/${document.id}/download`,
+                          document.fileName ?? document.title,
+                        )}
+                      style={({ pressed }) => [styles.sharedRow, { flex: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Feather name={document.kind === "link" ? "external-link" : "file-text"} size={17} color={colors.primary} />
+                      <Text style={[styles.sharedTitle, { color: colors.foreground }]} numberOfLines={2}>{document.title}</Text>
+                      <Feather name={document.kind === "link" ? "arrow-up-right" : "download"} size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                    {document.kind === "file" && isPdfDocument(document.fileName, document.contentType) ? (
+                      <PdfPreviewButton uri={`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/events/${eventId}/minutes/shared-documents/${document.id}/download`} title={document.title} compact />
+                    ) : null}
+                  </View>
                 ))}
               </View>
             ) : null}
