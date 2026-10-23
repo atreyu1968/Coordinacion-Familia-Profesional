@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
@@ -36,9 +37,12 @@ import { useLocalSearchParams, router } from "expo-router";
 import {
   getListChatGroupsQueryKey,
   getListChatMembersQueryKey,
+  getListHiddenGroupMessagesQueryKey,
   listGroupMessages,
   useDeleteMessage,
   useHideMessageForMe,
+  useListHiddenGroupMessages,
+  useRestoreHiddenMessage,
   useEditMessage,
   useForwardMessage,
   useListChatGroups,
@@ -331,6 +335,7 @@ export default function ChatDetailScreen() {
   const [forwarding, setForwarding] = useState<Message | null>(null);
   const [forwardTargets, setForwardTargets] = useState<Set<number>>(new Set());
   const [showMembers, setShowMembers] = useState(false);
+  const [showHiddenMessages, setShowHiddenMessages] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -341,9 +346,11 @@ export default function ChatDetailScreen() {
   const editMutation = useEditMessage();
   const deleteMutation = useDeleteMessage();
   const hideMessageMutation = useHideMessageForMe();
+  const restoreHiddenMessageMutation = useRestoreHiddenMessage();
   const reactMutation = useReactToMessage();
   const forwardMutation = useForwardMessage();
   const requestUpload = useRequestUploadUrl();
+  const queryClient = useQueryClient();
 
   const membersQuery = useListChatMembers(groupId, {
     query: {
@@ -356,6 +363,12 @@ export default function ChatDetailScreen() {
       queryKey: getListChatGroupsQueryKey(),
       enabled: Number.isInteger(groupId),
       staleTime: 0,
+    },
+  });
+  const hiddenMessagesQuery = useListHiddenGroupMessages(groupId, {
+    query: {
+      queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      enabled: showHiddenMessages && Number.isInteger(groupId),
     },
   });
   const members = membersQuery.data ?? [];
@@ -447,6 +460,9 @@ export default function ChatDetailScreen() {
     const onDeleted = (msg: Message) => {
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
     };
     const onReaction = (msg: Message) => {
       if (msg.groupId !== groupId) return;
@@ -457,6 +473,16 @@ export default function ChatDetailScreen() {
       setMessages((previous) =>
         previous.filter((message) => message.id !== event.messageId),
       );
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
+    };
+    const onRestoredForMe = (event: { groupId: number; message: Message }) => {
+      if (event.groupId !== groupId) return;
+      mergeMessages([event.message]);
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
     };
     const onTyping = (payload: { groupId: number; userId: number; name?: string }) => {
       if (payload.groupId !== groupId || payload.userId === user?.id) return;
@@ -479,6 +505,7 @@ export default function ChatDetailScreen() {
     socket.on("message_deleted", onDeleted);
     socket.on("message_reaction", onReaction);
     socket.on("message_hidden_for_me", onHiddenForMe);
+    socket.on("message_restored_for_me", onRestoredForMe);
     socket.on("typing", onTyping);
     socket.on("stop_typing", onStopTyping);
 
@@ -493,12 +520,13 @@ export default function ChatDetailScreen() {
       socket.off("message_deleted", onDeleted);
       socket.off("message_reaction", onReaction);
       socket.off("message_hidden_for_me", onHiddenForMe);
+      socket.off("message_restored_for_me", onRestoredForMe);
       socket.off("typing", onTyping);
       socket.off("stop_typing", onStopTyping);
       markChatRead(groupId);
       setActiveChat(null);
     };
-  }, [token, groupId, mergeMessages, markChatRead, setActiveChat, user?.id]);
+  }, [token, groupId, mergeMessages, markChatRead, setActiveChat, user?.id, queryClient]);
 
   // ----- typing emit -----
   const emitStopTyping = useCallback(() => {
@@ -751,6 +779,21 @@ export default function ChatDetailScreen() {
     );
   };
 
+  const onRestoreHiddenMessage = (message: Message) => {
+    restoreHiddenMessageMutation.mutate(
+      { id: message.id },
+      {
+        onSuccess: (restored) => {
+          mergeMessages([restored]);
+          void queryClient.invalidateQueries({
+            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+          });
+        },
+        onError: () => Alert.alert("Error", "No se pudo restaurar el mensaje."),
+      },
+    );
+  };
+
   const onStartForward = (message: Message) => {
     setActionMessage(null);
     setForwardTargets(new Set());
@@ -829,6 +872,14 @@ export default function ChatDetailScreen() {
               accessibilityLabel="Miembros"
             >
               <Feather name="users" size={22} color="#ffffff" />
+            </Pressable>
+            <Pressable
+              onPress={() => setShowHiddenMessages(true)}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+              accessibilityLabel="Mensajes ocultos"
+            >
+              <Feather name="eye-off" size={22} color="#ffffff" />
             </Pressable>
           </View>
         }
@@ -1370,6 +1421,101 @@ export default function ChatDetailScreen() {
                     </View>
                   );
                 }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showHiddenMessages}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHiddenMessages(false)}
+      >
+        <View style={styles.backdrop}>
+          <View
+            style={[
+              styles.fullSheet,
+              { backgroundColor: colors.background, paddingBottom: bottomInset + 16 },
+            ]}
+          >
+            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+              <View style={{ width: 60 }} />
+              <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Mensajes ocultos</Text>
+              <Pressable onPress={() => setShowHiddenMessages(false)} hitSlop={8}>
+                <Text style={[styles.sheetCancel, { color: colors.primary }]}>Cerrar</Text>
+              </Pressable>
+            </View>
+            {hiddenMessagesQuery.isLoading ? (
+              <Loading />
+            ) : hiddenMessagesQuery.isError ? (
+              <View style={{ padding: 20, gap: 12 }}>
+                <Text style={{ color: colors.mutedForeground, textAlign: "center" }}>
+                  No se pudieron cargar los mensajes ocultos.
+                </Text>
+                <Pressable onPress={() => void hiddenMessagesQuery.refetch()}>
+                  <Text style={{ color: colors.primary, textAlign: "center" }}>Reintentar</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <FlatList
+                data={hiddenMessagesQuery.data ?? []}
+                keyExtractor={(message) => String(message.id)}
+                ListEmptyComponent={
+                  <EmptyState
+                    icon="message-circle"
+                    title="Sin mensajes ocultos"
+                    message="Esta conversación no tiene mensajes ocultos por ti."
+                  />
+                }
+                renderItem={({ item }) => (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: colors.border,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text
+                        style={{
+                          color: item.deleted ? colors.mutedForeground : colors.foreground,
+                          fontStyle: item.deleted ? "italic" : "normal",
+                        }}
+                        numberOfLines={2}
+                      >
+                        {item.deleted
+                          ? "Mensaje eliminado para todos"
+                          : item.content || item.attachmentName || "Archivo adjunto"}
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                        {formatRelative(item.createdAt)}
+                      </Text>
+                    </View>
+                    {!item.deleted ? (
+                      <Pressable
+                        onPress={() => onRestoreHiddenMessage(item)}
+                        disabled={restoreHiddenMessageMutation.isPending}
+                        accessibilityRole="button"
+                        accessibilityLabel="Restaurar mensaje"
+                        style={({ pressed }) => ({
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
+                          opacity: restoreHiddenMessageMutation.isPending || pressed ? 0.5 : 1,
+                        })}
+                      >
+                        <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                          Restaurar
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                )}
               />
             )}
           </View>

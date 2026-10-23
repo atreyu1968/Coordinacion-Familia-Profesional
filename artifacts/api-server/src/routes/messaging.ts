@@ -39,6 +39,8 @@ import {
   MarkChatReadParams,
   ListGroupMessagesParams,
   ListGroupMessagesResponse,
+  ListHiddenGroupMessagesParams,
+  ListHiddenGroupMessagesResponse,
   SendGroupMessageParams,
   SendGroupMessageBody,
   ListChatMembersParams,
@@ -48,6 +50,8 @@ import {
   DeleteMessageParams,
   HideChatGroupForMeParams,
   HideMessageForMeParams,
+  RestoreHiddenMessageParams,
+  RestoreHiddenMessageResponse,
   ReactToMessageParams,
   ReactToMessageBody,
   ForwardMessageParams,
@@ -969,6 +973,44 @@ router.get(
   },
 );
 
+router.get(
+  "/chat/groups/:id/hidden-messages",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListHiddenGroupMessagesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const groupId = params.data.id;
+    if (!(await isGroupMember(groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a este chat" });
+      return;
+    }
+
+    const rows = (await db
+      .select(messageColumns)
+      .from(messagesTable)
+      .innerJoin(
+        messageUserHidesTable,
+        eq(messageUserHidesTable.messageId, messagesTable.id),
+      )
+      .leftJoin(usersTable, eq(usersTable.id, messagesTable.senderId))
+      .where(
+        and(
+          eq(messagesTable.groupId, groupId),
+          eq(messagesTable.senderId, caller.id),
+          eq(messageUserHidesTable.userId, caller.id),
+        ),
+      )
+      .orderBy(asc(messagesTable.createdAt), asc(messagesTable.id))) as MessageRow[];
+    const reads = await groupMemberReads(groupId);
+    const messages = await assembleMessages(rows, caller.id, reads);
+    res.json(ListHiddenGroupMessagesResponse.parse(messages));
+  },
+);
+
 // List the members of a chat group (everyone who belongs to it). Used by the
 // "members" panel and to label direct vs group conversations.
 router.get(
@@ -1314,6 +1356,77 @@ router.post(
       messageId: message.id,
     });
     res.status(204).end();
+  },
+);
+
+router.post(
+  "/chat/messages/:id/restore",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = RestoreHiddenMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [message] = await db
+      .select({
+        id: messagesTable.id,
+        groupId: messagesTable.groupId,
+        senderId: messagesTable.senderId,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(eq(messagesTable.id, params.data.id));
+    if (!message || message.groupId == null) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    if (!(await isGroupMember(message.groupId, caller.id))) {
+      res.status(403).json({ message: "No perteneces a esta conversación" });
+      return;
+    }
+    if (message.senderId !== caller.id) {
+      res.status(403).json({ message: "Solo puedes restaurar tus propios mensajes" });
+      return;
+    }
+
+    const [hidden] = await db
+      .select({ id: messageUserHidesTable.id })
+      .from(messageUserHidesTable)
+      .where(
+        and(
+          eq(messageUserHidesTable.messageId, message.id),
+          eq(messageUserHidesTable.userId, caller.id),
+        ),
+      );
+    if (!hidden) {
+      res.status(404).json({ message: "El mensaje no está oculto para ti" });
+      return;
+    }
+    if (message.deletedAt) {
+      res.status(409).json({ message: "El mensaje fue eliminado para todos" });
+      return;
+    }
+
+    await db
+      .delete(messageUserHidesTable)
+      .where(
+        and(
+          eq(messageUserHidesTable.messageId, message.id),
+          eq(messageUserHidesTable.userId, caller.id),
+        ),
+      );
+    const restored = await loadAssembledMessage(message.id, caller.id);
+    if (!restored) {
+      res.status(404).json({ message: "Mensaje no encontrado" });
+      return;
+    }
+    emitToUser(caller.id, "message_restored_for_me", {
+      groupId: message.groupId,
+      message: restored,
+    });
+    res.json(RestoreHiddenMessageResponse.parse(restored));
   },
 );
 

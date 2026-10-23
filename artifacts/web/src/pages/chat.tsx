@@ -19,6 +19,9 @@ import {
   useEditMessage,
   useDeleteMessage,
   useHideMessageForMe,
+  useListHiddenGroupMessages,
+  getListHiddenGroupMessagesQueryKey,
+  useRestoreHiddenMessage,
   useHideChatGroupForMe,
   useReactToMessage,
   useForwardMessage,
@@ -688,6 +691,7 @@ function ConversationView({
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showHiddenMessages, setShowHiddenMessages] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [editing, setEditing] = useState<Message | null>(null);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
@@ -700,9 +704,17 @@ function ConversationView({
   const editMut = useEditMessage();
   const deleteMut = useDeleteMessage();
   const hideMessageMut = useHideMessageForMe();
+  const restoreHiddenMessageMut = useRestoreHiddenMessage();
+  const hiddenMessagesQuery = useListHiddenGroupMessages(groupId, {
+    query: {
+      queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      enabled: showHiddenMessages,
+    },
+  });
   const reactMut = useReactToMessage();
   const markReadMut = useMarkChatRead();
   const uploadMut = useRequestUploadUrl();
+  const queryClient = useQueryClient();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const preserveScrollHeightRef = useRef<number | null>(null);
@@ -802,12 +814,25 @@ function ConversationView({
     const onUpdate = (msg: Message) => {
       if (msg.groupId !== groupId) return;
       mergeMessages([msg]);
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
     };
     const onHiddenForMe = (event: { groupId: number; messageId: number }) => {
       if (event.groupId !== groupId) return;
       setMessages((previous) =>
         previous.filter((message) => message.id !== event.messageId),
       );
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
+    };
+    const onRestoredForMe = (event: { groupId: number; message: Message }) => {
+      if (event.groupId !== groupId) return;
+      mergeMessages([event.message]);
+      void queryClient.invalidateQueries({
+        queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+      });
     };
     const onTyping = (p: { groupId: number; userId: number; name: string }) => {
       if (p.groupId !== groupId || p.userId === meId) return;
@@ -827,6 +852,7 @@ function ConversationView({
     socket.on("message_deleted", onUpdate);
     socket.on("message_reaction", onUpdate);
     socket.on("message_hidden_for_me", onHiddenForMe);
+    socket.on("message_restored_for_me", onRestoredForMe);
     socket.on("typing", onTyping);
     socket.on("stop_typing", onStopTyping);
 
@@ -837,6 +863,7 @@ function ConversationView({
       socket.off("message_deleted", onUpdate);
       socket.off("message_reaction", onUpdate);
       socket.off("message_hidden_for_me", onHiddenForMe);
+      socket.off("message_restored_for_me", onRestoredForMe);
       socket.off("typing", onTyping);
       socket.off("stop_typing", onStopTyping);
       if (isTypingRef.current) {
@@ -845,7 +872,7 @@ function ConversationView({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, groupId, meId, mergeMessages]);
+  }, [token, groupId, meId, mergeMessages, queryClient]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -1066,6 +1093,27 @@ function ConversationView({
     );
   };
 
+  const onRestoreHiddenMessage = (message: Message) => {
+    restoreHiddenMessageMut.mutate(
+      { id: message.id },
+      {
+        onSuccess: (restored) => {
+          mergeMessages([restored]);
+          void queryClient.invalidateQueries({
+            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+          });
+          toast({ title: "Mensaje restaurado" });
+        },
+        onError: () =>
+          toast({
+            title: "Error",
+            description: "No se pudo restaurar el mensaje.",
+            variant: "destructive",
+          }),
+      },
+    );
+  };
+
   const startEdit = (message: Message) => {
     setReplyTo(null);
     setEditing(message);
@@ -1116,8 +1164,74 @@ function ConversationView({
         >
           <Users className="w-5 h-5" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowHiddenMessages(true)}
+          aria-label="Ver mensajes ocultos"
+          title="Mensajes ocultos"
+        >
+          <EyeOff className="w-5 h-5" />
+        </Button>
         <LeaveChatGroupButton group={group} onLeft={onBack} />
       </div>
+
+      <Dialog open={showHiddenMessages} onOpenChange={setShowHiddenMessages}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="w-5 h-5" /> Mensajes ocultos
+            </DialogTitle>
+            <DialogDescription>
+              Solo tú ves esta lista. Restaurar un mensaje no cambia lo que ven las demás personas.
+            </DialogDescription>
+          </DialogHeader>
+          {hiddenMessagesQuery.isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : hiddenMessagesQuery.isError ? (
+            <div className="py-4 text-sm">
+              No se pudieron cargar los mensajes ocultos.{" "}
+              <button
+                type="button"
+                className="text-primary underline"
+                onClick={() => void hiddenMessagesQuery.refetch()}
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : (hiddenMessagesQuery.data ?? []).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No tienes mensajes ocultos en esta conversación.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {(hiddenMessagesQuery.data ?? []).map((message) => (
+                <li key={message.id} className="flex items-center gap-3 rounded-md border p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm break-words ${message.deleted ? "italic text-muted-foreground" : ""}`}>
+                      {message.deleted
+                        ? "Mensaje eliminado para todos"
+                        : message.content || message.attachmentName || "Archivo adjunto"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatTime(message.createdAt)}</p>
+                  </div>
+                  {!message.deleted && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={restoreHiddenMessageMut.isPending}
+                      onClick={() => onRestoreHiddenMessage(message)}
+                    >
+                      Restaurar
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {showSearch && (
         <div className="px-4 py-2 border-b shrink-0">

@@ -16675,6 +16675,107 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSendGroupMessageMutationOptions(options), queryClient);
     }
 
+export const getListHiddenGroupMessagesUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/groups/${id}/hidden-messages`
+}
+
+/**
+ * @summary List messages hidden by the caller in a conversation
+ */
+export const listHiddenGroupMessages = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Message[]> => {
+
+  return customFetch<Message[]>(getListHiddenGroupMessagesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHiddenGroupMessagesQueryKey = (id: number,) => {
+    return [
+    `/api/chat/groups/${id}/hidden-messages`
+    ] as const;
+    }
+
+
+export const getListHiddenGroupMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHiddenGroupMessagesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHiddenGroupMessages>>> = ({ signal }) => listHiddenGroupMessages(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListHiddenGroupMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listHiddenGroupMessages>>>
+export type ListHiddenGroupMessagesQueryError = ErrorType<ErrorResponse>
+
+
+export function useListHiddenGroupMessages<TData = Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listHiddenGroupMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listHiddenGroupMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListHiddenGroupMessages<TData = Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listHiddenGroupMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listHiddenGroupMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListHiddenGroupMessages<TData = Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List messages hidden by the caller in a conversation
+ */
+
+export function useListHiddenGroupMessages<TData = Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenGroupMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListHiddenGroupMessagesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getEditMessageUrl = (id: number,) => {
 
 
@@ -16910,6 +17011,80 @@ export const useHideMessageForMe = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getHideMessageForMeMutationOptions(options), queryClient);
+    }
+
+export const getRestoreHiddenMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/chat/messages/${id}/restore`
+}
+
+/**
+ * @summary Restore a message hidden by the caller
+ */
+export const restoreHiddenMessage = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Message> => {
+
+  return customFetch<Message>(getRestoreHiddenMessageUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRestoreHiddenMessageMutationKey = () => ['restoreHiddenMessage'] as const;
+
+export const getRestoreHiddenMessageMutationOptions = <TError = ErrorType<ErrorResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreHiddenMessage>>, TError,RestoreHiddenMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreHiddenMessage>>, TError,RestoreHiddenMessageMutationVariables, TContext> => {
+
+const mutationKey = getRestoreHiddenMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreHiddenMessage>>, RestoreHiddenMessageMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  restoreHiddenMessage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreHiddenMessageMutationResult = NonNullable<Awaited<ReturnType<typeof restoreHiddenMessage>>>
+
+    export type RestoreHiddenMessageMutationError = ErrorType<ErrorResponse | Error>
+    export type RestoreHiddenMessageMutationVariables = {id: number}
+
+    /**
+ * @summary Restore a message hidden by the caller
+ */
+export const useRestoreHiddenMessage = <TError = ErrorType<ErrorResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreHiddenMessage>>, TError,RestoreHiddenMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreHiddenMessage>>,
+        TError,
+        RestoreHiddenMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreHiddenMessageMutationOptions(options), queryClient);
     }
 
 export const getReactToMessageUrl = (id: number,) => {

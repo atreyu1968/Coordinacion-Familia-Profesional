@@ -4585,6 +4585,43 @@ export const SendGroupMessageResponse = zod.object({
 
 
 /**
+ * @summary List messages hidden by the caller in a conversation
+ */
+export const ListHiddenGroupMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListHiddenGroupMessagesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "groupId": zod.number().int().nullish(),
+  "senderId": zod.number().int(),
+  "senderName": zod.string().nullish(),
+  "recipientId": zod.number().int().nullish(),
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().int().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().int().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().int().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number().int(),
+  "reactedByMe": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+export const ListHiddenGroupMessagesResponse = zod.array(ListHiddenGroupMessagesResponseItem)
+
+
+/**
  * @summary Edit one's own message
  */
 export const EditMessageParams = zod.object({
@@ -4671,6 +4708,42 @@ export const HideMessageForMeParams = zod.object({
 })
 
 export const HideMessageForMeResponse = zod.void()
+
+
+/**
+ * @summary Restore a message hidden by the caller
+ */
+export const RestoreHiddenMessageParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const RestoreHiddenMessageResponse = zod.object({
+  "id": zod.number().int(),
+  "groupId": zod.number().int().nullish(),
+  "senderId": zod.number().int(),
+  "senderName": zod.string().nullish(),
+  "recipientId": zod.number().int().nullish(),
+  "content": zod.string(),
+  "kind": zod.string().optional().describe('text | image | file | audio'),
+  "replyToId": zod.number().int().nullish(),
+  "replyToContent": zod.string().nullish(),
+  "replyToSenderName": zod.string().nullish(),
+  "forwardedFrom": zod.string().nullish(),
+  "attachmentPath": zod.string().nullish(),
+  "attachmentName": zod.string().nullish(),
+  "attachmentType": zod.string().nullish(),
+  "attachmentSize": zod.number().int().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Short-lived URL to download/stream the attachment.'),
+  "editedAt": zod.coerce.date().nullish(),
+  "deleted": zod.boolean().optional(),
+  "readByCount": zod.number().int().optional().describe('How many members other than the sender have read this message.'),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number().int(),
+  "reactedByMe": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
 
 
 /**

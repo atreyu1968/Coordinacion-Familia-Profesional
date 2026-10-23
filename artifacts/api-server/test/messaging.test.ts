@@ -518,6 +518,53 @@ describe("messages", () => {
     expect(recipientMessages.body).toContainEqual(
       expect.objectContaining({ id: hidden.body.id, content: "Solo para la otra persona" }),
     );
+    const authorTrash = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/hidden-messages`)
+      .set(authHeader(author.token));
+    const recipientTrash = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/hidden-messages`)
+      .set(authHeader(recipient.token));
+    const outsiderTrash = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/hidden-messages`)
+      .set(authHeader(outsider.token));
+    expect(authorTrash.status).toBe(200);
+    expect(authorTrash.body).toContainEqual(
+      expect.objectContaining({ id: hidden.body.id, content: "Solo para la otra persona" }),
+    );
+    expect(recipientTrash.body).toEqual([]);
+    expect(outsiderTrash.status).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post(`/api/chat/messages/${hidden.body.id}/restore`)
+          .set(authHeader(recipient.token))
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post(`/api/chat/messages/${hidden.body.id}/restore`)
+          .set(authHeader(outsider.token))
+      ).status,
+    ).toBe(403);
+    const restored = await request(app)
+      .post(`/api/chat/messages/${hidden.body.id}/restore`)
+      .set(authHeader(author.token));
+    expect(restored.status).toBe(200);
+    expect(restored.body).toMatchObject({
+      id: hidden.body.id,
+      content: "Solo para la otra persona",
+      deleted: false,
+    });
+    const authorAfterRestore = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(author.token));
+    expect(authorAfterRestore.body).toContainEqual(
+      expect.objectContaining({ id: hidden.body.id, content: "Solo para la otra persona" }),
+    );
+    expect(recipientMessages.body).toContainEqual(
+      expect.objectContaining({ id: hidden.body.id, content: "Solo para la otra persona" }),
+    );
 
     const forEveryone = await request(app)
       .post(`/api/chat/groups/${group.body.id}/messages`)
@@ -533,6 +580,48 @@ describe("messages", () => {
     expect(recipientAfterDelete.body).toContainEqual(
       expect.objectContaining({
         id: forEveryone.body.id,
+        deleted: true,
+      }),
+    );
+
+    const hiddenThenDeleted = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(author.token))
+      .send({ content: "Tombstone no recuperable" });
+    expect(
+      (
+        await request(app)
+          .post(`/api/chat/messages/${hiddenThenDeleted.body.id}/hide`)
+          .set(authHeader(author.token))
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await request(app)
+          .delete(`/api/chat/messages/${hiddenThenDeleted.body.id}`)
+          .set(authHeader(author.token))
+      ).status,
+    ).toBe(200);
+    const deletedHidden = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/hidden-messages`)
+      .set(authHeader(author.token));
+    expect(deletedHidden.body).toContainEqual(
+      expect.objectContaining({
+        id: hiddenThenDeleted.body.id,
+        deleted: true,
+        content: "",
+      }),
+    );
+    const tombstoneRestore = await request(app)
+      .post(`/api/chat/messages/${hiddenThenDeleted.body.id}/restore`)
+      .set(authHeader(author.token));
+    expect(tombstoneRestore.status).toBe(409);
+    const recipientAfterTombstone = await request(app)
+      .get(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(recipient.token));
+    expect(recipientAfterTombstone.body).toContainEqual(
+      expect.objectContaining({
+        id: hiddenThenDeleted.body.id,
         deleted: true,
       }),
     );
