@@ -21,6 +21,8 @@ Tests live in `artifacts/api-server/test/`, run with `pnpm --filter @workspace/a
 
 **Cleanup must cover any new fixture table.** `cleanup()` deletes academic years, teacher confirmations, teaching assignments, groups and training offer by tracked user/center ids and `schoolYears`. Route fixtures that fan out (e.g. open-confirmation inserts a row per active teacher) are cleaned by school year, so always use a unique per-run year for them.
 
+**Migration probes sharing the test DB must run before the API suite or use unique fixture values.** The API suite can delete rows from migration probes when both use the same `schoolYear`, even when the probe's user is unrelated. **Why:** fixture cleanup sometimes scopes by year across all users. **How to apply:** run migration-preservation/idempotency assertions before Vitest, or give the probe a unique marker that no API fixture tracks.
+
 **Don't run cleanup `npx vitest run` in a backgrounded shell here** — the process gets SIGTERM'd between tool polls and the log stays empty. Run a single file (≈12-20s cold start) synchronously instead; multiple files can exceed the 120s tool timeout.
 
 ## Isolated suite configuration

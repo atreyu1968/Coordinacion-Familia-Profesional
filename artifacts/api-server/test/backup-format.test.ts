@@ -73,8 +73,9 @@ function makeBackupWithObjectIdentity(
 
 describe("complete backup format", () => {
   it("discovers all exported tables, including reset-token storage", () => {
-    expect(BACKUP_TABLE_NAMES).toHaveLength(89);
+    expect(BACKUP_TABLE_NAMES).toHaveLength(90);
     expect(BACKUP_TABLE_NAMES).toContain("password_reset_tokens");
+    expect(BACKUP_TABLE_NAMES).toContain("message_user_hides");
     expect(BACKUP_TABLE_NAMES).toContain("account_audit");
     expect(BACKUP_TABLE_NAMES).toContain("coordinator_tasks");
     expect(BACKUP_TABLE_NAMES).toContain("coordinator_task_source_scans");
