@@ -61,6 +61,10 @@ function pushPath(data: Record<string, unknown>): string {
       return threadId == null ? "/foros" : `/foros/tema/${threadId}`;
     case "announcement":
       return "/notifications";
+    case "certificate":
+      return "/mis-certificados";
+    case "meeting_minutes":
+      return "/actas";
     case "event":
     case "calendar":
     default:

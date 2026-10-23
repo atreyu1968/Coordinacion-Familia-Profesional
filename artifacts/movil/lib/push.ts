@@ -109,6 +109,10 @@ function deepLinkFromData(data: unknown): Href | null {
     }
     case "meeting":
       return "/videoconferencias";
+    case "certificate":
+      return "/mis-certificados";
+    case "meeting_minutes":
+      return "/actas";
     case "year_confirmation":
       return "/confirmar-curso";
     case "forum_thread":

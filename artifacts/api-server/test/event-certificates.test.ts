@@ -7,6 +7,7 @@ import {
   db, eventsTable, eventAttendancesTable as attendanceTable,
   eventAttendanceCertificatesTable as certificatesTable,
   certificateEmailVerificationsTable as verificationTable,
+  notificationsTable,
 } from "@workspace/db";
 import app from "../src/app";
 import { authHeader, cleanup, createProvince, createUser } from "./helpers";
@@ -105,6 +106,9 @@ describe("event attendance certificates", () => {
     certificateId = results[0]!.body.certificateId;
     const [record] = await db.select().from(certificatesTable).where(eq(certificatesTable.id, certificateId));
     certificateToken = record!.verificationToken;
+    const notices = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, teacher.user.id));
+    expect(notices.filter((notice) => notice.type === "certificate")).toHaveLength(1);
+    expect(notices.find((notice) => notice.type === "certificate")?.body).toContain("Mis certificados");
     expect(record!.snapshot.verificationUrl).toContain(`/verificar-certificado/${certificateToken}`);
     expect(record!.snapshot.durationMinutes).toBe(60);
     expect((await PDFDocument.load(Buffer.from(results[0]!.body.contentBase64, "base64"))).getPageCount()).toBe(1);
@@ -163,6 +167,8 @@ describe("event attendance certificates", () => {
     expect(mine.body.pendingEvents).toContainEqual({ eventId, eventName: "Nombre cambiado posteriormente" });
     const own = await call("post", "/me/attendance-certificates/issue", other).send({ eventId });
     expect(own.status).toBe(200);
+    const notices = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, other.user.id));
+    expect(notices.filter((notice) => notice.type === "certificate")).toHaveLength(1);
     expect((await call("get", "/me/attendance-certificates", other)).body.items[0].attendeeName).toBe("Persona CSV");
   });
   it("returns personalized PDFs in a ZIP, with no new account required for organizer generation", async () => {

@@ -19,6 +19,7 @@ import { attendanceCertificatePdf } from "../lib/attendanceCertificatePdf";
 import { parseAttendanceCsv } from "../lib/attendanceCsv";
 import { sendEmail } from "../lib/email";
 import { escapeEmailHtml } from "../lib/email-layout";
+import { notifyCertificateRecipients } from "../lib/certificateNotifications";
 
 export const attendanceHandler = (fn: (req: Request, res: Response) => Promise<void>) =>
   async (req: Request, res: Response) => {
@@ -124,7 +125,10 @@ router.patch("/events/:id/attendance/:attendanceId", requireAuth, attendanceHand
 }));
 router.post("/events/:id/attendance/:attendanceId/certificate", requireAuth, attendanceHandler(async (req, res) => {
   const event = await managedEvent(req);
-  res.json(await renderCertificate(await issueAttendanceCertificate(event.id, positiveId(req.params.attendanceId), req.user!.id, certificateAppUrl(req))));
+  const attendanceId = positiveId(req.params.attendanceId);
+  const certificate = await issueAttendanceCertificate(event.id, attendanceId, req.user!.id, certificateAppUrl(req));
+  if (certificate.created) await notifyCertificateRecipients([attendanceId], event.name);
+  res.json(await renderCertificate(certificate));
 }));
 router.get("/events/:id/certificates/:certificateId/pdf", requireAuth, attendanceHandler(async (req, res) => {
   const event = await managedEvent(req);
@@ -183,10 +187,14 @@ router.post("/events/:id/attendance/certificates-zip", requireAuth, attendanceHa
   if (!attendees.length) throw new AttendanceError(409, "No hay asistencias validadas.");
   if (attendees.length > 500) throw new AttendanceError(400, "El ZIP admite hasta 500 certificados por evento. Utiliza las descargas individuales para este evento.");
   const zip = new JSZip();
+  const newlyIssuedAttendanceIds: number[] = [];
   for (const attendance of attendees) {
-    const pdf = await renderCertificate(await issueAttendanceCertificate(event.id, attendance.id, req.user!.id, certificateAppUrl(req)));
+    const certificate = await issueAttendanceCertificate(event.id, attendance.id, req.user!.id, certificateAppUrl(req));
+    if (certificate.created) newlyIssuedAttendanceIds.push(attendance.id);
+    const pdf = await renderCertificate(certificate);
     zip.file(pdf.filename, pdf.contentBase64, { base64: true });
   }
+  await notifyCertificateRecipients(newlyIssuedAttendanceIds, event.name);
   res.json({ filename: `certificados-evento-${event.id}.zip`, certificateId: null, contentBase64: await zip.generateAsync({ type: "base64", compression: "DEFLATE" }) });
 }));
 
@@ -194,10 +202,19 @@ router.post("/events/:id/attendance/certificates-zip", requireAuth, attendanceHa
 export const notifyEventCertificates = attendanceHandler(async (req, res) => {
   const event = await managedEvent(req);
   const attendees = await db.select().from(attendanceTable).where(and(eq(attendanceTable.eventId, event.id), eq(attendanceTable.status, "confirmed")));
-  let issued = 0; let failed = 0;
+  const pendingEmails: Array<{
+    attendance: (typeof attendees)[number];
+    certificate: Awaited<ReturnType<typeof issueAttendanceCertificate>>;
+  }> = [];
+  const newlyIssuedAttendanceIds: number[] = [];
   for (const attendance of attendees) {
     const certificate = await issueAttendanceCertificate(event.id, attendance.id, req.user!.id, certificateAppUrl(req));
-    if (certificate.notifiedAt) continue;
+    if (certificate.created) newlyIssuedAttendanceIds.push(attendance.id);
+    if (!certificate.notifiedAt) pendingEmails.push({ attendance, certificate });
+  }
+  await notifyCertificateRecipients(newlyIssuedAttendanceIds, event.name);
+  let issued = 0; let failed = 0;
+  for (const { attendance, certificate } of pendingEmails) {
     const result = await sendEmail({
       to: attendance.email, subject: `Certificado disponible · ${event.name}`,
       html: `<p>Hola ${escapeEmailHtml(attendance.fullName)}:</p><p>Tu certificado de asistencia a <strong>${escapeEmailHtml(event.name)}</strong> está disponible.</p><p>Accede a <a href="${escapeEmailHtml(certificateAppUrl(req))}/mis-certificados">Mis certificados</a> con una cuenta registrada con este mismo correo y verifica su titularidad. Si no tienes cuenta, solicita una invitación a la organización.</p>`,

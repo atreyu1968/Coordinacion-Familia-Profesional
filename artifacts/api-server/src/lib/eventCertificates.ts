@@ -74,7 +74,7 @@ export async function issueAttendanceCertificate(eventId: number, attendanceId: 
       eq(eventAttendanceCertificatesTable.attendanceId, attendanceId),
       isNull(eventAttendanceCertificatesTable.revokedAt),
     ));
-    if (existing) return existing;
+    if (existing) return { ...existing, created: false };
     const [event] = await tx.select().from(eventsTable).where(and(eq(eventsTable.id, eventId), isNull(eventsTable.deletedAt)));
     if (!event) throw new AttendanceError(404, "Evento no encontrado.");
     const [settings] = await tx.select().from(eventAttendanceSettingsTable).where(eq(eventAttendanceSettingsTable.eventId, eventId));
@@ -89,6 +89,6 @@ export async function issueAttendanceCertificate(eventId: number, attendanceId: 
       eventId, attendanceId, issuedBy, verificationToken: token, snapshot,
       issuedAt: new Date(snapshot.issuedAt),
     }).returning();
-    return { ...certificate!, renderedPdf };
+    return { ...certificate!, renderedPdf, created: true };
   });
 }

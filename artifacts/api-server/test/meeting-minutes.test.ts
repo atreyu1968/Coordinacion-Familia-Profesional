@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { eq, inArray } from "drizzle-orm";
-import { db, eventsTable, meetingMinutesTable as minutes, meetingMinutesSourcesTable as sources, meetingAiSettingsTable } from "@workspace/db";
+import { db, eventsTable, meetingMinutesTable as minutes, meetingMinutesSourcesTable as sources, meetingAiSettingsTable, notificationsTable } from "@workspace/db";
 import app from "../src/app";
 import { createUser, createProvince, cleanup, authHeader } from "./helpers";
 import * as settings from "../src/lib/settings";
@@ -169,6 +169,10 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
     let w = await current();
     result = await call("post", base() + "/publish").send({ revision: w.revision, publish: true, reviewed: true });
     expect(result.status).toBe(200);
+    const headNotices = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, outsideHead.user.id));
+    const provinceNotices = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, reader.user.id));
+    expect(headNotices.filter((notice) => notice.type === "meeting_minutes")).toHaveLength(1);
+    expect(provinceNotices.filter((notice) => notice.type === "meeting_minutes")).toHaveLength(1);
     expect((await call("get", base(), reader)).body).toMatchObject({
       enabled: true, draftText: null, publishedText: null, sources: [], messages: [],
       publishedDocument: { id: firstDocumentId, fileName: "acta-final.pdf" },

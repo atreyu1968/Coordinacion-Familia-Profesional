@@ -214,7 +214,7 @@ export default function NotificationsScreen() {
             <EmptyState
               icon="bell"
               title="Sin avisos"
-              message="Aquí verás notificaciones de mensajes, alertas de empresa y comunicados."
+              message="Aquí verás avisos de mensajes, eventos, actas, certificados y comunicados."
             />
           }
           renderItem={({ item }) => {
@@ -245,6 +245,12 @@ export default function NotificationsScreen() {
                       break;
                     case "year_confirmation":
                       router.push("/confirmar-curso");
+                      break;
+                    case "certificate":
+                      router.push("/mis-certificados");
+                      break;
+                    case "meeting_minutes":
+                      router.push("/actas");
                       break;
                     case "collaborative_space":
                       // Documents live in the web app; it rechecks current access.

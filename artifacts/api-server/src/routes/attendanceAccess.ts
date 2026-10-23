@@ -11,6 +11,7 @@ import { requireAuth } from "../middlewares/auth";
 import { loadAccessibleEvent } from "./events";
 import { attendanceHandler, positiveId } from "./eventAttendance";
 import { AttendanceError, issueAttendanceCertificate, renderCertificate, certificateAppUrl } from "../lib/eventCertificates";
+import { notifyCertificateRecipients } from "../lib/certificateNotifications";
 import { normalizedEmail } from "../lib/attendanceCsv";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { hashPassword, verifyPassword } from "../lib/auth";
@@ -167,6 +168,8 @@ router.post("/me/attendance-certificates/issue", requireAuth, attendanceHandler(
     eq(attendanceTable.status, "confirmed"),
   ));
   if (!attendance) throw new AttendanceError(404, "No consta una asistencia validada para tu correo en ese evento.");
-  res.json(await renderCertificate(await issueAttendanceCertificate(attendance.eventId, attendance.id, req.user!.id, certificateAppUrl(req))));
+  const certificate = await issueAttendanceCertificate(attendance.eventId, attendance.id, req.user!.id, certificateAppUrl(req));
+  if (certificate.created) await notifyCertificateRecipients([attendance.id], certificate.snapshot.eventName);
+  res.json(await renderCertificate(certificate));
 }));
 export default router;

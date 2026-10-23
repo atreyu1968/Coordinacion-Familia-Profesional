@@ -19,6 +19,7 @@ import { requireAuth } from "../middlewares/auth";
 import { loadAccessibleEvent } from "./events";
 import { AttendanceError } from "../lib/eventCertificates";
 import { aiStatus, canManageMinutes, workspace, lockMinutes, ownedSource, storage, sourceDto, sharedDocumentDto, allowedExtensions, multimediaExtension } from "../lib/meetingMinutes";
+import { notifyUsers, resolveProvinceAudience, resolveRoleAudienceInProvince } from "../lib/notify";
 
 const router = Router();
 type Handler = (req: Request, res: Response) => Promise<unknown>;
@@ -366,7 +367,21 @@ router.post("/events/:id/minutes/publish", requireAuth, wrap(async (req, res) =>
       revision: row.revision + 1,
       updatedAt: new Date(),
     }).where(eq(meetingMinutesTable.eventId, event.id));
-  }); res.json(await workspace(event.id, true));
+  });
+  const result = await workspace(event.id, true);
+  if (data.publish && result.publishedDocument) {
+    const [provinceAudience, departmentHeads] = await Promise.all([
+      resolveProvinceAudience(event.provinceId, req.user!.id),
+      resolveRoleAudienceInProvince("department_head", null, req.user!.id),
+    ]);
+    await notifyUsers([...new Set([...provinceAudience, ...departmentHeads])], {
+      title: "Nueva acta de coordinación publicada",
+      body: `Ya está disponible el acta oficial de «${event.name}». Consulta Actas de coordinación en la aplicación.`,
+      type: "meeting_minutes",
+      data: { eventId: event.id },
+    });
+  }
+  res.json(result);
 }));
 router.get("/settings/meeting-ai", requireAuth, wrap(async (req, res) => {
   if (req.user!.role !== "superadmin") throw new AttendanceError(403, "Solo superadministración puede configurar los servicios."); res.json(await aiStatus());
