@@ -78,11 +78,13 @@ const additiveTables = [
   "account_audit",
   "coordinator_tasks",
   "coordinator_task_source_scans",
+  "chat_attachment_deletions",
 ];
 const coordinatorTaskTables = new Set([
   "coordinator_tasks",
   "coordinator_task_source_scans",
 ]);
+const chatAttachmentDeletionTables = new Set(["chat_attachment_deletions"]);
 const tableNameSymbol = Symbol.for("drizzle:Name");
 const tableColumnsSymbol = Symbol.for("drizzle:Columns");
 const isDrizzleTableSymbol = Symbol.for("drizzle:IsDrizzleTable");
@@ -461,6 +463,7 @@ for (const column of expected.columns) {
     if (
       allowMissingUpgradeColumns &&
       (pendingTables.has(column.table) ||
+       chatAttachmentDeletionTables.has(column.table) ||
        (column.table === "collaborative_spaces" && column.column === "provisioning_started_at") ||
        (column.table === "users" &&
         ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version", "teaching_center_id"].includes(column.column)) ||
@@ -535,6 +538,14 @@ for (const key of expected.constraints) {
   if (
     allowMissingUpgradeColumns &&
     coordinatorTaskTables.has(key.table) &&
+    !actualKeys.has(keySignature(key))
+  ) {
+    continue;
+  }
+  if (
+    allowMissingUpgradeColumns &&
+    chatAttachmentDeletionTables.has(key.table) &&
+    key.type === "primary" &&
     !actualKeys.has(keySignature(key))
   ) {
     continue;

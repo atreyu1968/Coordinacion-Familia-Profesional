@@ -203,7 +203,20 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit, public.coordinator_tasks, public.coordinator_task_source_scans"
+# Reproduce an earlier partial queue schema and retain a queued object path
+# while the additive migration fills the missing metadata and primary key.
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="DROP TABLE public.chat_attachment_deletions; CREATE TABLE public.chat_attachment_deletions (id serial, object_path text, status text NOT NULL DEFAULT 'pending'); INSERT INTO public.chat_attachment_deletions (object_path) VALUES ('private/chat/retained-attachment.pdf')"
 migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT attempts = 0 AND status = 'pending' AND object_path = 'private/chat/retained-attachment.pdf' AND created_at IS NOT NULL AND updated_at IS NOT NULL FROM public.chat_attachment_deletions WHERE id = 1" \
+  | grep -qx t
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.chat_attachment_deletions'::regclass AND contype = 'p' AND conkey = ARRAY[(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid = 'public.chat_attachment_deletions'::regclass AND attname = 'id')]::smallint[])" \
+  | grep -qx t
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

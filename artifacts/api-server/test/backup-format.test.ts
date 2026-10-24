@@ -73,12 +73,13 @@ function makeBackupWithObjectIdentity(
 
 describe("complete backup format", () => {
   it("discovers all exported tables, including reset-token storage", () => {
-    expect(BACKUP_TABLE_NAMES).toHaveLength(90);
+    expect(BACKUP_TABLE_NAMES).toHaveLength(91);
     expect(BACKUP_TABLE_NAMES).toContain("password_reset_tokens");
     expect(BACKUP_TABLE_NAMES).toContain("message_user_hides");
     expect(BACKUP_TABLE_NAMES).toContain("account_audit");
     expect(BACKUP_TABLE_NAMES).toContain("coordinator_tasks");
     expect(BACKUP_TABLE_NAMES).toContain("coordinator_task_source_scans");
+    expect(BACKUP_TABLE_NAMES).toContain("chat_attachment_deletions");
   });
 
   it("includes sessionNonce in the fingerprinted users schema", () => {

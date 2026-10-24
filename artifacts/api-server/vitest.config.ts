@@ -7,7 +7,12 @@ export default defineConfig({
     env: { LOG_LEVEL: "silent" },
     include: ["test/**/*.test.ts"],
     // This destructive fixture suite is only allowed in our temporary cluster.
-    exclude: ["test/ai-knowledge-isolation.test.ts", "test/test-teacher-cleanup.isolation.test.ts", "**/node_modules/**"],
+    exclude: [
+      "test/ai-knowledge-isolation.test.ts",
+      "test/test-teacher-cleanup.isolation.test.ts",
+      "test/academic-year-chat-cleanup.isolation.test.ts",
+      "**/node_modules/**",
+    ],
     // The realtime layer keeps a module-level Socket.io singleton and all tests
     // share one Postgres database, so run files sequentially to avoid cross-test
     // interference.
