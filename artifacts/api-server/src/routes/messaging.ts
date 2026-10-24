@@ -613,104 +613,34 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       return;
     }
     const otherId = others[0]!;
-    const [activeCounterpart] = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.id, otherId),
-          eq(usersTable.status, "active"),
-          isNull(usersTable.deletedAt),
-        ),
-      );
-    if (!activeCounterpart) {
-      res.status(400).json({ message: "Algún destinatario no es válido" });
-      return;
-    }
-
-    const callerDirect = await db
-      .select({ groupId: chatGroupMembersTable.groupId })
-      .from(chatGroupMembersTable)
-      .innerJoin(
-        chatGroupsTable,
-        eq(chatGroupsTable.id, chatGroupMembersTable.groupId),
-      )
-      .where(
-        and(
-          eq(chatGroupMembersTable.userId, caller.id),
-          eq(chatGroupsTable.type, "direct"),
-        ),
-      );
-    const directIds = callerDirect.map((r) => r.groupId);
-    if (directIds.length > 0) {
-      const shared = await db
-        .select({ groupId: chatGroupMembersTable.groupId })
-        .from(chatGroupMembersTable)
-        .where(
-          and(
-            inArray(chatGroupMembersTable.groupId, directIds),
-            eq(chatGroupMembersTable.userId, otherId),
-          ),
-        );
-      if (shared.length > 0) {
-        const [existing] = await db
-          .select()
-          .from(chatGroupsTable)
-          .where(eq(chatGroupsTable.id, shared[0]!.groupId));
-        if (existing) {
-          await db
-            .update(chatGroupMembersTable)
-            .set({ hiddenAt: null })
-            .where(
-              and(
-                eq(chatGroupMembersTable.groupId, existing.id),
-                eq(chatGroupMembersTable.userId, caller.id),
-              ),
-            );
-          const [other] = await db
-            .select({ name: usersTable.name })
-            .from(usersTable)
-            .where(eq(usersTable.id, otherId));
-          res
-            .status(200)
-            .json(toChatGroup({ ...existing, name: other?.name ?? existing.name }));
-          return;
-        }
-      }
-    }
-  }
-
-  // All members must be active users.
-  const validUsers = await db
-    .select({ id: usersTable.id, name: usersTable.name })
-    .from(usersTable)
-    .where(
-      and(
-        inArray(usersTable.id, memberIds),
-        eq(usersTable.status, "active"),
-        isNull(usersTable.deletedAt),
-      ),
-    );
-  if (validUsers.length !== memberIds.length) {
-    res.status(400).json({ message: "Algún destinatario no es válido" });
-    return;
-  }
-
-  const directOtherId =
-    type === "direct"
-      ? memberIds.find((id) => id !== caller.id)
-      : undefined;
-  const directPairKey =
-    directOtherId === undefined
-      ? undefined
-      : `direct-chat:${Math.min(caller.id, directOtherId)}:${Math.max(caller.id, directOtherId)}`;
-  const result = await db.transaction(async (tx) => {
-    if (directPairKey) {
-      // Serialize creation for this unordered user pair, then recheck while
-      // holding the transaction lock so simultaneous requests reuse one row.
+    const directPairKey =
+      `direct-chat:${Math.min(caller.id, otherId)}:${Math.max(caller.id, otherId)}`;
+    const directResult = await db.transaction(async (tx) => {
+      // Serialize requests from either side of the same pair before checking
+      // for an existing thread.
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${directPairKey}, 0))`,
       );
+      // Serialize chat creation/reopening with account deactivation or deletion.
+      // The locked row is checked again after any concurrent lifecycle update.
+      const [counterpart] = await tx
+        .select({
+          id: usersTable.id,
+          name: usersTable.name,
+          status: usersTable.status,
+          deletedAt: usersTable.deletedAt,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, otherId))
+        .for("update");
+      if (
+        !counterpart ||
+        counterpart.status !== "active" ||
+        counterpart.deletedAt !== null
+      ) {
+        return null;
+      }
+
       const callerDirect = await tx
         .select({ groupId: chatGroupMembersTable.groupId })
         .from(chatGroupMembersTable)
@@ -726,20 +656,20 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
         );
       const directIds = callerDirect.map((row) => row.groupId);
       if (directIds.length > 0) {
-        const [shared] = await tx
+        const shared = await tx
           .select({ groupId: chatGroupMembersTable.groupId })
           .from(chatGroupMembersTable)
           .where(
             and(
               inArray(chatGroupMembersTable.groupId, directIds),
-              eq(chatGroupMembersTable.userId, directOtherId!),
+              eq(chatGroupMembersTable.userId, otherId),
             ),
           );
-        if (shared) {
+        if (shared.length > 0) {
           const [existing] = await tx
             .select()
             .from(chatGroupsTable)
-            .where(eq(chatGroupsTable.id, shared.groupId));
+            .where(eq(chatGroupsTable.id, shared[0]!.groupId));
           if (existing) {
             await tx
               .update(chatGroupMembersTable)
@@ -750,12 +680,67 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
                   eq(chatGroupMembersTable.userId, caller.id),
                 ),
               );
-            return { group: existing, created: false };
+            return { group: existing, created: false, displayName: counterpart.name };
           }
         }
       }
-    }
 
+      const validUsers = await tx
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(
+          and(
+            inArray(usersTable.id, memberIds),
+            eq(usersTable.status, "active"),
+            isNull(usersTable.deletedAt),
+          ),
+        );
+      if (validUsers.length !== memberIds.length) return null;
+
+      const [group] = await tx
+        .insert(chatGroupsTable)
+        .values({
+          name: data.name.trim(),
+          type,
+          provinceId: data.provinceId ?? null,
+          centerId: data.centerId ?? null,
+          createdById: caller.id,
+          lastMessageAt: new Date(),
+        })
+        .returning();
+      await tx
+        .insert(chatGroupMembersTable)
+        .values(memberIds.map((uid) => ({ groupId: group!.id, userId: uid })))
+        .onConflictDoNothing();
+      return { group: group!, created: true, displayName: counterpart.name };
+    });
+    if (!directResult) {
+      res.status(400).json({ message: "Algún destinatario no es válido" });
+      return;
+    }
+    res
+      .status(directResult.created ? 201 : 200)
+      .json(toChatGroup({ ...directResult.group, name: directResult.displayName }));
+    return;
+  }
+
+  // All members must be active users.
+  const validUsers = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(
+      and(
+        inArray(usersTable.id, memberIds),
+        eq(usersTable.status, "active"),
+        isNull(usersTable.deletedAt),
+      ),
+    );
+  if (validUsers.length !== memberIds.length) {
+    res.status(400).json({ message: "Algún destinatario no es válido" });
+    return;
+  }
+
+  const result = await db.transaction(async (tx) => {
     const [group] = await tx
       .insert(chatGroupsTable)
       .values({
@@ -771,30 +756,18 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       .insert(chatGroupMembersTable)
       .values(memberIds.map((uid) => ({ groupId: group!.id, userId: uid })))
       .onConflictDoNothing();
-    return { group: group!, created: true };
+    return group!;
   });
-  const { group } = result;
-
-  let displayName = group.name;
-  if (type === "direct") {
-    const otherId = memberIds.find((id) => id !== caller.id);
-    const other = validUsers.find((u) => u.id === otherId);
-    if (other?.name) displayName = other.name;
-  }
-
-  if (type === "group") {
-    const recipients = memberIds.filter((id) => id !== caller.id);
-    await notifyUsers(recipients, {
-      title: "Te han añadido a un grupo",
-      body: group.name,
-      type: "chat_group",
-      data: { groupId: group.id },
-    });
-    for (const id of recipients) emitToUser(id, "chat_update", { groupId: group.id });
-  }
-  res
-    .status(result.created ? 201 : 200)
-    .json(toChatGroup({ ...group, name: displayName }));
+  const group = result;
+  const recipients = memberIds.filter((id) => id !== caller.id);
+  await notifyUsers(recipients, {
+    title: "Te han añadido a un grupo",
+    body: group.name,
+    type: "chat_group",
+    data: { groupId: group.id },
+  });
+  for (const id of recipients) emitToUser(id, "chat_update", { groupId: group.id });
+  res.status(201).json(toChatGroup(group));
 });
 
 router.post("/chat/groups/:id/leave", requireAuth, async (req, res): Promise<void> => {

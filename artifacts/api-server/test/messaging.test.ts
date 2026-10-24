@@ -278,6 +278,98 @@ describe("chat groups", () => {
     },
   );
 
+  it("does not reopen an archived direct thread if the counterpart is deactivated during the request", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const counterpart = await createUser({ role: "teacher" });
+    const created = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({ name: "Chat archivado", type: "direct", memberIds: [counterpart.user.id] });
+    expect(created.status).toBe(201);
+    trackGroup(created.body.id);
+
+    const message = await request(app)
+      .post(`/api/chat/groups/${created.body.id}/messages`)
+      .set(authHeader(caller.token))
+      .send({ content: "Historial que debe conservarse" });
+    expect(message.status).toBe(201);
+
+    const hiddenAt = new Date();
+    await db
+      .update(chatGroupMembersTable)
+      .set({ hiddenAt })
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, created.body.id),
+          eq(chatGroupMembersTable.userId, caller.user.id),
+        ),
+      );
+
+    let releaseLifecycleUpdate!: () => void;
+    let signalLifecycleUpdateApplied!: () => void;
+    const lifecycleUpdateHeld = new Promise<void>((resolve) => {
+      releaseLifecycleUpdate = resolve;
+    });
+    const lifecycleUpdateApplied = new Promise<void>((resolve) => {
+      signalLifecycleUpdateApplied = resolve;
+    });
+    const lifecycleUpdate = db.transaction(async (tx) => {
+      await tx
+        .update(usersTable)
+        .set({ status: "inactive" })
+        .where(eq(usersTable.id, counterpart.user.id));
+      signalLifecycleUpdateApplied();
+      await lifecycleUpdateHeld;
+    });
+    await lifecycleUpdateApplied;
+
+    const reopening = request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({ name: "Chat", type: "direct", memberIds: [counterpart.user.id] });
+
+    // Let the request reach the lifecycle row lock before allowing the
+    // deactivation transaction to commit.
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    releaseLifecycleUpdate();
+    await lifecycleUpdate;
+
+    const reopened = await reopening;
+    expect(reopened.status).toBe(400);
+
+    const [membership] = await db
+      .select({ hiddenAt: chatGroupMembersTable.hiddenAt })
+      .from(chatGroupMembersTable)
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, created.body.id),
+          eq(chatGroupMembersTable.userId, caller.user.id),
+        ),
+      );
+    expect(membership?.hiddenAt?.getTime()).toBe(hiddenAt.getTime());
+
+    const retainedMessages = await db
+      .select({ id: messagesTable.id, content: messagesTable.content })
+      .from(messagesTable)
+      .where(eq(messagesTable.groupId, created.body.id));
+    expect(retainedMessages).toEqual([
+      { id: message.body.id, content: "Historial que debe conservarse" },
+    ]);
+
+    const inbox = await request(app)
+      .get("/api/chat/groups")
+      .set(authHeader(caller.token));
+    expect(inbox.status).toBe(200);
+    expect(inbox.body).not.toContainEqual(
+      expect.objectContaining({ id: created.body.id }),
+    );
+
+    const history = await request(app)
+      .get(`/api/chat/groups/${created.body.id}/messages`)
+      .set(authHeader(caller.token));
+    expect(history.status).toBe(403);
+  });
+
   it("rejects a direct thread without exactly one recipient", async () => {
     const a = await createUser({ role: "teacher" });
     const b = await createUser({ role: "teacher" });
