@@ -447,6 +447,64 @@ describe("chat groups", () => {
 
 describe("messages", () => {
   it.each(["desactivada", "eliminada"] as const)(
+    "denies direct-chat attachment downloads when the counterpart is %s",
+    async (counterpartState) => {
+      const caller = await createUser({ role: "teacher" });
+      const counterpart = await createUser({ role: "teacher" });
+      const group = await request(app)
+        .post("/api/chat/groups")
+        .set(authHeader(caller.token))
+        .send({
+          name: "Conversación con adjunto",
+          type: "direct",
+          memberIds: [counterpart.user.id],
+        });
+      expect(group.status).toBe(201);
+      trackGroup(group.body.id);
+
+      const attachmentContents = "contenido privado del adjunto";
+      const [message] = await db
+        .insert(messagesTable)
+        .values({
+          groupId: group.body.id,
+          senderId: caller.user.id,
+          content: "",
+          kind: "file",
+          attachmentPath: "/objects/uploads/private-chat-attachment",
+          attachmentName: "privado.txt",
+          attachmentType: "text/plain",
+          attachmentSize: attachmentContents.length,
+        })
+        .returning();
+
+      await db
+        .update(usersTable)
+        .set(
+          counterpartState === "desactivada"
+            ? { status: "inactive" }
+            : { deletedAt: new Date() },
+        )
+        .where(eq(usersTable.id, counterpart.user.id));
+
+      const getObject = vi
+        .spyOn(ObjectStorageService.prototype, "getObjectEntityFile")
+        .mockResolvedValue({ kind: "local", absPath: "/tmp/private-chat-attachment" });
+      const downloadObject = vi
+        .spyOn(ObjectStorageService.prototype, "downloadObject")
+        .mockResolvedValue(new Response(attachmentContents));
+
+      const response = await request(app)
+        .get(`/api/chat/messages/${message!.id}/attachment`)
+        .set(authHeader(caller.token));
+
+      expect(response.status).toBe(403);
+      expect(response.text).not.toContain(attachmentContents);
+      expect(getObject).not.toHaveBeenCalled();
+      expect(downloadObject).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["desactivada", "eliminada"] as const)(
     "does not expose hidden direct messages or allow restore when the counterpart is %s",
     async (counterpartState) => {
       const caller = await createUser({ role: "teacher" });
