@@ -98,6 +98,22 @@ if [[ "${1:-}" == "--dashboard-only" ]]; then
   exit 0
 fi
 
+run_lms_course_import_tests() {
+  create_test_database coordina_lms_course_import
+  migrate_database coordina_lms_course_import
+  mkdir -m 700 "${TEST_ROOT}/lms-storage"
+  COORDINA_LMS_IMPORT_TEST_ROOT="${TEST_ROOT}" \
+    DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_lms_course_import?host=${SOCKET_DIR}" \
+    STORAGE_DRIVER=local \
+    LOCAL_STORAGE_DIR="${TEST_ROOT}/lms-storage" \
+    JWT_SECRET="isolated-lms-course-import-test-key-not-for-production" \
+    pnpm --filter @workspace/api-server exec vitest run --config vitest.lms-course-import.config.ts
+}
+if [[ "${1:-}" == "--lms-course-import-only" ]]; then
+  run_lms_course_import_tests
+  exit 0
+fi
+
 run_test_teacher_cleanup_tests() {
   create_test_database coordina_test_teacher_cleanup
   migrate_database coordina_test_teacher_cleanup

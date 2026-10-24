@@ -830,6 +830,7 @@ router.post(
     const { moduleId, objectPath } = parsed.data;
     let verifiedUpload = false;
     let databaseCommitted = false;
+    let importIntentId: number | undefined;
     const createdObjectPaths = new Set<string>();
 
     try {
@@ -837,6 +838,23 @@ router.post(
         (moduleId !== null && !(await isActiveFamilyModule(moduleId))) ||
         !(await canManageCourse(req.user!, { moduleId }))
       ) {
+        const tokenHash = createHash("sha256")
+          .update(parsed.data.intentToken)
+          .digest("hex");
+        const [pendingIntent] = await db.select().from(lmsCourseImportIntentsTable).where(and(
+          eq(lmsCourseImportIntentsTable.tokenHash, tokenHash),
+          eq(lmsCourseImportIntentsTable.userId, req.user!.id),
+          moduleId === null
+            ? isNull(lmsCourseImportIntentsTable.moduleId)
+            : eq(lmsCourseImportIntentsTable.moduleId, moduleId),
+          eq(lmsCourseImportIntentsTable.objectPath, objectPath),
+          isNull(lmsCourseImportIntentsTable.consumedAt),
+        ));
+        if (pendingIntent) {
+          await storage.deleteObjectEntity(pendingIntent.objectPath).catch(() => undefined);
+          await db.delete(lmsCourseImportIntentsTable)
+            .where(eq(lmsCourseImportIntentsTable.id, pendingIntent.id));
+        }
         res.status(403).json({ message: "No tienes permiso para importar cursos en ese ámbito." });
         return;
       }
@@ -862,6 +880,7 @@ router.post(
         });
         return;
       }
+      importIntentId = intent.id;
 
       const archiveObject = await storage.getObjectEntityFile(intent.objectPath);
       const acl = await getObjectAclPolicy(archiveObject);
@@ -1031,6 +1050,10 @@ router.post(
             storage.deleteObjectEntity(createdPath).catch(() => undefined),
           ),
         );
+        if (verifiedUpload && importIntentId !== undefined) {
+          await db.delete(lmsCourseImportIntentsTable)
+            .where(eq(lmsCourseImportIntentsTable.id, importIntentId));
+        }
       }
       if (error instanceof LmsCourseImportAlreadyUsedError) {
         res.status(409).json({ message: "El archivo de importación ya se utilizó." });
