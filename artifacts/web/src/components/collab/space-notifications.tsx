@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListNotificationsQueryKey,
   useListNotifications,
+  useDeleteNotification,
   useMarkNotificationRead,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,9 @@ export function AppNotifications({ userId, role }: { userId: number; role: strin
   const markRead = useMarkNotificationRead({
     mutation: { onSuccess: () => client.invalidateQueries({ queryKey }) },
   });
+  const deleteRead = useDeleteNotification({
+    mutation: { onSuccess: () => client.invalidateQueries({ queryKey }) },
+  });
   const items = notices.data ?? [];
   const unread = items.filter((item) => !item.readAt).length;
   return (
@@ -81,7 +85,23 @@ export function AppNotifications({ userId, role }: { userId: number; role: strin
                 return (
                   <div key={item.id}
                     className={`rounded-md p-3 mb-1 hover:bg-accent ${!item.readAt ? "bg-accent/60" : ""}`}>
-                    <p className="text-sm font-medium">{item.title}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 text-sm font-medium">{item.title}</p>
+                      {item.readAt && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          aria-label={`Eliminar aviso leído: ${item.title}`}
+                          title="Eliminar aviso leído"
+                          disabled={deleteRead.isPending}
+                          onClick={() => deleteRead.mutate({ id: item.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     {item.body && <p className="text-sm text-muted-foreground"><AutoLinkText text={item.body} /></p>}
                     <Link href={target.href} className="text-xs underline"
                       onClick={() => {

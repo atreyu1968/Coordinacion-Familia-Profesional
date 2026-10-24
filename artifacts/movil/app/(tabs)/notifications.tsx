@@ -19,6 +19,7 @@ import {
   useListNotifications,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
+  useDeleteNotification,
   type Notification,
 } from "@workspace/api-client-react";
 
@@ -59,6 +60,9 @@ export default function NotificationsScreen() {
     mutation: { onSuccess: invalidate },
   });
   const markAll = useMarkAllNotificationsRead({
+    mutation: { onSuccess: invalidate },
+  });
+  const deleteRead = useDeleteNotification({
     mutation: { onSuccess: invalidate },
   });
 
@@ -220,80 +224,103 @@ export default function NotificationsScreen() {
           renderItem={({ item }) => {
             const isUnread = !item.readAt;
             return (
-              <Pressable
-                onPress={() => {
-                  if (isUnread) markOne.mutate({ id: item.id });
-                  switch (item.type) {
-                    case "message":
-                      router.push("/(tabs)/chat");
-                      break;
-                    case "survey":
-                      router.push("/surveys");
-                      break;
-                    case "document_form":
-                      router.push("/forms");
-                      break;
-                    case "meeting":
-                      router.push("/videoconferencias");
-                      break;
-                    case "company_alert":
-                      router.push("/alerts");
-                      break;
-                    case "forum_thread":
-                    case "forum_reply":
-                      router.push("/foros");
-                      break;
-                    case "year_confirmation":
-                      router.push("/confirmar-curso");
-                      break;
-                    case "certificate":
-                      router.push("/mis-certificados");
-                      break;
-                    case "meeting_minutes":
-                      router.push("/actas");
-                      break;
-                    case "collaborative_space":
-                      // Documents live in the web app; it rechecks current access.
-                      void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
-                      break;
-                    case "lms_course":
-                      router.push("/lms");
-                      break;
-                    case "event":
-                    case "calendar":
-                      router.push("/(tabs)");
-                      break;
-                  }
-                }}
-                style={({ pressed }) => [
+              <View
+                style={[
                   styles.row,
                   {
                     borderBottomColor: colors.border,
                     backgroundColor: isUnread ? colors.accent : "transparent",
-                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
-                <View
-                  style={[
-                    styles.dot,
-                    { backgroundColor: isUnread ? colors.primary : "transparent" },
+                <Pressable
+                  onPress={() => {
+                    if (isUnread) markOne.mutate({ id: item.id });
+                    switch (item.type) {
+                      case "message":
+                        router.push("/(tabs)/chat");
+                        break;
+                      case "survey":
+                        router.push("/surveys");
+                        break;
+                      case "document_form":
+                        router.push("/forms");
+                        break;
+                      case "meeting":
+                        router.push("/videoconferencias");
+                        break;
+                      case "company_alert":
+                        router.push("/alerts");
+                        break;
+                      case "forum_thread":
+                      case "forum_reply":
+                        router.push("/foros");
+                        break;
+                      case "year_confirmation":
+                        router.push("/confirmar-curso");
+                        break;
+                      case "certificate":
+                        router.push("/mis-certificados");
+                        break;
+                      case "meeting_minutes":
+                        router.push("/actas");
+                        break;
+                      case "collaborative_space":
+                        // Documents live in the web app; it rechecks current access.
+                        void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
+                        break;
+                      case "lms_course":
+                        router.push("/lms");
+                        break;
+                      case "event":
+                      case "calendar":
+                        router.push("/(tabs)");
+                        break;
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.rowContent,
+                    { opacity: pressed ? 0.7 : 1 },
                   ]}
-                />
-                <View style={styles.body}>
-                  <Text style={[styles.title, { color: colors.foreground }]}>
-                    {item.title}
-                  </Text>
-                  {item.body ? (
-                    <Text style={[styles.text, { color: colors.mutedForeground }]}>
-                      <AutoLinkText text={item.body} />
+                >
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: isUnread ? colors.primary : "transparent" },
+                    ]}
+                  />
+                  <View style={styles.body}>
+                    <Text style={[styles.title, { color: colors.foreground }]}>
+                      {item.title}
                     </Text>
-                  ) : null}
-                  <Text style={[styles.time, { color: colors.mutedForeground }]}>
-                    {formatRelative(item.createdAt)}
-                  </Text>
-                </View>
-              </Pressable>
+                    {item.body ? (
+                      <Text style={[styles.text, { color: colors.mutedForeground }]}>
+                        <AutoLinkText text={item.body} />
+                      </Text>
+                    ) : null}
+                    <Text style={[styles.time, { color: colors.mutedForeground }]}>
+                      {formatRelative(item.createdAt)}
+                    </Text>
+                  </View>
+                </Pressable>
+                {item.readAt ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar aviso leído: ${item.title}`}
+                    hitSlop={10}
+                    disabled={deleteRead.isPending}
+                    onPress={() => deleteRead.mutate({ id: item.id })}
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      {
+                        opacity: pressed || deleteRead.isPending ? 0.5 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather name="trash-2" size={18} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
+              </View>
             );
           }}
         />
@@ -330,10 +357,18 @@ const styles = StyleSheet.create({
   pushActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   row: {
     flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
+  },
+  rowContent: { flex: 1, flexDirection: "row", gap: 12 },
+  deleteButton: {
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   body: { flex: 1, gap: 4 },

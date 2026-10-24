@@ -4968,6 +4968,16 @@ export const MarkNotificationReadResponse = zod.object({
 
 
 /**
+ * @summary Delete a read notification owned by the caller
+ */
+export const DeleteNotificationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNotificationResponse = zod.void()
+
+
+/**
  * @summary Register a device push token (mobile)
  */
 export const RegisterPushTokenBody = zod.object({

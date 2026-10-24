@@ -217,6 +217,10 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conrelid = 'public.chat_attachment_deletions'::regclass AND contype = 'p' AND conkey = ARRAY[(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid = 'public.chat_attachment_deletions'::regclass AND attname = 'id')]::smallint[])" \
   | grep -qx t
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_index i JOIN pg_catalog.pg_class idx ON idx.oid = i.indexrelid JOIN pg_catalog.pg_class tbl ON tbl.oid = i.indrelid WHERE tbl.oid = 'public.chat_attachment_deletions'::regclass AND idx.relname = 'chat_attachment_deletions_done_completed_at_idx' AND pg_catalog.pg_get_indexdef(i.indexrelid, 1, true) = 'completed_at' AND pg_catalog.pg_get_expr(i.indpred, i.indrelid) LIKE '%status = ''done''%')" \
+  | grep -qx t
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

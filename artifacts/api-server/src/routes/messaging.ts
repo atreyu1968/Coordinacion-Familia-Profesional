@@ -7,6 +7,7 @@ import {
   desc,
   asc,
   isNull,
+  isNotNull,
   notExists,
   ilike,
   ne,
@@ -61,6 +62,7 @@ import {
   CreateAnnouncementBody,
   DeleteAnnouncementParams,
   ListNotificationsResponse,
+  DeleteNotificationParams,
   MarkNotificationReadParams,
   RegisterPushTokenBody,
 } from "@workspace/api-zod";
@@ -2234,6 +2236,36 @@ router.post(
         ),
       );
     res.json({ ok: true });
+  },
+);
+
+router.delete(
+  "/notifications/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteNotificationParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [deleted] = await db
+      .delete(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.id, params.data.id),
+          eq(notificationsTable.userId, caller.id),
+          isNotNull(notificationsTable.readAt),
+        ),
+      )
+      .returning({ id: notificationsTable.id });
+    if (!deleted) {
+      res.status(404).json({
+        message: "El aviso no existe o todavía no se ha leído.",
+      });
+      return;
+    }
+    res.sendStatus(204);
   },
 );
 

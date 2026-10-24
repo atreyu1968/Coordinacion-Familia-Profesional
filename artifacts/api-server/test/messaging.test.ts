@@ -1366,4 +1366,49 @@ describe("notifications", () => {
       .where(eq(notificationsTable.userId, a.user.id));
     expect(all.every((n) => n.readAt !== null)).toBe(true);
   });
+
+  it("deletes only the caller's already-read notifications", async () => {
+    const a = await createUser({ role: "teacher" });
+    const b = await createUser({ role: "teacher" });
+    const [readMine] = await db
+      .insert(notificationsTable)
+      .values({ userId: a.user.id, title: "Leída", readAt: new Date() })
+      .returning();
+    const [unreadMine] = await db
+      .insert(notificationsTable)
+      .values({ userId: a.user.id, title: "Pendiente" })
+      .returning();
+    const [readTheirs] = await db
+      .insert(notificationsTable)
+      .values({ userId: b.user.id, title: "De otra persona", readAt: new Date() })
+      .returning();
+
+    const deleted = await request(app)
+      .delete(`/api/notifications/${readMine!.id}`)
+      .set(authHeader(a.token));
+    expect(deleted.status).toBe(204);
+
+    const unreadDelete = await request(app)
+      .delete(`/api/notifications/${unreadMine!.id}`)
+      .set(authHeader(a.token));
+    expect(unreadDelete.status).toBe(404);
+
+    const otherUserDelete = await request(app)
+      .delete(`/api/notifications/${readTheirs!.id}`)
+      .set(authHeader(a.token));
+    expect(otherUserDelete.status).toBe(404);
+
+    const remaining = await db
+      .select()
+      .from(notificationsTable)
+      .where(inArray(notificationsTable.id, [
+        readMine!.id,
+        unreadMine!.id,
+        readTheirs!.id,
+      ]));
+    expect(remaining.map((notice) => notice.id)).toEqual(
+      expect.arrayContaining([unreadMine!.id, readTheirs!.id]),
+    );
+    expect(remaining.map((notice) => notice.id)).not.toContain(readMine!.id);
+  });
 });

@@ -111,4 +111,10 @@ BEGIN
 END
 $chat_attachment_deletion_primary_key$;
 
+-- Task retries query completed rows by status and completion timestamp. This is
+-- deliberately partial so the index stays small as the retry queue grows.
+CREATE INDEX IF NOT EXISTS chat_attachment_deletions_done_completed_at_idx
+  ON public.chat_attachment_deletions (completed_at)
+  WHERE status = 'done';
+
 COMMIT;

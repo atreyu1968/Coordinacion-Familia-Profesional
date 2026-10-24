@@ -590,6 +590,13 @@ for (const index of expected.indexes) {
     ) {
       continue;
     }
+    if (
+      allowMissingUpgradeColumns &&
+      index.table === "chat_attachment_deletions" &&
+      index.name === "chat_attachment_deletions_done_completed_at_idx"
+    ) {
+      continue;
+    }
     problems.push(`missing index ${index.name} on ${index.table}`);
     continue;
   }

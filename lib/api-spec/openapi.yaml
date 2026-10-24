@@ -4276,6 +4276,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OkResult"
+  /notifications/{id}:
+    delete:
+      operationId: deleteNotification
+      tags: [messaging]
+      summary: Delete a read notification owned by the caller
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: Deleted.
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /push-tokens:
     post:
       operationId: registerPushToken
