@@ -300,6 +300,111 @@ describe("PUT /api/academic-years/active chat cleanup", () => {
     expect(deleteSpy).toHaveBeenCalledTimes(2);
   });
 
+  it("lets only one of two workers claim a pending deletion", async () => {
+    const attachmentPath = `/objects/chat-cleanup/concurrent-${Date.now()}`;
+    const [queueRow] = await t.db
+      .insert(t.chatAttachmentDeletionsTable)
+      .values({
+        objectPath: attachmentPath,
+        status: "pending",
+        nextAttemptAt: new Date(0),
+      })
+      .returning();
+    const { ObjectStorageService } = await import("../src/lib/objectStorage");
+
+    let markDeleteStarted!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      markDeleteStarted = resolve;
+    });
+    let finishDelete!: () => void;
+    const deleteGate = new Promise<void>((resolve) => {
+      finishDelete = resolve;
+    });
+    const deleteSpy = vi
+      .spyOn(ObjectStorageService.prototype, "deleteObjectEntity")
+      .mockImplementation(async () => {
+        markDeleteStarted();
+        await deleteGate;
+      });
+
+    const firstWorker = worker.processNextChatAttachmentDeletion(queueRow.id);
+    await deleteStarted;
+    const secondWorker = await worker.processNextChatAttachmentDeletion(queueRow.id);
+    finishDelete();
+
+    expect(secondWorker).toBe(false);
+    expect(await firstWorker).toBe(true);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+
+    const [completed] = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.id, queueRow.id));
+    expect(completed).toMatchObject({
+      id: queueRow.id,
+      status: "done",
+      attempts: 1,
+      objectPath: null,
+      lastError: null,
+    });
+    expect(completed?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it("recovers an expired lease once and keeps the completed queue record", async () => {
+    const attachmentPath = `/objects/chat-cleanup/expired-lease-${Date.now()}`;
+    const [queueRow] = await t.db
+      .insert(t.chatAttachmentDeletionsTable)
+      .values({
+        objectPath: attachmentPath,
+        status: "processing",
+        attempts: 1,
+        leaseToken: "expired-worker-lease",
+        leaseUntil: new Date(0),
+      })
+      .returning();
+    const { ObjectStorageService } = await import("../src/lib/objectStorage");
+
+    let markDeleteStarted!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      markDeleteStarted = resolve;
+    });
+    let finishDelete!: () => void;
+    const deleteGate = new Promise<void>((resolve) => {
+      finishDelete = resolve;
+    });
+    const deleteSpy = vi
+      .spyOn(ObjectStorageService.prototype, "deleteObjectEntity")
+      .mockImplementation(async () => {
+        markDeleteStarted();
+        await deleteGate;
+      });
+
+    const recoveryWorker = worker.processNextChatAttachmentDeletion(queueRow.id);
+    await deleteStarted;
+    const competingWorker = await worker.processNextChatAttachmentDeletion(queueRow.id);
+    finishDelete();
+
+    expect(competingWorker).toBe(false);
+    expect(await recoveryWorker).toBe(true);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+
+    const recoveredRows = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.id, queueRow.id));
+    expect(recoveredRows).toHaveLength(1);
+    expect(recoveredRows[0]).toMatchObject({
+      id: queueRow.id,
+      status: "done",
+      attempts: 2,
+      objectPath: null,
+      lastError: null,
+    });
+    expect(recoveredRows[0]?.completedAt).toBeInstanceOf(Date);
+    expect(recoveredRows[0]?.leaseToken).toBeNull();
+    expect(recoveredRows[0]?.leaseUntil).toBeNull();
+  });
+
   it("treats an already-missing object as a successful deletion", async () => {
     const admin = await helpers.createUser({ role: "superadmin" });
     const recipient = await helpers.createUser({ role: "teacher" });
