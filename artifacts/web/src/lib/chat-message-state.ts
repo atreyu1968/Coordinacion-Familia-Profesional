@@ -9,6 +9,15 @@ export type ChatMessageLists<T> = {
   hiddenMessages: T[];
 };
 
+export async function runChatMessageAction<TResult>(
+  request: () => Promise<TResult>,
+  onSuccess: (result: TResult) => void | Promise<void>,
+): Promise<TResult> {
+  const result = await request();
+  await onSuccess(result);
+  return result;
+}
+
 function sortMessages<T extends ChatMessageStateItem>(
   messages: T[],
   newestFirst: boolean,

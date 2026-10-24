@@ -99,6 +99,7 @@ import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
+  runChatMessageAction,
 } from "@/lib/chat-message-state";
 
 const TOKEN_KEY = "coordina_adg_token";
@@ -1139,10 +1140,9 @@ function ConversationView({
     ) {
       return;
     }
-    deleteMut.mutate(
-      { id: message.id },
-      {
-        onSuccess: (updated) => {
+    void runChatMessageAction(
+      () => deleteMut.mutateAsync({ id: message.id }),
+      (updated) => {
           setMessages((previous) =>
             deleteChatMessageForEveryone(previous, [], updated).messages,
           );
@@ -1158,21 +1158,19 @@ function ConversationView({
             queryKey: getListHiddenGroupMessagesQueryKey(groupId),
           });
         },
-        onError: () =>
+    ).catch(() =>
           toast({
             title: "Error",
             description: "No se pudo eliminar el mensaje.",
             variant: "destructive",
           }),
-      },
     );
   };
 
   const onHideForMe = (message: Message) => {
-    hideMessageMut.mutate(
-      { id: message.id },
-      {
-        onSuccess: () => {
+    void runChatMessageAction(
+      () => hideMessageMut.mutateAsync({ id: message.id }),
+      () => {
           setMessages((previous) =>
             hideChatMessage(previous, [], message).messages,
           );
@@ -1185,21 +1183,19 @@ function ConversationView({
             queryKey: getListHiddenGroupMessagesQueryKey(groupId),
           });
         },
-        onError: () =>
+    ).catch(() =>
           toast({
             title: "Error",
             description: "No se pudo ocultar el mensaje para ti.",
             variant: "destructive",
           }),
-      },
     );
   };
 
   const onRestoreHiddenMessage = (message: Message) => {
-    restoreHiddenMessageMut.mutate(
-      { id: message.id },
-      {
-        onSuccess: (restored) => {
+    void runChatMessageAction(
+      () => restoreHiddenMessageMut.mutateAsync({ id: message.id }),
+      (restored) => {
           setMessages((previous) =>
             restoreChatMessage(previous, [], restored).messages,
           );
@@ -1215,13 +1211,12 @@ function ConversationView({
           });
           toast({ title: "Mensaje restaurado" });
         },
-        onError: () =>
+    ).catch(() =>
           toast({
             title: "Error",
             description: "No se pudo restaurar el mensaje.",
             variant: "destructive",
           }),
-      },
     );
   };
 

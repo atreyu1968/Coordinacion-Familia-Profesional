@@ -71,6 +71,7 @@ import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
+  runChatMessageAction,
 } from "@/lib/chat-message-state";
 
 // Full emoji keyboard for composing.
@@ -823,10 +824,9 @@ export default function ChatDetailScreen() {
         text: "Eliminar",
         style: "destructive",
         onPress: () =>
-          deleteMutation.mutate(
-            { id: message.id },
-            {
-              onSuccess: (msg) => {
+          void runChatMessageAction(
+            () => deleteMutation.mutateAsync({ id: message.id }),
+            (msg) => {
                 setMessages((previous) =>
                   deleteChatMessageForEveryone(previous, [], msg).messages,
                 );
@@ -842,7 +842,8 @@ export default function ChatDetailScreen() {
                   queryKey: getListHiddenGroupMessagesQueryKey(groupId),
                 });
               },
-            },
+          ).catch(() =>
+            Alert.alert("Error", "No se pudo eliminar el mensaje."),
           ),
       },
       ],
@@ -851,10 +852,9 @@ export default function ChatDetailScreen() {
 
   const onHideForMe = (message: Message) => {
     setActionMessage(null);
-    hideMessageMutation.mutate(
-      { id: message.id },
-      {
-        onSuccess: () => {
+    void runChatMessageAction(
+      () => hideMessageMutation.mutateAsync({ id: message.id }),
+      () => {
           setMessages((previous) =>
             hideChatMessage(previous, [], message).messages,
           );
@@ -867,17 +867,15 @@ export default function ChatDetailScreen() {
             queryKey: getListHiddenGroupMessagesQueryKey(groupId),
           });
         },
-        onError: () =>
+    ).catch(() =>
           Alert.alert("Error", "No se pudo ocultar el mensaje para ti."),
-      },
     );
   };
 
   const onRestoreHiddenMessage = (message: Message) => {
-    restoreHiddenMessageMutation.mutate(
-      { id: message.id },
-      {
-        onSuccess: (restored) => {
+    void runChatMessageAction(
+      () => restoreHiddenMessageMutation.mutateAsync({ id: message.id }),
+      (restored) => {
           setMessages((previous) =>
             restoreChatMessage(previous, [], restored).messages,
           );
@@ -892,9 +890,7 @@ export default function ChatDetailScreen() {
             queryKey: getListHiddenGroupMessagesQueryKey(groupId),
           });
         },
-        onError: () => Alert.alert("Error", "No se pudo restaurar el mensaje."),
-      },
-    );
+    ).catch(() => Alert.alert("Error", "No se pudo restaurar el mensaje."));
   };
 
   const onStartForward = (message: Message) => {
