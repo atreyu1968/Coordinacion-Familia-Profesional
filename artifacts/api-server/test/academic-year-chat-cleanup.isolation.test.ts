@@ -3,7 +3,7 @@ import request from "supertest";
 import { realpathSync } from "node:fs";
 import { mkdir, rm, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
-import { sql, eq } from "drizzle-orm";
+import { inArray, sql, eq } from "drizzle-orm";
 
 const TEST_YEAR = `chat-cleanup-${Date.now()}`;
 const STORAGE_ROOT = process.env.COORDINA_CHAT_CLEANUP_TEST_ROOT
@@ -89,6 +89,68 @@ afterAll(async () => {
 });
 
 describe("PUT /api/academic-years/active chat cleanup", () => {
+  it("purges only completed deletions older than the retention period", async () => {
+    const now = new Date("2026-10-24T12:00:00.000Z");
+    const expiredAt = new Date(
+      now.getTime() - worker.CHAT_ATTACHMENT_DELETE_RETENTION_MS - 1,
+    );
+    const recentAt = new Date(
+      now.getTime() - worker.CHAT_ATTACHMENT_DELETE_RETENTION_MS + 1,
+    );
+    const inserted = await t.db
+      .insert(t.chatAttachmentDeletionsTable)
+      .values([
+        { status: "done", objectPath: null, completedAt: expiredAt },
+        { status: "done", objectPath: null, completedAt: recentAt },
+        { status: "done", objectPath: null, completedAt: null },
+        {
+          status: "done",
+          objectPath: "/objects/chat-cleanup/unresolved-done",
+          completedAt: expiredAt,
+        },
+        {
+          status: "pending",
+          objectPath: "/objects/chat-cleanup/pending",
+          completedAt: expiredAt,
+        },
+        {
+          status: "processing",
+          objectPath: "/objects/chat-cleanup/processing",
+          completedAt: expiredAt,
+        },
+        {
+          status: "failed",
+          objectPath: "/objects/chat-cleanup/failed",
+          completedAt: expiredAt,
+        },
+      ])
+      .returning({
+        id: t.chatAttachmentDeletionsTable.id,
+        status: t.chatAttachmentDeletionsTable.status,
+        objectPath: t.chatAttachmentDeletionsTable.objectPath,
+        completedAt: t.chatAttachmentDeletionsTable.completedAt,
+      });
+    const expiredDoneId = inserted.find(
+      (row) =>
+        row.status === "done" &&
+        row.objectPath === null &&
+        row.completedAt?.getTime() === expiredAt.getTime(),
+    )!.id;
+
+    expect(await worker.purgeCompletedChatAttachmentDeletions(now)).toBe(1);
+    const remaining = await t.db
+      .select({ id: t.chatAttachmentDeletionsTable.id })
+      .from(t.chatAttachmentDeletionsTable)
+      .where(
+        inArray(
+          t.chatAttachmentDeletionsTable.id,
+          inserted.map((row) => row.id),
+        ),
+      );
+    expect(remaining.map((row) => row.id)).not.toContain(expiredDoneId);
+    expect(remaining).toHaveLength(inserted.length - 1);
+  });
+
   it("requires explicit confirmation and is superadmin-only", async () => {
     const admin = await helpers.createUser({ role: "superadmin" });
     const coordinator = await helpers.createUser({ role: "coordinator" });

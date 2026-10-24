@@ -3,7 +3,9 @@ import {
   and,
   asc,
   eq,
+  inArray,
   isNotNull,
+  isNull,
   lte,
   or,
   sql,
@@ -13,6 +15,8 @@ import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 
 export const CHAT_ATTACHMENT_DELETE_MAX_ATTEMPTS = 5;
+export const CHAT_ATTACHMENT_DELETE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_COMPLETED_ROWS_PER_PURGE = 100;
 const LEASE_MS = 5 * 60 * 1000;
 const WORKER_INTERVAL_MS = 30_000;
 const MAX_JOBS_PER_TICK = 10;
@@ -182,6 +186,30 @@ export async function retryChatAttachmentDeletion(id: number): Promise<boolean> 
   return true;
 }
 
+export async function purgeCompletedChatAttachmentDeletions(
+  now = new Date(),
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - CHAT_ATTACHMENT_DELETE_RETENTION_MS);
+  const expiredIds = db
+    .select({ id: chatAttachmentDeletionsTable.id })
+    .from(chatAttachmentDeletionsTable)
+    .where(
+      and(
+        eq(chatAttachmentDeletionsTable.status, "done"),
+        isNull(chatAttachmentDeletionsTable.objectPath),
+        isNotNull(chatAttachmentDeletionsTable.completedAt),
+        lte(chatAttachmentDeletionsTable.completedAt, cutoff),
+      ),
+    )
+    .orderBy(asc(chatAttachmentDeletionsTable.completedAt))
+    .limit(MAX_COMPLETED_ROWS_PER_PURGE);
+  const deletedRows = await db
+    .delete(chatAttachmentDeletionsTable)
+    .where(inArray(chatAttachmentDeletionsTable.id, expiredIds))
+    .returning({ id: chatAttachmentDeletionsTable.id });
+  return deletedRows.length;
+}
+
 let timer: ReturnType<typeof setInterval> | undefined;
 export function startChatAttachmentDeletionWorker(): void {
   if (timer) return;
@@ -192,6 +220,14 @@ export function startChatAttachmentDeletionWorker(): void {
     void (async () => {
       for (let i = 0; i < MAX_JOBS_PER_TICK; i += 1) {
         if (!(await processNextChatAttachmentDeletion())) break;
+      }
+      try {
+        await purgeCompletedChatAttachmentDeletions();
+      } catch (err) {
+        logger.warn(
+          { err },
+          "Could not purge completed chat attachment deletions",
+        );
       }
     })()
       .catch((err) => {

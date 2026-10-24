@@ -1,10 +1,12 @@
 import {
   integer,
+  index,
   pgTable,
   serial,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Only unresolved rows retain an object path. The path is cleared after a
 // successful delete so completed jobs do not retain storage identifiers.
@@ -27,6 +29,11 @@ export const chatAttachmentDeletionsTable = pgTable(
       .defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
+  (table) => [
+    index("chat_attachment_deletions_done_completed_at_idx")
+      .on(table.completedAt)
+      .where(sql`${table.status} = 'done'`),
+  ],
 );
 
 export type ChatAttachmentDeletion =
