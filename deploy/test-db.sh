@@ -215,7 +215,10 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
 echo "==> Applying the upgrade to the existing database"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  --command="DROP TABLE public.coordinator_mail_outbox, public.coordinator_mail_case_notes, public.coordinator_mail_attachments, public.coordinator_mail_messages, public.coordinator_mail_case_threads, public.coordinator_mail_cases, public.coordinator_mail_accounts, public.coordinator_mail_settings, public.meeting_minutes_shared_documents, public.meeting_minutes_sources, public.meeting_minutes_messages, public.meeting_minutes, public.meeting_ai_settings, public.event_attendance_certificates, public.event_attendances, public.event_attendance_settings, public.certificate_email_verifications"
+  --command="ALTER TABLE public.meeting_ai_settings ALTER COLUMN vision_model SET DEFAULT 'gpt-4o-mini'; INSERT INTO public.meeting_ai_settings (id, vision_model) VALUES (1, 'gpt-4o-mini'), (2, 'custom-vision-model')"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="DROP TABLE public.coordinator_mail_outbox, public.coordinator_mail_case_notes, public.coordinator_mail_attachments, public.coordinator_mail_messages, public.coordinator_mail_case_threads, public.coordinator_mail_cases, public.coordinator_mail_accounts, public.coordinator_mail_settings, public.meeting_minutes_shared_documents, public.meeting_minutes_sources, public.meeting_minutes_messages, public.meeting_minutes, public.event_attendance_certificates, public.event_attendances, public.event_attendance_settings, public.certificate_email_verifications"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="DROP TABLE public.collaborative_space_audit, public.collaborative_space_members, public.collaborative_spaces, public.account_audit, public.coordinator_tasks, public.coordinator_task_source_scans"
@@ -225,6 +228,10 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="DROP TABLE public.chat_attachment_deletions; CREATE TABLE public.chat_attachment_deletions (id serial, object_path text, status text NOT NULL DEFAULT 'pending'); INSERT INTO public.chat_attachment_deletions (object_path) VALUES ('private/chat/retained-attachment.pdf')"
 migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT (SELECT vision_model = 'gpt-5.4-mini' FROM public.meeting_ai_settings WHERE id = 1) AND (SELECT vision_model = 'custom-vision-model' FROM public.meeting_ai_settings WHERE id = 2) AND (SELECT pg_get_expr(d.adbin, d.adrelid) LIKE '%gpt-5.4-mini%' FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum WHERE n.nspname = 'public' AND c.relname = 'meeting_ai_settings' AND a.attname = 'vision_model')" \
+  | grep -qx t
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT attempts = 0 AND status = 'pending' AND object_path = 'private/chat/retained-attachment.pdf' AND created_at IS NOT NULL AND updated_at IS NOT NULL FROM public.chat_attachment_deletions WHERE id = 1" \

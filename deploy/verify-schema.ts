@@ -495,6 +495,13 @@ for (const column of expected.columns) {
       !(
         found.default === `'${column.default.replaceAll("'", "''")}'` ||
         found.default.startsWith(`'${column.default.replaceAll("'", "''")}'::`)
+      ) &&
+      !(
+        allowMissingUpgradeColumns &&
+        column.table === "meeting_ai_settings" &&
+        column.column === "vision_model" &&
+        (found.default === "'gpt-4o-mini'" ||
+          found.default.startsWith("'gpt-4o-mini'::"))
       )
     ) {
       problems.push(`${key} has an unexpected string default`);
