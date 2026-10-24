@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -8,7 +8,6 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { WebView } from "react-native-webview";
 import {
   useGetCollabStatus,
   useListCollaborativeSpaces,
@@ -20,6 +19,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { NextcloudViewer } from "@/components/NextcloudViewer";
 import { Card, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 
@@ -27,6 +27,7 @@ type ActiveSpace = {
   title: string;
   url: string;
   nextcloudUrl: string;
+  requestFreshUrl: () => Promise<string>;
 };
 
 export default function CollaborativeSpacesScreen() {
@@ -40,15 +41,6 @@ export default function CollaborativeSpacesScreen() {
   const [openError, setOpenError] = useState("");
   const [viewerError, setViewerError] = useState("");
 
-  const allowedOrigins = useMemo(() => {
-    if (!active) return new Set<string>();
-    try {
-      return new Set([new URL(active.url).origin, new URL(active.nextcloudUrl).origin]);
-    } catch {
-      return new Set<string>();
-    }
-  }, [active]);
-
   const startModuleSpace = async (module: Module) => {
     setOpenError("");
     setViewerError("");
@@ -58,6 +50,7 @@ export default function CollaborativeSpacesScreen() {
         title: module.code ? `${module.code} · ${module.name}` : module.name,
         url: access.url,
         nextcloudUrl: access.nextcloudUrl,
+        requestFreshUrl: async () => (await openModule.mutateAsync({ moduleId: module.id })).url,
       });
     } catch (error) {
       setOpenError(getErrorMessage(error, "No se pudo abrir el espacio del módulo."));
@@ -69,7 +62,10 @@ export default function CollaborativeSpacesScreen() {
     setViewerError("");
     try {
       const access = await openSpace.mutateAsync({ id: space.id });
-      setActive({ title: space.name, url: access.url, nextcloudUrl: access.nextcloudUrl });
+      setActive({
+        title: space.name, url: access.url, nextcloudUrl: access.nextcloudUrl,
+        requestFreshUrl: async () => (await openSpace.mutateAsync({ id: space.id })).url,
+      });
     } catch (error) {
       setOpenError(getErrorMessage(error, "No se pudo abrir el espacio colaborativo."));
     }
@@ -101,39 +97,12 @@ export default function CollaborativeSpacesScreen() {
             </Text>
           </View>
         ) : (
-          <WebView
-            source={{ uri: active.url }}
-            originWhitelist={["https://*"]}
-            javaScriptEnabled
-            domStorageEnabled
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled
-            cacheEnabled={false}
-            setSupportMultipleWindows={false}
-            onShouldStartLoadWithRequest={(request) => {
-              try {
-                return new URL(request.url).protocol === "https:"
-                  && allowedOrigins.has(new URL(request.url).origin);
-              } catch {
-                return false;
-              }
-            }}
-            renderLoading={() => (
-              <View style={[styles.webLoading, { backgroundColor: colors.background }]}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                  Conectando con Nextcloud…
-                </Text>
-              </View>
-            )}
-            startInLoadingState
-            onError={() => setViewerError("No se pudo conectar con Nextcloud. Cierra y vuelve a abrir el espacio.")}
-            onHttpError={({ nativeEvent }) => {
-              if ([401, 403].includes(nativeEvent.statusCode)) {
-                setViewerError("Nextcloud ya no autoriza este acceso. La vista se ha cerrado; vuelve a abrir el espacio si tus permisos siguen vigentes.");
-              }
-            }}
-            style={styles.webView}
+          <NextcloudViewer
+            url={active.url}
+            nextcloudUrl={active.nextcloudUrl}
+            title={active.title}
+            requestFreshUrl={active.requestFreshUrl}
+            onError={setViewerError}
           />
         )}
       </View>
@@ -275,9 +244,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: 16, gap: 12, paddingBottom: 48 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 9 },
-  webLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 10 },
-  webView: { flex: 1, backgroundColor: "transparent" },
-  webError: { padding: 12 },
   card: { flexDirection: "row", alignItems: "center", gap: 12 },
   cardText: { flex: 1, gap: 4 },
   cardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
