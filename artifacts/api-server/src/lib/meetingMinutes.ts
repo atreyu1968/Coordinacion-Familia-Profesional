@@ -17,7 +17,7 @@ export function canManageMinutes(user: { role: string; provinceId?: number | nul
 }
 export async function aiConfig() {
   const [row] = await db.select().from(meetingAiSettingsTable).where(eq(meetingAiSettingsTable.id, 1));
-  return row ?? { id: 1, apiKey: null, transcriptionModel: "gpt-4o-mini-transcribe", visionModel: "gpt-4o-mini" };
+  return row ?? { id: 1, apiKey: null, transcriptionModel: "gpt-4o-mini-transcribe", visionModel: "gpt-5.4-mini" };
 }
 let toolsCache: { until: number; media: boolean; pdf: boolean } | undefined;
 async function toolGroupAvailable(commands: string[]) {

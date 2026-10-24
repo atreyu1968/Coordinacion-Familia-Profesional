@@ -71,7 +71,7 @@ export const meetingAiSettingsTable = pgTable("meeting_ai_settings", {
   id: integer("id").primaryKey().default(1),
   apiKey: text("api_key"),
   transcriptionModel: text("transcription_model").notNull().default("gpt-4o-mini-transcribe"),
-  visionModel: text("vision_model").notNull().default("gpt-4o-mini"),
+  visionModel: text("vision_model").notNull().default("gpt-5.4-mini"),
 });
 export const insertMeetingMinutesSchema = createInsertSchema(meetingMinutesTable);
 export const insertMeetingMinutesSourceSchema = createInsertSchema(meetingMinutesSourcesTable);

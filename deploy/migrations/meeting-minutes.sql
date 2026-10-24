@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS meeting_ai_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
   api_key TEXT,
   transcription_model TEXT NOT NULL DEFAULT 'gpt-4o-mini-transcribe',
-  vision_model TEXT NOT NULL DEFAULT 'gpt-4o-mini'
+  vision_model TEXT NOT NULL DEFAULT 'gpt-5.4-mini'
 );
+ALTER TABLE meeting_ai_settings
+  ALTER COLUMN vision_model SET DEFAULT 'gpt-5.4-mini';
+UPDATE meeting_ai_settings
+  SET vision_model = 'gpt-5.4-mini'
+  WHERE vision_model = 'gpt-4o-mini';
 COMMIT;

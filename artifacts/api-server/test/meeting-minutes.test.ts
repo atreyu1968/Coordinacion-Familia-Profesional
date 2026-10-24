@@ -102,7 +102,7 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
       mediaProcessingAvailable: true,
       pdfProcessingAvailable: false,
       transcriptionModel: "gpt-4o-mini-transcribe",
-      visionModel: "gpt-4o-mini",
+      visionModel: "gpt-5.4-mini",
     });
     try {
       const audio = await call("post", base() + "/sources").send({
@@ -269,7 +269,7 @@ describe("Actas de coordinación privadas y publicación revisada", () => {
   });
   it("solo superadministración cambia configuración y nunca devuelve la clave", async () => {
     expect((await call("get", "/settings/meeting-ai", coordinator)).status).toBe(403);
-    const result = await call("put", "/settings/meeting-ai", admin).send({ apiKey: "fake-not-a-secret", transcriptionModel: "gpt-4o-mini-transcribe", visionModel: "gpt-4o-mini" });
+    const result = await call("put", "/settings/meeting-ai", admin).send({ apiKey: "fake-not-a-secret", transcriptionModel: "gpt-4o-mini-transcribe", visionModel: "gpt-5.4-mini" });
     expect(result.status).toBe(200); expect(result.body.apiKeyConfigured).toBe(true);
     expect(JSON.stringify(result.body)).not.toContain("fake-not-a-secret");
     expect((await call("put", "/settings/meeting-ai", admin).send({})).status).toBe(400);
