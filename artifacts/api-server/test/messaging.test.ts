@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll, afterEach, vi } from "vitest";
 import request from "supertest";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   messagesTable,
@@ -320,6 +320,99 @@ describe("chat groups", () => {
       .get(`/api/chat/groups/${group.body.id}/messages`)
       .set(authHeader(caller.token));
     expect(history.status).toBe(403);
+  });
+
+  it("omits direct conversations with deleted accounts from both inboxes without deleting their history", async () => {
+    const caller = await createUser({ role: "teacher" });
+    const regularCounterpart = await createUser({ role: "teacher" });
+    const hiddenCounterpart = await createUser({ role: "teacher" });
+    const regularGroup = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({
+        name: "Conversación habitual",
+        type: "direct",
+        memberIds: [regularCounterpart.user.id],
+      });
+    const hiddenGroup = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(caller.token))
+      .send({
+        name: "Conversación archivada",
+        type: "direct",
+        memberIds: [hiddenCounterpart.user.id],
+      });
+    expect(regularGroup.status).toBe(201);
+    expect(hiddenGroup.status).toBe(201);
+    trackGroup(regularGroup.body.id);
+    trackGroup(hiddenGroup.body.id);
+
+    const regularMessage = await request(app)
+      .post(`/api/chat/groups/${regularGroup.body.id}/messages`)
+      .set(authHeader(caller.token))
+      .send({ content: "Historial habitual" });
+    const hiddenMessage = await request(app)
+      .post(`/api/chat/groups/${hiddenGroup.body.id}/messages`)
+      .set(authHeader(caller.token))
+      .send({ content: "Historial archivado" });
+    expect(regularMessage.status).toBe(201);
+    expect(hiddenMessage.status).toBe(201);
+
+    await db
+      .update(chatGroupMembersTable)
+      .set({ hiddenAt: new Date() })
+      .where(
+        and(
+          eq(chatGroupMembersTable.groupId, hiddenGroup.body.id),
+          eq(chatGroupMembersTable.userId, caller.user.id),
+        ),
+      );
+    await db
+      .update(usersTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(usersTable.id, regularCounterpart.user.id));
+    await db
+      .update(usersTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(usersTable.id, hiddenCounterpart.user.id));
+
+    const regularList = await request(app)
+      .get("/api/chat/groups?hidden=false")
+      .set(authHeader(caller.token));
+    const hiddenList = await request(app)
+      .get("/api/chat/groups?hidden=true")
+      .set(authHeader(caller.token));
+    expect(regularList.status).toBe(200);
+    expect(hiddenList.status).toBe(200);
+    expect(regularList.body).not.toContainEqual(
+      expect.objectContaining({ id: regularGroup.body.id }),
+    );
+    expect(hiddenList.body).not.toContainEqual(
+      expect.objectContaining({ id: hiddenGroup.body.id }),
+    );
+
+    const retainedRegularGroup = await db
+      .select({ id: chatGroupsTable.id })
+      .from(chatGroupsTable)
+      .where(
+        eq(chatGroupsTable.id, regularGroup.body.id),
+      );
+    const retainedHiddenGroup = await db
+      .select({ id: chatGroupsTable.id })
+      .from(chatGroupsTable)
+      .where(eq(chatGroupsTable.id, hiddenGroup.body.id));
+    const retainedMessages = await db
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(eq(messagesTable.groupId, regularGroup.body.id));
+    const retainedHiddenMessages = await db
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(eq(messagesTable.groupId, hiddenGroup.body.id));
+    expect(retainedRegularGroup).toHaveLength(1);
+    expect(retainedHiddenGroup).toHaveLength(1);
+    expect(retainedMessages.map((message) => message.id)).toContain(regularMessage.body.id);
+    expect(retainedHiddenMessages.map((message) => message.id)).toContain(hiddenMessage.body.id);
   });
 
   it("only creates automatic module chats with more than one member", async () => {
