@@ -18,4 +18,6 @@ export interface LmsCourse {
   lessonCount: number;
   completed: boolean;
   certificateAvailable: boolean;
+  /** @nullable */
+  coverUrl?: string | null;
 }

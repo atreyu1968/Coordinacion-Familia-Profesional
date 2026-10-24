@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseMarkdown } from "@/components/course-markdown";
+import { LmsCourseCoverField } from "@/components/lms-course-cover-field";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
 import { LmsCoursePreview } from "@/components/lms-course-preview";
 import { CourseCover, CourseHero, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
@@ -28,6 +29,8 @@ import {
   useRequestLmsCourseImportUploadUrl,
   useSubmitLmsQuizAttempt,
   useUpdateLmsCourse,
+  useSetLmsCourseCover,
+  useRemoveLmsCourseCover,
   useUpdateLmsLesson,
   useCommitLmsScormSession,
   downloadLmsCertificate,
@@ -338,16 +341,43 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
 
 function CourseEditor({ course, scopes, onClose, onSaved }: { course: LmsCourse | null; scopes: Array<{ moduleId: number | null; label: string }>; onClose: () => void; onSaved: () => void }) {
   const create = useCreateLmsCourse(); const update = useUpdateLmsCourse();
+  const upload = useRequestLmsUploadUrl();
+  const setCover = useSetLmsCourseCover();
+  const removeCover = useRemoveLmsCourseCover();
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverRemoved, setCoverRemoved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savedId = useRef<number | null>(course?.id ?? null);
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState(course?.title ?? ""); const [description, setDescription] = useState(course?.description ?? "");
   const [moduleId, setModuleId] = useState(course?.moduleId == null ? "" : String(course.moduleId)); const [certificate, setCertificate] = useState(course?.certificateEnabled ?? true);
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const data = { title: title.trim(), description, moduleId: moduleId ? Number(moduleId) : null, certificateEnabled: certificate };
-      if (course) await update.mutateAsync({ courseId: course.id, data }); else await create.mutateAsync({ data });
+      const saved = savedId.current
+        ? await update.mutateAsync({ courseId: savedId.current, data })
+        : await create.mutateAsync({ data });
+      savedId.current = saved.id;
+      if (coverFile) {
+        const wanted = await upload.mutateAsync({ data: { courseId: saved.id, name: coverFile.name, size: coverFile.size, contentType: coverFile.type } });
+        const response = await fetch(wanted.uploadURL, { method: "PUT", headers: { "Content-Type": coverFile.type }, body: coverFile });
+        if (!response.ok) throw new Error("No se pudo subir la portada. El curso se ha guardado; puedes reintentar sin duplicarlo.");
+        await setCover.mutateAsync({ courseId: saved.id, data: { objectPath: wanted.objectPath, intentToken: wanted.intentToken } });
+      } else if (coverRemoved && course?.coverUrl) {
+        await removeCover.mutateAsync({ courseId: saved.id });
+      }
       toast({ title: course ? "Curso actualizado" : "Curso creado" }); onSaved(); onClose();
-    } catch { toast({ title: "No se pudo guardar el curso", variant: "destructive" }); }
+    } catch (error) {
+      toast({ title: savedId.current ? "No se pudo completar el guardado" : "No se pudo guardar el curso", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    } finally {
+      setSaving(false);
+      void queryClient.invalidateQueries({ queryKey: getListLmsCoursesQueryKey() });
+      if (savedId.current) void queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(savedId.current) });
+    }
   };
-  return <Card className="border-primary/30"><CardHeader><CardTitle>{course ? "Editar curso" : "Nuevo curso"}</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div><div><Label>Descripción</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div><div><Label>Ámbito</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={moduleId} onChange={(e) => setModuleId(e.target.value)}>{scopes.map((scope) => <option key={scope.moduleId ?? "general"} value={scope.moduleId ?? ""}>{scope.label}</option>)}</select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={certificate} onChange={(e) => setCertificate(e.target.checked)} /> Emitir certificado al completar</label><div className="flex gap-2"><Button onClick={save} disabled={!title.trim() || create.isPending || update.isPending}>Guardar</Button><Button variant="ghost" onClick={onClose}>Cancelar</Button></div></CardContent></Card>;
+  return <Card className="border-primary/30"><CardHeader><CardTitle>{course ? "Editar curso" : "Nuevo curso"}</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={saving} /></div><div><Label>Descripción</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} /></div><LmsCourseCoverField course={course} title={title} file={coverFile} removed={coverRemoved} disabled={saving} onFile={(file) => { setCoverFile(file); setCoverRemoved(false); }} onRemove={() => { setCoverFile(null); setCoverRemoved(true); }} /><div><Label>Ámbito</Label><select disabled={saving} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={moduleId} onChange={(e) => setModuleId(e.target.value)}>{scopes.map((scope) => <option key={scope.moduleId ?? "general"} value={scope.moduleId ?? ""}>{scope.label}</option>)}</select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={saving} checked={certificate} onChange={(e) => setCertificate(e.target.checked)} /> Emitir certificado al completar</label><div className="flex gap-2"><Button onClick={save} disabled={!title.trim() || saving}>{saving ? "Guardando..." : "Guardar"}</Button><Button variant="ghost" disabled={saving} onClick={onClose}>Cancelar</Button></div></CardContent></Card>;
 }
 
 function LessonEditor({ courseId, lesson, onSaved }: { courseId: number; lesson?: LmsLesson; onSaved: () => void }) {

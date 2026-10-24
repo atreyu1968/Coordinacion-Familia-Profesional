@@ -26,6 +26,7 @@ import {
   GetLmsCourseParams,
   UpdateLmsCourseParams,
   UpdateLmsCourseBody,
+  SetLmsCourseCoverBody,
   CreateLmsLessonParams,
   CreateLmsLessonBody,
   UpdateLmsLessonParams,
@@ -59,11 +60,18 @@ import {
   MAX_MULTI_COURSE_EXPORT_FILES,
 } from "../lib/lms-course-import";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { MAX_COURSE_COVER_SIZE, normalizeCourseCover } from "../lib/lms-course-cover";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 const scormZipCache = new Map<string, { zip: JSZip; expiresAt: number }>();
 const MAX_SCORM_ARCHIVE_SIZE = 100 * 1024 * 1024;
+
+function courseCoverUrl(course: typeof lmsCoursesTable.$inferSelect): string | null {
+  return course.coverObjectPath
+    ? `/api/lms/courses/${course.id}/cover?v=${createHash("sha256").update(course.coverObjectPath).digest("hex").slice(0, 16)}`
+    : null;
+}
 
 type SignedLmsToken = {
   userId: number;
@@ -221,6 +229,7 @@ async function courseDetail(courseId: number, user: User) {
   const completed = !containsScorm && required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
   return {
     id: course.id, title: course.title, description: course.description, moduleId: course.moduleId,
+    coverUrl: courseCoverUrl(course),
     status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length,
     completed, certificateAvailable: completed && course.certificateEnabled,
     lessons: lessons.map(({ objectPath: _path, ...lesson }) => ({
@@ -253,7 +262,7 @@ router.get("/lms/courses", requireAuth, async (req, res): Promise<void> => {
     const required = lessons.filter((l) => l.required);
     const containsScorm = lessons.some((lesson) => isScormKind(lesson.kind));
     const completed = !containsScorm && required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
-    result.push({ id: course.id, title: course.title, description: course.description, moduleId: course.moduleId, status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length, completed, certificateAvailable: completed && course.certificateEnabled });
+    result.push({ id: course.id, title: course.title, description: course.description, moduleId: course.moduleId, coverUrl: courseCoverUrl(course), status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length, completed, certificateAvailable: completed && course.certificateEnabled });
   }
   res.json(ListLmsCoursesResponse.parse(result));
 });
@@ -264,6 +273,67 @@ router.get("/lms/courses/:courseId", requireAuth, async (req, res): Promise<void
   const detail = await courseDetail(parsed.data.courseId, req.user!);
   if (!detail) { res.status(404).json({ message: "Curso no encontrado" }); return; }
   res.json(GetLmsCourseResponse.parse(detail));
+});
+
+router.get("/lms/courses/:courseId/cover", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.courseId);
+  if (!Number.isSafeInteger(id) || id < 1) { res.status(400).json({ message: "Curso no válido" }); return; }
+  const [course] = await db.select().from(lmsCoursesTable).where(and(eq(lmsCoursesTable.id, id), isNull(lmsCoursesTable.deletedAt)));
+  if (!course?.coverObjectPath || !(await visibleCourse(req.user!, course))) {
+    res.status(404).json({ message: "Portada no encontrada" }); return;
+  }
+  const object = await storage.getObjectEntityFile(course.coverObjectPath);
+  const response = await storage.downloadObject(object, 0);
+  const bytes = await readBoundedCourseAsset(response, undefined, MAX_COURSE_COVER_SIZE);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.type("image/webp").send(bytes);
+});
+
+router.put("/lms/courses/:courseId/cover", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.courseId);
+  const parsed = SetLmsCourseCoverBody.safeParse(req.body);
+  if (!Number.isSafeInteger(id) || id < 1 || !parsed.success) {
+    res.status(400).json({ message: "Datos de portada no válidos" }); return;
+  }
+  const [course] = await db.select().from(lmsCoursesTable).where(and(eq(lmsCoursesTable.id, id), isNull(lmsCoursesTable.deletedAt)));
+  if (!course || !(await canManageCourse(req.user!, course))) {
+    res.status(403).json({ message: "No tienes permiso para cambiar la portada" }); return;
+  }
+  let savedPath: string | undefined;
+  let committed = false;
+  try {
+    const intent = await consumeUploadIntent(req.user!.id, id, parsed.data.intentToken, parsed.data.objectPath);
+    if (!intent) { res.status(403).json({ message: "La subida no es válida o ha caducado" }); return; }
+    if (intent.objectSize > MAX_COURSE_COVER_SIZE) {
+      throw new CourseImportValidationError("La portada no puede superar los 5 MB.");
+    }
+    const object = await storage.getObjectEntityFile(intent.objectPath);
+    const bytes = await readBoundedCourseAsset(await storage.downloadObject(object, 0), intent.objectSize, MAX_COURSE_COVER_SIZE);
+    const normalized = await normalizeCourseCover(bytes);
+    savedPath = await storage.savePrivateObjectBytes(normalized, "image/webp", String(req.user!.id));
+    const [saved] = await db.update(lmsCoursesTable).set({ coverObjectPath: savedPath, updatedAt: new Date() })
+      .where(and(eq(lmsCoursesTable.id, id), isNull(lmsCoursesTable.deletedAt))).returning({ id: lmsCoursesTable.id });
+    if (!saved) throw new Error("El curso ya no está disponible");
+    committed = true;
+    res.json(GetLmsCourseResponse.parse(await courseDetail(id, req.user!)));
+  } catch (error) {
+    if (savedPath && !committed) await storage.deleteObjectEntity(savedPath).catch(() => undefined);
+    req.log.warn({ err: error, courseId: id }, "Could not save course cover");
+    res.status(error instanceof CourseImportValidationError || error instanceof CourseExportValidationError ? 400 : 500)
+      .json({ message: error instanceof CourseImportValidationError ? error.message : "No se pudo guardar la portada. Comprueba la imagen e inténtalo de nuevo." });
+  }
+});
+
+router.delete("/lms/courses/:courseId/cover", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.courseId);
+  if (!Number.isSafeInteger(id) || id < 1) { res.status(400).json({ message: "Curso no válido" }); return; }
+  const [course] = await db.select().from(lmsCoursesTable).where(and(eq(lmsCoursesTable.id, id), isNull(lmsCoursesTable.deletedAt)));
+  if (!course || !(await canManageCourse(req.user!, course))) {
+    res.status(403).json({ message: "No tienes permiso para cambiar la portada" }); return;
+  }
+  await db.update(lmsCoursesTable).set({ coverObjectPath: null, updatedAt: new Date() }).where(eq(lmsCoursesTable.id, id));
+  res.json(GetLmsCourseResponse.parse(await courseDetail(id, req.user!)));
 });
 
 router.get("/lms/courses/:courseId/export", requireAuth, async (req, res): Promise<void> => {
@@ -295,6 +365,7 @@ router.get("/lms/courses/:courseId/export", requireAuth, async (req, res): Promi
       title: course.title,
       description: course.description,
       certificateEnabled: course.certificateEnabled,
+      coverObjectPath: course.coverObjectPath,
     }, lessons.map((lesson) => ({
       title: lesson.title,
       kind: lesson.kind as "text" | "file" | "video" | "quiz" | "scorm12" | "scorm2004",
@@ -303,6 +374,10 @@ router.get("/lms/courses/:courseId/export", requireAuth, async (req, res): Promi
       objectPath: lesson.objectPath,
       objectName: lesson.objectName,
     })), async (asset) => {
+      if (asset.lessonIndex === -1) {
+        const object = await storage.getObjectEntityFile(asset.objectPath);
+        return readBoundedCourseAsset(await storage.downloadObject(object, 0), undefined, MAX_COURSE_COVER_SIZE);
+      }
       const lesson = lessons[asset.lessonIndex];
       if (!lesson) throw new Error("No se pudo asociar un archivo con su lección.");
       const object = await storage.getObjectEntityFile(asset.objectPath);
@@ -385,6 +460,7 @@ router.post("/lms/courses/export", requireAuth, async (req, res): Promise<void> 
         title: course.title,
         description: course.description,
         certificateEnabled: course.certificateEnabled,
+        coverObjectPath: course.coverObjectPath,
       }, lessons.map((lesson) => ({
         title: lesson.title,
         kind: lesson.kind as "text" | "file" | "video" | "quiz" | "scorm12" | "scorm2004",
@@ -393,6 +469,10 @@ router.post("/lms/courses/export", requireAuth, async (req, res): Promise<void> 
         objectPath: lesson.objectPath,
         objectName: lesson.objectName,
       })), async (asset) => {
+        if (asset.lessonIndex === -1) {
+          const object = await storage.getObjectEntityFile(asset.objectPath);
+          return readBoundedCourseAsset(await storage.downloadObject(object, 0), undefined, MAX_COURSE_COVER_SIZE);
+        }
         const lesson = lessons[asset.lessonIndex];
         if (!lesson) throw new Error("No se pudo asociar un archivo con su lección.");
         const object = await storage.getObjectEntityFile(asset.objectPath);
@@ -756,18 +836,18 @@ async function readBoundedZip(response: Response, expectedSize?: number): Promis
   return Buffer.concat(chunks, totalSize);
 }
 
-async function readBoundedCourseAsset(response: Response, expectedSize?: number): Promise<Buffer> {
+async function readBoundedCourseAsset(response: Response, expectedSize?: number, maxBytes = MAX_SCORM_ARCHIVE_SIZE): Promise<Buffer> {
   if (!response.ok) throw new Error("No se pudo leer un archivo del curso.");
   if (expectedSize !== undefined && (
     !Number.isSafeInteger(expectedSize) ||
     expectedSize < 1 ||
-    expectedSize > MAX_SCORM_ARCHIVE_SIZE
+    expectedSize > maxBytes
   )) {
     throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
   }
 
   const contentLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && contentLength > MAX_SCORM_ARCHIVE_SIZE) {
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     await response.body?.cancel();
     throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
   }
@@ -781,7 +861,7 @@ async function readBoundedCourseAsset(response: Response, expectedSize?: number)
       const { done, value } = await reader.read();
       if (done) break;
       totalSize += value.byteLength;
-      if (totalSize > MAX_SCORM_ARCHIVE_SIZE) {
+      if (totalSize > maxBytes) {
         await reader.cancel();
         throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
       }
@@ -1313,6 +1393,17 @@ router.post(
         });
       }
 
+      let coverObjectPath: string | null = null;
+      if (manifest.course.cover) {
+        const coverEntry = zip.file(manifest.course.cover);
+        if (!coverEntry || coverEntry.dir || zipEntrySize(coverEntry) > MAX_COURSE_COVER_SIZE) {
+          throw new CourseImportValidationError("La portada del ZIP no existe o supera los 5 MB.");
+        }
+        const bytes = await normalizeCourseCover(await coverEntry.async("nodebuffer"));
+        coverObjectPath = await storage.savePrivateObjectBytes(bytes, "image/webp", String(req.user!.id));
+        createdObjectPaths.add(coverObjectPath);
+      }
+
       const containsScorm = manifest.lessons.some(
         (lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004",
       );
@@ -1333,6 +1424,7 @@ router.post(
         const [course] = await tx.insert(lmsCoursesTable).values({
           title: manifest.course.title,
           description: manifest.course.description,
+          coverObjectPath,
           moduleId,
           status: "draft",
           certificateEnabled: containsScorm

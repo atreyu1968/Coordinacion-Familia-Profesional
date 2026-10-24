@@ -15,4 +15,10 @@ export type LmsCourseImportManifestCourse = {
   /** @maxLength 10000 */
   description?: string;
   certificateEnabled?: boolean;
+  /**
+     * Ruta relativa opcional de la imagen de portada dentro del ZIP
+     * @minLength 1
+     * @maxLength 512
+     */
+  cover?: string;
 };

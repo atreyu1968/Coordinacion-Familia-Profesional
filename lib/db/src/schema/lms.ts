@@ -16,6 +16,7 @@ export const lmsCoursesTable = pgTable("lms_courses", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
+  coverObjectPath: text("cover_object_path"),
   moduleId: integer("module_id"),
   status: text("status").notNull().default("draft"),
   certificateEnabled: boolean("certificate_enabled").notNull().default(true),

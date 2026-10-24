@@ -162,7 +162,7 @@ export default function LmsDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Curso" subtitle={data.status === "published" ? "Publicado" : "Borrador"} showBack />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
-        <LmsCourseCover id={data.id} title={data.title} height={170} radius={20} />
+        <LmsCourseCover id={data.id} title={data.title} coverUrl={data.coverUrl} height={170} radius={20} />
         <Text style={[styles.eyebrow, { color: colors.primary }]}>CURSO AUTODIRIGIDO · {data.lessons.length} {data.lessons.length === 1 ? "LECCIÓN" : "LECCIONES"}{data.certificateEnabled ? " · CON CERTIFICADO" : ""}</Text>
         <Text style={[styles.title, { color: colors.foreground }]}>{data.title}</Text>
         {data.description ? <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={data.description} /></Text> : null}

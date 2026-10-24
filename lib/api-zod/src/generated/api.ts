@@ -6250,7 +6250,8 @@ export const ListLmsCoursesResponseItem = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 })
 export const ListLmsCoursesResponse = zod.array(ListLmsCoursesResponseItem)
 
@@ -6274,7 +6275,8 @@ export const CreateLmsCourseResponse = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 }).and(zod.object({
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
@@ -6357,7 +6359,8 @@ export const ImportLmsCourseArchiveResponse = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 }).and(zod.object({
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
@@ -6399,7 +6402,8 @@ export const GetLmsCourseResponse = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 }).and(zod.object({
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
@@ -6448,7 +6452,8 @@ export const UpdateLmsCourseResponse = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 }).and(zod.object({
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
@@ -6479,6 +6484,111 @@ export const DeleteLmsCourseParams = zod.object({
 })
 
 export const DeleteLmsCourseResponse = zod.void()
+
+
+
+
+
+export const GetLmsCourseCoverParams = zod.object({
+  "courseId": zod.coerce.number().int().min(1)
+})
+
+export const GetLmsCourseCoverResponse = zod.unknown()
+
+
+
+
+
+export const SetLmsCourseCoverParams = zod.object({
+  "courseId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const SetLmsCourseCoverBody = zod.object({
+  "objectPath": zod.string().min(1),
+  "intentToken": zod.string().min(1)
+})
+
+export const SetLmsCourseCoverResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "moduleId": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'published']),
+  "certificateEnabled": zod.boolean(),
+  "lessonCount": zod.number().int(),
+  "completed": zod.boolean(),
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
+}).and(zod.object({
+  "lessons": zod.array(zod.object({
+  "id": zod.number().int(),
+  "courseId": zod.number().int(),
+  "title": zod.string(),
+  "kind": zod.enum(['text', 'file', 'video', 'quiz', 'scorm12', 'scorm2004']),
+  "position": zod.number().int(),
+  "required": zod.boolean(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "objectName": zod.string().nullable(),
+  "objectContentType": zod.string().nullable(),
+  "objectSize": zod.number().int().nullable(),
+  "scormVersion": zod.string().nullable(),
+  "scormLaunchPath": zod.string().nullable()
+})),
+  "progress": zod.array(zod.object({
+  "lessonId": zod.number().int(),
+  "status": zod.enum(['not_started', 'in_progress', 'completed', 'failed']),
+  "score": zod.number().int().nullable(),
+  "attempts": zod.number().int(),
+  "completedAt": zod.coerce.date().nullable()
+}))
+}))
+
+
+
+
+
+export const RemoveLmsCourseCoverParams = zod.object({
+  "courseId": zod.coerce.number().int().min(1)
+})
+
+export const RemoveLmsCourseCoverResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "moduleId": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'published']),
+  "certificateEnabled": zod.boolean(),
+  "lessonCount": zod.number().int(),
+  "completed": zod.boolean(),
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
+}).and(zod.object({
+  "lessons": zod.array(zod.object({
+  "id": zod.number().int(),
+  "courseId": zod.number().int(),
+  "title": zod.string(),
+  "kind": zod.enum(['text', 'file', 'video', 'quiz', 'scorm12', 'scorm2004']),
+  "position": zod.number().int(),
+  "required": zod.boolean(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "objectName": zod.string().nullable(),
+  "objectContentType": zod.string().nullable(),
+  "objectSize": zod.number().int().nullable(),
+  "scormVersion": zod.string().nullable(),
+  "scormLaunchPath": zod.string().nullable()
+})),
+  "progress": zod.array(zod.object({
+  "lessonId": zod.number().int(),
+  "status": zod.enum(['not_started', 'in_progress', 'completed', 'failed']),
+  "score": zod.number().int().nullable(),
+  "attempts": zod.number().int(),
+  "completedAt": zod.coerce.date().nullable()
+}))
+}))
 
 
 /**
@@ -6519,7 +6629,8 @@ export const PublishLmsCourseResponse = zod.object({
   "certificateEnabled": zod.boolean(),
   "lessonCount": zod.number().int(),
   "completed": zod.boolean(),
-  "certificateAvailable": zod.boolean()
+  "certificateAvailable": zod.boolean(),
+  "coverUrl": zod.string().nullish()
 }).and(zod.object({
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),

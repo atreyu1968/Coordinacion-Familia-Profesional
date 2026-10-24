@@ -1,6 +1,8 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
+import sharp from "sharp";
 import { realpathSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
@@ -222,6 +224,107 @@ beforeEach(() => {
 });
 
 describe("course ZIP import end-to-end with isolated local storage", () => {
+  it("upgrades an existing course database without changing its course content", async () => {
+    const manager = await createGeneralManager();
+    const [course] = await t.db.insert(t.lmsCoursesTable).values({
+      title: "Curso anterior", description: "Conservar contenido", createdBy: manager.user.id,
+    }).returning();
+    // The beforeAll guard requires a disposable PostgreSQL cluster and local storage.
+    await t.db.execute(sql`ALTER TABLE lms_courses DROP COLUMN cover_object_path`);
+    execFileSync("bash", [join(process.cwd(), "../../deploy/db.sh"), "migrate"], {
+      env: { ...process.env, DB_BACKUP_DIR: join(testRoot(), "backups") },
+      stdio: "pipe",
+    });
+    const [upgraded] = await t.db.select().from(t.lmsCoursesTable).where(eq(t.lmsCoursesTable.id, course.id));
+    expect(upgraded).toMatchObject({ title: "Curso anterior", description: "Conservar contenido", coverObjectPath: null });
+  });
+
+  it("authorizes covers by course, rejects invalid images and preserves the cover through ZIP export/import", async () => {
+    const manager = await createGeneralManager();
+    const outsider = await helpers.createUser({ role: "teacher" });
+    const created = await request(api).post("/api/lms/courses").set(helpers.authHeader(manager.token))
+      .send({ title: "Curso con portada", description: "", certificateEnabled: false });
+    expect(created.status).toBe(201);
+    const courseId = created.body.id;
+    const png = await sharp({ create: { width: 64, height: 36, channels: 3, background: "#456abc" } }).png().toBuffer();
+    const uploadImage = async (bytes: Buffer, user = manager, targetId = courseId) => {
+      const upload = await request(api).post("/api/lms/uploads/request-url").set(helpers.authHeader(user.token))
+        .send({ courseId: targetId, name: "portada.png", size: bytes.length, contentType: "image/png" });
+      expect(upload.status).toBe(200);
+      const url = new URL(upload.body.uploadURL, "http://localhost");
+      const sent = await request(api).put(`${url.pathname}${url.search}`).set("Content-Type", "image/png").send(bytes);
+      expect(sent.status).toBe(200);
+      return upload.body;
+    };
+    const upload = await uploadImage(png);
+    const coverRoute = `/api/lms/courses/${courseId}/cover`;
+    expect((await request(api).put(coverRoute).set(helpers.authHeader(outsider.token)).send(upload)).status).toBe(403);
+    const saved = await request(api).put(coverRoute).set(helpers.authHeader(manager.token)).send(upload);
+    expect(saved.status).toBe(200);
+    expect(saved.body.coverUrl).toMatch(new RegExp(`^${coverRoute}\\?v=`));
+    expect((await request(api).put(coverRoute).set(helpers.authHeader(manager.token)).send(upload)).status).toBe(403);
+    expect((await request(api).get(saved.body.coverUrl)).status).toBe(401);
+    expect((await request(api).get(saved.body.coverUrl).set(helpers.authHeader(outsider.token))).status).toBe(404);
+    const cover = await request(api).get(saved.body.coverUrl).set(helpers.authHeader(manager.token));
+    expect(cover.status).toBe(200);
+    expect(cover.headers["content-type"]).toContain("image/webp");
+    expect(cover.headers["cache-control"]).toContain("no-store");
+    expect(await sharp(cover.body).metadata()).toMatchObject({ format: "webp", width: 64, height: 36 });
+    const invalidUpload = await uploadImage(Buffer.from("<html>fake image</html>"));
+    const rejected = await request(api).put(coverRoute).set(helpers.authHeader(manager.token)).send(invalidUpload);
+    expect(rejected.status).toBe(400);
+    expect((await request(api).get(`/api/lms/courses/${courseId}`).set(helpers.authHeader(manager.token))).body.coverUrl).toBe(saved.body.coverUrl);
+    const expandingUpload = await uploadImage(png);
+    const encoder = vi.spyOn(sharp.prototype, "toBuffer").mockResolvedValueOnce(Buffer.alloc(5 * 1024 * 1024 + 1));
+    try {
+      const oversized = await request(api).put(coverRoute).set(helpers.authHeader(manager.token)).send(expandingUpload);
+      expect(oversized.status).toBe(400);
+      expect(oversized.body.message).toContain("portada convertida");
+    } finally {
+      encoder.mockRestore();
+    }
+    expect((await request(api).get(`/api/lms/courses/${courseId}`).set(helpers.authHeader(manager.token))).body.coverUrl).toBe(saved.body.coverUrl);
+    expect((await request(api).get(saved.body.coverUrl).set(helpers.authHeader(manager.token))).status).toBe(200);
+    await request(api).post(`/api/lms/courses/${courseId}/lessons`).set(helpers.authHeader(manager.token))
+      .send({ title: "Lectura", kind: "text", content: { text: "Contenido" } }).expect(201);
+    const exported = await request(api).get(`/api/lms/courses/${courseId}/export`).set(helpers.authHeader(manager.token))
+      .buffer(true).parse((stream, callback) => {
+        const chunks: Buffer[] = [];
+        stream.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+        stream.on("end", () => callback(null, Buffer.concat(chunks)));
+        stream.on("error", callback);
+      });
+    expect(exported.status).toBe(200);
+    const archive = await JSZip.loadAsync(exported.body);
+    expect(archive.file("assets/portada.webp")).not.toBeNull();
+    const importUpload = await requestUploadUrl(manager, exported.body);
+    expect((await uploadThroughSignedUrl(importUpload.body.uploadURL, exported.body)).status).toBe(200);
+    const imported = await importArchive(manager, importUpload);
+    expect(imported.status).toBe(201);
+    expect(imported.body.course.coverUrl).toContain(`/api/lms/courses/${imported.body.course.id}/cover?`);
+    const importedImage = await request(api).get(imported.body.course.coverUrl).set(helpers.authHeader(manager.token));
+    expect(importedImage.status).toBe(200);
+    expect(importedImage.body).toEqual(cover.body);
+    expect((await request(api).delete(coverRoute).set(helpers.authHeader(outsider.token))).status).toBe(403);
+    const removed = await request(api).delete(coverRoute).set(helpers.authHeader(manager.token));
+    expect(removed.status).toBe(200);
+    expect(removed.body.coverUrl).toBeNull();
+    expect((await request(api).get(saved.body.coverUrl).set(helpers.authHeader(manager.token))).status).toBe(404);
+  });
+
+  it("rejects a missing or invalid ZIP cover without leaving a partial course", async () => {
+    const manager = await createGeneralManager();
+    for (const assets of [{}, { "assets/cover.png": Buffer.from("not an image") }]) {
+      const manifest = validManifest("Portada inválida");
+      manifest.course = { title: "Portada inválida", cover: "assets/cover.png" };
+      const bytes = await courseArchive(manifest, assets);
+      const upload = await requestUploadUrl(manager, bytes);
+      expect((await uploadThroughSignedUrl(upload.body.uploadURL, bytes)).status).toBe(200);
+      expect((await importArchive(manager, upload)).status).toBe(400);
+      expect(await t.db.select().from(t.lmsCoursesTable)).toHaveLength(0);
+    }
+  });
+
   it("omits the overflowing course and explains why in the readable batch report", async () => {
     const manager = await createGeneralManager();
     const courses = await t.db.insert(t.lmsCoursesTable).values([

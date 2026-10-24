@@ -29,6 +29,7 @@ const CourseManifestSchema = z.object({
     title: z.string().trim().min(1).max(180),
     description: z.string().max(10_000).optional(),
     certificateEnabled: z.boolean().optional(),
+    cover: z.string().min(1).max(512).optional(),
   }).strict(),
   lessons: z.array(ImportLessonSchema).min(1).max(200),
 }).strict();
@@ -46,6 +47,7 @@ export type CourseImportManifest = {
     title: string;
     description: string;
     certificateEnabled: boolean;
+    cover?: string;
   };
   lessons: CourseImportLesson[];
 };
@@ -66,6 +68,7 @@ export type CourseExportManifest = {
     title: string;
     description: string;
     certificateEnabled: boolean;
+    cover?: string;
   };
   lessons: Array<{
     title: string;
@@ -95,7 +98,7 @@ function exportAssetName(objectName: string | null, index: number): string {
 }
 
 export function createCourseExportManifest(
-  course: { title: string; description: string; certificateEnabled: boolean },
+  course: { title: string; description: string; certificateEnabled: boolean; coverObjectPath?: string | null },
   sourceLessons: CourseExportSourceLesson[],
 ): {
   manifest: CourseExportManifest;
@@ -133,11 +136,19 @@ export function createCourseExportManifest(
     };
   });
 
+  if (course.coverObjectPath) {
+    assets.push({ lessonIndex: -1, filePath: "assets/portada.webp", objectPath: course.coverObjectPath });
+  }
   return {
     manifest: {
       format: "coordina-adg-course",
       version: 1,
-      course,
+      course: {
+        title: course.title,
+        description: course.description,
+        certificateEnabled: course.certificateEnabled,
+        ...(course.coverObjectPath ? { cover: "assets/portada.webp" } : {}),
+      },
       lessons,
     },
     assets,
@@ -145,7 +156,7 @@ export function createCourseExportManifest(
 }
 
 export async function buildCourseExportArchive(
-  course: { title: string; description: string; certificateEnabled: boolean },
+  course: { title: string; description: string; certificateEnabled: boolean; coverObjectPath?: string | null },
   lessons: CourseExportSourceLesson[],
   readAsset: (asset: { lessonIndex: number; filePath: string; objectPath: string }) => Promise<Buffer>,
 ): Promise<Buffer> {
@@ -395,6 +406,7 @@ export function parseCourseImportManifest(source: string): CourseImportManifest 
       title: result.data.course.title,
       description: result.data.course.description ?? "",
       certificateEnabled: result.data.course.certificateEnabled ?? true,
+      ...(result.data.course.cover ? { cover: validateCourseAssetPath(result.data.course.cover) } : {}),
     },
     lessons,
   };

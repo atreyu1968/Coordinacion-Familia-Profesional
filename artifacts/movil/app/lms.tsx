@@ -98,7 +98,7 @@ export default function LmsScreen() {
           renderItem={({ item }) => (
             <Pressable onPress={() => router.push(`/lms/${item.id}`)} accessibilityRole="button" accessibilityLabel={`Abrir curso ${item.title}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
               <View style={styles.course}>
-                <LmsCourseCover id={item.id} title={item.title} height={168} />
+                <LmsCourseCover id={item.id} title={item.title} coverUrl={item.coverUrl} height={168} />
                 <View style={styles.metaRow}>
                   {item.completed
                     ? <View style={styles.metaInline}><Feather name="check-circle" size={13} color={colors.success} /><Text style={[styles.eyebrow, { color: colors.success }]}>COMPLETADO</Text></View>

@@ -5550,6 +5550,38 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
       responses: { "204": { description: Deleted } }
+  /lms/courses/{courseId}/cover:
+    parameters:
+      - { name: courseId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getLmsCourseCover
+      responses:
+        "200":
+          description: Portada privada del curso
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+    put:
+      operationId: setLmsCourseCover
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LmsCourseCoverInput" }
+      responses:
+        "200":
+          description: Curso con su nueva portada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LmsCourseDetail" }
+    delete:
+      operationId: removeLmsCourseCover
+      responses:
+        "200":
+          description: Curso sin portada propia
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LmsCourseDetail" }
   /lms/courses/{courseId}/export:
     get:
       operationId: exportLmsCourse
@@ -5839,6 +5871,12 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    LmsCourseCoverInput:
+      type: object
+      properties:
+        objectPath: { type: string, minLength: 1 }
+        intentToken: { type: string, minLength: 1 }
+      required: [objectPath, intentToken]
     LmsCourse:
       type: object
       properties:
@@ -5851,6 +5889,7 @@ components:
         lessonCount: { type: integer }
         completed: { type: boolean }
         certificateAvailable: { type: boolean }
+        coverUrl: { type: [string, "null"] }
       required: [id, title, description, moduleId, status, certificateEnabled, lessonCount, completed, certificateAvailable]
     LmsCourseDetail:
       allOf:
@@ -5933,6 +5972,7 @@ components:
             title: { type: string, minLength: 1, maxLength: 180 }
             description: { type: string, maxLength: 10000 }
             certificateEnabled: { type: boolean }
+            cover: { type: string, minLength: 1, maxLength: 512, description: Ruta relativa opcional de la imagen de portada dentro del ZIP }
           required: [title]
         lessons:
           type: array

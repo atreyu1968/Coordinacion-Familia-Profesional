@@ -5,6 +5,13 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface LmsCourseCoverInput {
+  /** @minLength 1 */
+  objectPath: string;
+  /** @minLength 1 */
+  intentToken: string;
+}
+
 export type LmsCourseStatus = typeof LmsCourseStatus[keyof typeof LmsCourseStatus];
 
 
@@ -24,6 +31,8 @@ export interface LmsCourse {
   lessonCount: number;
   completed: boolean;
   certificateAvailable: boolean;
+  /** @nullable */
+  coverUrl?: string | null;
 }
 
 export type LmsLessonKind = typeof LmsLessonKind[keyof typeof LmsLessonKind];
@@ -185,6 +194,12 @@ export type LmsCourseImportManifestCourse = {
   /** @maxLength 10000 */
   description?: string;
   certificateEnabled?: boolean;
+  /**
+     * Ruta relativa opcional de la imagen de portada dentro del ZIP
+     * @minLength 1
+     * @maxLength 512
+     */
+  cover?: string;
 };
 
 export type LmsCourseImportLessonManifestKind = typeof LmsCourseImportLessonManifestKind[keyof typeof LmsCourseImportLessonManifestKind];

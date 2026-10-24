@@ -189,6 +189,7 @@ import type {
   ListWikiPagesParams,
   ListYearConfirmationsParams,
   LmsCourse,
+  LmsCourseCoverInput,
   LmsCourseDetail,
   LmsCourseExportFailure,
   LmsCourseExportInput,
@@ -23290,6 +23291,252 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteLmsCourseMutationOptions(options), queryClient);
+    }
+
+export const getGetLmsCourseCoverUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/cover`
+}
+
+export const getLmsCourseCover = async (courseId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetLmsCourseCoverUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLmsCourseCoverQueryKey = (courseId: number,) => {
+    return [
+    `/api/lms/courses/${courseId}/cover`
+    ] as const;
+    }
+
+
+export const getGetLmsCourseCoverQueryOptions = <TData = Awaited<ReturnType<typeof getLmsCourseCover>>, TError = ErrorType<unknown>>(courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLmsCourseCoverQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLmsCourseCover>>> = ({ signal }) => getLmsCourseCover(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLmsCourseCoverQueryResult = NonNullable<Awaited<ReturnType<typeof getLmsCourseCover>>>
+export type GetLmsCourseCoverQueryError = ErrorType<unknown>
+
+
+export function useGetLmsCourseCover<TData = Awaited<ReturnType<typeof getLmsCourseCover>>, TError = ErrorType<unknown>>(
+ courseId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLmsCourseCover>>,
+          TError,
+          Awaited<ReturnType<typeof getLmsCourseCover>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLmsCourseCover<TData = Awaited<ReturnType<typeof getLmsCourseCover>>, TError = ErrorType<unknown>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLmsCourseCover>>,
+          TError,
+          Awaited<ReturnType<typeof getLmsCourseCover>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLmsCourseCover<TData = Awaited<ReturnType<typeof getLmsCourseCover>>, TError = ErrorType<unknown>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetLmsCourseCover<TData = Awaited<ReturnType<typeof getLmsCourseCover>>, TError = ErrorType<unknown>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLmsCourseCover>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLmsCourseCoverQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetLmsCourseCoverUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/cover`
+}
+
+export const setLmsCourseCover = async (courseId: number,
+    lmsCourseCoverInput: LmsCourseCoverInput, options?: Parameters<typeof customFetch>[1]): Promise<LmsCourseDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LmsCourseDetail>(getSetLmsCourseCoverUrl(courseId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lmsCourseCoverInput)
+  }
+);}
+
+
+
+
+
+export const getSetLmsCourseCoverMutationKey = () => ['setLmsCourseCover'] as const;
+
+export const getSetLmsCourseCoverMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setLmsCourseCover>>, TError,SetLmsCourseCoverMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setLmsCourseCover>>, TError,SetLmsCourseCoverMutationVariables, TContext> => {
+
+const mutationKey = getSetLmsCourseCoverMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setLmsCourseCover>>, SetLmsCourseCoverMutationVariables> = (props) => {
+          const {courseId,data} = props ?? {};
+
+          return  setLmsCourseCover(courseId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetLmsCourseCoverMutationResult = NonNullable<Awaited<ReturnType<typeof setLmsCourseCover>>>
+    export type SetLmsCourseCoverMutationBody = BodyType<LmsCourseCoverInput>
+    export type SetLmsCourseCoverMutationError = ErrorType<unknown>
+    export type SetLmsCourseCoverMutationVariables = {courseId: number;data: BodyType<LmsCourseCoverInput>}
+
+    export const useSetLmsCourseCover = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setLmsCourseCover>>, TError,SetLmsCourseCoverMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setLmsCourseCover>>,
+        TError,
+        SetLmsCourseCoverMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetLmsCourseCoverMutationOptions(options), queryClient);
+    }
+
+export const getRemoveLmsCourseCoverUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/cover`
+}
+
+export const removeLmsCourseCover = async (courseId: number, options?: Parameters<typeof customFetch>[1]): Promise<LmsCourseDetail> => {
+
+  return customFetch<LmsCourseDetail>(getRemoveLmsCourseCoverUrl(courseId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveLmsCourseCoverMutationKey = () => ['removeLmsCourseCover'] as const;
+
+export const getRemoveLmsCourseCoverMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeLmsCourseCover>>, TError,RemoveLmsCourseCoverMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeLmsCourseCover>>, TError,RemoveLmsCourseCoverMutationVariables, TContext> => {
+
+const mutationKey = getRemoveLmsCourseCoverMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeLmsCourseCover>>, RemoveLmsCourseCoverMutationVariables> = (props) => {
+          const {courseId} = props ?? {};
+
+          return  removeLmsCourseCover(courseId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveLmsCourseCoverMutationResult = NonNullable<Awaited<ReturnType<typeof removeLmsCourseCover>>>
+
+    export type RemoveLmsCourseCoverMutationError = ErrorType<unknown>
+    export type RemoveLmsCourseCoverMutationVariables = {courseId: number}
+
+    export const useRemoveLmsCourseCover = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeLmsCourseCover>>, TError,RemoveLmsCourseCoverMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeLmsCourseCover>>,
+        TError,
+        RemoveLmsCourseCoverMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveLmsCourseCoverMutationOptions(options), queryClient);
     }
 
 export const getExportLmsCourseUrl = (courseId: number,) => {

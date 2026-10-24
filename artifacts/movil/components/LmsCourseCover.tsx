@@ -1,6 +1,7 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@/contexts/AuthContext";
 
 /** Generative cover derived only from course id and title (no invented imagery). */
 const palettes = [
@@ -19,10 +20,41 @@ export const lessonKindIcons: Record<string, React.ComponentProps<typeof Feather
   text: "file-text", file: "download", video: "play-circle", quiz: "check-square", scorm12: "package", scorm2004: "package",
 };
 
-export function LmsCourseCover({ id, title, height = 150, radius = 16 }: { id: number; title: string; height?: number; radius?: number }) {
+export function LmsCourseCover({ id, title, coverUrl, height = 150, radius = 16 }: { id: number; title: string; coverUrl?: string | null; height?: number; radius?: number }) {
+  const { token } = useAuth();
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [webImage, setWebImage] = useState<{ url: string; token: string | null; uri: string } | null>(null);
+  // Accept only the course-cover route, never send the bearer token to an arbitrary URL.
+  const imageUrl = coverUrl?.startsWith(`/api/lms/courses/${id}/cover?`)
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}${coverUrl}` : null;
+  useEffect(() => {
+    if (Platform.OS !== "web" || !imageUrl) return;
+    const controller = new AbortController();
+    let objectUrl: string | undefined;
+    void (async () => {
+      try {
+        const response = await fetch(imageUrl, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: controller.signal });
+        if (!response.ok) throw new Error("Portada no disponible");
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setWebImage({ url: imageUrl, token, uri: objectUrl });
+      } catch {
+        if (!controller.signal.aborted) setFailedUrl(imageUrl);
+      }
+    })();
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [imageUrl, token]);
+  const source = imageUrl && imageUrl !== failedUrl
+    ? Platform.OS === "web"
+      ? webImage?.url === imageUrl && webImage.token === token ? { uri: webImage.uri } : null
+      : { uri: imageUrl, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+    : null;
   const [deep, light, accent] = palettes[id % palettes.length]!;
   const initials = title.split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || title.slice(0, 2).toUpperCase();
   const variant = id % 3;
+  if (source) return <Image source={source} accessible={false} resizeMode="cover"
+    style={[styles.cover, { height, borderRadius: radius }]} onError={() => setFailedUrl(imageUrl)} />;
   return (
     <View accessible={false} importantForAccessibility="no-hide-descendants" style={[styles.cover, { height, borderRadius: radius, backgroundColor: deep }]}>
       {variant === 0 ? <>

@@ -252,6 +252,7 @@ export * from './listWikiPagesKind';
 export * from './listWikiPagesParams';
 export * from './listYearConfirmationsParams';
 export * from './lmsCourse';
+export * from './lmsCourseCoverInput';
 export * from './lmsCourseDetail';
 export * from './lmsCourseExportFailure';
 export * from './lmsCourseExportFailureExcludedItem';

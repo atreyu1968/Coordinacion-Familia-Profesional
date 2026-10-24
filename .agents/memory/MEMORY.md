@@ -76,3 +76,4 @@
 - [Fuentes de consulta de la IA](ai-knowledge-scope.md) — debe poder consultar todo el material subido y los correos recibidos, respetando los permisos de cada usuario.
 - [Tareas pendientes de coordinación](coordinator-pending-tasks.md) — tareas privadas por coordinador; la IA propone, el coordinador confirma y añade manualmente.
 - [Borrado de docentes de prueba](test-teacher-cleanup.md) — eliminación definitiva también en producción; conservar la decisión administrativa de no recrearlos.
+- [LMS media retention](lms-media-retention.md) — delayed, reference-aware cleanup avoids breaking concurrent course ZIP exports.

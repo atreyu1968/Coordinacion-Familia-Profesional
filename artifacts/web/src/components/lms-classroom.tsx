@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { LmsCourse, LmsCourseDetail, LmsLesson } from "@workspace/api-client-react";
 import { AutoLinkText } from "@/components/auto-link-text";
+import { useLmsCourseCover } from "@/hooks/use-lms-course-cover";
 import { Button } from "@/components/ui/button";
 import {
   Award, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, FileDown, FileText,
@@ -30,10 +31,18 @@ const coverPalettes = [
   ["#1f3b2d", "#edf4ee", "#d9a441"],
 ];
 
-export function CourseCover({ course, size = "md" }: { course: Pick<LmsCourse, "id" | "title">; size?: "md" | "lg" }) {
+export function CourseCover({ course, size = "md" }: { course: Pick<LmsCourse, "id" | "title" | "coverUrl">; size?: "md" | "lg" }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const coverUrl = course.coverUrl;
+  const imageSrc = useLmsCourseCover(course.id, coverUrl);
   const [deep, light, accent] = coverPalettes[course.id % coverPalettes.length]!;
   const initials = course.title.split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || course.title.slice(0, 2).toUpperCase();
   const variant = course.id % 3;
+  if (imageSrc && coverUrl && coverUrl !== failedUrl) {
+    return <div aria-hidden className={`relative overflow-hidden ${size === "lg" ? "aspect-[16/10] rounded-2xl" : "aspect-[16/9]"}`}>
+      <img src={imageSrc} alt="" loading="lazy" className="h-full w-full object-cover" onError={() => setFailedUrl(coverUrl)} />
+    </div>;
+  }
   return (
     <div aria-hidden className={`relative overflow-hidden ${size === "lg" ? "aspect-[16/10] rounded-2xl" : "aspect-[16/9]"}`} style={{ background: deep }}>
       {variant === 0 && <>
