@@ -696,8 +696,67 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const group = await db.transaction(async (tx) => {
-    const [g] = await tx
+  const directOtherId =
+    type === "direct"
+      ? memberIds.find((id) => id !== caller.id)
+      : undefined;
+  const directPairKey =
+    directOtherId === undefined
+      ? undefined
+      : `direct-chat:${Math.min(caller.id, directOtherId)}:${Math.max(caller.id, directOtherId)}`;
+  const result = await db.transaction(async (tx) => {
+    if (directPairKey) {
+      // Serialize creation for this unordered user pair, then recheck while
+      // holding the transaction lock so simultaneous requests reuse one row.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${directPairKey}, 0))`,
+      );
+      const callerDirect = await tx
+        .select({ groupId: chatGroupMembersTable.groupId })
+        .from(chatGroupMembersTable)
+        .innerJoin(
+          chatGroupsTable,
+          eq(chatGroupsTable.id, chatGroupMembersTable.groupId),
+        )
+        .where(
+          and(
+            eq(chatGroupMembersTable.userId, caller.id),
+            eq(chatGroupsTable.type, "direct"),
+          ),
+        );
+      const directIds = callerDirect.map((row) => row.groupId);
+      if (directIds.length > 0) {
+        const [shared] = await tx
+          .select({ groupId: chatGroupMembersTable.groupId })
+          .from(chatGroupMembersTable)
+          .where(
+            and(
+              inArray(chatGroupMembersTable.groupId, directIds),
+              eq(chatGroupMembersTable.userId, directOtherId!),
+            ),
+          );
+        if (shared) {
+          const [existing] = await tx
+            .select()
+            .from(chatGroupsTable)
+            .where(eq(chatGroupsTable.id, shared.groupId));
+          if (existing) {
+            await tx
+              .update(chatGroupMembersTable)
+              .set({ hiddenAt: null })
+              .where(
+                and(
+                  eq(chatGroupMembersTable.groupId, existing.id),
+                  eq(chatGroupMembersTable.userId, caller.id),
+                ),
+              );
+            return { group: existing, created: false };
+          }
+        }
+      }
+    }
+
+    const [group] = await tx
       .insert(chatGroupsTable)
       .values({
         name: data.name.trim(),
@@ -710,10 +769,11 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       .returning();
     await tx
       .insert(chatGroupMembersTable)
-      .values(memberIds.map((uid) => ({ groupId: g!.id, userId: uid })))
+      .values(memberIds.map((uid) => ({ groupId: group!.id, userId: uid })))
       .onConflictDoNothing();
-    return g!;
+    return { group: group!, created: true };
   });
+  const { group } = result;
 
   let displayName = group.name;
   if (type === "direct") {
@@ -732,7 +792,9 @@ router.post("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     });
     for (const id of recipients) emitToUser(id, "chat_update", { groupId: group.id });
   }
-  res.status(201).json(toChatGroup({ ...group, name: displayName }));
+  res
+    .status(result.created ? 201 : 200)
+    .json(toChatGroup({ ...group, name: displayName }));
 });
 
 router.post("/chat/groups/:id/leave", requireAuth, async (req, res): Promise<void> => {

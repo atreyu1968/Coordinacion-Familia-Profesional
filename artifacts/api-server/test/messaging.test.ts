@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll, afterEach, vi } from "vitest";
 import request from "supertest";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   db,
   messagesTable,
@@ -155,6 +155,50 @@ describe("chat groups", () => {
       .from(chatGroupsTable)
       .where(eq(chatGroupsTable.id, first.body.id));
     expect(rows).toHaveLength(1);
+  });
+
+  it("creates only one direct thread when the same pair requests it concurrently", async () => {
+    const a = await createUser({ role: "teacher" });
+    const b = await createUser({ role: "teacher" });
+    const createRequest = () =>
+      request(app)
+        .post("/api/chat/groups")
+        .set(authHeader(a.token))
+        .send({ name: "Chat concurrente", type: "direct", memberIds: [b.user.id] });
+
+    const [first, second] = await Promise.all([createRequest(), createRequest()]);
+
+    expect([first.status, second.status].sort()).toEqual([200, 201]);
+    expect(first.body.id).toBe(second.body.id);
+    trackGroup(first.body.id);
+
+    const callerThreads = await db
+      .select({ groupId: chatGroupMembersTable.groupId })
+      .from(chatGroupMembersTable)
+      .innerJoin(
+        chatGroupsTable,
+        eq(chatGroupsTable.id, chatGroupMembersTable.groupId),
+      )
+      .where(
+        and(
+          eq(chatGroupMembersTable.userId, a.user.id),
+          eq(chatGroupsTable.type, "direct"),
+        ),
+      );
+    const matchingThreads = await db
+      .select({ groupId: chatGroupMembersTable.groupId })
+      .from(chatGroupMembersTable)
+      .where(
+        and(
+          inArray(
+            chatGroupMembersTable.groupId,
+            callerThreads.map((thread) => thread.groupId),
+          ),
+          eq(chatGroupMembersTable.userId, b.user.id),
+        ),
+      );
+    expect(matchingThreads).toHaveLength(1);
+    expect(matchingThreads[0]!.groupId).toBe(first.body.id);
   });
 
   it.each(["inactive", "deleted"] as const)(
