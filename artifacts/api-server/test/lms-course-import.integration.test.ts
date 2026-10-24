@@ -6,6 +6,14 @@ import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import type { SeededUser } from "./helpers";
 
+vi.mock("../src/lib/lms-course-import", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/lib/lms-course-import")>();
+  return {
+    ...actual,
+    MAX_MULTI_COURSE_EXPORT_SIZE: 8_000,
+  };
+});
+
 let t: typeof import("@workspace/db");
 let helpers: typeof import("./helpers");
 let api: typeof import("../src/app").default;
@@ -147,6 +155,17 @@ async function importArchive(user: SeededUser, upload: {
     });
 }
 
+function noisyText(length: number, seed: number): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let state = seed;
+  let text = "";
+  for (let index = 0; index < length; index += 1) {
+    state = (state * 1_103_515_245 + 12_345) & 0x7fffffff;
+    text += alphabet[state % alphabet.length];
+  }
+  return text;
+}
+
 async function privateFiles(): Promise<string[]> {
   const root = join(localStorageRoot(), "private");
   const files: string[] = [];
@@ -169,6 +188,92 @@ async function privateFiles(): Promise<string[]> {
 }
 
 describe("course ZIP import end-to-end with isolated local storage", () => {
+  it("omits the overflowing course and explains why in the readable batch report", async () => {
+    const manager = await createGeneralManager();
+    const courses = await t.db.insert(t.lmsCoursesTable).values([
+      {
+        title: "Curso que permanece",
+        description: "",
+        createdBy: manager.user.id,
+      },
+      {
+        title: "Curso que debe omitirse",
+        description: "",
+        createdBy: manager.user.id,
+      },
+    ]).returning();
+    const [remainingCourse, omittedCourse] = courses;
+    expect(remainingCourse).toBeDefined();
+    expect(omittedCourse).toBeDefined();
+    if (!remainingCourse || !omittedCourse) return;
+
+    const remainingText = noisyText(7_000, 81);
+    const omittedText = noisyText(7_000, 92);
+    await t.db.insert(t.lmsLessonsTable).values([
+      {
+        courseId: remainingCourse.id,
+        title: "Contenido conservado",
+        kind: "text",
+        content: { text: remainingText },
+      },
+      {
+        courseId: omittedCourse.id,
+        title: "Contenido que no debe aparecer",
+        kind: "text",
+        content: { text: omittedText },
+      },
+    ]);
+
+    const response = await request(api)
+      .post("/api/lms/courses/export")
+      .set(helpers.authHeader(manager.token))
+      .send({ courseIds: [remainingCourse.id, omittedCourse.id] })
+      .buffer(true)
+      .parse((stream, callback) => {
+        const chunks: Buffer[] = [];
+        stream.on("data", (chunk: Buffer | string) => chunks.push(Buffer.from(chunk)));
+        stream.on("end", () => callback(null, Buffer.concat(chunks)));
+        stream.on("error", callback);
+      });
+
+    expect(response.status).toBe(200);
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect(response.body.length).toBeLessThanOrEqual(8_000);
+
+    const zip = await JSZip.loadAsync(response.body as Buffer);
+    const entryNames = Object.keys(zip.files);
+    const omittedPrefix = `cursos/Curso-que-debe-omitirse-${omittedCourse.id}/`;
+    expect(entryNames.filter((name) => name.startsWith(omittedPrefix))).toEqual([]);
+    const entryContents = await Promise.all(
+      Object.values(zip.files)
+        .filter((entry) => !entry.dir)
+        .map((entry) => entry.async("string")),
+    );
+    expect(entryContents.join("\n")).not.toContain(omittedText);
+
+    const reportEntry = zip.file("informe-exportacion.json");
+    expect(reportEntry).toBeTruthy();
+    const report = JSON.parse(await reportEntry!.async("string")) as {
+      included: Array<{ title: string }>;
+      excluded: Array<{ title: string; reason: string }>;
+    };
+    expect(report.included.map(({ title }) => title)).toContain("Curso que permanece");
+    expect(report.excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "Curso que debe omitirse",
+        reason: "Al incluir este curso se superaría el límite comprimido de 100 MB.",
+      }),
+    ]));
+
+    const remainingManifestEntry = zip.file(
+      `cursos/Curso-que-permanece-${remainingCourse.id}/coordina-course.json`,
+    );
+    expect(remainingManifestEntry).toBeTruthy();
+    const remainingManifest = JSON.parse(await remainingManifestEntry!.async("string"));
+    expect(remainingManifest.course.title).toBe("Curso que permanece");
+    expect(remainingManifest.lessons[0].content.text).toBe(remainingText);
+  });
+
   it("imports a draft course and its lessons, keeps extracted files private, and rejects token replay", async () => {
     const manager = await createGeneralManager();
     const pdf = Buffer.from("private course attachment");
