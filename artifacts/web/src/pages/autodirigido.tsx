@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AutoLinkText } from "@/components/auto-link-text";
 import { CourseMarkdown } from "@/components/course-markdown";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
 import { LmsCoursePreview } from "@/components/lms-course-preview";
+import { CourseCover, CourseHero, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
@@ -41,14 +41,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   Award, BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
-  Eye, Pencil, Play, Plus, Send, Upload, Video, X,
+  Eye, Pencil, Play, Plus, Search, Send, Settings2, Upload, X,
 } from "lucide-react";
 import { Scorm12API } from "scorm-again/scorm12";
 import { Scorm2004API } from "scorm-again/scorm2004";
@@ -161,10 +159,6 @@ export function ScormPlayerPage() {
       </div>
     </main>
   );
-}
-
-function ProgressMark({ value }: { value: number }) {
-  return <div className="flex items-center gap-2"><Progress value={value} className="h-2" /><span className="text-xs text-muted-foreground">{value}%</span></div>;
 }
 
 function CertificateDownloadButton({ courseId }: { courseId: number }) {
@@ -282,24 +276,33 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
   };
   const htmlDownloadAvailable = lesson.kind === "file" && isHtmlDocumentName(lesson.objectName ?? "");
 
+  const statusLabel = progress?.status === "completed" ? "Completada" : progress?.status === "failed" ? "No superada" : progress?.status === "in_progress" ? "En curso" : null;
+
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-3"><div className="flex items-center gap-2"><Badge variant="outline">{kindLabels[lesson.kind]}</Badge><CardTitle className="text-base">{lesson.title}</CardTitle>{progress?.status === "completed" && <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-600" />}</div></CardHeader>
-      <CardContent className="space-y-4">
-        {lesson.kind === "text" && <CourseMarkdown text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} />}
-        {lesson.kind === "video" && Boolean(lesson.content.url || lesson.content.embedUrl) && <video controls className="max-h-[420px] w-full rounded-md bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />}
-         {lesson.kind === "file" && <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
-           {isPdfDocument(lesson.objectName) && <PdfPreviewDialog
-             title={lesson.objectName ?? lesson.title}
-             disabled={download.isPending}
-             loadPdf={async () => {
-               const result = await download.mutateAsync({ lessonId: lesson.id });
-               const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
-               if (!response.ok) throw new Error("No se pudo abrir el PDF.");
-               return response.blob();
-             }}
-           />}
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start gap-3">
+        <h2 className="min-w-0 flex-1 text-2xl font-extrabold leading-tight tracking-tight">{lesson.title}</h2>
+        {statusLabel && <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${progress?.status === "completed" ? "bg-emerald-600/10 text-emerald-700" : progress?.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>{progress?.status === "completed" && <CheckCircle2 className="h-3.5 w-3.5" />}{statusLabel}</span>}
+      </div>
+      {lesson.kind === "text" && <div className="max-w-[72ch] text-[15px]"><CourseMarkdown text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} /></div>}
+      {lesson.kind === "video" && (Boolean(lesson.content.url || lesson.content.embedUrl)
+        ? <video controls className="aspect-video w-full rounded-xl bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />
+        : <p className="text-sm text-muted-foreground">Este vídeo todavía no tiene una dirección configurada.</p>)}
+      {lesson.kind === "file" && <div className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-5 sm:flex-row sm:items-center">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileUp className="h-5 w-5" /></div>
+        <div className="min-w-0 flex-1"><p className="truncate font-semibold">{lesson.objectName ?? "Archivo de la lección"}</p>{lesson.objectSize != null && <p className="text-xs text-muted-foreground">{(lesson.objectSize / (1024 * 1024)).toFixed(1)} MB</p>}</div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><Download className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
+          {isPdfDocument(lesson.objectName) && <PdfPreviewDialog
+            title={lesson.objectName ?? lesson.title}
+            disabled={download.isPending}
+            loadPdf={async () => {
+              const result = await download.mutateAsync({ lessonId: lesson.id });
+              const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
+              if (!response.ok) throw new Error("No se pudo abrir el PDF.");
+              return response.blob();
+            }}
+          />}
           {htmlDownloadAvailable && <HtmlDocxDownloadButton
             fileName={lesson.objectName ?? "documento.html"}
             testId={`button-download-lesson-docx-${lesson.id}`}
@@ -311,14 +314,25 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
               return { blob: await response.blob(), baseUrl: response.url };
             }}
           />}
-        </div>}
-        {lesson.kind === "quiz" && <div className="space-y-4">{questions.map((question, index) => <fieldset key={index} className="space-y-2"><legend className="text-sm font-medium">{index + 1}. {question.prompt ?? question.text ?? "Pregunta"}</legend>{(question.options ?? []).map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name={`q-${lesson.id}-${index}`} checked={answers[index] === optionIndex} onChange={() => setAnswers((old) => { const next = [...old]; next[index] = optionIndex; return next; })} />{option}</label>)}</fieldset>)}<Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}>{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button></div>}
-        {isScorm && <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
-        {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} preview={preview} />)}
-        {lesson.kind !== "quiz" && !["scorm12", "scorm2004"].includes(lesson.kind) && progress?.status !== "completed" && <Button onClick={markComplete} disabled={complete.isPending}>{complete.isPending ? "Guardando..." : "Marcar como completada"}</Button>}
+        </div>
+      </div>}
+      {lesson.kind === "quiz" && <div className="space-y-5">
+        {questions.length === 0 && <p className="text-sm text-muted-foreground">Este cuestionario todavía no tiene preguntas.</p>}
+        {questions.map((question, index) => <fieldset key={index} className="space-y-2 rounded-xl border p-4">
+          <legend className="px-1 text-sm font-semibold">{index + 1}. {question.prompt ?? question.text ?? "Pregunta"}</legend>
+          {(question.options ?? []).map((option, optionIndex) => <label key={optionIndex} className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors ${answers[index] === optionIndex ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"}`}>
+            <input type="radio" className="accent-[hsl(var(--primary))]" name={`q-${lesson.id}-${index}`} checked={answers[index] === optionIndex} onChange={() => setAnswers((old) => { const next = [...old]; next[index] = optionIndex; return next; })} />{option}
+          </label>)}
+        </fieldset>)}
+        <Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}><Send className="mr-2 h-4 w-4" />{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button>
+      </div>}
+      {isScorm && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
+      {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} preview={preview} />)}
+      {(lesson.kind !== "quiz" && !isScorm && progress?.status !== "completed") || progress?.score != null ? <div className="flex flex-wrap items-center gap-3 border-t pt-5">
+        {lesson.kind !== "quiz" && !isScorm && progress?.status !== "completed" && <Button variant="secondary" onClick={markComplete} disabled={complete.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />{complete.isPending ? "Guardando..." : "Marcar como completada"}</Button>}
         {progress?.score != null && <p className="text-xs text-muted-foreground">{isScorm ? "Puntuación SCORM autodeclarada (no verificada)" : "Mejor puntuación"}: {progress.score}% · Intentos: {progress.attempts}</p>}
-      </CardContent>
-    </Card>
+      </div> : null}
+    </div>
   );
 }
 
@@ -544,6 +558,9 @@ export default function AutodirigidoPage() {
   const [selectedExportIds, setSelectedExportIds] = useState<Set<number>>(() => new Set());
   const courses = useListLmsCourses(); const detail = useGetLmsCourse(selectedId ?? 0, { query: { enabled: selectedId != null, queryKey: getGetLmsCourseQueryKey(selectedId ?? 0) } }); const scopes = useGetLmsManagementScopes();
   const publish = usePublishLmsCourse(); const manager = (scopes.data?.length ?? 0) > 0;
+  const [selectedLessonId, selectLesson] = useLessonSelection(selectedId != null ? detail.data : undefined);
+  const [catalogFilter, setCatalogFilter] = useState<"all" | "pending" | "completed" | "draft">("all");
+  const [search, setSearch] = useState("");
   const manageableCourses = (courses.data ?? []).filter((item) =>
     scopes.data?.some((scope) => scope.canManage && scope.moduleId === item.moduleId),
   );
@@ -689,26 +706,143 @@ export default function AutodirigidoPage() {
           onPreviewProgress={onProgress} />}
     />;
   }
-  return <div className="space-y-6">
-    <header className="flex flex-wrap items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap /></div><div className="flex-1"><h1 className="text-2xl font-bold">Autodirigido</h1><p className="text-sm text-muted-foreground">Aprende a tu ritmo, completa tus lecciones y consigue tus certificados.</p></div>{manager && !selectedId && <><Button variant="outline" onClick={() => { setEditor(null); setImportingCourse((value) => !value); }}><Upload className="mr-2 h-4 w-4" />Importar ZIP</Button><Button onClick={() => { setImportingCourse(false); setEditor("create"); }}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button></>}</header>
-    {importingCourse && manager && !selectedId && <CourseZipImport scopes={scopes.data ?? []} onClose={() => setImportingCourse(false)} onImported={() => { void refresh(); }} />}
-    {editor && <CourseEditor course={editor === "edit" ? (course ?? null) : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} />}
-    {selectedId && course && canManageSelectedCourse && (
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={editor !== null || lessonEditor !== null}
-          title={editor !== null || lessonEditor !== null ? "Guarda o cancela la edición antes de abrir la vista previa." : undefined}
-          onClick={() => {
-          setEditor(null); setLessonEditor(null); setPreviewingCourse(true);
-        }}><Eye className="mr-2 h-4 w-4" />Vista previa como alumno</Button>
-        <LmsCourseDeleteButton course={course} onDeleted={() => onCourseDeleted(course.id)} />
+  const openCourse = (id: number) => { setSelectedId(id); setEditor(null); setLessonEditor(null); setEditingLesson(undefined); navigate(`/autodirigido?curso=${id}`); };
+  const allCourses = courses.data ?? [];
+  const term = search.trim().toLowerCase();
+  const visibleCourses = allCourses.filter((item) => {
+    if (term && !`${item.title} ${item.description}`.toLowerCase().includes(term)) return false;
+    if (catalogFilter === "pending") return !item.completed && item.status === "published";
+    if (catalogFilter === "completed") return item.completed;
+    if (catalogFilter === "draft") return item.status === "draft";
+    return true;
+  });
+  const filters: Array<[typeof catalogFilter, string, number]> = [
+    ["all", "Todos", allCourses.length],
+    ["pending", "Por completar", allCourses.filter((c) => !c.completed && c.status === "published").length],
+    ["completed", "Completados", allCourses.filter((c) => c.completed).length],
+    ...(manager ? [["draft", "Borradores", allCourses.filter((c) => c.status === "draft").length] as [typeof catalogFilter, string, number]] : []),
+  ];
+  const selectedLesson = course?.lessons.find((l) => l.id === selectedLessonId);
+
+  if (selectedId && !course) {
+    return <div className="space-y-4 py-10 text-center">
+      <p className="text-sm text-destructive">No se pudo cargar el curso.</p>
+      <div className="flex justify-center gap-2"><Button variant="outline" onClick={() => void detail.refetch()}>Reintentar</Button><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}>Todos los cursos</Button></div>
+    </div>;
+  }
+
+  if (selectedId && course) {
+    return <div className="space-y-8 pb-10">
+      <Button variant="ghost" className="-ml-3" onClick={() => { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button>
+      <CourseHero course={course}
+        actions={<>
+          {selectedLesson && <Button className="h-auto w-full min-w-0 max-w-full justify-start whitespace-normal py-3 text-left sm:w-auto" onClick={() => document.getElementById("lms-stage")?.scrollIntoView({ behavior: "smooth" })}><Play className="mr-2 h-4 w-4 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">{courseProgress > 0 ? "Continuar" : "Empezar"}: {selectedLesson.title}</span></Button>}
+          {course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}
+        </>} />
+      {containsScorm && <div role="note" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
+      <LmsClassroom course={course} selectedLessonId={selectedLessonId} onSelect={selectLesson}
+        renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
+      {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03] p-5 md:p-7">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Settings2 className="h-5 w-5" /></div>
+          <div className="min-w-0 flex-1"><h2 id="lms-manage-title" className="text-lg font-bold">Área de gestión</h2><p className="text-sm text-muted-foreground">Solo visible para responsables del curso. Los cambios afectan a todo el alumnado.</p></div>
+          <div className="flex flex-wrap gap-2">
+            {course.status !== "published" && <Button onClick={async () => { try { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); void refresh(); } catch { toast({ title: "No se pudo publicar el curso", variant: "destructive" }); } }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}
+            <Button variant="outline" onClick={() => { setLessonEditor(null); setEditor("edit"); }}><Pencil className="mr-2 h-4 w-4" />Editar curso</Button>
+            {canManageSelectedCourse && <>
+              <Button variant="outline" disabled={editor !== null || lessonEditor !== null}
+                title={editor !== null || lessonEditor !== null ? "Guarda o cancela la edición antes de abrir la vista previa." : undefined}
+                onClick={() => { setEditor(null); setLessonEditor(null); setPreviewingCourse(true); }}><Eye className="mr-2 h-4 w-4" />Vista previa como alumno</Button>
+              <Button variant="outline" onClick={() => void exportCourse(course)} disabled={exportingCourse}><Download className="mr-2 h-4 w-4" />{exportingCourse ? "Exportando..." : "Exportar ZIP"}</Button>
+              <LmsCourseDeleteButton course={course} onDeleted={() => onCourseDeleted(course.id)} />
+            </>}
+          </div>
+        </div>
+        {editor && <div className="mt-5"><CourseEditor course={editor === "edit" ? course : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} /></div>}
+        <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-muted-foreground">Lecciones ({course.lessons.length})</h3>
+            <Button size="sm" variant="outline" onClick={() => { setEditor(null); setEditingLesson(undefined); setLessonEditor(lessonEditor === -1 ? null : -1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button></div>
+          {lessonEditor === -1 && <div className="mb-4"><LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
+          <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
+            {course.lessons.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">Añade la primera lección para poder publicar el curso.</li>}
+            {course.lessons.map((lesson, i) => <li key={lesson.id}>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                <LessonKindIcon kind={lesson.kind} className="h-4 w-4 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{lesson.title}</span>
+                <span className="hidden text-xs text-muted-foreground sm:inline">{lessonKindLabels[lesson.kind]} · {lesson.required ? "Obligatoria" : "Opcional"}</span>
+                {lessonEditor === lesson.id
+                  ? <Button variant="ghost" size="sm" onClick={() => setLessonEditor(null)}><X className="mr-1 h-4 w-4" />Cerrar</Button>
+                  : <Button variant="ghost" size="sm" onClick={() => { setEditor(null); setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-1 h-4 w-4" />Editar lección</Button>}
+              </div>
+              {lessonEditor === lesson.id && <div className="border-t bg-muted/30 p-4"><LessonEditor key={lesson.id} courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
+            </li>)}
+          </ol>
+        </div>
+      </section>}
+    </div>;
+  }
+
+  return <div className="space-y-8 pb-10">
+    <header className="relative overflow-hidden rounded-3xl bg-primary px-6 py-10 text-primary-foreground md:px-10 md:py-14">
+      <div aria-hidden className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
+      <div aria-hidden className="absolute -bottom-28 right-24 h-56 w-56 rounded-full border-[18px] border-white/10" />
+      <div className="relative max-w-2xl">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] opacity-80"><GraduationCap className="h-4 w-4" />Coordina FP · Autodirigido</p>
+        <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight md:text-5xl">Formación a tu ritmo, lección a lección.</h1>
+        <p className="mt-4 text-[15px] leading-7 opacity-85">Elige un curso, avanza por su temario y consigue el certificado cuando completes las lecciones obligatorias.</p>
       </div>
-    )}
-     {selectedId && course && containsScorm && <div role="note" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
-      {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground"><AutoLinkText text={course.description} /></p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{canManageSelectedCourse && <Button variant="outline" onClick={() => void exportCourse(course)} disabled={exportingCourse}><Download className="mr-2 h-4 w-4" />{exportingCourse ? "Exportando..." : "Exportar ZIP"}</Button>}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <>
-        {manager && !courses.isLoading && manageableCourses.length > 0 && <Card><CardContent className="flex flex-wrap items-center gap-3 p-4"><p className="mr-auto text-sm text-muted-foreground">{selectedExportIds.size} cursos seleccionados para exportación.</p><Button variant="outline" size="sm" onClick={() => setSelectedExportIds((current) => current.size === manageableCourses.length ? new Set() : new Set(manageableCourses.map((item) => item.id)))}>{selectedExportIds.size === manageableCourses.length ? "Quitar selección" : "Seleccionar todos los que gestiono"}</Button><Button onClick={() => void exportSelectedCourses()} disabled={selectedExportIds.size === 0 || exportingCourses}><Download className="mr-2 h-4 w-4" />{exportingCourses ? "Preparando ZIP..." : "Exportar selección"}</Button></CardContent></Card>}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => {
-          const canManageItem = scopes.data?.some((scope) => scope.canManage && scope.moduleId === item.moduleId) ?? false;
-          return <Card key={item.id} className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><div className="flex items-center gap-2"><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge>{canManageItem && <label className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground"><input type="checkbox" checked={selectedExportIds.has(item.id)} onChange={(event) => setSelectedExportIds((current) => { const next = new Set(current); if (event.target.checked) next.add(item.id); else next.delete(item.id); return next; })} aria-label={`Seleccionar ${item.title} para exportar`} />Exportar</label>}</div></div><CardTitle className="text-lg"><button className="text-left hover:underline" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}>{item.title}</button></CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} />{canManageItem && <LmsCourseDeleteButton course={item} onDeleted={() => onCourseDeleted(item.id)} />}</CardContent></Card>;
-        })}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}
+    </header>
+
+    {manager && <section aria-labelledby="lms-catalog-manage" className="rounded-2xl border-2 border-dashed border-primary/25 bg-primary/[0.03] p-4 md:p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <Settings2 className="h-5 w-5 text-primary" />
+        <h2 id="lms-catalog-manage" className="mr-auto text-sm font-bold">Gestión de cursos</h2>
+        <Button variant="outline" size="sm" onClick={() => { setEditor(null); setImportingCourse((value) => !value); }}><Upload className="mr-2 h-4 w-4" />Importar ZIP</Button>
+        <Button size="sm" onClick={() => { setImportingCourse(false); setEditor("create"); }}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button>
+      </div>
+      {manageableCourses.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
+        <p className="mr-auto text-sm text-muted-foreground">{selectedExportIds.size} cursos seleccionados para exportación.</p>
+        <Button variant="ghost" size="sm" onClick={() => setSelectedExportIds((current) => current.size === manageableCourses.length ? new Set() : new Set(manageableCourses.map((item) => item.id)))}>{selectedExportIds.size === manageableCourses.length ? "Quitar selección" : "Seleccionar todos los que gestiono"}</Button>
+        <Button variant="outline" size="sm" onClick={() => void exportSelectedCourses()} disabled={selectedExportIds.size === 0 || exportingCourses}><Download className="mr-2 h-4 w-4" />{exportingCourses ? "Preparando ZIP..." : "Exportar selección"}</Button>
+      </div>}
+      {importingCourse && <div className="mt-4"><CourseZipImport scopes={scopes.data ?? []} onClose={() => setImportingCourse(false)} onImported={() => { void refresh(); }} /></div>}
+      {editor === "create" && <div className="mt-4"><CourseEditor course={null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} /></div>}
+    </section>}
+
+    <div className="flex flex-col gap-4 md:flex-row md:items-center">
+      <div role="tablist" aria-label="Filtrar cursos" className="flex gap-1 overflow-x-auto rounded-full bg-muted p-1">
+        {filters.map(([key, label, count]) => <button key={key} role="tab" aria-selected={catalogFilter === key} onClick={() => setCatalogFilter(key)}
+          className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${catalogFilter === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+          {label} <span className="ml-1 tabular-nums text-xs opacity-60">{count}</span></button>)}
+      </div>
+      <div className="relative md:ml-auto md:w-72">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input aria-label="Buscar cursos" placeholder="Buscar por título o descripción" className="rounded-full pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+    </div>
+
+    {courses.isLoading ? <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="space-y-3"><div className="aspect-[16/9] animate-pulse rounded-2xl bg-muted" /><div className="h-4 w-3/4 animate-pulse rounded bg-muted" /><div className="h-3 w-1/2 animate-pulse rounded bg-muted" /></div>)}</div>
+      : courses.isError ? <div className="rounded-2xl border p-10 text-center"><p className="text-sm text-destructive">No se pudieron cargar los cursos.</p><Button className="mt-3" variant="outline" onClick={() => void courses.refetch()}>Reintentar</Button></div>
+      : visibleCourses.length === 0 ? <div className="rounded-2xl border border-dashed p-12 text-center"><BookOpen className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold">{allCourses.length === 0 ? "Todavía no hay cursos disponibles." : "Ningún curso coincide con este filtro."}</p><p className="mt-1 text-sm text-muted-foreground">{allCourses.length === 0 ? "Cuando haya cursos asignados a tu cuenta aparecerán aquí." : "Prueba con otra búsqueda o pestaña."}</p></div>
+      : <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">{visibleCourses.map((item: LmsCourse) => {
+        const canManageItem = scopes.data?.some((scope) => scope.canManage && scope.moduleId === item.moduleId) ?? false;
+        return <li key={item.id} className="group flex flex-col">
+          <button type="button" onClick={() => openCourse(item.id)} className="overflow-hidden rounded-2xl text-left transition-transform duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:-translate-y-1" aria-label={`Abrir curso ${item.title}`}>
+            <CourseCover course={item} />
+          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]">
+            {item.completed ? <span className="flex items-center gap-1 text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />Completado</span> : <span className="text-primary">{item.lessonCount} {item.lessonCount === 1 ? "lección" : "lecciones"}</span>}
+            {item.status === "draft" && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-800">Borrador</span>}
+            {item.certificateEnabled && <span className="flex items-center gap-1 text-muted-foreground"><Award className="h-3.5 w-3.5" />Certificado</span>}
+          </div>
+          <h3 className="mt-1.5 text-lg font-bold leading-snug"><button type="button" className="text-left hover:underline focus-visible:underline focus-visible:outline-none" onClick={() => openCourse(item.id)}>{item.title}</button></h3>
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{item.description || "Curso autodirigido"}</p>
+          {canManageItem && <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={selectedExportIds.has(item.id)} onChange={(event) => setSelectedExportIds((current) => { const next = new Set(current); if (event.target.checked) next.add(item.id); else next.delete(item.id); return next; })} aria-label={`Seleccionar ${item.title} para exportar`} />Exportar</label>
+            <div className="ml-auto"><LmsCourseDeleteButton course={item} onDeleted={() => onCourseDeleted(item.id)} /></div>
+          </div>}
+        </li>;
+      })}</ul>}
   </div>;
 }

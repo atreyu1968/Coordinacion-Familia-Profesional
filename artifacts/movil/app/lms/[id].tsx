@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { CourseMarkdown } from "@/components/CourseMarkdown";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -29,9 +29,10 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { isPdfDocument, PdfPreviewButton } from "@/components/PdfPreviewButton";
+import { LmsCourseCover, lessonKindIcons, lessonKindLabels } from "@/components/LmsCourseCover";
 
 const API_HOST = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
-const kindLabels: Record<string, string> = { text: "Lectura", file: "Archivo", video: "Vídeo", quiz: "Cuestionario", scorm12: "SCORM 1.2", scorm2004: "SCORM 2004" };
+const kindLabels = lessonKindLabels;
 type LessonKind = "text" | "file" | "video" | "quiz" | "scorm12" | "scorm2004";
 
 export default function LmsDetailScreen() {
@@ -57,6 +58,16 @@ export default function LmsDetailScreen() {
   const [quizOptions, setQuizOptions] = useState("Opción A\nOpción B");
   const [correctIndex, setCorrectIndex] = useState("0");
   const [showLessonForm, setShowLessonForm] = useState(false);
+  const [showManager, setShowManager] = useState(false);
+  const [selection, setSelection] = useState<{ courseId: number; lessonId: number | null } | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const stageY = useRef(0);
+  useEffect(() => {
+    const data = course.data;
+    if (!data || selection?.courseId === data.id) return;
+    const open = data.lessons.find((l) => !data.progress.some((p) => p.lessonId === l.id && p.status === "completed"));
+    setSelection({ courseId: data.id, lessonId: (open ?? data.lessons[0])?.id ?? null });
+  }, [course.data, selection?.courseId]);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(courseId) });
   const beginEdit = () => { setTitle(course.data?.title ?? ""); setDescription(course.data?.description ?? ""); setEditing(true); };
   const saveCourse = () => update.mutate({ courseId, data: { title: title.trim(), description: description.trim() } }, { onSuccess: () => { setEditing(false); refresh(); } });
@@ -135,56 +146,102 @@ export default function LmsDetailScreen() {
   };
   if (course.isLoading) return <View style={[styles.container, { backgroundColor: colors.background }]}><AppHeader title="Curso" showBack /><Loading /></View>;
   if (course.isError || !course.data) return <View style={[styles.container, { backgroundColor: colors.background }]}><AppHeader title="Curso" showBack /><ErrorState onRetry={course.refetch} /></View>;
-  const requiredLessons = course.data.lessons.filter((lesson) => lesson.required);
-  const completedRequired = requiredLessons.filter((lesson) => course.data.progress.some((progress) => progress.lessonId === lesson.id && progress.status === "completed")).length;
+  const data = course.data;
+  const requiredLessons = data.lessons.filter((lesson) => lesson.required);
+  const completedRequired = requiredLessons.filter((lesson) => data.progress.some((progress) => progress.lessonId === lesson.id && progress.status === "completed")).length;
   const requiredProgress = requiredLessons.length ? Math.round(completedRequired * 100 / requiredLessons.length) : 100;
+  let selectedId = selection?.courseId === data.id ? selection.lessonId : null;
+  if (!data.lessons.some((l) => l.id === selectedId)) selectedId = data.lessons[0]?.id ?? null;
+  const index = data.lessons.findIndex((l) => l.id === selectedId);
+  const lesson = index >= 0 ? data.lessons[index] : undefined;
+  const prev = index > 0 ? data.lessons[index - 1] : undefined;
+  const next = index >= 0 && index < data.lessons.length - 1 ? data.lessons[index + 1] : undefined;
+  const go = (lessonId: number) => { setSelection({ courseId: data.id, lessonId }); scrollRef.current?.scrollTo({ y: Math.max(stageY.current - 8, 0), animated: true }); };
+  const input = [styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }];
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Curso" subtitle={course.data.status === "published" ? "Publicado" : "Borrador"} showBack />
-      <ScrollView contentContainerStyle={styles.content}>
-        {editing ? <Card style={styles.form}>
-          <TextInput value={title} onChangeText={setTitle} placeholder="Título" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-          <TextInput value={description} onChangeText={setDescription} multiline placeholder="Descripción" placeholderTextColor={colors.mutedForeground} style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-          <View style={styles.actions}><Button label="Guardar" icon="check" onPress={saveCourse} loading={update.isPending} /><Button label="Cancelar" variant="secondary" onPress={() => setEditing(false)} /></View>
-        </Card> : <>
-          <Text style={[styles.title, { color: colors.foreground }]}>{course.data.title}</Text>
-          {course.data.description ? <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={course.data.description} /></Text> : null}
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${requiredProgress}%` }]} /></View>
-          <Text style={[styles.meta, { color: colors.mutedForeground }]}>{completedRequired} de {requiredLessons.length} lecciones obligatorias completadas</Text>
-        </>}
-        {course.data.certificateAvailable ? <Card style={{ ...styles.notice, backgroundColor: colors.accent }}><Feather name="award" size={20} color={colors.accentForeground} /><Text style={[styles.noticeText, { color: colors.accentForeground }]}>Has completado este curso. Tu certificado está disponible.</Text><CertificateButton courseId={courseId} /></Card> : null}
-        {canManage ? <View style={styles.managerBar}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Gestión del curso</Text>
-          <View style={styles.actions}><Button label="Editar" icon="edit-2" variant="secondary" onPress={beginEdit} /><Button label="Añadir lección" icon="plus" variant="secondary" onPress={() => setShowLessonForm((value) => !value)} /></View>
-          {course.data.status === "draft" ? <Button label="Publicar curso" icon="send" onPress={() => publish.mutate({ courseId }, { onSuccess: refresh })} loading={publish.isPending} disabled={course.data.lessons.length === 0} /> : null}
-          {showLessonForm ? <Card style={styles.form}>
-            <TextInput value={lessonTitle} onChangeText={setLessonTitle} placeholder="Título de la lección" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-            <Text style={[styles.meta, { color: colors.mutedForeground }]}>Tipo de contenido</Text>
-            <View style={styles.kindList}>
-              {Object.entries(kindLabels).map(([key, label]) => (
-                <Pressable key={key} onPress={() => setLessonKind(key as LessonKind)} style={[styles.kindChip, { borderColor: lessonKind === key ? colors.primary : colors.border, backgroundColor: lessonKind === key ? colors.accent : colors.card }]}>
-                  <Text style={[styles.kindText, { color: lessonKind === key ? colors.primary : colors.foreground }]}>{label}</Text>
-                </Pressable>
-              ))}
+      <AppHeader title="Curso" subtitle={data.status === "published" ? "Publicado" : "Borrador"} showBack />
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
+        <LmsCourseCover id={data.id} title={data.title} height={170} radius={20} />
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>CURSO AUTODIRIGIDO · {data.lessons.length} {data.lessons.length === 1 ? "LECCIÓN" : "LECCIONES"}{data.certificateEnabled ? " · CON CERTIFICADO" : ""}</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{data.title}</Text>
+        {data.description ? <Text style={[styles.description, { color: colors.mutedForeground }]}><AutoLinkText text={data.description} /></Text> : null}
+        <View style={[styles.progressCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          <View style={styles.progressHead}><Text style={[styles.meta, { color: colors.mutedForeground, flex: 1 }]}>{completedRequired} de {requiredLessons.length} lecciones obligatorias completadas</Text><Text style={[styles.percent, { color: colors.primary }]}>{requiredProgress}%</Text></View>
+          <View style={[styles.progressBar, { backgroundColor: colors.border }]} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: requiredProgress }}><View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${requiredProgress}%` }]} /></View>
+        </View>
+        {data.certificateAvailable ? <Card style={{ ...styles.notice, backgroundColor: colors.accent }}><Feather name="award" size={20} color={colors.accentForeground} /><Text style={[styles.noticeText, { color: colors.accentForeground }]}>Has completado este curso. Tu certificado está disponible.</Text><CertificateButton courseId={courseId} /></Card> : null}
+
+        <View onLayout={(e) => { stageY.current = e.nativeEvent.layout.y; }}>
+          {!lesson ? <EmptyState icon="layers" title="Sin lecciones" message={canManage ? "Añade una lectura desde el área de gestión." : "Este curso aún no tiene contenido."} /> : <>
+            <Text style={[styles.stageMeta, { color: colors.mutedForeground }]}>LECCIÓN {index + 1} DE {data.lessons.length}</Text>
+            <LessonCard key={lesson.id} lesson={lesson} courseId={courseId} progress={data.progress.find((item) => item.lessonId === lesson.id)} colors={colors} onRefresh={refresh} />
+            <View style={styles.navRow}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Lección anterior" disabled={!prev} onPress={() => prev && go(prev.id)} style={[styles.navBtn, { borderColor: colors.border, opacity: prev ? 1 : 0.4 }]}>
+                <Feather name="chevron-left" size={18} color={colors.foreground} /><View style={{ flex: 1 }}><Text style={[styles.navLabel, { color: colors.mutedForeground }]}>Anterior</Text><Text numberOfLines={1} style={[styles.navTitle, { color: colors.foreground }]}>{prev?.title ?? "Inicio"}</Text></View>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Lección siguiente" disabled={!next} onPress={() => next && go(next.id)} style={[styles.navBtn, { borderColor: next ? colors.primary : colors.border, backgroundColor: next ? colors.primary : "transparent", opacity: next ? 1 : 0.4 }]}>
+                <View style={{ flex: 1, alignItems: "flex-end" }}><Text style={[styles.navLabel, { color: next ? colors.primaryForeground : colors.mutedForeground }]}>Siguiente</Text><Text numberOfLines={1} style={[styles.navTitle, { color: next ? colors.primaryForeground : colors.foreground }]}>{next?.title ?? "Fin del curso"}</Text></View><Feather name="chevron-right" size={18} color={next ? colors.primaryForeground : colors.foreground} />
+              </Pressable>
             </View>
-            {["text", "video", "quiz"].includes(lessonKind) ? <TextInput value={lessonText} onChangeText={setLessonText} multiline={lessonKind !== "video"} placeholder={lessonKind === "video" ? "URL del vídeo (https://…)" : lessonKind === "quiz" ? "Enunciado de la pregunta" : "Contenido de la lectura"} placeholderTextColor={colors.mutedForeground} style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} /> : null}
-            {lessonKind === "quiz" ? <>
-              <TextInput value={quizOptions} onChangeText={setQuizOptions} multiline placeholder="Opciones, una por línea" placeholderTextColor={colors.mutedForeground} style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-              <TextInput value={correctIndex} onChangeText={setCorrectIndex} keyboardType="number-pad" placeholder="Índice de respuesta correcta (empieza en 0)" placeholderTextColor={colors.mutedForeground} style={[styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }]} />
-            </> : null}
-            {["file", "scorm12", "scorm2004"].includes(lessonKind) ? <>
-              <Button label={lessonFile?.name ?? "Seleccionar archivo"} icon="paperclip" variant="secondary" onPress={() => void chooseLessonFile()} />
-              {lessonFile?.size ? <Text style={[styles.meta, { color: colors.mutedForeground }]}>{(lessonFile.size / (1024 * 1024)).toFixed(1)} MB</Text> : null}
-            </> : null}
-            <Pressable onPress={() => setLessonRequired((value) => !value)} style={styles.requiredToggle}>
-              <Feather name={lessonRequired ? "check-square" : "square"} size={18} color={lessonRequired ? colors.primary : colors.mutedForeground} />
-              <Text style={[styles.meta, { color: colors.foreground }]}>Lección obligatoria</Text>
-            </Pressable>
-            <Button label="Guardar lección" icon="check" onPress={() => void addLesson()} loading={createLesson.isPending || upload.isPending} disabled={!lessonTitle.trim() || createLesson.isPending || upload.isPending} />
-          </Card> : null}
+          </>}
+        </View>
+
+        {data.lessons.length > 0 ? <>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contenido del curso</Text>
+          <View style={[styles.curriculum, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            {data.lessons.map((item, i) => {
+              const status = data.progress.find((p) => p.lessonId === item.id)?.status;
+              const active = item.id === selectedId;
+              return <Pressable key={item.id} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`Lección ${i + 1}: ${item.title}${status === "completed" ? ", completada" : ""}`} onPress={() => go(item.id)} style={[styles.curItem, { backgroundColor: active ? colors.accent : "transparent", borderTopColor: colors.border, borderTopWidth: i ? StyleSheet.hairlineWidth : 0 }]}>
+                {status === "completed" ? <Feather name="check-circle" size={20} color={colors.success} /> : status === "failed" ? <Feather name="x-circle" size={20} color={colors.destructive} /> : <View style={[styles.curNum, { borderColor: colors.border }]}><Text style={[styles.curNumText, { color: colors.mutedForeground }]}>{i + 1}</Text></View>}
+                <View style={{ flex: 1 }}><Text style={[styles.curTitle, { color: active ? colors.primary : colors.foreground }]} numberOfLines={2}>{item.title}</Text><View style={styles.curMeta}><Feather name={lessonKindIcons[item.kind] ?? "file"} size={11} color={colors.mutedForeground} /><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[item.kind] ?? item.kind}{item.required ? "" : " · Opcional"}</Text></View></View>
+              </Pressable>;
+            })}
+          </View>
+        </> : null}
+
+        {canManage ? <View style={[styles.managerBar, { borderColor: colors.primary + "55" }]}>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: showManager }} onPress={() => setShowManager((v) => !v)} style={styles.managerHead}>
+            <Feather name="settings" size={18} color={colors.primary} />
+            <View style={{ flex: 1 }}><Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: 16 }]}>Área de gestión</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>Editar, añadir lecciones y publicar</Text></View>
+            <Feather name={showManager ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+          </Pressable>
+          {showManager ? <>
+            <View style={styles.actions}><Button label="Editar curso" icon="edit-2" variant="secondary" onPress={beginEdit} /><Button label="Añadir lección" icon="plus" variant="secondary" onPress={() => setShowLessonForm((value) => !value)} /></View>
+            {data.status === "draft" ? <Button label="Publicar curso" icon="send" onPress={() => publish.mutate({ courseId }, { onSuccess: refresh, onError: () => Alert.alert("No se pudo publicar", "Inténtalo de nuevo.") })} loading={publish.isPending} disabled={data.lessons.length === 0} /> : null}
+            {editing ? <Card style={styles.form}>
+              <TextInput value={title} onChangeText={setTitle} placeholder="Título" placeholderTextColor={colors.mutedForeground} style={input} />
+              <TextInput value={description} onChangeText={setDescription} multiline placeholder="Descripción" placeholderTextColor={colors.mutedForeground} style={[...input, styles.textarea]} />
+              <View style={styles.actions}><Button label="Guardar" icon="check" onPress={saveCourse} loading={update.isPending} /><Button label="Cancelar" variant="secondary" onPress={() => setEditing(false)} /></View>
+            </Card> : null}
+            {showLessonForm ? <Card style={styles.form}>
+              <TextInput value={lessonTitle} onChangeText={setLessonTitle} placeholder="Título de la lección" placeholderTextColor={colors.mutedForeground} style={input} />
+              <Text style={[styles.meta, { color: colors.mutedForeground }]}>Tipo de contenido</Text>
+              <View style={styles.kindList}>
+                {Object.entries(kindLabels).map(([key, label]) => (
+                  <Pressable key={key} onPress={() => setLessonKind(key as LessonKind)} style={[styles.kindChip, { borderColor: lessonKind === key ? colors.primary : colors.border, backgroundColor: lessonKind === key ? colors.accent : colors.card }]}>
+                    <Text style={[styles.kindText, { color: lessonKind === key ? colors.primary : colors.foreground }]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {["text", "video", "quiz"].includes(lessonKind) ? <TextInput value={lessonText} onChangeText={setLessonText} multiline={lessonKind !== "video"} placeholder={lessonKind === "video" ? "URL del vídeo (https://…)" : lessonKind === "quiz" ? "Enunciado de la pregunta" : "Contenido de la lectura (Markdown)"} placeholderTextColor={colors.mutedForeground} style={[...input, styles.textarea]} /> : null}
+              {lessonKind === "quiz" ? <>
+                <TextInput value={quizOptions} onChangeText={setQuizOptions} multiline placeholder="Opciones, una por línea" placeholderTextColor={colors.mutedForeground} style={[...input, styles.textarea]} />
+                <TextInput value={correctIndex} onChangeText={setCorrectIndex} keyboardType="number-pad" placeholder="Índice de respuesta correcta (empieza en 0)" placeholderTextColor={colors.mutedForeground} style={input} />
+              </> : null}
+              {["file", "scorm12", "scorm2004"].includes(lessonKind) ? <>
+                <Button label={lessonFile?.name ?? "Seleccionar archivo"} icon="paperclip" variant="secondary" onPress={() => void chooseLessonFile()} />
+                {lessonFile?.size ? <Text style={[styles.meta, { color: colors.mutedForeground }]}>{(lessonFile.size / (1024 * 1024)).toFixed(1)} MB</Text> : null}
+              </> : null}
+              <Pressable onPress={() => setLessonRequired((value) => !value)} style={styles.requiredToggle}>
+                <Feather name={lessonRequired ? "check-square" : "square"} size={18} color={lessonRequired ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.meta, { color: colors.foreground }]}>Lección obligatoria</Text>
+              </Pressable>
+              <Button label="Guardar lección" icon="check" onPress={() => void addLesson()} loading={createLesson.isPending || upload.isPending} disabled={!lessonTitle.trim() || createLesson.isPending || upload.isPending} />
+            </Card> : null}
+          </> : null}
         </View> : null}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Lecciones</Text>
-        {course.data.lessons.length === 0 ? <EmptyState icon="layers" title="Sin lecciones" message={canManage ? "Añade una lectura para empezar a construir el curso." : "Este curso aún no tiene contenido."} /> : course.data.lessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} courseId={courseId} progress={course.data.progress.find((item) => item.lessonId === lesson.id)} colors={colors} onRefresh={refresh} />)}
       </ScrollView>
     </View>
   );
@@ -209,7 +266,7 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
   }});
   const text = typeof lesson.content.text === "string" ? lesson.content.text : typeof lesson.content.body === "string" ? lesson.content.body : "";
   return <Card style={styles.lesson}>
-    <View style={styles.lessonHeader}><View style={{ flex: 1 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
+    <View style={styles.lessonHeader}><View style={{ flex: 1, gap: 3 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
      {lesson.kind === "text" ? <CourseMarkdown text={text} /> : null}
     {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => void Linking.openURL(lesson.content.url as string)} /> : null}
     {lesson.kind === "file" ? <View style={{ flexDirection: "row", gap: 8 }}>
@@ -263,6 +320,22 @@ function CertificateButton({ courseId }: { courseId: number }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, content: { padding: 16, gap: 14, paddingBottom: 40 }, title: { fontSize: 25, fontFamily: "Inter_700Bold" }, description: { fontSize: 15, lineHeight: 21, fontFamily: "Inter_400Regular" }, progressBar: { height: 7, borderRadius: 5, overflow: "hidden" }, progressFill: { height: "100%" }, meta: { fontSize: 12, fontFamily: "Inter_400Regular" }, sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" }, lesson: { gap: 12 }, lessonHeader: { flexDirection: "row", gap: 10, alignItems: "flex-start" }, lessonTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" }, lessonBody: { fontSize: 15, lineHeight: 22, fontFamily: "Inter_400Regular" }, scorm: { gap: 10 }, quiz: { gap: 14 }, question: { gap: 8 }, questionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" }, option: { flexDirection: "row", gap: 9, alignItems: "center", padding: 11, borderWidth: StyleSheet.hairlineWidth, borderRadius: 9 }, optionText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" }, notice: { flexDirection: "row", alignItems: "center", gap: 9 }, noticeText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" }, certificateLink: { color: "#1769aa", fontFamily: "Inter_600SemiBold", fontSize: 13 }, managerBar: { gap: 10 }, actions: { flexDirection: "row", gap: 8, flexWrap: "wrap" }, form: { gap: 10 }, kindList: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, kindChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 }, kindText: { fontSize: 12, fontFamily: "Inter_500Medium" }, input: { minHeight: 46, borderWidth: StyleSheet.hairlineWidth, padding: 12, fontSize: 14, fontFamily: "Inter_400Regular" }, textarea: { minHeight: 80, textAlignVertical: "top" },
+  container: { flex: 1 }, content: { padding: 16, gap: 14, paddingBottom: 40 }, title: { fontSize: 27, lineHeight: 32, letterSpacing: -0.6, fontFamily: "Inter_700Bold" }, description: { fontSize: 15, lineHeight: 21, fontFamily: "Inter_400Regular" }, progressBar: { height: 7, borderRadius: 5, overflow: "hidden" }, progressFill: { height: "100%" }, meta: { fontSize: 12, fontFamily: "Inter_400Regular" }, sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" }, lesson: { gap: 12 }, lessonHeader: { flexDirection: "row", gap: 10, alignItems: "flex-start" }, lessonTitle: { fontSize: 20, lineHeight: 25, fontFamily: "Inter_700Bold" }, lessonBody: { fontSize: 15, lineHeight: 22, fontFamily: "Inter_400Regular" }, scorm: { gap: 10 }, quiz: { gap: 14 }, question: { gap: 8 }, questionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" }, option: { flexDirection: "row", gap: 9, alignItems: "center", padding: 11, borderWidth: StyleSheet.hairlineWidth, borderRadius: 9 }, optionText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" }, notice: { flexDirection: "row", alignItems: "center", gap: 9 }, noticeText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" }, certificateLink: { color: "#1769aa", fontFamily: "Inter_600SemiBold", fontSize: 13 }, managerBar: { gap: 12, borderWidth: 1.5, borderStyle: "dashed", borderRadius: 18, padding: 14, marginTop: 8 }, actions: { flexDirection: "row", gap: 8, flexWrap: "wrap" }, form: { gap: 10 }, kindList: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, kindChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 }, kindText: { fontSize: 12, fontFamily: "Inter_500Medium" }, input: { minHeight: 46, borderWidth: StyleSheet.hairlineWidth, padding: 12, fontSize: 14, fontFamily: "Inter_400Regular" }, textarea: { minHeight: 80, textAlignVertical: "top" },
   requiredToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
+  eyebrow: { fontSize: 11, letterSpacing: 1.2, fontFamily: "Inter_600SemiBold", marginTop: 4 },
+  progressCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, padding: 14, gap: 10 },
+  progressHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  percent: { fontSize: 22, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  stageMeta: { fontSize: 11, letterSpacing: 1.2, fontFamily: "Inter_600SemiBold", marginBottom: 8 },
+  navRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+  navBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 10, minHeight: 56 },
+  navLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  navTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  curriculum: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, overflow: "hidden" },
+  curItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 52 },
+  curNum: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  curNumText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  curTitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  curMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  managerHead: { flexDirection: "row", alignItems: "center", gap: 10 },
 });

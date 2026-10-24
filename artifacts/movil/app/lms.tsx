@@ -12,6 +12,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { LmsCourseCover } from "@/components/LmsCourseCover";
 
 export default function LmsScreen() {
   const colors = useColors();
@@ -20,6 +21,7 @@ export default function LmsScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scopeKey, setScopeKey] = useState("");
+  const [filter, setFilter] = useState<"all" | "pending" | "completed" | "draft">("all");
   const courses = useListLmsCourses();
   const scopes = useGetLmsManagementScopes();
   const create = useCreateLmsCourse();
@@ -28,6 +30,14 @@ export default function LmsScreen() {
   useEffect(() => {
     if (!scopeKey && scopes.data?.length) setScopeKey(String(scopes.data[0].moduleId ?? "general"));
   }, [scopeKey, scopes.data]);
+  const all = courses.data ?? [];
+  const filters: Array<[typeof filter, string, number]> = [
+    ["all", "Todos", all.length],
+    ["pending", "Por completar", all.filter((c) => !c.completed && c.status === "published").length],
+    ["completed", "Completados", all.filter((c) => c.completed).length],
+    ...(canManage ? [["draft", "Borradores", all.filter((c) => c.status === "draft").length] as [typeof filter, string, number]] : []),
+  ];
+  const visible = all.filter((c) => filter === "all" ? true : filter === "pending" ? !c.completed && c.status === "published" : filter === "completed" ? c.completed : c.status === "draft");
   const submit = () => {
     if (!title.trim()) return;
     create.mutate({ data: { title: title.trim(), description: description.trim(), moduleId: selectedScope?.moduleId ?? null } }, {
@@ -43,18 +53,30 @@ export default function LmsScreen() {
       <AppHeader title="Cursos autodirigidos" subtitle="Aprende a tu ritmo" showBack />
       {courses.isLoading ? <Loading /> : courses.isError ? <ErrorState onRetry={courses.refetch} /> : (
         <FlatList
-          data={courses.data ?? []}
+          data={visible}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           onRefresh={courses.refetch}
           refreshing={courses.isRefetching}
           ListHeaderComponent={
             <View style={styles.intro}>
-              <Text style={[styles.heading, { color: colors.foreground }]}>Tu aprendizaje</Text>
-              <Text style={[styles.copy, { color: colors.mutedForeground }]}>Consulta lecciones, completa evaluaciones y descarga tus certificados.</Text>
+              <View style={[styles.hero, { backgroundColor: colors.primary }]}>
+                <View style={styles.heroCircle} />
+                <Text style={styles.heroEyebrow}>COORDINA FP · AUTODIRIGIDO</Text>
+                <Text style={styles.heroTitle}>Formación a tu ritmo, lección a lección.</Text>
+                <Text style={styles.heroCopy}>Avanza por el temario y consigue tu certificado al completar las lecciones obligatorias.</Text>
+              </View>
+              <View style={styles.filterRow} accessibilityRole="tablist">
+                {filters.map(([key, label, count]) => {
+                  const active = filter === key;
+                  return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setFilter(key)} style={[styles.filterChip, { backgroundColor: active ? colors.foreground : colors.card, borderColor: active ? colors.foreground : colors.border }]}>
+                    <Text style={[styles.filterText, { color: active ? colors.background : colors.foreground }]}>{label} {count}</Text>
+                  </Pressable>;
+                })}
+              </View>
               {canManage ? <Pressable accessibilityRole="button" onPress={() => setManaging((value) => !value)} style={[styles.manageToggle, { borderColor: colors.border }]}>
                 <Feather name={managing ? "x" : "edit-3"} size={16} color={colors.primary} />
-                <Text style={[styles.manageText, { color: colors.primary }]}>{managing ? "Cancelar" : "Gestionar cursos"}</Text>
+                <Text style={[styles.manageText, { color: colors.primary }]}>{managing ? "Cancelar" : "Gestión: nuevo curso"}</Text>
               </Pressable> : null}
               {managing ? <Card style={styles.form}>
                 <Text style={[styles.formTitle, { color: colors.foreground }]}>Nuevo curso</Text>
@@ -72,18 +94,21 @@ export default function LmsScreen() {
               </Card> : null}
             </View>
           }
-          ListEmptyComponent={<EmptyState icon="book-open" title="Sin cursos disponibles" message="Cuando haya cursos asignados a tu cuenta aparecerán aquí." />}
+          ListEmptyComponent={all.length === 0 ? <EmptyState icon="book-open" title="Sin cursos disponibles" message="Cuando haya cursos asignados a tu cuenta aparecerán aquí." /> : <EmptyState icon="filter" title="Sin resultados" message="Ningún curso coincide con este filtro." />}
           renderItem={({ item }) => (
             <Pressable onPress={() => router.push(`/lms/${item.id}`)} accessibilityRole="button" accessibilityLabel={`Abrir curso ${item.title}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Card style={styles.course}>
-                <View style={[styles.icon, { backgroundColor: colors.accent }]}><Feather name="book-open" size={20} color={colors.accentForeground} /></View>
-                <View style={styles.courseCopy}>
-                  <Text style={[styles.courseTitle, { color: colors.foreground }]} numberOfLines={2}>{item.title}</Text>
-                  <Text style={[styles.meta, { color: colors.mutedForeground }]}>{item.lessonCount} {item.lessonCount === 1 ? "lección" : "lecciones"} · {item.status === "published" ? "Publicado" : "Borrador"}</Text>
-                  <Text style={[styles.meta, { color: item.completed ? colors.primary : colors.mutedForeground }]}>{item.completed ? "Completado" : "En progreso"}</Text>
+              <View style={styles.course}>
+                <LmsCourseCover id={item.id} title={item.title} height={168} />
+                <View style={styles.metaRow}>
+                  {item.completed
+                    ? <View style={styles.metaInline}><Feather name="check-circle" size={13} color={colors.success} /><Text style={[styles.eyebrow, { color: colors.success }]}>COMPLETADO</Text></View>
+                    : <Text style={[styles.eyebrow, { color: colors.primary }]}>{item.lessonCount} {item.lessonCount === 1 ? "LECCIÓN" : "LECCIONES"}</Text>}
+                  {item.status === "draft" ? <Text style={[styles.draft]}>BORRADOR</Text> : null}
+                  {item.certificateEnabled ? <View style={styles.metaInline}><Feather name="award" size={13} color={colors.mutedForeground} /><Text style={[styles.eyebrow, { color: colors.mutedForeground }]}>CERTIFICADO</Text></View> : null}
                 </View>
-                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </Card>
+                <Text style={[styles.courseTitle, { color: colors.foreground }]} numberOfLines={2}>{item.title}</Text>
+                {item.description ? <Text style={[styles.copy, { color: colors.mutedForeground }]} numberOfLines={2}>{item.description}</Text> : null}
+              </View>
             </Pressable>
           )}
         />
@@ -98,8 +123,19 @@ const styles = StyleSheet.create({
   manageToggle: { alignSelf: "flex-start", flexDirection: "row", gap: 8, alignItems: "center", paddingVertical: 9, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, borderRadius: 9 },
   manageText: { fontSize: 13, fontFamily: "Inter_600SemiBold" }, form: { gap: 10, marginTop: 5 },
   formTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" }, input: { minHeight: 46, borderWidth: StyleSheet.hairlineWidth, padding: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
-  textarea: { minHeight: 72, textAlignVertical: "top" }, course: { flexDirection: "row", alignItems: "center", gap: 12 },
-  icon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" }, courseCopy: { flex: 1, gap: 4 },
-  courseTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" }, meta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  textarea: { minHeight: 72, textAlignVertical: "top" }, course: { gap: 6, marginBottom: 18 },
+  hero: { borderRadius: 22, padding: 22, overflow: "hidden", gap: 8, marginBottom: 6 },
+  heroCircle: { position: "absolute", right: -60, top: -60, width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(255,255,255,0.12)" },
+  heroEyebrow: { color: "rgba(255,255,255,0.8)", fontSize: 11, letterSpacing: 1.6, fontFamily: "Inter_600SemiBold" },
+  heroTitle: { color: "#fff", fontSize: 26, lineHeight: 30, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  heroCopy: { color: "rgba(255,255,255,0.88)", fontSize: 14, lineHeight: 20, fontFamily: "Inter_400Regular" },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 4 },
+  filterChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 8 },
+  filterText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 6 },
+  metaInline: { flexDirection: "row", alignItems: "center", gap: 4 },
+  eyebrow: { fontSize: 11, letterSpacing: 1, fontFamily: "Inter_600SemiBold" },
+  draft: { fontSize: 10, letterSpacing: 1, fontFamily: "Inter_600SemiBold", color: "#8a5a00", backgroundColor: "rgba(245,158,11,0.18)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: "hidden" },
+    courseTitle: { fontSize: 18, lineHeight: 23, fontFamily: "Inter_700Bold" }, meta: { fontSize: 12, fontFamily: "Inter_400Regular" },
   scopeList: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, scopeChip: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, paddingVertical: 7, paddingHorizontal: 11 }, scopeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 });
