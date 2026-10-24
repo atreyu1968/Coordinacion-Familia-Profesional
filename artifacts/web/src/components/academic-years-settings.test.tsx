@@ -62,6 +62,16 @@ vi.mock("@workspace/api-client-react", () => ({
     isPending: false,
   }),
   useListYearConfirmations: () => ({ data: [] }),
+  useListChatAttachmentDeletions: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useRetryChatAttachmentDeletion: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  getListChatAttachmentDeletionsQueryKey: () => ["chat-attachment-deletions"],
   getListAcademicYearsQueryKey: () => ["academic-years"],
   getListYearConfirmationsQueryKey: () => ["year-confirmations"],
 }));
