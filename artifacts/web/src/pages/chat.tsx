@@ -67,6 +67,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   MessageCircle,
   Send,
@@ -99,7 +100,6 @@ import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
-  runChatMessageAction,
 } from "@/lib/chat-message-state";
 
 const TOKEN_KEY = "coordina_adg_token";
@@ -738,6 +738,7 @@ function ConversationView({
   const isTypingRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const pendingMessageActionsRef = useRef(new Set<string>());
 
   const meId = user?.id;
 
@@ -1132,6 +1133,49 @@ function ConversationView({
     );
   };
 
+  const performMessageAction = async <T,>(
+    messageId: number,
+    request: () => Promise<T>,
+    onSuccess: (result: T) => void,
+    errorDescription: string,
+  ) => {
+    const actionKey = String(messageId);
+    if (pendingMessageActionsRef.current.has(actionKey)) return;
+
+    pendingMessageActionsRef.current.add(actionKey);
+    try {
+      let result: T;
+      try {
+        result = await request();
+      } catch {
+        toast({
+          title: "Error",
+          description: errorDescription,
+          variant: "destructive",
+          action: (
+            <ToastAction
+              altText="Reintentar"
+              onClick={() =>
+                void performMessageAction(
+                  messageId,
+                  request,
+                  onSuccess,
+                  errorDescription,
+                )
+              }
+            >
+              Reintentar
+            </ToastAction>
+          ),
+        });
+        return;
+      }
+      onSuccess(result);
+    } finally {
+      pendingMessageActionsRef.current.delete(actionKey);
+    }
+  };
+
   const onDelete = (message: Message) => {
     if (
       !window.confirm(
@@ -1140,83 +1184,70 @@ function ConversationView({
     ) {
       return;
     }
-    void runChatMessageAction(
+    void performMessageAction(
+      message.id,
       () => deleteMut.mutateAsync({ id: message.id }),
       (updated) => {
-          setMessages((previous) =>
-            deleteChatMessageForEveryone(previous, [], updated).messages,
-          );
-          queryClient.setQueryData<Message[]>(
-            getListHiddenGroupMessagesQueryKey(groupId),
-            (previous) =>
-              previous
-                ? deleteChatMessageForEveryone([], previous, updated)
-                    .hiddenMessages
-                : previous,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-          });
-        },
-    ).catch(() =>
-          toast({
-            title: "Error",
-            description: "No se pudo eliminar el mensaje.",
-            variant: "destructive",
-          }),
+        setMessages((previous) =>
+          deleteChatMessageForEveryone(previous, [], updated).messages,
+        );
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            previous
+              ? deleteChatMessageForEveryone([], previous, updated).hiddenMessages
+              : previous,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+        });
+      },
+      "No se pudo eliminar el mensaje.",
     );
   };
 
   const onHideForMe = (message: Message) => {
-    void runChatMessageAction(
+    void performMessageAction(
+      message.id,
       () => hideMessageMut.mutateAsync({ id: message.id }),
       () => {
-          setMessages((previous) =>
-            hideChatMessage(previous, [], message).messages,
-          );
-          queryClient.setQueryData<Message[]>(
-            getListHiddenGroupMessagesQueryKey(groupId),
-            (previous) =>
-              hideChatMessage([], previous ?? [], message).hiddenMessages,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-          });
-        },
-    ).catch(() =>
-          toast({
-            title: "Error",
-            description: "No se pudo ocultar el mensaje para ti.",
-            variant: "destructive",
-          }),
+        setMessages((previous) =>
+          hideChatMessage(previous, [], message).messages,
+        );
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            hideChatMessage([], previous ?? [], message).hiddenMessages,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+        });
+      },
+      "No se pudo ocultar el mensaje para ti.",
     );
   };
 
   const onRestoreHiddenMessage = (message: Message) => {
-    void runChatMessageAction(
+    void performMessageAction(
+      message.id,
       () => restoreHiddenMessageMut.mutateAsync({ id: message.id }),
       (restored) => {
-          setMessages((previous) =>
-            restoreChatMessage(previous, [], restored).messages,
-          );
-          queryClient.setQueryData<Message[]>(
-            getListHiddenGroupMessagesQueryKey(groupId),
-            (previous) =>
-              previous
-                ? restoreChatMessage([], previous, restored).hiddenMessages
-                : previous,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-          });
-          toast({ title: "Mensaje restaurado" });
-        },
-    ).catch(() =>
-          toast({
-            title: "Error",
-            description: "No se pudo restaurar el mensaje.",
-            variant: "destructive",
-          }),
+        setMessages((previous) =>
+          restoreChatMessage(previous, [], restored).messages,
+        );
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            previous
+              ? restoreChatMessage([], previous, restored).hiddenMessages
+              : previous,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+        });
+        toast({ title: "Mensaje restaurado" });
+      },
+      "No se pudo restaurar el mensaje.",
     );
   };
 

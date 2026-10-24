@@ -71,7 +71,6 @@ import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
-  runChatMessageAction,
 } from "@/lib/chat-message-state";
 
 // Full emoji keyboard for composing.
@@ -332,6 +331,7 @@ export default function ChatDetailScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const pendingMessageActionsRef = useRef(new Set<string>());
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -813,6 +813,42 @@ export default function ChatDetailScreen() {
     setDraft(message.content);
   };
 
+  const performMessageAction = async <T,>(
+    messageId: number,
+    request: () => Promise<T>,
+    onSuccess: (result: T) => void,
+    errorMessage: string,
+  ) => {
+    const actionKey = String(messageId);
+    if (pendingMessageActionsRef.current.has(actionKey)) return;
+
+    pendingMessageActionsRef.current.add(actionKey);
+    try {
+      let result: T;
+      try {
+        result = await request();
+      } catch {
+        Alert.alert("Error", errorMessage, [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Reintentar",
+            onPress: () =>
+              void performMessageAction(
+                messageId,
+                request,
+                onSuccess,
+                errorMessage,
+              ),
+          },
+        ]);
+        return;
+      }
+      onSuccess(result);
+    } finally {
+      pendingMessageActionsRef.current.delete(actionKey);
+    }
+  };
+
   const onDelete = (message: Message) => {
     setActionMessage(null);
     Alert.alert(
@@ -824,26 +860,26 @@ export default function ChatDetailScreen() {
         text: "Eliminar",
         style: "destructive",
         onPress: () =>
-          void runChatMessageAction(
+          void performMessageAction(
+            message.id,
             () => deleteMutation.mutateAsync({ id: message.id }),
             (msg) => {
-                setMessages((previous) =>
-                  deleteChatMessageForEveryone(previous, [], msg).messages,
-                );
-                queryClient.setQueryData<Message[]>(
-                  getListHiddenGroupMessagesQueryKey(groupId),
-                  (previous) =>
-                    previous
-                      ? deleteChatMessageForEveryone([], previous, msg)
-                          .hiddenMessages
-                      : previous,
-                );
-                void queryClient.invalidateQueries({
-                  queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-                });
-              },
-          ).catch(() =>
-            Alert.alert("Error", "No se pudo eliminar el mensaje."),
+              setMessages((previous) =>
+                deleteChatMessageForEveryone(previous, [], msg).messages,
+              );
+              queryClient.setQueryData<Message[]>(
+                getListHiddenGroupMessagesQueryKey(groupId),
+                (previous) =>
+                  previous
+                    ? deleteChatMessageForEveryone([], previous, msg)
+                        .hiddenMessages
+                    : previous,
+              );
+              void queryClient.invalidateQueries({
+                queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+              });
+            },
+            "No se pudo eliminar el mensaje.",
           ),
       },
       ],
@@ -852,45 +888,47 @@ export default function ChatDetailScreen() {
 
   const onHideForMe = (message: Message) => {
     setActionMessage(null);
-    void runChatMessageAction(
+    void performMessageAction(
+      message.id,
       () => hideMessageMutation.mutateAsync({ id: message.id }),
       () => {
-          setMessages((previous) =>
-            hideChatMessage(previous, [], message).messages,
-          );
-          queryClient.setQueryData<Message[]>(
-            getListHiddenGroupMessagesQueryKey(groupId),
-            (previous) =>
-              hideChatMessage([], previous ?? [], message).hiddenMessages,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-          });
-        },
-    ).catch(() =>
-          Alert.alert("Error", "No se pudo ocultar el mensaje para ti."),
+        setMessages((previous) =>
+          hideChatMessage(previous, [], message).messages,
+        );
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            hideChatMessage([], previous ?? [], message).hiddenMessages,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+        });
+      },
+      "No se pudo ocultar el mensaje para ti.",
     );
   };
 
   const onRestoreHiddenMessage = (message: Message) => {
-    void runChatMessageAction(
+    void performMessageAction(
+      message.id,
       () => restoreHiddenMessageMutation.mutateAsync({ id: message.id }),
       (restored) => {
-          setMessages((previous) =>
-            restoreChatMessage(previous, [], restored).messages,
-          );
-          queryClient.setQueryData<Message[]>(
-            getListHiddenGroupMessagesQueryKey(groupId),
-            (previous) =>
-              previous
-                ? restoreChatMessage([], previous, restored).hiddenMessages
-                : previous,
-          );
-          void queryClient.invalidateQueries({
-            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-          });
-        },
-    ).catch(() => Alert.alert("Error", "No se pudo restaurar el mensaje."));
+        setMessages((previous) =>
+          restoreChatMessage(previous, [], restored).messages,
+        );
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            previous
+              ? restoreChatMessage([], previous, restored).hiddenMessages
+              : previous,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+        });
+      },
+      "No se pudo restaurar el mensaje.",
+    );
   };
 
   const onStartForward = (message: Message) => {
