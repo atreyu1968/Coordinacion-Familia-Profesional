@@ -6278,6 +6278,7 @@ export const CreateLmsCourseResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6330,6 +6331,26 @@ export const RequestLmsCourseImportUploadUrlResponse = zod.object({
 
 
 /**
+ * Saves the signed-in learner's reading position, never completion. Draft previews cannot persist a position.
+ */
+
+
+
+export const SaveLmsCoursePositionParams = zod.object({
+  "courseId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const SaveLmsCoursePositionBody = zod.object({
+  "lessonId": zod.number().int().min(1)
+})
+
+export const SaveLmsCoursePositionResponse = zod.void()
+
+
+/**
  * @summary Import a complete draft course from a validated ZIP archive
  */
 export const importLmsCourseArchiveBodyObjectPathMax = 1024;
@@ -6362,6 +6383,7 @@ export const ImportLmsCourseArchiveResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6405,6 +6427,7 @@ export const GetLmsCourseResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6455,6 +6478,7 @@ export const UpdateLmsCourseResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6524,6 +6548,7 @@ export const SetLmsCourseCoverResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6567,6 +6592,7 @@ export const RemoveLmsCourseCoverResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),
@@ -6632,6 +6658,7 @@ export const PublishLmsCourseResponse = zod.object({
   "certificateAvailable": zod.boolean(),
   "coverUrl": zod.string().nullish()
 }).and(zod.object({
+  "lastOpenedLessonId": zod.number().int().nullable().describe('Last lesson opened by the signed-in user; independent of completion.'),
   "lessons": zod.array(zod.object({
   "id": zod.number().int(),
   "courseId": zod.number().int(),

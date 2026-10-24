@@ -69,6 +69,7 @@ const additiveTables = [
   "coordinator_mail_case_notes",
   "coordinator_mail_outbox",
   "lms_course_import_intents",
+  "lms_course_positions",
   "event_attendance_settings",
   "event_attendances",
   "event_attendance_certificates",

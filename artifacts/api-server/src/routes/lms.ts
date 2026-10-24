@@ -12,6 +12,7 @@ import {
   lmsLessonsTable,
   lmsCourseManagersTable,
   lmsLessonProgressTable,
+  lmsCoursePositionsTable,
   lmsCertificatesTable,
   lmsUploadIntentsTable,
   lmsCourseImportIntentsTable,
@@ -41,6 +42,8 @@ import {
   CompleteLmsLessonParams,
   SubmitLmsQuizAttemptParams,
   SubmitLmsQuizAttemptBody,
+  SaveLmsCoursePositionBody,
+  SaveLmsCoursePositionParams,
 } from "@workspace/api-zod";
 import { requireAuth, isModuleCoordinator } from "../middlewares/auth";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -223,6 +226,9 @@ async function courseDetail(courseId: number, user: User) {
     .orderBy(asc(lmsLessonsTable.position), asc(lmsLessonsTable.id));
   const progress = await db.select().from(lmsLessonProgressTable)
     .where(and(eq(lmsLessonProgressTable.courseId, courseId), eq(lmsLessonProgressTable.userId, user.id)));
+  const [position] = await db.select().from(lmsCoursePositionsTable).where(and(
+    eq(lmsCoursePositionsTable.userId, user.id), eq(lmsCoursePositionsTable.courseId, courseId),
+  ));
   const required = lessons.filter((l) => l.required);
   const scormLessonIds = new Set(lessons.filter((lesson) => isScormKind(lesson.kind)).map((lesson) => lesson.id));
   const containsScorm = scormLessonIds.size > 0;
@@ -232,6 +238,7 @@ async function courseDetail(courseId: number, user: User) {
     coverUrl: courseCoverUrl(course),
     status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length,
     completed, certificateAvailable: completed && course.certificateEnabled,
+    lastOpenedLessonId: lessons.some((lesson) => lesson.id === position?.lessonId) ? position!.lessonId : null,
     lessons: lessons.map(({ objectPath: _path, ...lesson }) => ({
       ...lesson,
       content: managerView ? lesson.content : learnerSafeLessonContent(lesson.content),
@@ -273,6 +280,36 @@ router.get("/lms/courses/:courseId", requireAuth, async (req, res): Promise<void
   const detail = await courseDetail(parsed.data.courseId, req.user!);
   if (!detail) { res.status(404).json({ message: "Curso no encontrado" }); return; }
   res.json(GetLmsCourseResponse.parse(detail));
+});
+
+router.put("/lms/courses/:courseId/position", requireAuth, async (req, res): Promise<void> => {
+  const params = SaveLmsCoursePositionParams.safeParse(req.params);
+  const body = SaveLmsCoursePositionBody.strict().safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ message: "Posición de lectura no válida" }); return;
+  }
+  const { courseId } = params.data;
+  const [course] = await db.select().from(lmsCoursesTable).where(and(
+    eq(lmsCoursesTable.id, courseId), isNull(lmsCoursesTable.deletedAt),
+  ));
+  if (!course || !(await visibleCourse(req.user!, course))) {
+    res.status(404).json({ message: "Curso no encontrado" }); return;
+  }
+  if (course.status !== "published" || req.query.preview !== undefined) {
+    res.status(403).json({ message: "La vista previa no guarda la posición de lectura" }); return;
+  }
+  const [lesson] = await db.select({ id: lmsLessonsTable.id }).from(lmsLessonsTable).where(and(
+    eq(lmsLessonsTable.id, body.data.lessonId), eq(lmsLessonsTable.courseId, courseId),
+    isNull(lmsLessonsTable.deletedAt),
+  ));
+  if (!lesson) { res.status(404).json({ message: "Lección no encontrada" }); return; }
+  await db.insert(lmsCoursePositionsTable).values({
+    userId: req.user!.id, courseId, lessonId: lesson.id,
+  }).onConflictDoUpdate({
+    target: [lmsCoursePositionsTable.userId, lmsCoursePositionsTable.courseId],
+    set: { lessonId: lesson.id, updatedAt: new Date() },
+  });
+  res.sendStatus(204);
 });
 
 router.get("/lms/courses/:courseId/cover", requireAuth, async (req, res): Promise<void> => {

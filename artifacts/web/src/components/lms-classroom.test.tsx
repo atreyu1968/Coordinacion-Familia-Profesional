@@ -8,7 +8,7 @@ function fixture(): LmsCourseDetail {
   return {
     id: 42, title: "Curso de prueba", description: "Formación del profesorado",
     status: "published", moduleId: null, certificateEnabled: true,
-    lessonCount: 3, completed: false, certificateAvailable: false, progress: [],
+    lessonCount: 3, completed: false, certificateAvailable: false, progress: [], lastOpenedLessonId: null,
     lessons: ["Primera lección", "Segunda lección", "Tercera lección"].map((title, index) => ({
       id: index + 1, courseId: 42, title, kind: index === 1 ? "quiz" : "text",
       required: true, position: index, objectName: null, objectContentType: null,

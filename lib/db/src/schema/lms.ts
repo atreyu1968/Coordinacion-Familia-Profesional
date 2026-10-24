@@ -11,6 +11,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { usersTable } from "./users";
 
 export const lmsCoursesTable = pgTable("lms_courses", {
   id: serial("id").primaryKey(),
@@ -84,6 +85,13 @@ export const lmsLessonProgressTable = pgTable(
   },
   (t) => ({ uniqueUserLesson: unique().on(t.userId, t.lessonId) }),
 );
+
+export const lmsCoursePositionsTable = pgTable("lms_course_positions", {
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  courseId: integer("course_id").notNull().references(() => lmsCoursesTable.id, { onDelete: "cascade" }),
+  lessonId: integer("lesson_id").references(() => lmsLessonsTable.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique("lms_course_positions_user_course_unique").on(t.userId, t.courseId)]);
 
 export const lmsCertificatesTable = pgTable(
   "lms_certificates",

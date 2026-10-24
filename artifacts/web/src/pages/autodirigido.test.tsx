@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   downloadedFiles: [] as string[],
 }));
 
-vi.mock("@workspace/api-client-react", () => ({
+vi.mock("@workspace/api-client-react", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@workspace/api-client-react")>(),
   LmsLessonInputKind: {},
   useCompleteLmsLesson: vi.fn(),
   useCreateLmsCourse: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("@workspace/api-client-react", () => ({
   useCreateLmsLesson: vi.fn(),
   useCreateLmsLessonDownloadToken: vi.fn(),
   useCreateLmsLessonScormSession: vi.fn(),
-  useGetLmsCourse: () => ({ data: mocks.courseDetail, isLoading: false }),
+  useGetLmsCourse: () => ({ data: mocks.courseDetail, isLoading: false, refetch: vi.fn() }),
   useGetLmsManagementScopes: () => ({
     data: [{ canManage: mocks.canManage, moduleId: 10 }],
   }),
@@ -114,7 +115,7 @@ describe("exportación de cursos autodirigidos", () => {
     mocks.courseDetail = {
       id: 101, title: "Gestión administrativa", description: "Curso de prueba",
       moduleId: 10, status: "draft", certificateEnabled: false,
-      lessonCount: 0, completed: false, certificateAvailable: false, lessons: [], progress: [],
+      lessonCount: 0, completed: false, certificateAvailable: false, lessons: [], progress: [], lastOpenedLessonId: null,
     };
     render(<AutodirigidoPage />);
     fireEvent.click(screen.getByRole("button", { name: "Gestión administrativa" }));

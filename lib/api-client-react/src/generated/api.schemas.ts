@@ -35,6 +35,11 @@ export interface LmsCourse {
   coverUrl?: string | null;
 }
 
+export interface LmsCoursePositionInput {
+  /** @minimum 1 */
+  lessonId: number;
+}
+
 export type LmsLessonKind = typeof LmsLessonKind[keyof typeof LmsLessonKind];
 
 
@@ -89,10 +94,15 @@ export interface LmsProgress {
   completedAt: string | null;
 }
 
-export type LmsCourseDetail = LmsCourse & {
+export type LmsCourseDetail = LmsCourse & ({
+  /**
+     * Last lesson opened by the signed-in user; independent of completion.
+     * @nullable
+     */
+  lastOpenedLessonId: number | null;
   lessons: LmsLesson[];
   progress: LmsProgress[];
-};
+});
 
 export interface LmsCourseInput {
   /** @minLength 1 */

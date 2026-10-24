@@ -44,6 +44,14 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+/** Pin the initiating identity for a request that may be sent after navigation.
+ * An empty header prevents a later auth getter from borrowing another session.
+ */
+export async function captureAuthHeaders(): Promise<HeadersInit> {
+  const token = await _authTokenGetter?.();
+  return { Authorization: token ? `Bearer ${token}` : "" };
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }

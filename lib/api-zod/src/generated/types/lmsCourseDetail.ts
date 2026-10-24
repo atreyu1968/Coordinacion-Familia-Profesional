@@ -9,7 +9,12 @@ import type { LmsCourse } from './lmsCourse';
 import type { LmsLesson } from './lmsLesson';
 import type { LmsProgress } from './lmsProgress';
 
-export type LmsCourseDetail = LmsCourse & {
+export type LmsCourseDetail = LmsCourse & ({
+  /**
+     * Last lesson opened by the signed-in user; independent of completion.
+     * @nullable
+     */
+  lastOpenedLessonId: number | null;
   lessons: LmsLesson[];
   progress: LmsProgress[];
-};
+});

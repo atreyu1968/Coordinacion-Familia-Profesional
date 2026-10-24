@@ -5505,6 +5505,24 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /lms/courses/{courseId}/position:
+    put:
+      operationId: saveLmsCoursePosition
+      tags: [lms]
+      description: Saves the signed-in learner's reading position, never completion. Draft previews cannot persist a position.
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LmsCoursePositionInput" }
+      responses:
+        "204": { description: Reading position saved without changing completion or attempts }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /lms/courses/import:
     post:
       operationId: importLmsCourseArchive
@@ -5891,18 +5909,27 @@ components:
         certificateAvailable: { type: boolean }
         coverUrl: { type: [string, "null"] }
       required: [id, title, description, moduleId, status, certificateEnabled, lessonCount, completed, certificateAvailable]
+    LmsCoursePositionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        lessonId: { type: integer, minimum: 1 }
+      required: [lessonId]
     LmsCourseDetail:
       allOf:
         - $ref: "#/components/schemas/LmsCourse"
         - type: object
           properties:
+            lastOpenedLessonId:
+              type: [integer, "null"]
+              description: Last lesson opened by the signed-in user; independent of completion.
             lessons:
               type: array
               items: { $ref: "#/components/schemas/LmsLesson" }
             progress:
               type: array
               items: { $ref: "#/components/schemas/LmsProgress" }
-          required: [lessons, progress]
+          required: [lessons, progress, lastOpenedLessonId]
     LmsCourseInput:
       type: object
       properties:

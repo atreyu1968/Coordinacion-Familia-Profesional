@@ -4,6 +4,7 @@ import { LmsCourseCoverField } from "@/components/lms-course-cover-field";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
 import { LmsCoursePreview } from "@/components/lms-course-preview";
 import { CourseCover, CourseHero, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
+import { getLmsCourse, waitForLmsCoursePosition } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
@@ -586,9 +587,24 @@ export default function AutodirigidoPage() {
   const [exportingCourse, setExportingCourse] = useState(false);
   const [exportingCourses, setExportingCourses] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<Set<number>>(() => new Set());
-  const courses = useListLmsCourses(); const detail = useGetLmsCourse(selectedId ?? 0, { query: { enabled: selectedId != null, queryKey: getGetLmsCourseQueryKey(selectedId ?? 0) } }); const scopes = useGetLmsManagementScopes();
+  const courses = useListLmsCourses(); const detail = useGetLmsCourse(selectedId ?? 0, { query: {
+    enabled: selectedId != null, queryKey: getGetLmsCourseQueryKey(selectedId ?? 0), staleTime: 0, refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      await waitForLmsCoursePosition(selectedId ?? 0);
+      return getLmsCourse(selectedId ?? 0, { signal });
+    },
+  } }); const scopes = useGetLmsManagementScopes();
   const publish = usePublishLmsCourse(); const manager = (scopes.data?.length ?? 0) > 0;
-  const [selectedLessonId, selectLesson] = useLessonSelection(selectedId != null ? detail.data : undefined);
+  const [selectedLessonId, selectLesson, positionSave] = useLessonSelection(
+    selectedId != null && !previewingCourse ? detail.data : undefined,
+    {
+      persist: true, ready: !detail.isFetching && !detail.isError,
+      onSaved: (courseId, lessonId) => queryClient.setQueryData<LmsCourseDetail>(
+        getGetLmsCourseQueryKey(courseId),
+        (old) => old ? { ...old, lastOpenedLessonId: lessonId } : old,
+      ),
+    },
+  );
   const [catalogFilter, setCatalogFilter] = useState<"all" | "pending" | "completed" | "draft">("all");
   const [search, setSearch] = useState("");
   const manageableCourses = (courses.data ?? []).filter((item) =>
@@ -720,7 +736,7 @@ export default function AutodirigidoPage() {
   useEffect(() => { const id = new URLSearchParams(window.location.search).get("curso"); if (id) setSelectedId(Number(id)); }, []);
   const scormToken = new URLSearchParams(window.location.search).get("scorm");
   if (scormToken) return <RemoteScormSession token={scormToken} />;
-  if (selectedId && detail.isLoading) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
+  if (selectedId && (detail.isLoading || (detail.isFetching && selectedLessonId == null))) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
   const course = detail.data;
   const containsScorm = course?.lessons.some((lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004") ?? false;
   const requiredLessons = course?.lessons.filter((lesson) => lesson.required) ?? [];
@@ -730,7 +746,7 @@ export default function AutodirigidoPage() {
     : course?.lessonCount ? 100 : 0;
   if (previewingCourse && selectedId && course && canManageSelectedCourse) {
     return <LmsCoursePreview key={course.id} course={course}
-      onClose={() => setPreviewingCourse(false)}
+      onClose={() => { void detail.refetch(); setPreviewingCourse(false); }}
       renderLesson={(previewCourse, lesson, onProgress) =>
         <LessonView course={previewCourse} lesson={lesson} onRefresh={() => {}}
           onPreviewProgress={onProgress} />}
@@ -754,7 +770,7 @@ export default function AutodirigidoPage() {
   ];
   const selectedLesson = course?.lessons.find((l) => l.id === selectedLessonId);
 
-  if (selectedId && !course) {
+  if (selectedId && (!course || (detail.isError && selectedLessonId == null))) {
     return <div className="space-y-4 py-10 text-center">
       <p className="text-sm text-destructive">No se pudo cargar el curso.</p>
       <div className="flex justify-center gap-2"><Button variant="outline" onClick={() => void detail.refetch()}>Reintentar</Button><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}>Todos los cursos</Button></div>
@@ -770,6 +786,7 @@ export default function AutodirigidoPage() {
           {course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}
         </>} />
       {containsScorm && <div role="note" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
+      {positionSave.error && <p role="alert" className="text-sm text-destructive">No se pudo guardar la última lección abierta. <Button variant="link" onClick={positionSave.retry}>Reintentar</Button></p>}
       <LmsClassroom course={course} selectedLessonId={selectedLessonId} onSelect={selectLesson}
         renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
       {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03] p-5 md:p-7">

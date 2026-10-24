@@ -247,6 +247,9 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
 echo "==> Applying the upgrade to the existing database"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="DROP TABLE public.lms_course_positions"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="ALTER TABLE public.meeting_ai_settings ALTER COLUMN vision_model SET DEFAULT 'gpt-4o-mini'; INSERT INTO public.meeting_ai_settings (id, vision_model) VALUES (1, 'gpt-4o-mini'), (2, 'custom-vision-model')"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
@@ -319,7 +322,7 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   | grep -qx t
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  --command="SELECT to_regclass('public.lms_course_import_intents') IS NOT NULL" \
+  --command="SELECT to_regclass('public.lms_course_import_intents') IS NOT NULL AND to_regclass('public.lms_course_positions') IS NOT NULL" \
   | grep -qx t
 
 echo "==> Running the API regression suite on the upgraded isolated database"

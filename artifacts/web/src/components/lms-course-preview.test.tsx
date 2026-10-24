@@ -8,7 +8,8 @@ import { LessonView } from "@/pages/autodirigido";
 const mocks = vi.hoisted(() => ({
   complete: vi.fn(), quiz: vi.fn(), scorm: vi.fn(), commit: vi.fn(), toast: vi.fn(),
 }));
-vi.mock("@workspace/api-client-react", () => ({
+vi.mock("@workspace/api-client-react", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@workspace/api-client-react")>(),
   useCompleteLmsLesson: () => ({ mutateAsync: mocks.complete }),
   useSubmitLmsQuizAttempt: () => ({ mutateAsync: mocks.quiz }),
   useCreateLmsLessonDownloadToken: () => ({ mutateAsync: vi.fn() }),
@@ -25,7 +26,7 @@ function fixture(kind: LmsLesson["kind"] = "text"): LmsCourseDetail {
   return {
     id: 42, title: "Curso borrador", description: "Descripción visible",
     status: "draft", moduleId: null, certificateEnabled: true,
-    lessonCount: 1, completed: true, certificateAvailable: true,
+    lessonCount: 1, completed: true, certificateAvailable: true, lastOpenedLessonId: 7,
     progress: [{ lessonId: 7, status: "completed", score: 100, attempts: 9, completedAt: null }],
     lessons: [{
       id: 7, courseId: 42, title: "Primera lección", kind, required: true, position: 0,

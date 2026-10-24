@@ -268,6 +268,7 @@ export * from './lmsCourseImportManifestVersion';
 export * from './lmsCourseImportResponse';
 export * from './lmsCourseImportUploadInput';
 export * from './lmsCourseInput';
+export * from './lmsCoursePositionInput';
 export * from './lmsCourseStatus';
 export * from './lmsCourseUpdate';
 export * from './lmsDownloadToken';

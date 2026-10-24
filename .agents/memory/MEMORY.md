@@ -12,6 +12,7 @@
 - [Announcements audience + attachments](announcements-audience.md) — Tablón uses shared audience model (not legacy provinceId) + ACL-bound downloadable attachments; backfill or province rows leak.
 - [LMS publication notices](lms-publication-notices.md) — first course publication creates a Tablón announcement and notifies active users who can access courses.
 - [Experiencia de los cursos](lms-learning-experience.md) — el usuario quiere una presentación profesional inspirada en Domestika, no una sucesión de formularios.
+- [LMS resume policy](lms-resume-policy.md) — restore on course entry, never navigate away from unsent work on a background refresh; preview stays local.
 - [Module membership & meeting access authz](module-membership-authz.md) — module coordinator can manage roster but not designate; /meetings/token must gate by roomName (IDOR).
 - [Nextcloud Group Folders add-group not idempotent](nextcloud-groupfolders-idempotency.md) — re-adding a group throws HTTP 500, not OCS 102; guard before re-provision.
 - [Independent collaborative spaces](independent-collaborative-spaces.md) — manual enrollment, stable remote folders and confirmed revocation without deleting accounts or files.

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { CourseMarkdown } from "@/components/CourseMarkdown";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -11,18 +11,22 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetLmsCourseQueryKey,
+  getLmsCourse,
+  waitForLmsCoursePosition,
   getListLmsCoursesQueryKey,
   useCompleteLmsLesson,
   useCreateLmsLesson,
   useCreateLmsLessonDownloadToken,
   useCreateLmsLessonScormSession,
   useGetLmsCourse,
+  useLmsLessonSelection,
   useGetLmsManagementScopes,
   usePublishLmsCourse,
   useRequestLmsUploadUrl,
   useSubmitLmsQuizAttempt,
   useUpdateLmsCourse,
   type LmsLesson,
+  type LmsCourseDetail,
 } from "@workspace/api-client-react";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { AppHeader } from "@/components/AppHeader";
@@ -40,7 +44,20 @@ export default function LmsDetailScreen() {
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const courseId = Number(id);
-  const course = useGetLmsCourse(courseId);
+  const course = useGetLmsCourse(courseId, { query: {
+    queryKey: getGetLmsCourseQueryKey(courseId), staleTime: 0, refetchOnMount: "always",
+    queryFn: async ({ signal }) => {
+      await waitForLmsCoursePosition(courseId);
+      return getLmsCourse(courseId, { signal });
+    },
+  } });
+  const [selectedId, selectLesson, positionSave] = useLmsLessonSelection(course.data, {
+    persist: true, ready: !course.isFetching && !course.isError,
+    onSaved: (id, lessonId) => queryClient.setQueryData<LmsCourseDetail>(
+      getGetLmsCourseQueryKey(id),
+      (old) => old ? { ...old, lastOpenedLessonId: lessonId } : old,
+    ),
+  });
   const scopes = useGetLmsManagementScopes();
   const canManage = (scopes.data ?? []).some((scope) => scope.canManage && scope.moduleId === course.data?.moduleId);
   const update = useUpdateLmsCourse();
@@ -59,15 +76,8 @@ export default function LmsDetailScreen() {
   const [correctIndex, setCorrectIndex] = useState("0");
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [showManager, setShowManager] = useState(false);
-  const [selection, setSelection] = useState<{ courseId: number; lessonId: number | null } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const stageY = useRef(0);
-  useEffect(() => {
-    const data = course.data;
-    if (!data || selection?.courseId === data.id) return;
-    const open = data.lessons.find((l) => !data.progress.some((p) => p.lessonId === l.id && p.status === "completed"));
-    setSelection({ courseId: data.id, lessonId: (open ?? data.lessons[0])?.id ?? null });
-  }, [course.data, selection?.courseId]);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(courseId) });
   const beginEdit = () => { setTitle(course.data?.title ?? ""); setDescription(course.data?.description ?? ""); setEditing(true); };
   const saveCourse = () => update.mutate({ courseId, data: { title: title.trim(), description: description.trim() } }, { onSuccess: () => { setEditing(false); refresh(); } });
@@ -144,19 +154,17 @@ export default function LmsDetailScreen() {
       Alert.alert("No se pudo guardar la lección", error instanceof Error ? error.message : "Inténtalo de nuevo.");
     }
   };
-  if (course.isLoading) return <View style={[styles.container, { backgroundColor: colors.background }]}><AppHeader title="Curso" showBack /><Loading /></View>;
+  if (course.isLoading || (course.isFetching && selectedId == null)) return <View style={[styles.container, { backgroundColor: colors.background }]}><AppHeader title="Curso" showBack /><Loading /></View>;
   if (course.isError || !course.data) return <View style={[styles.container, { backgroundColor: colors.background }]}><AppHeader title="Curso" showBack /><ErrorState onRetry={course.refetch} /></View>;
   const data = course.data;
   const requiredLessons = data.lessons.filter((lesson) => lesson.required);
   const completedRequired = requiredLessons.filter((lesson) => data.progress.some((progress) => progress.lessonId === lesson.id && progress.status === "completed")).length;
   const requiredProgress = requiredLessons.length ? Math.round(completedRequired * 100 / requiredLessons.length) : 100;
-  let selectedId = selection?.courseId === data.id ? selection.lessonId : null;
-  if (!data.lessons.some((l) => l.id === selectedId)) selectedId = data.lessons[0]?.id ?? null;
   const index = data.lessons.findIndex((l) => l.id === selectedId);
   const lesson = index >= 0 ? data.lessons[index] : undefined;
   const prev = index > 0 ? data.lessons[index - 1] : undefined;
   const next = index >= 0 && index < data.lessons.length - 1 ? data.lessons[index + 1] : undefined;
-  const go = (lessonId: number) => { setSelection({ courseId: data.id, lessonId }); scrollRef.current?.scrollTo({ y: Math.max(stageY.current - 8, 0), animated: true }); };
+  const go = (lessonId: number) => { selectLesson(lessonId); scrollRef.current?.scrollTo({ y: Math.max(stageY.current - 8, 0), animated: true }); };
   const input = [styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }];
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -174,6 +182,7 @@ export default function LmsDetailScreen() {
 
         <View onLayout={(e) => { stageY.current = e.nativeEvent.layout.y; }}>
           {!lesson ? <EmptyState icon="layers" title="Sin lecciones" message={canManage ? "Añade una lectura desde el área de gestión." : "Este curso aún no tiene contenido."} /> : <>
+            {positionSave.error && <View accessibilityRole="alert"><Text style={{ color: colors.destructive }}>No se pudo guardar la última lección abierta.</Text><Button label="Reintentar" variant="secondary" onPress={positionSave.retry} /></View>}
             <Text style={[styles.stageMeta, { color: colors.mutedForeground }]}>LECCIÓN {index + 1} DE {data.lessons.length}</Text>
             <LessonCard key={lesson.id} lesson={lesson} courseId={courseId} progress={data.progress.find((item) => item.lessonId === lesson.id)} colors={colors} onRefresh={refresh} />
             <View style={styles.navRow}>

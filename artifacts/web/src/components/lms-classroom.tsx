@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useLmsCourseCover } from "@/hooks/use-lms-course-cover";
+export { useLmsLessonSelection as useLessonSelection } from "@workspace/api-client-react";
 import type { LmsCourse, LmsCourseDetail, LmsLesson } from "@workspace/api-client-react";
 import { AutoLinkText } from "@/components/auto-link-text";
-import { useLmsCourseCover } from "@/hooks/use-lms-course-cover";
 import { Button } from "@/components/ui/button";
 import {
   Award, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, FileDown, FileText,
@@ -68,26 +69,6 @@ export function courseProgressStats(course: LmsCourseDetail) {
   const completedRequired = required.filter(done).length;
   const percent = required.length ? Math.round(completedRequired * 100 / required.length) : course.lessons.length ? 100 : 0;
   return { requiredCount: required.length, completedRequired, percent, isDone: done };
-}
-
-/** Keeps the selected lesson stable across progress refreshes; resets when the course changes. */
-export function useLessonSelection(course: LmsCourseDetail | undefined) {
-  const [state, setState] = useState<{ courseId: number | null; lessonId: number | null }>({ courseId: null, lessonId: null });
-  const courseId = course?.id ?? null;
-  const pickDefault = (c: LmsCourseDetail) => {
-    const firstOpen = c.lessons.find((l) => !c.progress.some((p) => p.lessonId === l.id && p.status === "completed"));
-    return (firstOpen ?? c.lessons[0])?.id ?? null;
-  };
-  useEffect(() => {
-    if (course && state.courseId !== course.id) setState({ courseId: course.id, lessonId: pickDefault(course) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
-  let lessonId = state.courseId === courseId ? state.lessonId : null;
-  if (course && (lessonId == null || !course.lessons.some((l) => l.id === lessonId))) {
-    lessonId = state.courseId === courseId && state.lessonId != null ? course.lessons[0]?.id ?? null : pickDefault(course);
-  }
-  const select = (id: number) => setState({ courseId, lessonId: id });
-  return [lessonId, select] as const;
 }
 
 export function CourseHero({ course, eyebrow, actions, aside }: {

@@ -15,11 +15,11 @@ export function LmsCoursePreview({ course, onClose, renderLesson }: {
     progress.some((value) => value.lessonId === lesson.id && value.status === "completed"),
   ).length;
   const previewCourse: LmsCourseDetail = {
-    ...course, status: "published", progress,
+    ...course, status: "published", progress, lastOpenedLessonId: null,
     completed: required.length > 0 && completed === required.length,
     certificateAvailable: false,
   };
-  const [selectedLessonId, selectLesson] = useLessonSelection(previewCourse);
+  const [selectedLessonId, selectLesson] = useLessonSelection(previewCourse, { persist: false });
   const onProgress = (value: LmsProgress) => setProgress((old) => [
     ...old.filter((item) => item.lessonId !== value.lessonId), value,
   ]);

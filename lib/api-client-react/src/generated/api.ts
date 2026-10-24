@@ -197,6 +197,7 @@ import type {
   LmsCourseImportResponse,
   LmsCourseImportUploadInput,
   LmsCourseInput,
+  LmsCoursePositionInput,
   LmsCourseUpdate,
   LmsDownloadToken,
   LmsLesson,
@@ -22957,6 +22958,92 @@ export const useRequestLmsCourseImportUploadUrl = <TError = ErrorType<ErrorRespo
         TContext
       > => {
       return useMutation(getRequestLmsCourseImportUploadUrlMutationOptions(options), queryClient);
+    }
+
+export const getSaveLmsCoursePositionUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/position`
+}
+
+/**
+ * Saves the signed-in learner's reading position, never completion. Draft previews cannot persist a position.
+ */
+export const saveLmsCoursePosition = async (courseId: number,
+    lmsCoursePositionInput: LmsCoursePositionInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getSaveLmsCoursePositionUrl(courseId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lmsCoursePositionInput)
+  }
+);}
+
+
+
+
+
+export const getSaveLmsCoursePositionMutationKey = () => ['saveLmsCoursePosition'] as const;
+
+export const getSaveLmsCoursePositionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveLmsCoursePosition>>, TError,SaveLmsCoursePositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveLmsCoursePosition>>, TError,SaveLmsCoursePositionMutationVariables, TContext> => {
+
+const mutationKey = getSaveLmsCoursePositionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveLmsCoursePosition>>, SaveLmsCoursePositionMutationVariables> = (props) => {
+          const {courseId,data} = props ?? {};
+
+          return  saveLmsCoursePosition(courseId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveLmsCoursePositionMutationResult = NonNullable<Awaited<ReturnType<typeof saveLmsCoursePosition>>>
+    export type SaveLmsCoursePositionMutationBody = BodyType<LmsCoursePositionInput>
+    export type SaveLmsCoursePositionMutationError = ErrorType<ErrorResponse>
+    export type SaveLmsCoursePositionMutationVariables = {courseId: number;data: BodyType<LmsCoursePositionInput>}
+
+    export const useSaveLmsCoursePosition = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveLmsCoursePosition>>, TError,SaveLmsCoursePositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveLmsCoursePosition>>,
+        TError,
+        SaveLmsCoursePositionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveLmsCoursePositionMutationOptions(options), queryClient);
     }
 
 export const getImportLmsCourseArchiveUrl = () => {
