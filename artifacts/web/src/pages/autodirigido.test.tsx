@@ -6,6 +6,7 @@ import AutodirigidoPage from "./autodirigido";
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
+  canManage: true,
   downloadedFiles: [] as string[],
 }));
 
@@ -13,12 +14,13 @@ vi.mock("@workspace/api-client-react", () => ({
   LmsLessonInputKind: {},
   useCompleteLmsLesson: vi.fn(),
   useCreateLmsCourse: vi.fn(),
+  useDeleteLmsCourse: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateLmsLesson: vi.fn(),
   useCreateLmsLessonDownloadToken: vi.fn(),
   useCreateLmsLessonScormSession: vi.fn(),
   useGetLmsCourse: () => ({ data: undefined, isLoading: false }),
   useGetLmsManagementScopes: () => ({
-    data: [{ canManage: true, moduleId: 10 }],
+    data: [{ canManage: mocks.canManage, moduleId: 10 }],
   }),
   useImportLmsCourseArchive: vi.fn(),
   useListLmsCourses: () => ({
@@ -60,6 +62,7 @@ describe("exportación de cursos autodirigidos", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.canManage = true;
     originalCreateObjectURL = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
     originalRevokeObjectURL = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
     originalAnchorClick = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "click");
@@ -97,6 +100,17 @@ describe("exportación de cursos autodirigidos", () => {
     } else {
       delete (HTMLAnchorElement.prototype as unknown as Record<string, unknown>).click;
     }
+  });
+
+  it("ofrece eliminar cursos del ámbito que puede gestionar", () => {
+    render(<AutodirigidoPage />);
+    expect(screen.getByRole("button", { name: "Eliminar curso Gestión administrativa" })).toBeTruthy();
+  });
+
+  it("no ofrece eliminar un curso sin permisos de gestión", () => {
+    mocks.canManage = false;
+    render(<AutodirigidoPage />);
+    expect(screen.queryByRole("button", { name: /Eliminar curso/ })).toBeNull();
   });
 
   it("descarga el ZIP y avisa del nombre y motivo de cada curso excluido", async () => {
