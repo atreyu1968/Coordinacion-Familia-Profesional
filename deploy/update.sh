@@ -34,9 +34,11 @@ if [[ -z "${DATABASE_URL}" ]]; then
 fi
 # Honor values passed on the command line (e.g. sudo DOMAIN=adg.example.org ...
 # or MOBILE_WEB_URL=...), falling back to whatever is already in .env.
-MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(grep '^MOBILE_WEB_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
-PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(grep '^PUBLIC_APP_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
-LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-$(grep '^LETSENCRYPT_EMAIL=' "${ENV_FILE}" | head -n1 | cut -d= -f2-)}"
+# Missing optional keys are normal on older installations. With pipefail, an
+# unmatched grep would otherwise silently terminate the update under set -e.
+MOBILE_WEB_URL="${MOBILE_WEB_URL:-$(grep '^MOBILE_WEB_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2- || true)}"
+PUBLIC_APP_URL="${PUBLIC_APP_URL:-$(grep '^PUBLIC_APP_URL=' "${ENV_FILE}" | head -n1 | cut -d= -f2- || true)}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-$(grep '^LETSENCRYPT_EMAIL=' "${ENV_FILE}" | head -n1 | cut -d= -f2- || true)}"
 API_PORT="$(grep '^PORT=' "${ENV_FILE}" | head -n1 | cut -d= -f2- || true)"
 API_PORT="${API_PORT:-3001}"
 DOMAIN="${DOMAIN:-}"

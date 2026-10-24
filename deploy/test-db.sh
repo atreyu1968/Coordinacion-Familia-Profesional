@@ -212,6 +212,22 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="INSERT INTO public.teacher_year_confirmations (teacher_id, school_year, status, deadline, confirmed_at) SELECT id, '2099-2100', 'confirmed', now(), now() FROM public.users WHERE email = 'upgrade-preserve@example.test'; ALTER TABLE public.teacher_year_confirmations DROP COLUMN does_not_teach"
 
+echo "==> Reproducing the old chat visibility schema with retained history"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    INSERT INTO public.chat_groups (name) VALUES ('Preserved upgrade chat');
+    INSERT INTO public.chat_group_members (group_id, user_id)
+      SELECT g.id, u.id FROM public.chat_groups g CROSS JOIN public.users u
+      WHERE g.name = 'Preserved upgrade chat' AND u.email = 'upgrade-preserve@example.test';
+    INSERT INTO public.messages (group_id, sender_id, content)
+      SELECT g.id, u.id, 'Preserved upgrade message'
+      FROM public.chat_groups g CROSS JOIN public.users u
+      WHERE g.name = 'Preserved upgrade chat' AND u.email = 'upgrade-preserve@example.test';
+    DROP TABLE public.message_user_hides;
+    ALTER TABLE public.chat_group_members DROP COLUMN hidden_at;
+  "
+
 echo "==> Applying the upgrade to the existing database"
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
@@ -228,6 +244,28 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="DROP TABLE public.chat_attachment_deletions; CREATE TABLE public.chat_attachment_deletions (id serial, object_path text, status text NOT NULL DEFAULT 'pending'); INSERT INTO public.chat_attachment_deletions (object_path) VALUES ('private/chat/retained-attachment.pdf')"
 migrate_database coordina_upgrade
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    SELECT EXISTS (
+      SELECT 1 FROM public.chat_group_members cm
+      JOIN public.chat_groups g ON g.id = cm.group_id
+      JOIN public.users u ON u.id = cm.user_id
+      JOIN public.messages m ON m.group_id = g.id AND m.sender_id = u.id
+      WHERE g.name = 'Preserved upgrade chat' AND u.email = 'upgrade-preserve@example.test'
+        AND cm.hidden_at IS NULL AND m.content = 'Preserved upgrade message'
+    ) AND NOT EXISTS (SELECT 1 FROM public.message_user_hides);
+  " | grep -qx t
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    INSERT INTO public.message_user_hides (message_id, user_id)
+      SELECT m.id, u.id FROM public.messages m
+      JOIN public.users u ON u.id = m.sender_id
+      WHERE m.content = 'Preserved upgrade message' AND u.email = 'upgrade-preserve@example.test';
+    UPDATE public.chat_group_members SET hidden_at = '2026-01-01T00:00:00Z'
+      WHERE group_id IN (SELECT id FROM public.chat_groups WHERE name = 'Preserved upgrade chat');
+  "
 psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT (SELECT vision_model = 'gpt-5.4-mini' FROM public.meeting_ai_settings WHERE id = 1) AND (SELECT vision_model = 'custom-vision-model' FROM public.meeting_ai_settings WHERE id = 2) AND (SELECT pg_get_expr(d.adbin, d.adrelid) LIKE '%gpt-5.4-mini%' FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum WHERE n.nspname = 'public' AND c.relname = 'meeting_ai_settings' AND a.attname = 'vision_model')" \
@@ -269,6 +307,18 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   | grep -qx t
 
 echo "==> Running the API regression suite on the upgraded isolated database"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    SELECT EXISTS (
+      SELECT 1 FROM public.message_user_hides h
+      JOIN public.messages m ON m.id = h.message_id
+      JOIN public.users u ON u.id = h.user_id
+      JOIN public.chat_group_members cm ON cm.group_id = m.group_id AND cm.user_id = u.id
+      WHERE m.content = 'Preserved upgrade message' AND u.email = 'upgrade-preserve@example.test'
+        AND cm.hidden_at = '2026-01-01T00:00:00Z' AND h.created_at IS NOT NULL
+    );
+  " | grep -qx t
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   pnpm --filter @workspace/api-server exec vitest run
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

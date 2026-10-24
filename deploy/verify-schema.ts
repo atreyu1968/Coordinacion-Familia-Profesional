@@ -80,6 +80,7 @@ const additiveTables = [
   "coordinator_tasks",
   "coordinator_task_source_scans",
   "chat_attachment_deletions",
+  "message_user_hides",
 ];
 const coordinatorTaskTables = new Set([
   "coordinator_tasks",
@@ -465,6 +466,7 @@ for (const column of expected.columns) {
       allowMissingUpgradeColumns &&
       (pendingTables.has(column.table) ||
        chatAttachmentDeletionTables.has(column.table) ||
+       (column.table === "chat_group_members" && column.column === "hidden_at") ||
        (column.table === "collaborative_spaces" && column.column === "provisioning_started_at") ||
        (column.table === "users" &&
         ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version", "teaching_center_id"].includes(column.column)) ||

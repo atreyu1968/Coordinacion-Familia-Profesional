@@ -522,6 +522,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/ai-knowledge.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/teacher-year-no-teaching.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/personal-teaching-center.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/chat-user-visibility.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/chat-attachment-deletions.sql"
     verify_catalog
   else
