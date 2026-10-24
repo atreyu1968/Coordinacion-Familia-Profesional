@@ -100,6 +100,8 @@ import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
+  createChatMessageActionGuard,
+  mergeChatMessageUpdates,
 } from "@/lib/chat-message-state";
 
 const TOKEN_KEY = "coordina_adg_token";
@@ -698,6 +700,7 @@ function ConversationView({
 
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef(messages);
+  const messageActionGuardRef = useRef(createChatMessageActionGuard());
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -745,12 +748,11 @@ function ConversationView({
   // Merge a list/single message into state, replacing by id, sorted asc.
   const mergeMessages = useCallback((incoming: Message[]) => {
     setMessages((prev) => {
-      const byId = new Map<number, Message>();
-      for (const m of prev) byId.set(m.id, m);
-      for (const m of incoming) byId.set(m.id, m);
-      return Array.from(byId.values()).sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      return mergeChatMessageUpdates(
+        prev,
+        incoming,
+        false,
+        messageActionGuardRef.current.isDeleted,
       );
     });
   }, []);
@@ -772,12 +774,17 @@ function ConversationView({
     }
 
     setMessages((current) =>
-      mergeChatMessageSnapshot(
+      mergeChatMessageUpdates(
         current,
-        refreshed,
-        previouslyLoadedIds,
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        mergeChatMessageSnapshot(
+          current,
+          refreshed,
+          previouslyLoadedIds,
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+        false,
+        messageActionGuardRef.current.isDeleted,
       ),
     );
     setHasOlder(page.length === CHAT_PAGE_SIZE);
@@ -793,11 +800,12 @@ function ConversationView({
     listGroupMessages(groupId)
       .then((data) => {
         if (!cancelled) {
-          setMessages(
-            [...data].sort(
-              (a, b) =>
-                new Date(a.createdAt).getTime() -
-                new Date(b.createdAt).getTime(),
+          setMessages((current) =>
+            mergeChatMessageUpdates(
+              current.filter((message) => message.deleted),
+              data,
+              false,
+              messageActionGuardRef.current.isDeleted,
             ),
           );
           setHasOlder(data.length === CHAT_PAGE_SIZE);
@@ -865,14 +873,19 @@ function ConversationView({
     };
     const onDeleted = (msg: Message) => {
       if (msg.groupId !== groupId) return;
+      messageActionGuardRef.current.markDeleted(msg.id);
       setMessages((previous) =>
-        deleteChatMessageForEveryone(previous, [], msg).messages,
+        deleteChatMessageForEveryone(previous, [], { ...msg, deleted: true })
+          .messages,
       );
       queryClient.setQueryData<Message[]>(
         getListHiddenGroupMessagesQueryKey(groupId),
         (previous) =>
           previous
-            ? deleteChatMessageForEveryone([], previous, msg).hiddenMessages
+            ? deleteChatMessageForEveryone([], previous, {
+                ...msg,
+                deleted: true,
+              }).hiddenMessages
             : previous,
       );
       void queryClient.invalidateQueries({
@@ -881,6 +894,7 @@ function ConversationView({
     };
     const onHiddenForMe = (event: { groupId: number; messageId: number }) => {
       if (event.groupId !== groupId) return;
+      messageActionGuardRef.current.begin(event.messageId);
       const hiddenMessage = messagesRef.current.find(
         (message) => message.id === event.messageId,
       );
@@ -900,6 +914,7 @@ function ConversationView({
     };
     const onRestoredForMe = (event: { groupId: number; message: Message }) => {
       if (event.groupId !== groupId) return;
+      messageActionGuardRef.current.begin(event.message.id);
       setMessages((previous) =>
         restoreChatMessage(previous, [], event.message).messages,
       );
@@ -1188,14 +1203,17 @@ function ConversationView({
       message.id,
       () => deleteMut.mutateAsync({ id: message.id }),
       (updated) => {
+        messageActionGuardRef.current.markDeleted(message.id);
+        const deletedMessage = { ...updated, deleted: true };
         setMessages((previous) =>
-          deleteChatMessageForEveryone(previous, [], updated).messages,
+          deleteChatMessageForEveryone(previous, [], deletedMessage).messages,
         );
         queryClient.setQueryData<Message[]>(
           getListHiddenGroupMessagesQueryKey(groupId),
           (previous) =>
             previous
-              ? deleteChatMessageForEveryone([], previous, updated).hiddenMessages
+              ? deleteChatMessageForEveryone([], previous, deletedMessage)
+                  .hiddenMessages
               : previous,
         );
         void queryClient.invalidateQueries({
@@ -1207,10 +1225,16 @@ function ConversationView({
   };
 
   const onHideForMe = (message: Message) => {
+    const version = messageActionGuardRef.current.begin(message.id);
     void performMessageAction(
       message.id,
       () => hideMessageMut.mutateAsync({ id: message.id }),
       () => {
+        if (!messageActionGuardRef.current.isCurrent(message.id, version)) {
+          void refreshMessages().catch(() => undefined);
+          void hiddenMessagesQuery.refetch();
+          return;
+        }
         setMessages((previous) =>
           hideChatMessage(previous, [], message).messages,
         );
@@ -1228,10 +1252,16 @@ function ConversationView({
   };
 
   const onRestoreHiddenMessage = (message: Message) => {
+    const version = messageActionGuardRef.current.begin(message.id);
     void performMessageAction(
       message.id,
       () => restoreHiddenMessageMut.mutateAsync({ id: message.id }),
       (restored) => {
+        if (!messageActionGuardRef.current.isCurrent(message.id, version)) {
+          void refreshMessages().catch(() => undefined);
+          void hiddenMessagesQuery.refetch();
+          return;
+        }
         setMessages((previous) =>
           restoreChatMessage(previous, [], restored).messages,
         );

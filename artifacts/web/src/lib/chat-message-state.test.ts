@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  createChatMessageActionGuard as createWebActionGuard,
   deleteChatMessageForEveryone as deleteWebMessage,
   hideChatMessage as hideWebMessage,
+  mergeChatMessageUpdates as mergeWebMessages,
   restoreChatMessage as restoreWebMessage,
   runChatMessageAction as runWebChatMessageAction,
   type ChatMessageLists,
 } from "./chat-message-state";
 import {
+  createChatMessageActionGuard as createMobileActionGuard,
   deleteChatMessageForEveryone as deleteMobileMessage,
   hideChatMessage as hideMobileMessage,
+  mergeChatMessageUpdates as mergeMobileMessages,
   restoreChatMessage as restoreMobileMessage,
   runChatMessageAction as runMobileChatMessageAction,
 } from "../../../movil/lib/chat-message-state";
@@ -120,6 +124,19 @@ function runMessageListAssertions(
       deletedWhileHidden.hiddenMessages,
     ]),
   ).not.toContain("contenido privado");
+
+  const staleRestore = restore(
+    deletedWhileHidden.messages,
+    deletedWhileHidden.hiddenMessages,
+    target,
+    newestFirst,
+  );
+  expect(staleRestore.messages.map((message) => message.id)).toEqual([first.id]);
+  expect(staleRestore.hiddenMessages[0]).toMatchObject({
+    id: target.id,
+    deleted: true,
+    content: "",
+  });
 }
 
 async function expectRejectedActionToPreserveState<TResult>(
@@ -254,6 +271,138 @@ async function expectOverlappingFailureNotToUndoSuccess(
   expect(state.hiddenMessages).toEqual([target]);
 }
 
+async function expectOutOfOrderActionsToKeepServerState(
+  runAction: RunChatMessageAction,
+  createGuard: typeof createWebActionGuard,
+  hide: typeof hideWebMessage,
+  restore: typeof restoreWebMessage,
+  deleteForEveryone: typeof deleteWebMessage,
+  mergeMessages: typeof mergeWebMessages,
+  newestFirst: boolean,
+) {
+  const guard = createGuard();
+  const id = target.id;
+  let state: ChatMessageLists<TestMessage> = {
+    messages: newestFirst ? [target, first] : [first, target],
+    hiddenMessages: [],
+  };
+
+  let resolveHide!: (message: TestMessage) => void;
+  let resolveRestore!: (message: TestMessage) => void;
+  const hideResponse = new Promise<TestMessage>((resolve) => {
+    resolveHide = resolve;
+  });
+  const restoreResponse = new Promise<TestMessage>((resolve) => {
+    resolveRestore = resolve;
+  });
+  const serverState: ChatMessageLists<TestMessage> = {
+    messages: newestFirst ? [target, first] : [first, target],
+    hiddenMessages: [],
+  };
+  let authoritativeRefreshes = 0;
+
+  const hideVersion = guard.begin(id);
+  const hideAction = runAction(() => hideResponse, () => {
+    if (!guard.isCurrent(id, hideVersion)) {
+      authoritativeRefreshes += 1;
+      state = serverState;
+      return;
+    }
+    state = hide(state.messages, state.hiddenMessages, target, newestFirst);
+  });
+  const restoreVersion = guard.begin(id);
+  const restoreAction = runAction(() => restoreResponse, (restored) => {
+    if (!guard.isCurrent(id, restoreVersion)) {
+      authoritativeRefreshes += 1;
+      state = serverState;
+      return;
+    }
+    state = restore(state.messages, state.hiddenMessages, restored, newestFirst);
+  });
+
+  resolveRestore(target);
+  await restoreAction;
+  resolveHide(target);
+  await hideAction;
+
+  expect(authoritativeRefreshes).toBe(1);
+  expect(state.messages.map((message) => message.id)).toEqual(
+    (newestFirst ? [target, first] : [first, target]).map((message) => message.id),
+  );
+  expect(state.hiddenMessages).toEqual([]);
+
+  // Start hide, restore, then delete; let deletion finish before the older
+  // accepted actions. The older responses must neither expose the content nor
+  // move the tombstone out of the hidden list.
+  state = { messages: [first], hiddenMessages: [target] };
+  const deletionGuard = createGuard();
+  const oldPrivateResponse = { ...target };
+  const deletion = { ...target, deleted: true };
+  let resolveOldHide!: (message: TestMessage) => void;
+  let resolveOldRestore!: (message: TestMessage) => void;
+  let resolveDelete!: (message: TestMessage) => void;
+  const oldHideResponse = new Promise<TestMessage>((resolve) => {
+    resolveOldHide = resolve;
+  });
+  const oldRestoreResponse = new Promise<TestMessage>((resolve) => {
+    resolveOldRestore = resolve;
+  });
+  const deleteResponse = new Promise<TestMessage>((resolve) => {
+    resolveDelete = resolve;
+  });
+  const pendingHideVersion = deletionGuard.begin(id);
+  const pendingHide = runAction(() => oldHideResponse, () => {
+    if (!deletionGuard.isCurrent(id, pendingHideVersion)) {
+      state = serverDeletedState;
+      return;
+    }
+    state = hide(state.messages, state.hiddenMessages, oldPrivateResponse, newestFirst);
+  });
+  const pendingRestoreVersion = deletionGuard.begin(id);
+  const pendingRestore = runAction(() => oldRestoreResponse, (restored) => {
+    if (!deletionGuard.isCurrent(id, pendingRestoreVersion)) {
+      state = serverDeletedState;
+      return;
+    }
+    state = restore(state.messages, state.hiddenMessages, restored, newestFirst);
+  });
+  const deleteVersion = deletionGuard.begin(id);
+  const deleteAction = runAction(() => deleteResponse, (deleted) => {
+    if (!deletionGuard.isCurrent(id, deleteVersion)) return;
+    deletionGuard.markDeleted(id);
+    state = deleteForEveryone(state.messages, state.hiddenMessages, deleted);
+  });
+  const serverDeletedState = deleteForEveryone(
+    [first],
+    [target],
+    deletion,
+  );
+
+  resolveDelete(deletion);
+  await deleteAction;
+  resolveOldRestore(oldPrivateResponse);
+  await pendingRestore;
+  resolveOldHide(oldPrivateResponse);
+  await pendingHide;
+
+  // Even a stale history/realtime payload cannot replace the redacted copy.
+  state.messages = mergeMessages(
+    state.messages,
+    [oldPrivateResponse],
+    newestFirst,
+    deletionGuard.isDeleted,
+  );
+
+  expect(state.messages.map((message) => message.id)).toEqual([first.id]);
+  expect(state.hiddenMessages).toHaveLength(1);
+  expect(state.hiddenMessages[0]).toMatchObject({
+    id,
+    deleted: true,
+    content: "",
+  });
+  expect(JSON.stringify(state)).not.toContain("contenido privado");
+}
+
 describe("web chat message lists", () => {
   it("updates the conversation and hidden-message list for hide, restore, and deletion", () => {
     runMessageListAssertions(
@@ -278,6 +427,18 @@ describe("web chat message lists", () => {
     await expectOverlappingFailureNotToUndoSuccess(
       runWebChatMessageAction,
       hideWebMessage,
+      false,
+    );
+  });
+
+  it("keeps the latest server state when hide, restore, and delete responses finish out of order", async () => {
+    await expectOutOfOrderActionsToKeepServerState(
+      runWebChatMessageAction,
+      createWebActionGuard,
+      hideWebMessage,
+      restoreWebMessage,
+      deleteWebMessage,
+      mergeWebMessages,
       false,
     );
   });
@@ -307,6 +468,18 @@ describe("mobile chat message lists", () => {
     await expectOverlappingFailureNotToUndoSuccess(
       runMobileChatMessageAction,
       hideMobileMessage,
+      true,
+    );
+  });
+
+  it("keeps the latest server state when hide, restore, and delete responses finish out of order", async () => {
+    await expectOutOfOrderActionsToKeepServerState(
+      runMobileChatMessageAction,
+      createMobileActionGuard,
+      hideMobileMessage,
+      restoreMobileMessage,
+      deleteMobileMessage,
+      mergeMobileMessages,
       true,
     );
   });
