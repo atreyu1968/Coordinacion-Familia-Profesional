@@ -353,6 +353,61 @@ describe("chat groups", () => {
 });
 
 describe("messages", () => {
+  it.each(["desactivada", "eliminada"] as const)(
+    "does not expose hidden direct messages or allow restore when the counterpart is %s",
+    async (counterpartState) => {
+      const caller = await createUser({ role: "teacher" });
+      const counterpart = await createUser({ role: "teacher" });
+      const group = await request(app)
+        .post("/api/chat/groups")
+        .set(authHeader(caller.token))
+        .send({
+          name: "Conversación con cuenta no disponible",
+          type: "direct",
+          memberIds: [counterpart.user.id],
+        });
+      expect(group.status).toBe(201);
+      trackGroup(group.body.id);
+
+      const hiddenText = `Texto oculto tras cuenta ${counterpartState}`;
+      const message = await request(app)
+        .post(`/api/chat/groups/${group.body.id}/messages`)
+        .set(authHeader(caller.token))
+        .send({ content: hiddenText });
+      expect(message.status).toBe(201);
+      expect(
+        (
+          await request(app)
+            .post(`/api/chat/messages/${message.body.id}/hide`)
+            .set(authHeader(caller.token))
+        ).status,
+      ).toBe(204);
+
+      await db
+        .update(usersTable)
+        .set(
+          counterpartState === "desactivada"
+            ? { status: "inactive" }
+            : { deletedAt: new Date() },
+        )
+        .where(eq(usersTable.id, counterpart.user.id));
+
+      const hiddenMessages = await request(app)
+        .get("/api/chat/hidden-messages")
+        .set(authHeader(caller.token));
+      expect(hiddenMessages.status).toBe(200);
+      expect(hiddenMessages.body).not.toContainEqual(
+        expect.objectContaining({ id: message.body.id }),
+      );
+      expect(JSON.stringify(hiddenMessages.body)).not.toContain(hiddenText);
+
+      const restore = await request(app)
+        .post(`/api/chat/messages/${message.body.id}/restore`)
+        .set(authHeader(caller.token));
+      expect(restore.status).toBe(403);
+    },
+  );
+
   it("persists a sent message and bumps the group's lastMessageAt", async () => {
     const a = await createUser({ role: "teacher" });
     const b = await createUser({ role: "teacher" });
