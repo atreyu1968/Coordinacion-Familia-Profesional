@@ -10,11 +10,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(dirname, "src"),
+      "react-native": path.resolve(dirname, "src/test/react-native-mock.tsx"),
     },
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     restoreMocks: true,
     clearMocks: true,
   },

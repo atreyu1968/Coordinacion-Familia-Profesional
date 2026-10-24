@@ -68,6 +68,11 @@ import { useColors } from "@/hooks/useColors";
 import { connectSocket } from "@/lib/socket";
 import { formatRelative, initials, roleLabel } from "@/lib/format";
 import {
+  ChatMessageVisibilityActions,
+  HiddenChatMessageRow,
+} from "@/components/ChatMessageVisibility";
+import { requestChatMessageDeletionConfirmation } from "@/lib/chat-message-confirmation";
+import {
   deleteChatMessageForEveryone,
   hideChatMessage,
   restoreChatMessage,
@@ -868,44 +873,37 @@ export default function ChatDetailScreen() {
 
   const onDelete = (message: Message) => {
     setActionMessage(null);
-    Alert.alert(
-      "Eliminar para todos",
-      "El mensaje se sustituirá por «Mensaje eliminado» para todas las personas de la conversación.",
-      [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: () =>
-          void performMessageAction(
-            message.id,
-            () => deleteMutation.mutateAsync({ id: message.id }),
-            (msg) => {
-              messageActionGuardRef.current.markDeleted(message.id);
-              const deletedMessage = { ...msg, deleted: true };
-              setMessages((previous) =>
-                deleteChatMessageForEveryone(previous, [], deletedMessage)
-                  .messages,
-              );
-              queryClient.setQueryData<Message[]>(
-                getListHiddenGroupMessagesQueryKey(groupId),
-                (previous) =>
-                  previous
-                    ? deleteChatMessageForEveryone(
-                        [],
-                        previous,
-                        deletedMessage,
-                      ).hiddenMessages
-                    : previous,
-              );
-              void queryClient.invalidateQueries({
-                queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-              });
-            },
-            "No se pudo eliminar el mensaje.",
-          ),
+    requestChatMessageDeletionConfirmation(
+      (title, messageText, buttons) => Alert.alert(title, messageText, buttons),
+      () => {
+        void performMessageAction(
+          message.id,
+          () => deleteMutation.mutateAsync({ id: message.id }),
+          (msg) => {
+            messageActionGuardRef.current.markDeleted(message.id);
+            const deletedMessage = { ...msg, deleted: true };
+            setMessages((previous) =>
+              deleteChatMessageForEveryone(previous, [], deletedMessage)
+                .messages,
+            );
+            queryClient.setQueryData<Message[]>(
+              getListHiddenGroupMessagesQueryKey(groupId),
+              (previous) =>
+                previous
+                  ? deleteChatMessageForEveryone(
+                      [],
+                      previous,
+                      deletedMessage,
+                    ).hiddenMessages
+                  : previous,
+            );
+            void queryClient.invalidateQueries({
+              queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+            });
+          },
+          "No se pudo eliminar el mensaje.",
+        );
       },
-      ],
     );
   };
 
@@ -1449,24 +1447,15 @@ export default function ChatDetailScreen() {
                         </Text>
                       </Pressable>
                     ) : null}
-                    <Pressable
-                      style={styles.sheetItem}
-                      onPress={() => onHideForMe(actionMessage)}
-                    >
-                      <Feather name="eye-off" size={20} color={colors.foreground} />
-                      <Text style={[styles.sheetText, { color: colors.foreground }]}>
-                        Ocultar solo para mí
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.sheetItem}
-                      onPress={() => onDelete(actionMessage)}
-                    >
-                      <Feather name="trash-2" size={20} color={colors.destructive} />
-                      <Text style={[styles.sheetText, { color: colors.destructive }]}>
-                        Eliminar para todos
-                      </Text>
-                    </Pressable>
+                    <ChatMessageVisibilityActions
+                      onHide={() => onHideForMe(actionMessage)}
+                      onDelete={() => onDelete(actionMessage)}
+                      itemStyle={styles.sheetItem}
+                      textStyle={[styles.sheetText, { color: colors.foreground }]}
+                      destructiveColor={colors.destructive}
+                      hideIcon={<Feather name="eye-off" size={20} color={colors.foreground} />}
+                      deleteIcon={<Feather name="trash-2" size={20} color={colors.destructive} />}
+                    />
                   </>
                 ) : null}
               </>
@@ -1642,51 +1631,16 @@ export default function ChatDetailScreen() {
                   />
                 }
                 renderItem={({ item }) => (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: colors.border,
-                    }}
-                  >
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <Text
-                        style={{
-                          color: item.deleted ? colors.mutedForeground : colors.foreground,
-                          fontStyle: item.deleted ? "italic" : "normal",
-                        }}
-                        numberOfLines={2}
-                      >
-                        {item.deleted
-                          ? "Mensaje eliminado para todos"
-                          : item.content || item.attachmentName || "Archivo adjunto"}
-                      </Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                        {formatRelative(item.createdAt)}
-                      </Text>
-                    </View>
-                    {!item.deleted ? (
-                      <Pressable
-                        onPress={() => onRestoreHiddenMessage(item)}
-                        disabled={restoreHiddenMessageMutation.isPending}
-                        accessibilityRole="button"
-                        accessibilityLabel="Restaurar mensaje"
-                        style={({ pressed }) => ({
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          opacity: restoreHiddenMessageMutation.isPending || pressed ? 0.5 : 1,
-                        })}
-                      >
-                        <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
-                          Restaurar
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
+                  <HiddenChatMessageRow
+                    message={item}
+                    subtitle={formatRelative(item.createdAt)}
+                    foregroundColor={colors.foreground}
+                    mutedColor={colors.mutedForeground}
+                    primaryColor={colors.primary}
+                    borderColor={colors.border}
+                    disabled={restoreHiddenMessageMutation.isPending}
+                    onRestore={() => onRestoreHiddenMessage(item)}
+                  />
                 )}
               />
             )}

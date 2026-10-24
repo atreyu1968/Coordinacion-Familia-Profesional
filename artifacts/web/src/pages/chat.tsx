@@ -95,6 +95,10 @@ import {
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import { CreateChatGroupDialog, LeaveChatGroupButton } from "@/components/chat-group-actions";
+import {
+  ChatMessageVisibilityMenuItems,
+  HiddenChatMessageRow,
+} from "@/components/chat-message-visibility";
 
 import {
   deleteChatMessageForEveryone,
@@ -103,6 +107,7 @@ import {
   createChatMessageActionGuard,
   mergeChatMessageUpdates,
 } from "@/lib/chat-message-state";
+import { confirmChatMessageDeletion } from "@/lib/chat-message-confirmation";
 
 const TOKEN_KEY = "coordina_adg_token";
 const CHAT_PAGE_SIZE = 200;
@@ -485,19 +490,10 @@ function MessageBubble({
                   </DropdownMenuItem>
                 )}
                 {mine && (
-                  <DropdownMenuItem
-                    onClick={onHideForMe}
-                  >
-                    <EyeOff className="w-4 h-4 mr-2" /> Ocultar solo para mí
-                  </DropdownMenuItem>
-                )}
-                {mine && (
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" /> Eliminar para todos
-                  </DropdownMenuItem>
+                  <ChatMessageVisibilityMenuItems
+                    onHide={onHideForMe}
+                    onDelete={onDelete}
+                  />
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1192,36 +1188,31 @@ function ConversationView({
   };
 
   const onDelete = (message: Message) => {
-    if (
-      !window.confirm(
-        "Se sustituirá este mensaje por «Mensaje eliminado» para todas las personas de la conversación. ¿Continuar?",
-      )
-    ) {
-      return;
-    }
-    void performMessageAction(
-      message.id,
-      () => deleteMut.mutateAsync({ id: message.id }),
-      (updated) => {
-        messageActionGuardRef.current.markDeleted(message.id);
-        const deletedMessage = { ...updated, deleted: true };
-        setMessages((previous) =>
-          deleteChatMessageForEveryone(previous, [], deletedMessage).messages,
-        );
-        queryClient.setQueryData<Message[]>(
-          getListHiddenGroupMessagesQueryKey(groupId),
-          (previous) =>
-            previous
-              ? deleteChatMessageForEveryone([], previous, deletedMessage)
-                  .hiddenMessages
-              : previous,
-        );
-        void queryClient.invalidateQueries({
-          queryKey: getListHiddenGroupMessagesQueryKey(groupId),
-        });
-      },
-      "No se pudo eliminar el mensaje.",
-    );
+    confirmChatMessageDeletion(window.confirm.bind(window), () => {
+      void performMessageAction(
+        message.id,
+        () => deleteMut.mutateAsync({ id: message.id }),
+        (updated) => {
+          messageActionGuardRef.current.markDeleted(message.id);
+          const deletedMessage = { ...updated, deleted: true };
+          setMessages((previous) =>
+            deleteChatMessageForEveryone(previous, [], deletedMessage).messages,
+          );
+          queryClient.setQueryData<Message[]>(
+            getListHiddenGroupMessagesQueryKey(groupId),
+            (previous) =>
+              previous
+                ? deleteChatMessageForEveryone([], previous, deletedMessage)
+                    .hiddenMessages
+                : previous,
+          );
+          void queryClient.invalidateQueries({
+            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+          });
+        },
+        "No se pudo eliminar el mensaje.",
+      );
+    });
   };
 
   const onHideForMe = (message: Message) => {
@@ -1869,49 +1860,31 @@ export default function ChatPage() {
           ) : (
             <ul className="space-y-2">
               {(hiddenChatMessagesQuery.data ?? []).map((message) => (
-                <li key={message.id} className="flex items-center gap-3 rounded-md border p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className={`break-words text-sm ${message.deleted ? "italic text-muted-foreground" : ""}`}>
-                      {message.deleted
-                        ? "Mensaje eliminado para todos"
-                        : message.content || (message.attachmentName
-                          ? `Archivo adjunto · ${message.attachmentName}`
-                          : "Archivo adjunto")}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {message.conversationName} · {formatTime(message.createdAt)}
-                    </p>
-                  </div>
-                  {!message.deleted && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={restoreHiddenMessageMut.isPending}
-                      onClick={() => restoreHiddenMessageMut.mutate(
-                        { id: message.id },
-                        {
-                          onSuccess: () => {
-                            void queryClient.invalidateQueries({
-                              queryKey: getListHiddenChatMessagesQueryKey(),
-                            });
-                            void queryClient.invalidateQueries({
-                              queryKey: getListHiddenGroupMessagesQueryKey(message.conversationId),
-                            });
-                            toast({ title: "Mensaje restaurado" });
-                          },
-                          onError: () => toast({
-                            title: "No se pudo restaurar el mensaje",
-                            description: "Comprueba que sigues perteneciendo a la conversación e inténtalo de nuevo.",
-                            variant: "destructive",
-                          }),
-                        },
-                      )}
-                    >
-                      Restaurar
-                    </Button>
+                <HiddenChatMessageRow
+                  key={message.id}
+                  message={message}
+                  subtitle={`${message.conversationName} · ${formatTime(message.createdAt)}`}
+                  disabled={restoreHiddenMessageMut.isPending}
+                  onRestore={() => restoreHiddenMessageMut.mutate(
+                    { id: message.id },
+                    {
+                      onSuccess: () => {
+                        void queryClient.invalidateQueries({
+                          queryKey: getListHiddenChatMessagesQueryKey(),
+                        });
+                        void queryClient.invalidateQueries({
+                          queryKey: getListHiddenGroupMessagesQueryKey(message.conversationId),
+                        });
+                        toast({ title: "Mensaje restaurado" });
+                      },
+                      onError: () => toast({
+                        title: "No se pudo restaurar el mensaje",
+                        description: "Comprueba que sigues perteneciendo a la conversación e inténtalo de nuevo.",
+                        variant: "destructive",
+                      }),
+                    },
                   )}
-                </li>
+                />
               ))}
             </ul>
           )}
