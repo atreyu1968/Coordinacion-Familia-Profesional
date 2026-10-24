@@ -65,6 +65,11 @@ import { useBadges } from "@/contexts/BadgesContext";
 import { useColors } from "@/hooks/useColors";
 import { connectSocket } from "@/lib/socket";
 import { formatRelative, initials, roleLabel } from "@/lib/format";
+import {
+  deleteChatMessageForEveryone,
+  hideChatMessage,
+  restoreChatMessage,
+} from "@/lib/chat-message-state";
 
 // Full emoji keyboard for composing.
 const EMOJIS = [
@@ -322,6 +327,7 @@ export default function ChatDetailScreen() {
   const groupId = Number(params.id);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const messagesRef = useRef(messages);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -400,6 +406,10 @@ export default function ChatDetailScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const loadMessages = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
@@ -459,7 +469,16 @@ export default function ChatDetailScreen() {
     };
     const onDeleted = (msg: Message) => {
       if (msg.groupId !== groupId) return;
-      mergeMessages([msg]);
+      setMessages((previous) =>
+        deleteChatMessageForEveryone(previous, [], msg).messages,
+      );
+      queryClient.setQueryData<Message[]>(
+        getListHiddenGroupMessagesQueryKey(groupId),
+        (previous) =>
+          previous
+            ? deleteChatMessageForEveryone([], previous, msg).hiddenMessages
+            : previous,
+      );
       void queryClient.invalidateQueries({
         queryKey: getListHiddenGroupMessagesQueryKey(groupId),
       });
@@ -470,16 +489,35 @@ export default function ChatDetailScreen() {
     };
     const onHiddenForMe = (event: { groupId: number; messageId: number }) => {
       if (event.groupId !== groupId) return;
+      const hiddenMessage = messagesRef.current.find(
+        (message) => message.id === event.messageId,
+      );
       setMessages((previous) =>
         previous.filter((message) => message.id !== event.messageId),
       );
+      if (hiddenMessage) {
+        queryClient.setQueryData<Message[]>(
+          getListHiddenGroupMessagesQueryKey(groupId),
+          (previous) =>
+            hideChatMessage([], previous ?? [], hiddenMessage).hiddenMessages,
+        );
+      }
       void queryClient.invalidateQueries({
         queryKey: getListHiddenGroupMessagesQueryKey(groupId),
       });
     };
     const onRestoredForMe = (event: { groupId: number; message: Message }) => {
       if (event.groupId !== groupId) return;
-      mergeMessages([event.message]);
+      setMessages((previous) =>
+        restoreChatMessage(previous, [], event.message).messages,
+      );
+      queryClient.setQueryData<Message[]>(
+        getListHiddenGroupMessagesQueryKey(groupId),
+        (previous) =>
+          previous
+            ? restoreChatMessage([], previous, event.message).hiddenMessages
+            : previous,
+      );
       void queryClient.invalidateQueries({
         queryKey: getListHiddenGroupMessagesQueryKey(groupId),
       });
@@ -757,7 +795,24 @@ export default function ChatDetailScreen() {
         onPress: () =>
           deleteMutation.mutate(
             { id: message.id },
-            { onSuccess: (msg) => mergeMessages([msg]) },
+            {
+              onSuccess: (msg) => {
+                setMessages((previous) =>
+                  deleteChatMessageForEveryone(previous, [], msg).messages,
+                );
+                queryClient.setQueryData<Message[]>(
+                  getListHiddenGroupMessagesQueryKey(groupId),
+                  (previous) =>
+                    previous
+                      ? deleteChatMessageForEveryone([], previous, msg)
+                          .hiddenMessages
+                      : previous,
+                );
+                void queryClient.invalidateQueries({
+                  queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+                });
+              },
+            },
           ),
       },
       ],
@@ -769,10 +824,19 @@ export default function ChatDetailScreen() {
     hideMessageMutation.mutate(
       { id: message.id },
       {
-        onSuccess: () =>
+        onSuccess: () => {
           setMessages((previous) =>
-            previous.filter((candidate) => candidate.id !== message.id),
-          ),
+            hideChatMessage(previous, [], message).messages,
+          );
+          queryClient.setQueryData<Message[]>(
+            getListHiddenGroupMessagesQueryKey(groupId),
+            (previous) =>
+              hideChatMessage([], previous ?? [], message).hiddenMessages,
+          );
+          void queryClient.invalidateQueries({
+            queryKey: getListHiddenGroupMessagesQueryKey(groupId),
+          });
+        },
         onError: () =>
           Alert.alert("Error", "No se pudo ocultar el mensaje para ti."),
       },
@@ -784,7 +848,16 @@ export default function ChatDetailScreen() {
       { id: message.id },
       {
         onSuccess: (restored) => {
-          mergeMessages([restored]);
+          setMessages((previous) =>
+            restoreChatMessage(previous, [], restored).messages,
+          );
+          queryClient.setQueryData<Message[]>(
+            getListHiddenGroupMessagesQueryKey(groupId),
+            (previous) =>
+              previous
+                ? restoreChatMessage([], previous, restored).hiddenMessages
+                : previous,
+          );
           void queryClient.invalidateQueries({
             queryKey: getListHiddenGroupMessagesQueryKey(groupId),
           });
