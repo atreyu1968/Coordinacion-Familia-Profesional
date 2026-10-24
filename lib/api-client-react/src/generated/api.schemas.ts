@@ -94,6 +94,120 @@ export interface LmsCourseInput {
   certificateEnabled?: boolean;
 }
 
+export interface LmsCourseImportUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  size: number;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  contentType: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  moduleId: number | null;
+}
+
+export interface LmsCourseImportInput {
+  /**
+     * @minLength 1
+     * @maxLength 1024
+     */
+  objectPath: string;
+  /**
+     * @minLength 20
+     * @maxLength 256
+     */
+  intentToken: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  moduleId: number | null;
+}
+
+export interface LmsCourseImportResponse {
+  course: LmsCourseDetail;
+  /** @minimum 1 */
+  importedLessonCount: number;
+  warnings: string[];
+}
+
+export type LmsCourseImportManifestFormat = typeof LmsCourseImportManifestFormat[keyof typeof LmsCourseImportManifestFormat];
+
+
+export const LmsCourseImportManifestFormat = {
+  'coordina-adg-course': 'coordina-adg-course',
+} as const;
+
+export type LmsCourseImportManifestVersion = typeof LmsCourseImportManifestVersion[keyof typeof LmsCourseImportManifestVersion];
+
+
+export const LmsCourseImportManifestVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type LmsCourseImportManifestCourse = {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  /** @maxLength 10000 */
+  description?: string;
+  certificateEnabled?: boolean;
+};
+
+export type LmsCourseImportLessonManifestKind = typeof LmsCourseImportLessonManifestKind[keyof typeof LmsCourseImportLessonManifestKind];
+
+
+export const LmsCourseImportLessonManifestKind = {
+  text: 'text',
+  file: 'file',
+  video: 'video',
+  quiz: 'quiz',
+  scorm12: 'scorm12',
+  scorm2004: 'scorm2004',
+} as const;
+
+export type LmsCourseImportLessonManifestContent = { [key: string]: unknown };
+
+export interface LmsCourseImportLessonManifest {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  kind: LmsCourseImportLessonManifestKind;
+  required?: boolean;
+  content?: LmsCourseImportLessonManifestContent;
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  file?: string;
+}
+
+export interface LmsCourseImportManifest {
+  format: LmsCourseImportManifestFormat;
+  version: LmsCourseImportManifestVersion;
+  course: LmsCourseImportManifestCourse;
+  /**
+     * @minItems 1
+     * @maxItems 200
+     */
+  lessons: LmsCourseImportLessonManifest[];
+}
+
 export interface LmsCourseUpdate {
   /** @minLength 1 */
   title?: string;

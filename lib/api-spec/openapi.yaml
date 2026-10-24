@@ -5483,6 +5483,51 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseInput" } } } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/LmsCourseDetail" } } } }
+  /lms/course-imports/request-url:
+    post:
+      operationId: requestLmsCourseImportUploadUrl
+      tags: [lms]
+      summary: Request a private upload URL for a complete course ZIP
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LmsCourseImportUploadInput"
+      responses:
+        "200":
+          description: Private upload URL and one-use import token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LmsUploadResponse"
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /lms/courses/import:
+    post:
+      operationId: importLmsCourseArchive
+      tags: [lms]
+      summary: Import a complete draft course from a validated ZIP archive
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LmsCourseImportInput"
+      responses:
+        "201":
+          description: Imported course in draft status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LmsCourseImportResponse"
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /lms/courses/{courseId}:
     get:
       operationId: getLmsCourse
@@ -5781,6 +5826,60 @@ components:
         moduleId: { type: [integer, "null"] }
         certificateEnabled: { type: boolean }
       required: [title]
+    LmsCourseImportUploadInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 104857600 }
+        contentType: { type: string, minLength: 1, maxLength: 255 }
+        moduleId: { type: [integer, "null"], minimum: 1 }
+      required: [name, size, contentType, moduleId]
+    LmsCourseImportInput:
+      type: object
+      properties:
+        objectPath: { type: string, minLength: 1, maxLength: 1024 }
+        intentToken: { type: string, minLength: 20, maxLength: 256 }
+        moduleId: { type: [integer, "null"], minimum: 1 }
+      required: [objectPath, intentToken, moduleId]
+    LmsCourseImportResponse:
+      type: object
+      properties:
+        course: { $ref: "#/components/schemas/LmsCourseDetail" }
+        importedLessonCount: { type: integer, minimum: 1 }
+        warnings:
+          type: array
+          items: { type: string }
+      required: [course, importedLessonCount, warnings]
+    LmsCourseImportManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        format: { type: string, enum: [coordina-adg-course] }
+        version: { type: integer, enum: [1] }
+        course:
+          type: object
+          additionalProperties: false
+          properties:
+            title: { type: string, minLength: 1, maxLength: 180 }
+            description: { type: string, maxLength: 10000 }
+            certificateEnabled: { type: boolean }
+          required: [title]
+        lessons:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: "#/components/schemas/LmsCourseImportLessonManifest" }
+      required: [format, version, course, lessons]
+    LmsCourseImportLessonManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        kind: { type: string, enum: [text, file, video, quiz, scorm12, scorm2004] }
+        required: { type: boolean }
+        content: { type: object, additionalProperties: true }
+        file: { type: string, minLength: 1, maxLength: 512 }
+      required: [title, kind]
     LmsCourseUpdate:
       type: object
       properties:

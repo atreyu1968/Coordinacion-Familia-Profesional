@@ -6298,6 +6298,92 @@ export const CreateLmsCourseResponse = zod.object({
 }))
 
 
+/**
+ * @summary Request a private upload URL for a complete course ZIP
+ */
+export const requestLmsCourseImportUploadUrlBodyNameMax = 255;
+
+export const requestLmsCourseImportUploadUrlBodySizeMax = 104857600;
+
+export const requestLmsCourseImportUploadUrlBodyContentTypeMax = 255;
+
+
+
+
+export const RequestLmsCourseImportUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(requestLmsCourseImportUploadUrlBodyNameMax),
+  "size": zod.number().int().min(1).max(requestLmsCourseImportUploadUrlBodySizeMax),
+  "contentType": zod.string().min(1).max(requestLmsCourseImportUploadUrlBodyContentTypeMax),
+  "moduleId": zod.number().int().min(1).nullable()
+})
+
+export const RequestLmsCourseImportUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "intentToken": zod.string(),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Import a complete draft course from a validated ZIP archive
+ */
+export const importLmsCourseArchiveBodyObjectPathMax = 1024;
+
+export const importLmsCourseArchiveBodyIntentTokenMin = 20;
+export const importLmsCourseArchiveBodyIntentTokenMax = 256;
+
+
+
+
+export const ImportLmsCourseArchiveBody = zod.object({
+  "objectPath": zod.string().min(1).max(importLmsCourseArchiveBodyObjectPathMax),
+  "intentToken": zod.string().min(importLmsCourseArchiveBodyIntentTokenMin).max(importLmsCourseArchiveBodyIntentTokenMax),
+  "moduleId": zod.number().int().min(1).nullable()
+})
+
+
+
+
+export const ImportLmsCourseArchiveResponse = zod.object({
+  "course": zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "moduleId": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'published']),
+  "certificateEnabled": zod.boolean(),
+  "lessonCount": zod.number().int(),
+  "completed": zod.boolean(),
+  "certificateAvailable": zod.boolean()
+}).and(zod.object({
+  "lessons": zod.array(zod.object({
+  "id": zod.number().int(),
+  "courseId": zod.number().int(),
+  "title": zod.string(),
+  "kind": zod.enum(['text', 'file', 'video', 'quiz', 'scorm12', 'scorm2004']),
+  "position": zod.number().int(),
+  "required": zod.boolean(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "objectName": zod.string().nullable(),
+  "objectContentType": zod.string().nullable(),
+  "objectSize": zod.number().int().nullable(),
+  "scormVersion": zod.string().nullable(),
+  "scormLaunchPath": zod.string().nullable()
+})),
+  "progress": zod.array(zod.object({
+  "lessonId": zod.number().int(),
+  "status": zod.enum(['not_started', 'in_progress', 'completed', 'failed']),
+  "score": zod.number().int().nullable(),
+  "attempts": zod.number().int(),
+  "completedAt": zod.coerce.date().nullable()
+}))
+})),
+  "importedLessonCount": zod.number().int().min(1),
+  "warnings": zod.array(zod.string())
+})
+
+
 export const GetLmsCourseParams = zod.object({
   "courseId": zod.coerce.number().int()
 })

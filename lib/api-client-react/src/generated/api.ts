@@ -189,6 +189,9 @@ import type {
   ListYearConfirmationsParams,
   LmsCourse,
   LmsCourseDetail,
+  LmsCourseImportInput,
+  LmsCourseImportResponse,
+  LmsCourseImportUploadInput,
   LmsCourseInput,
   LmsCourseUpdate,
   LmsDownloadToken,
@@ -22862,6 +22865,182 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateLmsCourseMutationOptions(options), queryClient);
+    }
+
+export const getRequestLmsCourseImportUploadUrlUrl = () => {
+
+
+
+
+  return `/api/lms/course-imports/request-url`
+}
+
+/**
+ * @summary Request a private upload URL for a complete course ZIP
+ */
+export const requestLmsCourseImportUploadUrl = async (lmsCourseImportUploadInput: LmsCourseImportUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<LmsUploadResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LmsUploadResponse>(getRequestLmsCourseImportUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lmsCourseImportUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestLmsCourseImportUploadUrlMutationKey = () => ['requestLmsCourseImportUploadUrl'] as const;
+
+export const getRequestLmsCourseImportUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>, TError,RequestLmsCourseImportUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>, TError,RequestLmsCourseImportUploadUrlMutationVariables, TContext> => {
+
+const mutationKey = getRequestLmsCourseImportUploadUrlMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>, RequestLmsCourseImportUploadUrlMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestLmsCourseImportUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestLmsCourseImportUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>>
+    export type RequestLmsCourseImportUploadUrlMutationBody = BodyType<LmsCourseImportUploadInput>
+    export type RequestLmsCourseImportUploadUrlMutationError = ErrorType<ErrorResponse>
+    export type RequestLmsCourseImportUploadUrlMutationVariables = {data: BodyType<LmsCourseImportUploadInput>}
+
+    /**
+ * @summary Request a private upload URL for a complete course ZIP
+ */
+export const useRequestLmsCourseImportUploadUrl = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>, TError,RequestLmsCourseImportUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestLmsCourseImportUploadUrl>>,
+        TError,
+        RequestLmsCourseImportUploadUrlMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestLmsCourseImportUploadUrlMutationOptions(options), queryClient);
+    }
+
+export const getImportLmsCourseArchiveUrl = () => {
+
+
+
+
+  return `/api/lms/courses/import`
+}
+
+/**
+ * @summary Import a complete draft course from a validated ZIP archive
+ */
+export const importLmsCourseArchive = async (lmsCourseImportInput: LmsCourseImportInput, options?: Parameters<typeof customFetch>[1]): Promise<LmsCourseImportResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LmsCourseImportResponse>(getImportLmsCourseArchiveUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lmsCourseImportInput)
+  }
+);}
+
+
+
+
+
+export const getImportLmsCourseArchiveMutationKey = () => ['importLmsCourseArchive'] as const;
+
+export const getImportLmsCourseArchiveMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importLmsCourseArchive>>, TError,ImportLmsCourseArchiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importLmsCourseArchive>>, TError,ImportLmsCourseArchiveMutationVariables, TContext> => {
+
+const mutationKey = getImportLmsCourseArchiveMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importLmsCourseArchive>>, ImportLmsCourseArchiveMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importLmsCourseArchive(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportLmsCourseArchiveMutationResult = NonNullable<Awaited<ReturnType<typeof importLmsCourseArchive>>>
+    export type ImportLmsCourseArchiveMutationBody = BodyType<LmsCourseImportInput>
+    export type ImportLmsCourseArchiveMutationError = ErrorType<ErrorResponse>
+    export type ImportLmsCourseArchiveMutationVariables = {data: BodyType<LmsCourseImportInput>}
+
+    /**
+ * @summary Import a complete draft course from a validated ZIP archive
+ */
+export const useImportLmsCourseArchive = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importLmsCourseArchive>>, TError,ImportLmsCourseArchiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importLmsCourseArchive>>,
+        TError,
+        ImportLmsCourseArchiveMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportLmsCourseArchiveMutationOptions(options), queryClient);
     }
 
 export const getGetLmsCourseUrl = (courseId: number,) => {

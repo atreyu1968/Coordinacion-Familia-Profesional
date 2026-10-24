@@ -240,6 +240,10 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   --command="SELECT status = 'confirmed' AND does_not_teach = true FROM public.teacher_year_confirmations WHERE school_year = '2099-2100'" \
   | grep -qx t
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="SELECT to_regclass('public.lms_course_import_intents') IS NOT NULL" \
+  | grep -qx t
 
 echo "==> Running the API regression suite on the upgraded isolated database"
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

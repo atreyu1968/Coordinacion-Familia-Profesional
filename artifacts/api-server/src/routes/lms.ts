@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -14,6 +14,7 @@ import {
   lmsLessonProgressTable,
   lmsCertificatesTable,
   lmsUploadIntentsTable,
+  lmsCourseImportIntentsTable,
   modulesTable,
   usersTable,
 } from "@workspace/db";
@@ -31,6 +32,10 @@ import {
   UpdateLmsLessonBody,
   RequestLmsUploadUrlBody,
   RequestLmsUploadUrlResponse,
+  RequestLmsCourseImportUploadUrlBody,
+  RequestLmsCourseImportUploadUrlResponse,
+  ImportLmsCourseArchiveBody,
+  ImportLmsCourseArchiveResponse,
   CompleteLmsLessonParams,
   SubmitLmsQuizAttemptParams,
   SubmitLmsQuizAttemptBody,
@@ -42,6 +47,10 @@ import { getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { resolveAudienceUserIds } from "../lib/audience";
 import { notifyUsers } from "../lib/notify";
+import {
+  CourseImportValidationError,
+  parseCourseImportManifest,
+} from "../lib/lms-course-import";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const router: IRouter = Router();
@@ -436,22 +445,22 @@ function scormScore(
   return value === undefined ? null : Math.max(0, Math.min(100, Math.round(value)));
 }
 
-async function readScormArchive(response: Response, expectedSize?: number): Promise<Buffer> {
-  if (!response.ok) throw new Error("No se pudo leer el paquete SCORM.");
+async function readBoundedZip(response: Response, expectedSize?: number): Promise<Buffer> {
+  if (!response.ok) throw new Error("No se pudo leer el archivo ZIP.");
   if (expectedSize !== undefined && (
     !Number.isSafeInteger(expectedSize) ||
     expectedSize < 1 ||
     expectedSize > MAX_SCORM_ARCHIVE_SIZE
   )) {
-    throw new Error("El paquete SCORM supera el tamaño máximo permitido o no es válido.");
+    throw new Error("El archivo ZIP supera el tamaño máximo permitido o no es válido.");
   }
 
   const contentLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAX_SCORM_ARCHIVE_SIZE) {
     await response.body?.cancel();
-    throw new Error("El paquete SCORM supera el tamaño máximo permitido.");
+    throw new Error("El archivo ZIP supera el tamaño máximo permitido.");
   }
-  if (!response.body) throw new Error("No se pudo leer el paquete SCORM.");
+  if (!response.body) throw new Error("No se pudo leer el archivo ZIP.");
 
   const reader = response.body.getReader();
   const chunks: Buffer[] = [];
@@ -463,7 +472,7 @@ async function readScormArchive(response: Response, expectedSize?: number): Prom
       totalSize += value.byteLength;
       if (totalSize > MAX_SCORM_ARCHIVE_SIZE) {
         await reader.cancel();
-        throw new Error("El paquete SCORM supera el tamaño máximo permitido.");
+        throw new Error("El archivo ZIP supera el tamaño máximo permitido.");
       }
       chunks.push(Buffer.from(value));
     }
@@ -472,9 +481,9 @@ async function readScormArchive(response: Response, expectedSize?: number): Prom
   }
 
   if (expectedSize !== undefined && totalSize !== expectedSize) {
-    throw new Error("El tamaño del paquete SCORM no coincide con el archivo registrado.");
+    throw new Error("El tamaño del archivo ZIP no coincide con el archivo registrado.");
   }
-  if (totalSize === 0) throw new Error("El paquete SCORM está vacío.");
+  if (totalSize === 0) throw new Error("El archivo ZIP está vacío.");
   return Buffer.concat(chunks, totalSize);
 }
 
@@ -492,7 +501,7 @@ async function loadScormZip(objectPath: string, expectedSize?: number): Promise<
 
   const objectFile = await storage.getObjectEntityFile(objectPath);
   const response = await storage.downloadObject(objectFile, 0);
-  const archive = await readScormArchive(response, expectedSize);
+  const archive = await readBoundedZip(response, expectedSize);
   const zip = await JSZip.loadAsync(archive);
   const entries = Object.values(zip.files);
   if (entries.length > 5000) throw new Error("El paquete SCORM contiene demasiados archivos.");
@@ -509,6 +518,88 @@ async function loadScormZip(objectPath: string, expectedSize?: number): Promise<
   scormZipCache.set(cacheKey, { zip, expiresAt: Date.now() + 30 * 60_000 });
   return zip;
 }
+
+async function loadCourseImportZip(
+  objectPath: string,
+  expectedSize: number,
+): Promise<JSZip> {
+  const objectFile = await storage.getObjectEntityFile(objectPath);
+  const response = await storage.downloadObject(objectFile, 0);
+  const archive = await readBoundedZip(response, expectedSize);
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(archive);
+  } catch {
+    throw new CourseImportValidationError("El archivo subido no es un ZIP válido.");
+  }
+
+  const entries = Object.values(zip.files);
+  if (entries.length > 5_000) {
+    throw new CourseImportValidationError("El ZIP contiene demasiados elementos.");
+  }
+  let expandedSize = 0;
+  for (const entry of entries) {
+    const unsafeOriginalName =
+      (entry as unknown as { unsafeOriginalName?: string }).unsafeOriginalName ??
+      entry.name;
+    const normalized = normalizedZipPath(unsafeOriginalName);
+    if (
+      !normalized ||
+      normalized.replace(/\/+$/, "") !== unsafeOriginalName.replace(/\/+$/, "")
+    ) {
+      throw new CourseImportValidationError(
+        "El ZIP contiene una ruta de archivo no permitida.",
+      );
+    }
+    const entrySize =
+      (entry as unknown as { _data?: { uncompressedSize?: number } })._data
+        ?.uncompressedSize ?? 0;
+    if (!Number.isSafeInteger(entrySize) || entrySize < 0) {
+      throw new CourseImportValidationError("El ZIP contiene un tamaño no válido.");
+    }
+    expandedSize += entrySize;
+    if (expandedSize > 250 * 1024 * 1024) {
+      throw new CourseImportValidationError(
+        "El ZIP supera los 250 MB descomprimidos permitidos.",
+      );
+    }
+  }
+  return zip;
+}
+
+function zipEntrySize(entry: JSZip.JSZipObject): number {
+  return (entry as unknown as { _data?: { uncompressedSize?: number } })._data
+    ?.uncompressedSize ?? 0;
+}
+
+function courseAssetContentType(filePath: string): string {
+  const extension = path.posix.extname(filePath).toLowerCase();
+  const types: Record<string, string> = {
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".csv": "text/csv",
+    ".txt": "text/plain; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".zip": "application/zip",
+  };
+  return types[extension] ?? "application/octet-stream";
+}
+
+class LmsCourseImportAlreadyUsedError extends Error {}
 
 async function getScormLaunch(
   objectPath: string,
@@ -673,6 +764,295 @@ router.delete("/lms/lessons/:lessonId", requireAuth, async (req, res): Promise<v
   });
   res.sendStatus(204);
 });
+
+router.post(
+  "/lms/course-imports/request-url",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const parsed = RequestLmsCourseImportUploadUrlBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Datos de importación no válidos." });
+      return;
+    }
+    if (!parsed.data.name.toLowerCase().endsWith(".zip")) {
+      res.status(400).json({ message: "El archivo del curso debe tener extensión .zip." });
+      return;
+    }
+
+    const scope = { moduleId: parsed.data.moduleId };
+    if (
+      (scope.moduleId !== null && !(await isActiveFamilyModule(scope.moduleId))) ||
+      !(await canManageCourse(req.user!, scope))
+    ) {
+      res.status(403).json({ message: "No tienes permiso para importar cursos en ese ámbito." });
+      return;
+    }
+
+    await db.delete(lmsCourseImportIntentsTable).where(
+      lt(lmsCourseImportIntentsTable.expiresAt, new Date(Date.now() - 24 * 60 * 60_000)),
+    );
+    const uploadURL = await storage.getObjectEntityUploadURL({
+      maxBytes: parsed.data.size,
+      expectedBytes: parsed.data.size,
+    });
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    const intentToken = randomBytes(32).toString("base64url");
+    const expiresAt = new Date(Date.now() + 30 * 60_000);
+    await db.insert(lmsCourseImportIntentsTable).values({
+      tokenHash: createHash("sha256").update(intentToken).digest("hex"),
+      userId: req.user!.id,
+      moduleId: scope.moduleId,
+      objectPath,
+      name: parsed.data.name,
+      contentType: "application/zip",
+      size: parsed.data.size,
+      expiresAt,
+    });
+    res.json(RequestLmsCourseImportUploadUrlResponse.parse({
+      uploadURL,
+      objectPath,
+      intentToken,
+      expiresAt,
+    }));
+  },
+);
+
+router.post(
+  "/lms/courses/import",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const parsed = ImportLmsCourseArchiveBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Datos de importación no válidos." });
+      return;
+    }
+
+    const { moduleId, objectPath } = parsed.data;
+    let verifiedUpload = false;
+    let databaseCommitted = false;
+    const createdObjectPaths = new Set<string>();
+
+    try {
+      if (
+        (moduleId !== null && !(await isActiveFamilyModule(moduleId))) ||
+        !(await canManageCourse(req.user!, { moduleId }))
+      ) {
+        res.status(403).json({ message: "No tienes permiso para importar cursos en ese ámbito." });
+        return;
+      }
+
+      const tokenHash = createHash("sha256")
+        .update(parsed.data.intentToken)
+        .digest("hex");
+      const [intent] = await db.select().from(lmsCourseImportIntentsTable).where(and(
+        eq(lmsCourseImportIntentsTable.tokenHash, tokenHash),
+        eq(lmsCourseImportIntentsTable.userId, req.user!.id),
+        moduleId === null
+          ? isNull(lmsCourseImportIntentsTable.moduleId)
+          : eq(lmsCourseImportIntentsTable.moduleId, moduleId),
+        isNull(lmsCourseImportIntentsTable.consumedAt),
+      ));
+      if (
+        !intent ||
+        intent.expiresAt.getTime() < Date.now() ||
+        intent.objectPath !== objectPath
+      ) {
+        res.status(403).json({
+          message: "La subida ha caducado o no corresponde a esta cuenta.",
+        });
+        return;
+      }
+
+      const archiveObject = await storage.getObjectEntityFile(intent.objectPath);
+      const acl = await getObjectAclPolicy(archiveObject);
+      if (acl?.owner && acl.owner !== String(req.user!.id)) {
+        res.status(403).json({ message: "No tienes acceso al archivo subido." });
+        return;
+      }
+      verifiedUpload = true;
+      await storage.trySetObjectEntityAclPolicy(intent.objectPath, {
+        owner: String(req.user!.id),
+        visibility: "private",
+      });
+
+      const zip = await loadCourseImportZip(intent.objectPath, intent.size);
+      const manifestEntry = zip.file("coordina-course.json");
+      if (!manifestEntry || manifestEntry.dir) {
+        throw new CourseImportValidationError(
+          "El ZIP debe incluir coordina-course.json en la raíz.",
+        );
+      }
+      if (zipEntrySize(manifestEntry) > 1024 * 1024) {
+        throw new CourseImportValidationError(
+          "coordina-course.json no puede superar 1 MB.",
+        );
+      }
+      const manifest = parseCourseImportManifest(
+        await manifestEntry.async("string"),
+      );
+      const savedAssets = new Map<string, {
+        objectPath: string;
+        objectName: string;
+        objectContentType: string;
+        objectSize: number;
+      }>();
+      const lessonsToCreate: Array<
+        Omit<typeof lmsLessonsTable.$inferInsert, "courseId">
+      > = [];
+
+      for (const [position, lesson] of manifest.lessons.entries()) {
+        let objectMetadata: {
+          objectPath: string;
+          objectName: string;
+          objectContentType: string;
+          objectSize: number;
+        } | undefined;
+        let scormMetadata: {
+          scormVersion: string | null;
+          scormLaunchPath: string | null;
+        } = { scormVersion: null, scormLaunchPath: null };
+
+        if (lesson.file) {
+          const entry = zip.file(lesson.file);
+          if (!entry || entry.dir) {
+            throw new CourseImportValidationError(
+              `No se encontró el archivo ${lesson.file} del curso.`,
+            );
+          }
+          if (zipEntrySize(entry) > MAX_SCORM_ARCHIVE_SIZE) {
+            throw new CourseImportValidationError(
+              `El archivo ${lesson.file} supera el límite de 100 MB.`,
+            );
+          }
+
+          objectMetadata = savedAssets.get(lesson.file);
+          if (!objectMetadata) {
+            const bytes = await entry.async("nodebuffer");
+            if (bytes.length > MAX_SCORM_ARCHIVE_SIZE) {
+              throw new CourseImportValidationError(
+                `El archivo ${lesson.file} supera el límite de 100 MB.`,
+              );
+            }
+            const contentType = courseAssetContentType(lesson.file);
+            const savedPath = await storage.savePrivateObjectBytes(
+              bytes,
+              contentType,
+              String(req.user!.id),
+            );
+            createdObjectPaths.add(savedPath);
+            objectMetadata = {
+              objectPath: savedPath,
+              objectName: path.posix.basename(lesson.file),
+              objectContentType: contentType,
+              objectSize: bytes.length,
+            };
+            savedAssets.set(lesson.file, objectMetadata);
+          }
+
+          if (lesson.kind === "scorm12" || lesson.kind === "scorm2004") {
+            try {
+              scormMetadata = await getScormLaunch(
+                objectMetadata.objectPath,
+                lesson.kind,
+                objectMetadata.objectSize,
+              );
+            } catch (error) {
+              throw new CourseImportValidationError(
+                error instanceof Error
+                  ? error.message
+                  : "El paquete SCORM no es válido.",
+              );
+            }
+          }
+        }
+
+        lessonsToCreate.push({
+          title: lesson.title,
+          kind: lesson.kind,
+          position,
+          required: lesson.required,
+          content: lesson.content,
+          objectPath: objectMetadata?.objectPath ?? null,
+          objectName: objectMetadata?.objectName ?? null,
+          objectContentType: objectMetadata?.objectContentType ?? null,
+          objectSize: objectMetadata?.objectSize ?? null,
+          scormVersion: scormMetadata.scormVersion,
+          scormLaunchPath: scormMetadata.scormLaunchPath,
+        });
+      }
+
+      const containsScorm = manifest.lessons.some(
+        (lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004",
+      );
+      const warnings = containsScorm && manifest.course.certificateEnabled
+        ? ["Se desactivaron los certificados automáticos porque el curso incluye contenido SCORM."]
+        : [];
+
+      const courseId = await db.transaction(async (tx) => {
+        const [consumed] = await tx.update(lmsCourseImportIntentsTable)
+          .set({ consumedAt: new Date() })
+          .where(and(
+            eq(lmsCourseImportIntentsTable.id, intent.id),
+            isNull(lmsCourseImportIntentsTable.consumedAt),
+          ))
+          .returning({ id: lmsCourseImportIntentsTable.id });
+        if (!consumed) throw new LmsCourseImportAlreadyUsedError();
+
+        const [course] = await tx.insert(lmsCoursesTable).values({
+          title: manifest.course.title,
+          description: manifest.course.description,
+          moduleId,
+          status: "draft",
+          certificateEnabled: containsScorm
+            ? false
+            : manifest.course.certificateEnabled,
+          createdBy: req.user!.id,
+        }).returning({ id: lmsCoursesTable.id });
+        await tx.insert(lmsLessonsTable).values(
+          lessonsToCreate.map((lesson) => ({ ...lesson, courseId: course.id })),
+        );
+        return course.id;
+      });
+      databaseCommitted = true;
+
+      const course = await courseDetail(courseId, req.user!);
+      if (!course) {
+        throw new Error("No se pudo cargar el curso recién importado.");
+      }
+      res.status(201).json(ImportLmsCourseArchiveResponse.parse({
+        course,
+        importedLessonCount: lessonsToCreate.length,
+        warnings,
+      }));
+    } catch (error) {
+      if (!databaseCommitted) {
+        await Promise.all(
+          [...createdObjectPaths].map((createdPath) =>
+            storage.deleteObjectEntity(createdPath).catch(() => undefined),
+          ),
+        );
+      }
+      if (error instanceof LmsCourseImportAlreadyUsedError) {
+        res.status(409).json({ message: "El archivo de importación ya se utilizó." });
+        return;
+      }
+      if (error instanceof CourseImportValidationError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      console.error("No se pudo importar el curso desde ZIP.", error);
+      res.status(500).json({
+        message: "No se pudo completar la importación del curso.",
+      });
+    } finally {
+      if (verifiedUpload) {
+        await storage.deleteObjectEntity(objectPath).catch((error) => {
+          console.warn("No se pudo eliminar el ZIP temporal de importación.", error);
+        });
+      }
+    }
+  },
+);
 
 router.post("/lms/uploads/request-url", requireAuth, async (req, res): Promise<void> => {
   const parsed = RequestLmsUploadUrlBody.safeParse(req.body);

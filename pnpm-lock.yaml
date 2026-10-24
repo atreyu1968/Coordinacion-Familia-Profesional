@@ -67,7 +67,7 @@ catalogs:
       specifier: ^7.3.7
       version: 7.3.7
     zod:
-      specifier: ^3.25.76
+      specifier: 3.25.76
       version: 3.25.76
 
 overrides:
@@ -245,7 +245,7 @@ importers:
         version: 3.10.1
       openai:
         specifier: ^7.39.0
-        version: 7.39.0(undici@6.28.1)(ws@8.21.3)(zod@4.6.7)
+        version: 7.39.0(undici@6.28.1)(ws@8.21.3)(zod@3.25.76)
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -267,6 +267,9 @@ importers:
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@playwright/test':
         specifier: ^1.64.1
@@ -13199,11 +13202,11 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@7.39.0(undici@6.28.1)(ws@8.21.3)(zod@4.6.7):
+  openai@7.39.0(undici@6.28.1)(ws@8.21.3)(zod@3.25.76):
     optionalDependencies:
       undici: 6.28.1
       ws: 8.21.3
-      zod: 4.6.7
+      zod: 3.25.76
 
   ora@3.4.0:
     dependencies:

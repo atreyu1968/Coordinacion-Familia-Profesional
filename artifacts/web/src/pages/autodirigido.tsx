@@ -16,9 +16,11 @@ import {
   useCreateLmsLessonScormSession,
   useGetLmsCourse,
   useGetLmsManagementScopes,
+  useImportLmsCourseArchive,
   useListLmsCourses,
   usePublishLmsCourse,
   useRequestLmsUploadUrl,
+  useRequestLmsCourseImportUploadUrl,
   useSubmitLmsQuizAttempt,
   useUpdateLmsCourse,
   useUpdateLmsLesson,
@@ -56,6 +58,10 @@ const kindLabels: Record<string, string> = {
 
 function apiUrl(path: string) {
   return `${BASE}${path.replace(/^\/+/, "")}`;
+}
+
+function courseImportScopeKey(moduleId: number | null) {
+  return moduleId === null ? "general" : String(moduleId);
 }
 
 function ScormRunner({ session, courseId }: { session: LmsScormSession; courseId?: number }) {
@@ -344,9 +350,160 @@ function LessonEditor({ courseId, lesson, onSaved }: { courseId: number; lesson?
   return <Card><CardHeader><CardTitle className="text-base">{lesson ? "Editar lección" : "Añadir lección"}</CardTitle></CardHeader><CardContent className="space-y-3"><Input placeholder="Título de la lección" value={title} onChange={(e) => setTitle(e.target.value)} /><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={kind} onChange={(e) => setKind(e.target.value)}>{Object.entries(kindLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>{["text", "video", "quiz"].includes(kind) && <Textarea placeholder={kind === "video" ? "URL del vídeo" : kind === "quiz" ? "Enunciado de la pregunta" : "Contenido de la lección"} value={text} onChange={(e) => setText(e.target.value)} />}{kind === "quiz" && <><Textarea placeholder="Opciones, una por línea" value={quizOptions} onChange={(e) => setQuizOptions(e.target.value)} /><Input type="number" min="0" value={correctIndex} onChange={(e) => setCorrectIndex(e.target.value)} placeholder="Índice de la respuesta correcta (empieza en 0)" /></>}{["file", "scorm12", "scorm2004"].includes(kind) && <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />}{file && <p className="text-xs text-muted-foreground">{file.name}</p>}{lesson?.objectName && !file && <p className="text-xs text-muted-foreground">Archivo actual: {lesson.objectName}</p>}<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /> Lección obligatoria</label><Button onClick={save} disabled={!title.trim() || saving}>{saving ? "Guardando..." : "Guardar lección"}</Button></CardContent></Card>;
 }
 
+function CourseZipImport({
+  scopes,
+  onClose,
+  onImported,
+}: {
+  scopes: Array<{ moduleId: number | null; label: string }>;
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const requestUpload = useRequestLmsCourseImportUploadUrl();
+  const importArchive = useImportLmsCourseArchive();
+  const [file, setFile] = useState<File | null>(null);
+  const [selectedScope, setSelectedScope] = useState(
+    () => (scopes[0] ? courseImportScopeKey(scopes[0].moduleId) : ""),
+  );
+
+  useEffect(() => {
+    if (scopes.length && !scopes.some((scope) => courseImportScopeKey(scope.moduleId) === selectedScope)) {
+      setSelectedScope(courseImportScopeKey(scopes[0]!.moduleId));
+    }
+  }, [scopes, selectedScope]);
+
+  const busy = requestUpload.isPending || importArchive.isPending;
+  const startImport = async () => {
+    try {
+      if (!file) throw new Error("Selecciona un archivo ZIP.");
+      if (!file.name.toLowerCase().endsWith(".zip")) {
+        throw new Error("El archivo del curso debe tener extensión .zip.");
+      }
+      if (file.size < 1 || file.size > MAX_FILE) {
+        throw new Error("El ZIP debe pesar entre 1 byte y 100 MB.");
+      }
+      const scope = scopes.find(
+        (item) => courseImportScopeKey(item.moduleId) === selectedScope,
+      ) ?? scopes[0];
+      if (!scope) throw new Error("No hay ámbitos disponibles para importar cursos.");
+
+      const upload = await requestUpload.mutateAsync({
+        data: {
+          name: file.name,
+          size: file.size,
+          contentType: "application/zip",
+          moduleId: scope.moduleId,
+        },
+      });
+      const response = await fetch(upload.uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/zip" },
+        body: file,
+      });
+      if (!response.ok) throw new Error("No se pudo subir el ZIP.");
+
+      const result = await importArchive.mutateAsync({
+        data: {
+          objectPath: upload.objectPath,
+          intentToken: upload.intentToken,
+          moduleId: scope.moduleId,
+        },
+      });
+      toast({
+        title: "Curso importado como borrador",
+        description: result.warnings.length
+          ? result.warnings.join(" ")
+          : `${result.importedLessonCount} lecciones listas para revisar.`,
+      });
+      onImported();
+      onClose();
+    } catch (error) {
+      toast({
+        title: "No se pudo importar el curso",
+        description: error instanceof Error
+          ? error.message
+          : "Revisa el ZIP e inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader>
+        <CardTitle>Importar curso desde ZIP</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          El curso se creará como borrador. Revisa sus lecciones y publícalo cuando esté listo.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="course-import-file">Archivo del curso (.zip, máximo 100 MB)</Label>
+          <Input
+            id="course-import-file"
+            type="file"
+            accept=".zip,application/zip"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            disabled={busy}
+          />
+          {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="course-import-scope">Ámbito</Label>
+          <select
+            id="course-import-scope"
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={selectedScope}
+            onChange={(event) => setSelectedScope(event.target.value)}
+            disabled={busy}
+          >
+            {scopes.map((scope) => (
+              <option key={courseImportScopeKey(scope.moduleId)} value={courseImportScopeKey(scope.moduleId)}>
+                {scope.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <details className="rounded-md border p-3 text-sm">
+          <summary className="cursor-pointer font-medium">Formato y estructura del ZIP</summary>
+          <div className="mt-3 space-y-2 text-muted-foreground">
+            <p>
+              Incluye <code>coordina-course.json</code> en la raíz y coloca los archivos
+              referenciados por las lecciones dentro de <code>assets/</code>. El orden del
+              array <code>lessons</code> será el orden del curso.
+            </p>
+            <pre className="overflow-x-auto rounded bg-muted p-3 text-xs text-foreground">{`{
+  "format": "coordina-adg-course",
+  "version": 1,
+  "course": { "title": "Mi curso", "description": "" },
+  "lessons": [
+    { "title": "Introducción", "kind": "text", "content": { "text": "Contenido..." } },
+    { "title": "Material", "kind": "file", "file": "assets/material.pdf" }
+  ]
+}`}</pre>
+            <p>
+              Tipos: text, file, video, quiz, scorm12 y scorm2004. Máximo 100 MB
+              comprimidos, 250 MB descomprimidos y 200 lecciones. Los cursos SCORM
+              no emiten certificados automáticos.
+            </p>
+          </div>
+        </details>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void startImport()} disabled={busy || !file}>
+            <Upload className="mr-2 h-4 w-4" />
+            {busy ? "Subiendo y validando..." : "Subir e importar"}
+          </Button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancelar</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AutodirigidoPage() {
   const [, navigate] = useLocation(); const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null); const [editor, setEditor] = useState<"create" | "edit" | null>(null); const [lessonEditor, setLessonEditor] = useState<number | null>(null); const [editingLesson, setEditingLesson] = useState<LmsLesson | undefined>();
+  const [importingCourse, setImportingCourse] = useState(false);
   const courses = useListLmsCourses(); const detail = useGetLmsCourse(selectedId ?? 0, { query: { enabled: selectedId != null, queryKey: getGetLmsCourseQueryKey(selectedId ?? 0) } }); const scopes = useGetLmsManagementScopes();
   const publish = usePublishLmsCourse(); const manager = (scopes.data?.length ?? 0) > 0;
   const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getListLmsCoursesQueryKey() }); if (selectedId) await queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(selectedId) }); };
@@ -362,7 +519,8 @@ export default function AutodirigidoPage() {
     ? Math.round(completedRequired * 100 / requiredLessons.length)
     : course?.lessonCount ? 100 : 0;
   return <div className="space-y-6">
-    <header className="flex flex-wrap items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap /></div><div className="flex-1"><h1 className="text-2xl font-bold">Autodirigido</h1><p className="text-sm text-muted-foreground">Aprende a tu ritmo, completa tus lecciones y consigue tus certificados.</p></div>{manager && !selectedId && <Button onClick={() => setEditor("create")}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button>}</header>
+    <header className="flex flex-wrap items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap /></div><div className="flex-1"><h1 className="text-2xl font-bold">Autodirigido</h1><p className="text-sm text-muted-foreground">Aprende a tu ritmo, completa tus lecciones y consigue tus certificados.</p></div>{manager && !selectedId && <><Button variant="outline" onClick={() => { setEditor(null); setImportingCourse((value) => !value); }}><Upload className="mr-2 h-4 w-4" />Importar ZIP</Button><Button onClick={() => { setImportingCourse(false); setEditor("create"); }}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button></>}</header>
+    {importingCourse && manager && !selectedId && <CourseZipImport scopes={scopes.data ?? []} onClose={() => setImportingCourse(false)} onImported={() => { void refresh(); }} />}
     {editor && <CourseEditor course={editor === "edit" ? (course ?? null) : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} />}
      {selectedId && course && containsScorm && <div role="note" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
      {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground"><AutoLinkText text={course.description} /></p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => <button key={item.id} className="text-left" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}><Card className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} /></CardContent></Card></button>)}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}

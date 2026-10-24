@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -113,6 +114,22 @@ export const lmsUploadIntentsTable = pgTable("lms_upload_intents", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const lmsCourseImportIntentsTable = pgTable("lms_course_import_intents", {
+  id: serial("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  userId: integer("user_id").notNull(),
+  moduleId: integer("module_id"),
+  objectPath: text("object_path").notNull(),
+  name: text("name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("lms_course_import_intents_expiry_idx").on(table.expiresAt),
+]);
+
 export type LmsCourse = typeof lmsCoursesTable.$inferSelect;
 export type InsertLmsCourse = typeof lmsCoursesTable.$inferInsert;
 export type LmsLesson = typeof lmsLessonsTable.$inferSelect;
@@ -121,3 +138,4 @@ export type LmsCourseManager = typeof lmsCourseManagersTable.$inferSelect;
 export type LmsLessonProgress = typeof lmsLessonProgressTable.$inferSelect;
 export type LmsCertificate = typeof lmsCertificatesTable.$inferSelect;
 export type LmsUploadIntent = typeof lmsUploadIntentsTable.$inferSelect;
+export type LmsCourseImportIntent = typeof lmsCourseImportIntentsTable.$inferSelect;
