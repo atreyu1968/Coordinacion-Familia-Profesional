@@ -9,4 +9,6 @@
 export interface SetActiveAcademicYearInput {
   /** @minLength 1 */
   name: string;
+  /** Explicit superadmin confirmation to permanently delete all conversations, messages, participants, and chat attachments when the active year changes. */
+  confirmConversationDeletion: boolean;
 }

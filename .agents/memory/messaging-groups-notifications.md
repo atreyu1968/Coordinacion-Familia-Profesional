@@ -26,3 +26,9 @@ For a user's own messages, support both hiding only from that user's view and de
 **Why:** The user explicitly chose both message deletion options and hiding conversations only for themselves.
 
 **How to apply:** Keep private message hides scoped to the caller. Do not hard-delete shared history or remove group membership when hiding a conversation; new activity or reopening a direct chat may make it visible again to the caller.
+
+In chat, identify coordinators in lilac, department heads in green, and everyone else in blue in both desktop and mobile.
+
+**Why:** The user explicitly assigned these colors to distinguish roles in conversations.
+
+**How to apply:** Color the sender's name consistently in both clients; keep the role and teaching-center text visible separately.

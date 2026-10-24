@@ -3187,10 +3187,26 @@ export interface AcademicYear {
   offerCount?: number;
 }
 
+/**
+ * Present only when changing the active year and deleting all chat data.
+ */
+export type AcademicYearsResponseChatCleanup = {
+  /** @minimum 0 */
+  conversationsDeleted: number;
+  /** @minimum 0 */
+  messagesDeleted: number;
+  /** @minimum 0 */
+  attachmentsDeleted: number;
+  /** @minimum 0 */
+  attachmentDeletionFailures: number;
+};
+
 export interface AcademicYearsResponse {
   /** @nullable */
   activeYear?: string | null;
   years: AcademicYear[];
+  /** Present only when changing the active year and deleting all chat data. */
+  chatCleanup?: AcademicYearsResponseChatCleanup;
 }
 
 export interface CreateAcademicYearInput {
@@ -3206,6 +3222,8 @@ export interface RenameAcademicYearInput {
 export interface SetActiveAcademicYearInput {
   /** @minLength 1 */
   name: string;
+  /** Explicit superadmin confirmation to permanently delete all conversations, messages, participants, and chat attachments when the active year changes. */
+  confirmConversationDeletion: boolean;
 }
 
 export interface AcademicYearTransitionInput {

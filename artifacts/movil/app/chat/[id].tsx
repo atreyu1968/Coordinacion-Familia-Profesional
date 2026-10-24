@@ -1671,6 +1671,12 @@ function MessageBubble({
   const bubbleBg = mine ? colors.primary : colors.card;
   const fg = mine ? colors.primaryForeground : colors.foreground;
   const mutedFg = mine ? colors.primaryForeground : colors.mutedForeground;
+  const senderColor =
+    senderMeta?.role === "coordinator"
+      ? colors.chatCoordinator
+      : senderMeta?.role === "department_head"
+        ? colors.chatDepartmentHead
+        : colors.chatMember;
 
   return (
     <View
@@ -1694,7 +1700,7 @@ function MessageBubble({
       >
         {!mine ? (
           <View style={{ marginBottom: 2 }}>
-            <Text style={[styles.sender, { color: colors.primary }]}>
+            <Text style={[styles.sender, { color: senderColor }]}>
               {message.senderName ?? "Usuario"}
             </Text>
             <Text style={[styles.memberRole, { color: colors.mutedForeground }]}>

@@ -8,6 +8,7 @@
 
 export * from './academicYear';
 export * from './academicYearsResponse';
+export * from './academicYearsResponseChatCleanup';
 export * from './academicYearTransitionInput';
 export * from './academicYearTransitionResult';
 export * from './accreditation';

@@ -5205,7 +5205,7 @@ paths:
     put:
       operationId: setActiveAcademicYear
       tags: [academics]
-      summary: Set the active course (superadmin, double confirmation in UI)
+      summary: Set the active course; changing it requires superadmin confirmation and clears all chats
       security:
         - bearerAuth: []
       requestBody:
@@ -9394,6 +9394,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AcademicYear"
+        chatCleanup:
+          type: object
+          description: Present only when changing the active year and deleting all chat data.
+          properties:
+            conversationsDeleted:
+              type: integer
+              minimum: 0
+            messagesDeleted:
+              type: integer
+              minimum: 0
+            attachmentsDeleted:
+              type: integer
+              minimum: 0
+            attachmentDeletionFailures:
+              type: integer
+              minimum: 0
+          required: [conversationsDeleted, messagesDeleted, attachmentsDeleted, attachmentDeletionFailures]
       required: [years]
     CreateAcademicYearInput:
       type: object
@@ -9415,7 +9432,10 @@ components:
         name:
           type: string
           minLength: 1
-      required: [name]
+        confirmConversationDeletion:
+          type: boolean
+          description: Explicit superadmin confirmation to permanently delete all conversations, messages, participants, and chat attachments when the active year changes.
+      required: [name, confirmConversationDeletion]
     AcademicYearTransitionInput:
       type: object
       properties:

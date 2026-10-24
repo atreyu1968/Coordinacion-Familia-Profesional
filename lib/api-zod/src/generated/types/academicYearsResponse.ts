@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AcademicYear } from './academicYear';
+import type { AcademicYearsResponseChatCleanup } from './academicYearsResponseChatCleanup';
 
 export interface AcademicYearsResponse {
   /** @nullable */
   activeYear?: string | null;
   years: AcademicYear[];
+  /** Present only when changing the active year and deleting all chat data. */
+  chatCleanup?: AcademicYearsResponseChatCleanup;
 }

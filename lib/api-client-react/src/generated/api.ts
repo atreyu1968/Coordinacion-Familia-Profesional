@@ -21648,7 +21648,7 @@ export const getSetActiveAcademicYearUrl = () => {
 }
 
 /**
- * @summary Set the active course (superadmin, double confirmation in UI)
+ * @summary Set the active course; changing it requires superadmin confirmation and clears all chats
  */
 export const setActiveAcademicYear = async (setActiveAcademicYearInput: SetActiveAcademicYearInput, options?: Parameters<typeof customFetch>[1]): Promise<AcademicYearsResponse> => {
 
@@ -21714,7 +21714,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SetActiveAcademicYearMutationVariables = {data: BodyType<SetActiveAcademicYearInput>}
 
     /**
- * @summary Set the active course (superadmin, double confirmation in UI)
+ * @summary Set the active course; changing it requires superadmin confirmation and clears all chats
  */
 export const useSetActiveAcademicYear = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setActiveAcademicYear>>, TError,SetActiveAcademicYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

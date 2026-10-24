@@ -43,6 +43,9 @@ const colors = {
 
     // Positive / success states
     success: "#16a34a",
+    chatCoordinator: "#7c3aed",
+    chatDepartmentHead: "#15803d",
+    chatMember: "#0050b3",
 
     // Borders and input outlines
     border: "#e2e5e9",
@@ -75,6 +78,9 @@ const colors = {
     destructiveForeground: "#ffffff",
 
     success: "#22c55e",
+    chatCoordinator: "#c4b5fd",
+    chatDepartmentHead: "#86efac",
+    chatMember: "#93c5fd",
 
     border: "#243042",
     input: "#243042",

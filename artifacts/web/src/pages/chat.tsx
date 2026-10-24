@@ -315,6 +315,12 @@ function chatMemberRole(role: string | null | undefined): string {
   }
 }
 
+function chatMemberNameColor(role: string | null | undefined): string {
+  if (role === "coordinator") return "text-violet-700 dark:text-violet-300";
+  if (role === "department_head") return "text-emerald-700 dark:text-emerald-300";
+  return "text-blue-700 dark:text-blue-300";
+}
+
 function MessageBubble({
   message,
   mine,
@@ -350,7 +356,7 @@ function MessageBubble({
         >
           {!mine && !deleted && (
             <div className="mb-0.5">
-              <div className="text-xs font-semibold opacity-80">
+              <div className={`text-xs font-semibold ${chatMemberNameColor(senderMeta?.role)}`}>
                 {message.senderName ?? "Usuario"}
               </div>
               <div className="text-[10px] opacity-65">

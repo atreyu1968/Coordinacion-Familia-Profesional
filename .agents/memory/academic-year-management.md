@@ -61,3 +61,10 @@ makes filtered lists include accounts whose profile details are intentionally hi
 
 ## "Pasar de curso" transition
 POST /academic-years/transition clones selectable blocks (groups, training offer, assignments) from a source year to a destination year and must be idempotent (re-running doesn't duplicate).
+
+## Active-year changes and chat cleanup
+**Rule:** changing the active academic year requires explicit confirmation from a superadmin and permanently deletes all chat groups, participants, messages, reactions, per-user hidden-message records, and their stored attachments. A course filter change or the separate "Pasar de curso" copy operation must not trigger chat deletion.
+
+**Why:** the user requested automatic chat cleanup when changing the active course, but required that the superadmin confirm it first.
+
+**How to apply:** keep the destructive warning in the active-year confirmation dialog and enforce confirmation server-side. Delete chat database rows and update the active year atomically; delete attachment objects afterward and report any failures. Users must recreate manual groups or rejoin them after the cleanup.

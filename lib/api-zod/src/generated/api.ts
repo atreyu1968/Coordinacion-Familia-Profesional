@@ -5955,6 +5955,16 @@ export const GetVapidPublicKeyResponse = zod.object({
 /**
  * @summary Official list of academic years and the active course
  */
+export const listAcademicYearsResponseChatCleanupConversationsDeletedMin = 0;
+
+export const listAcademicYearsResponseChatCleanupMessagesDeletedMin = 0;
+
+export const listAcademicYearsResponseChatCleanupAttachmentsDeletedMin = 0;
+
+export const listAcademicYearsResponseChatCleanupAttachmentDeletionFailuresMin = 0;
+
+
+
 export const ListAcademicYearsResponse = zod.object({
   "activeYear": zod.string().nullish(),
   "years": zod.array(zod.object({
@@ -5964,7 +5974,13 @@ export const ListAcademicYearsResponse = zod.object({
   "groupCount": zod.number().int().optional(),
   "assignmentCount": zod.number().int().optional(),
   "offerCount": zod.number().int().optional()
-}))
+})),
+  "chatCleanup": zod.object({
+  "conversationsDeleted": zod.number().int().min(listAcademicYearsResponseChatCleanupConversationsDeletedMin),
+  "messagesDeleted": zod.number().int().min(listAcademicYearsResponseChatCleanupMessagesDeletedMin),
+  "attachmentsDeleted": zod.number().int().min(listAcademicYearsResponseChatCleanupAttachmentsDeletedMin),
+  "attachmentDeletionFailures": zod.number().int().min(listAcademicYearsResponseChatCleanupAttachmentDeletionFailuresMin)
+}).optional().describe('Present only when changing the active year and deleting all chat data.')
 })
 
 
@@ -5989,14 +6005,25 @@ export const CreateAcademicYearResponse = zod.object({
 
 
 /**
- * @summary Set the active course (superadmin, double confirmation in UI)
+ * @summary Set the active course; changing it requires superadmin confirmation and clears all chats
  */
 
 
 
 export const SetActiveAcademicYearBody = zod.object({
-  "name": zod.string().min(1)
+  "name": zod.string().min(1),
+  "confirmConversationDeletion": zod.boolean().describe('Explicit superadmin confirmation to permanently delete all conversations, messages, participants, and chat attachments when the active year changes.')
 })
+
+export const setActiveAcademicYearResponseChatCleanupConversationsDeletedMin = 0;
+
+export const setActiveAcademicYearResponseChatCleanupMessagesDeletedMin = 0;
+
+export const setActiveAcademicYearResponseChatCleanupAttachmentsDeletedMin = 0;
+
+export const setActiveAcademicYearResponseChatCleanupAttachmentDeletionFailuresMin = 0;
+
+
 
 export const SetActiveAcademicYearResponse = zod.object({
   "activeYear": zod.string().nullish(),
@@ -6007,7 +6034,13 @@ export const SetActiveAcademicYearResponse = zod.object({
   "groupCount": zod.number().int().optional(),
   "assignmentCount": zod.number().int().optional(),
   "offerCount": zod.number().int().optional()
-}))
+})),
+  "chatCleanup": zod.object({
+  "conversationsDeleted": zod.number().int().min(setActiveAcademicYearResponseChatCleanupConversationsDeletedMin),
+  "messagesDeleted": zod.number().int().min(setActiveAcademicYearResponseChatCleanupMessagesDeletedMin),
+  "attachmentsDeleted": zod.number().int().min(setActiveAcademicYearResponseChatCleanupAttachmentsDeletedMin),
+  "attachmentDeletionFailures": zod.number().int().min(setActiveAcademicYearResponseChatCleanupAttachmentDeletionFailuresMin)
+}).optional().describe('Present only when changing the active year and deleting all chat data.')
 })
 
 

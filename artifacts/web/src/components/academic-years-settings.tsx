@@ -101,9 +101,31 @@ export default function AcademicYearsSettings() {
 
   const onSetActive = async (name: string) => {
     try {
-      await setActiveMut.mutateAsync({ data: { name } });
+      const result = await setActiveMut.mutateAsync({
+        data: { name, confirmConversationDeletion: true },
+      });
       await invalidate();
-      toast({ title: "Curso activo actualizado", description: name });
+      if (result.chatCleanup) {
+        const cleanup = result.chatCleanup;
+        const summary =
+          `Conversaciones: ${cleanup.conversationsDeleted} · ` +
+          `mensajes: ${cleanup.messagesDeleted} · ` +
+          `adjuntos eliminados: ${cleanup.attachmentsDeleted}`;
+        toast({
+          title:
+            cleanup.attachmentDeletionFailures > 0
+              ? "Curso activado con avisos"
+              : "Curso activado y conversaciones borradas",
+          description:
+            cleanup.attachmentDeletionFailures > 0
+              ? `${summary} · No se pudieron borrar ${cleanup.attachmentDeletionFailures} adjuntos.`
+              : summary,
+          variant:
+            cleanup.attachmentDeletionFailures > 0 ? "destructive" : "default",
+        });
+      } else {
+        toast({ title: "Curso activo actualizado", description: name });
+      }
     } catch {
       toast({
         title: "No se pudo activar el curso",
@@ -378,10 +400,13 @@ export default function AcademicYearsSettings() {
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  El curso activo determina qué grupos, asignaciones y oferta
-                  formativa ve <strong>toda la plataforma</strong> de forma
-                  predeterminada. Vas a activar{" "}
-                  <strong>«{activateTarget}»</strong>.
+                  Vas a activar <strong>«{activateTarget}»</strong>. El cambio
+                  afecta a toda la plataforma y, para limpiar el servidor,
+                  eliminará permanentemente <strong>todas las conversaciones,
+                  los mensajes, los grupos, sus participantes y los archivos
+                  adjuntos</strong>. Los grupos deberán recrearse y los usuarios
+                  tendrán que volver a unirse. Los filtros de curso no producen
+                  este borrado.
                 </p>
                 <label className="flex items-start gap-2 text-sm text-foreground">
                   <Checkbox
@@ -390,8 +415,8 @@ export default function AcademicYearsSettings() {
                     className="mt-0.5"
                   />
                   <span>
-                    Entiendo que este cambio afecta a lo que ve toda la
-                    plataforma y confirmo que quiero continuar.
+                    Soy superadministrador y confirmo que se borren esos datos
+                    antes de activar el curso.
                   </span>
                 </label>
               </div>
@@ -406,7 +431,7 @@ export default function AcademicYearsSettings() {
                 if (activateTarget) void onSetActive(activateTarget);
               }}
             >
-              Sí, activar este curso
+              Borrar conversaciones y activar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

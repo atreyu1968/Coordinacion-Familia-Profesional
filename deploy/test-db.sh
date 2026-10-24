@@ -110,8 +110,21 @@ if [[ "${1:-}" == "--test-teachers-only" ]]; then
   exit 0
 fi
 
+run_academic_year_chat_cleanup_tests() {
+  create_test_database coordina_chat_cleanup
+  migrate_database coordina_chat_cleanup
+  COORDINA_CHAT_CLEANUP_TEST_ROOT="${TEST_ROOT}" \
+    DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_chat_cleanup?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run --config vitest.chat-cleanup.config.ts
+}
+if [[ "${1:-}" == "--chat-cleanup-only" ]]; then
+  run_academic_year_chat_cleanup_tests
+  exit 0
+fi
+
 run_test_teacher_cleanup_tests
 run_ai_knowledge_tests
+run_academic_year_chat_cleanup_tests
 
 echo "==> Testing an empty self-hosted database"
 create_test_database coordina_empty

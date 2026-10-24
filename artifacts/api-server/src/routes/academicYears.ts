@@ -4,6 +4,7 @@ import {
   and,
   eq,
   isNull,
+  isNotNull,
   ne,
   inArray,
   desc,
@@ -22,6 +23,11 @@ import {
   usersTable,
   centersTable,
   syncModuleChatGroup,
+  chatGroupsTable,
+  chatGroupMembersTable,
+  messagesTable,
+  messageReactionsTable,
+  messageUserHidesTable,
 } from "@workspace/db";
 import {
   CreateAcademicYearBody,
@@ -54,8 +60,10 @@ import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 const DEFAULT_DEADLINE_DAYS = 15;
 
@@ -203,6 +211,26 @@ router.put(
       return;
     }
     const currentYear = await getActiveAcademicYear();
+    const isChangingYear = currentYear !== name;
+    if (isChangingYear && !parsed.data.confirmConversationDeletion) {
+      res.status(400).json({
+        message:
+          "Confirma expresamente el borrado de todas las conversaciones antes de cambiar el curso activo",
+      });
+      return;
+    }
+
+    const settings = await getSettings();
+    let affectedModuleIds: number[] = [];
+    let chatCleanup:
+      | {
+          conversationsDeleted: number;
+          messagesDeleted: number;
+          attachmentsDeleted: number;
+          attachmentDeletionFailures: number;
+        }
+      | undefined;
+
     if (currentYear !== name) {
       const yearNames = [currentYear, name].filter(
         (value): value is string => Boolean(value),
@@ -217,8 +245,9 @@ router.put(
               inArray(teachingAssignmentsTable.schoolYear, yearNames),
             ),
           );
+        affectedModuleIds = affected.map(({ moduleId }) => moduleId);
         try {
-          for (const { moduleId } of affected) {
+          for (const moduleId of affectedModuleIds) {
             await syncModuleNextcloudMembership(moduleId, {
               schoolYear: name,
             });
@@ -228,7 +257,7 @@ router.put(
             { err, fromYear: currentYear, toYear: name },
             "Failed to sync Nextcloud before changing the active academic year",
           );
-          for (const { moduleId } of affected) {
+          for (const moduleId of affectedModuleIds) {
             try {
               await syncModuleNextcloudMembership(moduleId, {
                 schoolYear: currentYear,
@@ -247,9 +276,102 @@ router.put(
           return;
         }
       }
+
+      // Database rows and the active-year setting are changed atomically. If the
+      // transaction fails, chat history and the active year remain unchanged.
+      let attachmentPaths: string[] = [];
+      let deletedCounts: { conversationsDeleted: number; messagesDeleted: number };
+      try {
+        deletedCounts = await db.transaction(async (tx) => {
+          const [conversationCount] = await tx
+            .select({ value: count() })
+            .from(chatGroupsTable);
+          const [messageCount] = await tx
+            .select({ value: count() })
+            .from(messagesTable);
+          const attachments = await tx
+            .select({ path: messagesTable.attachmentPath })
+            .from(messagesTable)
+            .where(isNotNull(messagesTable.attachmentPath));
+          attachmentPaths = Array.from(
+            new Set(
+              attachments
+                .map((item) => item.path)
+                .filter((path): path is string => Boolean(path)),
+            ),
+          );
+
+          await tx.delete(messageReactionsTable);
+          await tx.delete(messageUserHidesTable);
+          await tx.delete(messagesTable);
+          await tx.delete(chatGroupMembersTable);
+          await tx.delete(chatGroupsTable);
+          await tx
+            .update(integrationSettingsTable)
+            .set({ activeAcademicYear: name })
+            .where(eq(integrationSettingsTable.id, settings.id));
+
+          return {
+            conversationsDeleted: Number(conversationCount?.value ?? 0),
+            messagesDeleted: Number(messageCount?.value ?? 0),
+          };
+        });
+      } catch (err) {
+        logger.error(
+          { err, fromYear: currentYear, toYear: name },
+          "Failed to clear chat data while changing the active academic year",
+        );
+        if (currentYear) {
+          for (const moduleId of affectedModuleIds) {
+            try {
+              await syncModuleNextcloudMembership(moduleId, {
+                schoolYear: currentYear,
+              });
+            } catch (restoreErr) {
+              logger.error(
+                { err: restoreErr, moduleId, schoolYear: currentYear },
+                "Failed to restore Nextcloud membership after chat cleanup rollback",
+              );
+            }
+          }
+        }
+        res.status(500).json({
+          message:
+            "No se pudo completar el cambio; las conversaciones y el curso activo se mantienen sin cambios",
+        });
+        return;
+      }
+
+      const attachmentResults = await Promise.allSettled(
+        attachmentPaths.map((path) =>
+          objectStorageService.deleteObjectEntity(path),
+        ),
+      );
+      const attachmentDeletionFailures = attachmentResults.filter(
+        (result) => result.status === "rejected",
+      ).length;
+      if (attachmentDeletionFailures > 0) {
+        logger.error(
+          { attachmentDeletionFailures },
+          "Some chat attachments could not be removed after an academic-year change",
+        );
+      }
+      chatCleanup = {
+        ...deletedCounts,
+        attachmentsDeleted: attachmentPaths.length - attachmentDeletionFailures,
+        attachmentDeletionFailures,
+      };
+    } else {
+      await db
+        .update(integrationSettingsTable)
+        .set({ activeAcademicYear: name })
+        .where(eq(integrationSettingsTable.id, settings.id));
     }
-    await setActiveYear(name);
-    res.json(await buildYearsResponse());
+
+    res.json({
+      ...(await buildYearsResponse()),
+      ...(chatCleanup ? { chatCleanup } : {}),
+    });
   },
 );
 
