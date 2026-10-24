@@ -31,6 +31,7 @@ export * from "./chatGroupMembers";
 export * from "./messages";
 export * from "./messageUserHides";
 export * from "./messageReactions";
+export * from "./chatAttachmentDeletions";
 export * from "./announcements";
 export * from "./notifications";
 export * from "./pushTokens";

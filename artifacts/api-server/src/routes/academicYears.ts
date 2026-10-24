@@ -28,6 +28,7 @@ import {
   messagesTable,
   messageReactionsTable,
   messageUserHidesTable,
+  chatAttachmentDeletionsTable,
 } from "@workspace/db";
 import {
   CreateAcademicYearBody,
@@ -60,10 +61,13 @@ import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
-import { ObjectStorageService } from "../lib/objectStorage";
+import {
+  enqueueChatAttachmentDeletions,
+  processNextChatAttachmentDeletion,
+  retryChatAttachmentDeletion,
+} from "../lib/chatAttachmentDeletionWorker";
 
 const router: IRouter = Router();
-const objectStorageService = new ObjectStorageService();
 
 const DEFAULT_DEADLINE_DAYS = 15;
 
@@ -280,6 +284,7 @@ router.put(
       // Database rows and the active-year setting are changed atomically. If the
       // transaction fails, chat history and the active year remain unchanged.
       let attachmentPaths: string[] = [];
+      let deletionIds: number[] = [];
       let deletedCounts: { conversationsDeleted: number; messagesDeleted: number };
       try {
         deletedCounts = await db.transaction(async (tx) => {
@@ -300,6 +305,7 @@ router.put(
                 .filter((path): path is string => Boolean(path)),
             ),
           );
+          deletionIds = await enqueueChatAttachmentDeletions(tx, attachmentPaths);
 
           await tx.delete(messageReactionsTable);
           await tx.delete(messageUserHidesTable);
@@ -342,14 +348,21 @@ router.put(
         return;
       }
 
-      const attachmentResults = await Promise.allSettled(
-        attachmentPaths.map((path) =>
-          objectStorageService.deleteObjectEntity(path),
-        ),
-      );
-      const attachmentDeletionFailures = attachmentResults.filter(
-        (result) => result.status === "rejected",
+      for (const deletionId of deletionIds) {
+        await processNextChatAttachmentDeletion(deletionId);
+      }
+      const deletionStates =
+        deletionIds.length > 0
+          ? await db
+              .select({ status: chatAttachmentDeletionsTable.status })
+              .from(chatAttachmentDeletionsTable)
+              .where(inArray(chatAttachmentDeletionsTable.id, deletionIds))
+          : [];
+      const attachmentsDeleted = deletionStates.filter(
+        (row) => row.status === "done",
       ).length;
+      const attachmentDeletionFailures =
+        deletionStates.length - attachmentsDeleted;
       if (attachmentDeletionFailures > 0) {
         logger.error(
           { attachmentDeletionFailures },
@@ -358,7 +371,7 @@ router.put(
       }
       chatCleanup = {
         ...deletedCounts,
-        attachmentsDeleted: attachmentPaths.length - attachmentDeletionFailures,
+        attachmentsDeleted,
         attachmentDeletionFailures,
       };
     } else {
@@ -371,6 +384,94 @@ router.put(
     res.json({
       ...(await buildYearsResponse()),
       ...(chatCleanup ? { chatCleanup } : {}),
+    });
+  },
+);
+
+router.get(
+  "/academic-years/chat-attachment-deletions",
+  requireAuth,
+  requireRole("superadmin"),
+  async (_req, res): Promise<void> => {
+    const rows = await db
+      .select({
+        id: chatAttachmentDeletionsTable.id,
+        status: chatAttachmentDeletionsTable.status,
+        attempts: chatAttachmentDeletionsTable.attempts,
+        lastError: chatAttachmentDeletionsTable.lastError,
+        nextAttemptAt: chatAttachmentDeletionsTable.nextAttemptAt,
+        createdAt: chatAttachmentDeletionsTable.createdAt,
+        updatedAt: chatAttachmentDeletionsTable.updatedAt,
+      })
+      .from(chatAttachmentDeletionsTable)
+      .where(
+        and(
+          isNotNull(chatAttachmentDeletionsTable.objectPath),
+          inArray(chatAttachmentDeletionsTable.status, [
+            "pending",
+            "processing",
+            "failed",
+          ]),
+        ),
+      )
+      .orderBy(desc(chatAttachmentDeletionsTable.createdAt));
+    res.json(
+      rows.map((row) => ({
+        ...row,
+        lastError: row.lastError
+          ? "No se pudo borrar el archivo en Object Storage."
+          : null,
+      })),
+    );
+  },
+);
+
+router.post(
+  "/academic-years/chat-attachment-deletions/:id/retry",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      res.status(400).json({ message: "Identificador no válido" });
+      return;
+    }
+    const retried = await retryChatAttachmentDeletion(id);
+    if (!retried) {
+      const [existing] = await db
+        .select({ id: chatAttachmentDeletionsTable.id })
+        .from(chatAttachmentDeletionsTable)
+        .where(eq(chatAttachmentDeletionsTable.id, id));
+      if (!existing) {
+        res.status(404).json({ message: "Borrado pendiente no encontrado" });
+        return;
+      }
+      res.status(409).json({
+        message: "El borrado ya está en curso o no se puede reintentar.",
+      });
+      return;
+    }
+    const [row] = await db
+      .select({
+        id: chatAttachmentDeletionsTable.id,
+        status: chatAttachmentDeletionsTable.status,
+        attempts: chatAttachmentDeletionsTable.attempts,
+        lastError: chatAttachmentDeletionsTable.lastError,
+        nextAttemptAt: chatAttachmentDeletionsTable.nextAttemptAt,
+        createdAt: chatAttachmentDeletionsTable.createdAt,
+        updatedAt: chatAttachmentDeletionsTable.updatedAt,
+      })
+      .from(chatAttachmentDeletionsTable)
+      .where(eq(chatAttachmentDeletionsTable.id, id));
+    if (!row) {
+      res.status(404).json({ message: "Borrado pendiente no encontrado" });
+      return;
+    }
+    res.json({
+      ...row,
+      lastError: row.lastError
+        ? "No se pudo borrar el archivo en Object Storage."
+        : null,
     });
   },
 );

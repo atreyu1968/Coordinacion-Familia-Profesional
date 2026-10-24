@@ -51,6 +51,7 @@ import type {
   Center,
   CenterDetail,
   CenterFacets,
+  ChatAttachmentDeletion,
   ChatContact,
   ChatGroup,
   ChatMember,
@@ -21725,6 +21726,181 @@ export const useSetActiveAcademicYear = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getSetActiveAcademicYearMutationOptions(options), queryClient);
+    }
+
+export const getListChatAttachmentDeletionsUrl = () => {
+
+
+
+
+  return `/api/academic-years/chat-attachment-deletions`
+}
+
+/**
+ * @summary List unresolved chat attachment deletions (superadmin)
+ */
+export const listChatAttachmentDeletions = async ( options?: Parameters<typeof customFetch>[1]): Promise<ChatAttachmentDeletion[]> => {
+
+  return customFetch<ChatAttachmentDeletion[]>(getListChatAttachmentDeletionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChatAttachmentDeletionsQueryKey = () => {
+    return [
+    `/api/academic-years/chat-attachment-deletions`
+    ] as const;
+    }
+
+
+export const getListChatAttachmentDeletionsQueryOptions = <TData = Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChatAttachmentDeletionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChatAttachmentDeletions>>> = ({ signal }) => listChatAttachmentDeletions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListChatAttachmentDeletionsQueryResult = NonNullable<Awaited<ReturnType<typeof listChatAttachmentDeletions>>>
+export type ListChatAttachmentDeletionsQueryError = ErrorType<ErrorResponse>
+
+
+export function useListChatAttachmentDeletions<TData = Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listChatAttachmentDeletions>>,
+          TError,
+          Awaited<ReturnType<typeof listChatAttachmentDeletions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListChatAttachmentDeletions<TData = Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listChatAttachmentDeletions>>,
+          TError,
+          Awaited<ReturnType<typeof listChatAttachmentDeletions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListChatAttachmentDeletions<TData = Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List unresolved chat attachment deletions (superadmin)
+ */
+
+export function useListChatAttachmentDeletions<TData = Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listChatAttachmentDeletions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListChatAttachmentDeletionsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetryChatAttachmentDeletionUrl = (id: number,) => {
+
+
+
+
+  return `/api/academic-years/chat-attachment-deletions/${id}/retry`
+}
+
+/**
+ * @summary Retry a failed chat attachment deletion (superadmin)
+ */
+export const retryChatAttachmentDeletion = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ChatAttachmentDeletion> => {
+
+  return customFetch<ChatAttachmentDeletion>(getRetryChatAttachmentDeletionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryChatAttachmentDeletionMutationKey = () => ['retryChatAttachmentDeletion'] as const;
+
+export const getRetryChatAttachmentDeletionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatAttachmentDeletion>>, TError,RetryChatAttachmentDeletionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryChatAttachmentDeletion>>, TError,RetryChatAttachmentDeletionMutationVariables, TContext> => {
+
+const mutationKey = getRetryChatAttachmentDeletionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryChatAttachmentDeletion>>, RetryChatAttachmentDeletionMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  retryChatAttachmentDeletion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryChatAttachmentDeletionMutationResult = NonNullable<Awaited<ReturnType<typeof retryChatAttachmentDeletion>>>
+
+    export type RetryChatAttachmentDeletionMutationError = ErrorType<ErrorResponse>
+    export type RetryChatAttachmentDeletionMutationVariables = {id: number}
+
+    /**
+ * @summary Retry a failed chat attachment deletion (superadmin)
+ */
+export const useRetryChatAttachmentDeletion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryChatAttachmentDeletion>>, TError,RetryChatAttachmentDeletionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof retryChatAttachmentDeletion>>,
+        TError,
+        RetryChatAttachmentDeletionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetryChatAttachmentDeletionMutationOptions(options), queryClient);
     }
 
 export const getTransitionAcademicYearUrl = () => {

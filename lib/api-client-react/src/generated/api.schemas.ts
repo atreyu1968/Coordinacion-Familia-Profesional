@@ -3209,6 +3209,28 @@ export interface AcademicYearsResponse {
   chatCleanup?: AcademicYearsResponseChatCleanup;
 }
 
+export type ChatAttachmentDeletionStatus = typeof ChatAttachmentDeletionStatus[keyof typeof ChatAttachmentDeletionStatus];
+
+
+export const ChatAttachmentDeletionStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  failed: 'failed',
+  done: 'done',
+} as const;
+
+export interface ChatAttachmentDeletion {
+  id: number;
+  status: ChatAttachmentDeletionStatus;
+  attempts: number;
+  /** @nullable */
+  lastError: string | null;
+  /** @nullable */
+  nextAttemptAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateAcademicYearInput {
   /** @minLength 1 */
   name: string;

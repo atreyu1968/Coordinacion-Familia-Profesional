@@ -68,3 +68,9 @@ POST /academic-years/transition clones selectable blocks (groups, training offer
 **Why:** the user requested automatic chat cleanup when changing the active course, but required that the superadmin confirm it first.
 
 **How to apply:** keep the destructive warning in the active-year confirmation dialog and enforce confirmation server-side. Delete chat database rows and update the active year atomically; delete attachment objects afterward and report any failures. Users must recreate manual groups or rejoin them after the cleanup.
+
+After changing the active year, administrative roles that also require a teaching profile may be prompted to complete that profile for the new year before protected APIs work again.
+
+**Why:** the profile access guard includes superadministrators, and active-year completeness is evaluated against the newly selected year.
+
+**How to apply:** tests that make further authenticated requests after a year switch must use an account with a complete profile for the new active year, or complete the acting account's profile first.

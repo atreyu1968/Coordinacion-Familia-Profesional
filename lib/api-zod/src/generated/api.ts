@@ -6045,6 +6045,39 @@ export const SetActiveAcademicYearResponse = zod.object({
 
 
 /**
+ * @summary List unresolved chat attachment deletions (superadmin)
+ */
+export const ListChatAttachmentDeletionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'processing', 'failed', 'done']),
+  "attempts": zod.number().int(),
+  "lastError": zod.string().nullable(),
+  "nextAttemptAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListChatAttachmentDeletionsResponse = zod.array(ListChatAttachmentDeletionsResponseItem)
+
+
+/**
+ * @summary Retry a failed chat attachment deletion (superadmin)
+ */
+export const RetryChatAttachmentDeletionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const RetryChatAttachmentDeletionResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'processing', 'failed', 'done']),
+  "attempts": zod.number().int(),
+  "lastError": zod.string().nullable(),
+  "nextAttemptAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Pasar de curso: clone groups, offer and assignments to a new year
  */
 

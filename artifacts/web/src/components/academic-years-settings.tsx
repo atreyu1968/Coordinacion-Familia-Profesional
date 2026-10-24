@@ -9,8 +9,11 @@ import {
   useRenameAcademicYear,
   useDeleteAcademicYear,
   useListYearConfirmations,
+  useListChatAttachmentDeletions,
+  useRetryChatAttachmentDeletion,
   getListAcademicYearsQueryKey,
   getListYearConfirmationsQueryKey,
+  getListChatAttachmentDeletionsQueryKey,
 } from "@workspace/api-client-react";
 import {
   Card,
@@ -60,6 +63,7 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  RotateCw,
 } from "lucide-react";
 
 export default function AcademicYearsSettings() {
@@ -333,6 +337,8 @@ export default function AcademicYearsSettings() {
         </CardContent>
       </Card>
 
+      <ChatAttachmentDeletionCard />
+
       <TransitionCard years={years.map((y) => y.name)} activeYear={activeYear} />
 
       <OpenConfirmationCard
@@ -437,6 +443,106 @@ export default function AcademicYearsSettings() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function ChatAttachmentDeletionCard() {
+  const qc = useQueryClient();
+  const { data = [], isLoading, isError } = useListChatAttachmentDeletions({
+    query: { refetchInterval: 30_000 },
+  });
+  const retryMut = useRetryChatAttachmentDeletion();
+
+  const onRetry = async (id: number) => {
+    try {
+      await retryMut.mutateAsync({ id });
+      await qc.invalidateQueries({
+        queryKey: getListChatAttachmentDeletionsQueryKey(),
+      });
+      toast({ title: "Borrado reintentado" });
+    } catch {
+      toast({
+        title: "No se pudo reintentar el borrado",
+        description: "Actualiza la lista y vuelve a intentarlo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const statusLabel = (status: string) =>
+    status === "processing"
+      ? "En curso"
+      : status === "failed"
+        ? "Error"
+        : "Pendiente";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Adjuntos pendientes de borrar</CardTitle>
+        <CardDescription>
+          Los errores no afectan al curso activo. El servidor reintenta los
+          borrados pendientes; puedes volver a intentar los que agotaron sus
+          reintentos. No se muestran nombres ni rutas de archivos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Cargando...</p>
+        ) : isError ? (
+          <p className="text-sm text-destructive">
+            No se pudo cargar el estado de los borrados.
+          </p>
+        ) : data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay adjuntos pendientes de borrar.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {data.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={item.status === "failed" ? "destructive" : "outline"}
+                    >
+                      {statusLabel(item.status)}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Intentos: {item.attempts}
+                    </span>
+                  </div>
+                  {item.lastError && (
+                    <p className="text-sm text-destructive">{item.lastError}</p>
+                  )}
+                  {item.nextAttemptAt && item.status === "pending" && (
+                    <p className="text-xs text-muted-foreground">
+                      Próximo intento:{" "}
+                      {new Date(item.nextAttemptAt).toLocaleString("es-ES")}
+                    </p>
+                  )}
+                </div>
+                {item.status === "failed" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={retryMut.isPending}
+                    onClick={() => void onRetry(item.id)}
+                  >
+                    <RotateCw className="h-4 w-4" />
+                    Reintentar
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { realpathSync } from "node:fs";
 import { mkdir, rm, writeFile, access } from "node:fs/promises";
@@ -15,6 +15,7 @@ let t: typeof import("@workspace/db");
 let app: typeof import("../src/app").default;
 let helpers: typeof import("./helpers");
 let originalActiveYear: string | null = null;
+let worker: typeof import("../src/lib/chatAttachmentDeletionWorker");
 
 beforeAll(async () => {
   const root = process.env.COORDINA_CHAT_CLEANUP_TEST_ROOT;
@@ -66,8 +67,13 @@ beforeAll(async () => {
   );
 
   helpers = await import("./helpers");
+  worker = await import("../src/lib/chatAttachmentDeletionWorker");
   app = (await import("../src/app")).default;
 }, 30_000);
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 afterAll(async () => {
   if (t) {
@@ -79,6 +85,7 @@ afterAll(async () => {
       .where(eq(t.integrationSettingsTable.id, settingsRow.id));
   }
   if (STORAGE_ROOT) await rm(STORAGE_ROOT, { recursive: true, force: true });
+  if (t) await t.db.delete(t.chatAttachmentDeletionsTable);
 });
 
 describe("PUT /api/academic-years/active chat cleanup", () => {
@@ -145,7 +152,7 @@ describe("PUT /api/academic-years/active chat cleanup", () => {
       .set(helpers.authHeader(admin.token))
       .send({ name: year, confirmConversationDeletion: true });
 
-    expect(response.status).toBe(200);
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
     expect(response.body.activeYear).toBe(year);
     expect(response.body.chatCleanup).toEqual({
       conversationsDeleted: 1,
@@ -161,5 +168,159 @@ describe("PUT /api/academic-years/active chat cleanup", () => {
     await expect(
       access(join(STORAGE_ROOT, "private", "chat-cleanup", "attachment", "test-audio.webm")),
     ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("automatically retries a failed deletion and removes the private path when successful", async () => {
+    const admin = await helpers.createUser({ role: "superadmin" });
+    const recipient = await helpers.createUser({ role: "teacher" });
+    const year = `${TEST_YEAR}-auto-retry`;
+    const attachmentPath = `/objects/chat-cleanup/retry-${Date.now()}`;
+    await helpers.createAcademicYear(year);
+    await t.db.insert(t.messagesTable).values({
+      senderId: admin.user.id,
+      recipientId: recipient.user.id,
+      content: "Mensaje que se eliminará",
+      attachmentPath,
+    });
+
+    const { ObjectStorageService } = await import("../src/lib/objectStorage");
+    const deleteSpy = vi
+      .spyOn(ObjectStorageService.prototype, "deleteObjectEntity")
+      .mockRejectedValueOnce(new Error("private object location and content"))
+      .mockResolvedValue(undefined);
+    const response = await request(app)
+      .put("/api/academic-years/active")
+      .set(helpers.authHeader(admin.token))
+      .send({ name: year, confirmConversationDeletion: true });
+
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.activeYear).toBe(year);
+    expect(response.body.chatCleanup).toMatchObject({
+      attachmentsDeleted: 0,
+      attachmentDeletionFailures: 1,
+    });
+    const currentSuperadmin = await helpers.createUser({ role: "superadmin" });
+    const pendingResponse = await request(app)
+      .get("/api/academic-years/chat-attachment-deletions")
+      .set(helpers.authHeader(currentSuperadmin.token));
+    expect(pendingResponse.status, JSON.stringify(pendingResponse.body)).toBe(200);
+    const pending = pendingResponse.body.find(
+      (row: { status: string }) => row.status === "pending",
+    );
+    expect(pending).toMatchObject({
+      status: "pending",
+      attempts: 1,
+      lastError: "No se pudo borrar el archivo en Object Storage.",
+    });
+    expect(pending).not.toHaveProperty("objectPath");
+
+    const [queueRow] = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.objectPath, attachmentPath));
+    expect(queueRow).toBeTruthy();
+    await t.db
+      .update(t.chatAttachmentDeletionsTable)
+      .set({ nextAttemptAt: new Date(0) })
+      .where(eq(t.chatAttachmentDeletionsTable.id, queueRow!.id));
+    expect(await worker.processNextChatAttachmentDeletion(queueRow!.id)).toBe(true);
+
+    const [completed] = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.id, queueRow!.id));
+    expect(completed).toMatchObject({
+      status: "done",
+      attempts: 2,
+      objectPath: null,
+      lastError: null,
+    });
+    expect(deleteSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats an already-missing object as a successful deletion", async () => {
+    const admin = await helpers.createUser({ role: "superadmin" });
+    const recipient = await helpers.createUser({ role: "teacher" });
+    const year = `${TEST_YEAR}-missing-object`;
+    const attachmentPath = `/objects/chat-cleanup/does-not-exist-${Date.now()}`;
+    await helpers.createAcademicYear(year);
+    await t.db.insert(t.messagesTable).values({
+      senderId: admin.user.id,
+      recipientId: recipient.user.id,
+      content: "Mensaje con objeto ya inexistente",
+      attachmentPath,
+    });
+
+    const response = await request(app)
+      .put("/api/academic-years/active")
+      .set(helpers.authHeader(admin.token))
+      .send({ name: year, confirmConversationDeletion: true });
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.chatCleanup).toMatchObject({
+      attachmentsDeleted: 1,
+      attachmentDeletionFailures: 0,
+    });
+  });
+
+  it("keeps persistent failures visible without blocking the course and lets a superadmin retry", async () => {
+    const admin = await helpers.createUser({ role: "superadmin" });
+    const recipient = await helpers.createUser({ role: "teacher" });
+    const year = `${TEST_YEAR}-persistent-failure`;
+    const attachmentPath = `/objects/chat-cleanup/persistent-${Date.now()}`;
+    await helpers.createAcademicYear(year);
+    await t.db.insert(t.messagesTable).values({
+      senderId: admin.user.id,
+      recipientId: recipient.user.id,
+      content: "Mensaje con borrado persistentemente fallido",
+      attachmentPath,
+    });
+
+    const { ObjectStorageService } = await import("../src/lib/objectStorage");
+    const deleteSpy = vi
+      .spyOn(ObjectStorageService.prototype, "deleteObjectEntity")
+      .mockRejectedValue(new Error("private storage details"));
+    const response = await request(app)
+      .put("/api/academic-years/active")
+      .set(helpers.authHeader(admin.token))
+      .send({ name: year, confirmConversationDeletion: true });
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(response.body.activeYear).toBe(year);
+    expect(response.body.chatCleanup.attachmentDeletionFailures).toBe(1);
+
+    const [queueRow] = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.objectPath, attachmentPath));
+    expect(queueRow?.status).toBe("pending");
+    for (let attempt = 2; attempt <= worker.CHAT_ATTACHMENT_DELETE_MAX_ATTEMPTS; attempt += 1) {
+      await t.db
+        .update(t.chatAttachmentDeletionsTable)
+        .set({ nextAttemptAt: new Date(0) })
+        .where(eq(t.chatAttachmentDeletionsTable.id, queueRow!.id));
+      expect(await worker.processNextChatAttachmentDeletion(queueRow!.id)).toBe(true);
+    }
+    const [failed] = await t.db
+      .select()
+      .from(t.chatAttachmentDeletionsTable)
+      .where(eq(t.chatAttachmentDeletionsTable.id, queueRow!.id));
+    expect(failed).toMatchObject({
+      status: "failed",
+      attempts: worker.CHAT_ATTACHMENT_DELETE_MAX_ATTEMPTS,
+      lastError: "No se pudo borrar el archivo en Object Storage.",
+    });
+
+    deleteSpy.mockResolvedValue(undefined);
+    const currentSuperadmin = await helpers.createUser({ role: "superadmin" });
+    const manualRetry = await request(app)
+      .post(`/api/academic-years/chat-attachment-deletions/${queueRow!.id}/retry`)
+      .set(helpers.authHeader(currentSuperadmin.token));
+    expect(manualRetry.status, JSON.stringify(manualRetry.body)).toBe(200);
+    expect(manualRetry.body).toMatchObject({
+      id: queueRow!.id,
+      status: "done",
+      attempts: 1,
+      lastError: null,
+    });
+    expect(manualRetry.body).not.toHaveProperty("objectPath");
   });
 });

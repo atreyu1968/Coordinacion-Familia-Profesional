@@ -50,6 +50,8 @@ export * from './center';
 export * from './centerDetail';
 export * from './centerFacets';
 export * from './centerQueryParameter';
+export * from './chatAttachmentDeletion';
+export * from './chatAttachmentDeletionStatus';
 export * from './chatContact';
 export * from './chatGroup';
 export * from './chatMember';
