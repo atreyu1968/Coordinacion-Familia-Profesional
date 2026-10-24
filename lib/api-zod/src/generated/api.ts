@@ -6489,6 +6489,21 @@ export const ExportLmsCourseParams = zod.object({
 export const ExportLmsCourseResponse = zod.unknown()
 
 
+/**
+ * @summary Download multiple managed courses as one ZIP archive
+ */
+
+export const exportLmsCoursesBodyCourseIdsMax = 50;
+
+
+
+export const ExportLmsCoursesBody = zod.object({
+  "courseIds": zod.array(zod.number().int().min(1)).min(1).max(exportLmsCoursesBodyCourseIdsMax)
+})
+
+export const ExportLmsCoursesResponse = zod.unknown()
+
+
 export const PublishLmsCourseParams = zod.object({
   "courseId": zod.coerce.number().int()
 })

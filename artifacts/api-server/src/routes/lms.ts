@@ -36,6 +36,7 @@ import {
   RequestLmsCourseImportUploadUrlResponse,
   ImportLmsCourseArchiveBody,
   ImportLmsCourseArchiveResponse,
+  ExportLmsCoursesBody,
   CompleteLmsLessonParams,
   SubmitLmsQuizAttemptParams,
   SubmitLmsQuizAttemptBody,
@@ -52,6 +53,10 @@ import {
   CourseExportValidationError,
   CourseImportValidationError,
   parseCourseImportManifest,
+  appendCourseArchiveToBatch,
+  MAX_MULTI_COURSE_EXPORT_SIZE,
+  MAX_MULTI_COURSE_EXPANDED_SIZE,
+  MAX_MULTI_COURSE_EXPORT_FILES,
 } from "../lib/lms-course-import";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
@@ -327,6 +332,194 @@ router.get("/lms/courses/:courseId/export", requireAuth, async (req, res): Promi
       message: "No se pudo exportar el curso. Comprueba que sus archivos siguen disponibles.",
     });
   }
+});
+
+router.post("/lms/courses/export", requireAuth, async (req, res): Promise<void> => {
+  const parsed = ExportLmsCoursesBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.message });
+    return;
+  }
+  if (new Set(parsed.data.courseIds).size !== parsed.data.courseIds.length) {
+    res.status(400).json({ message: "No repitas un curso en la selección." });
+    return;
+  }
+
+  type ExcludedCourse = { courseId: number; title: string; reason: string };
+  type IncludedCourse = {
+    courseId: number;
+    title: string;
+    folder: string;
+    expandedBytes: number;
+    fileCount: number;
+  };
+  const excluded: ExcludedCourse[] = [];
+  const included: IncludedCourse[] = [];
+  const batch = new JSZip();
+  let expandedBytes = 0;
+  let fileCount = 0;
+  const requestedIds = parsed.data.courseIds;
+  const courses = await db.select().from(lmsCoursesTable).where(and(
+    inArray(lmsCoursesTable.id, requestedIds),
+    isNull(lmsCoursesTable.deletedAt),
+  ));
+  const coursesById = new Map(courses.map((course) => [course.id, course]));
+
+  for (const courseId of requestedIds) {
+    const course = coursesById.get(courseId);
+    if (!course || !(await visibleCourse(req.user!, course)) || !(await canManageCourse(req.user!, course))) {
+      excluded.push({
+        courseId,
+        title: "Curso no disponible",
+        reason: "El curso no existe, no está disponible o no tienes permiso para exportarlo.",
+      });
+      continue;
+    }
+
+    try {
+      const lessons = await db.select().from(lmsLessonsTable).where(and(
+        eq(lmsLessonsTable.courseId, courseId),
+        isNull(lmsLessonsTable.deletedAt),
+      )).orderBy(asc(lmsLessonsTable.position), asc(lmsLessonsTable.id));
+      const archive = await buildCourseExportArchive({
+        title: course.title,
+        description: course.description,
+        certificateEnabled: course.certificateEnabled,
+      }, lessons.map((lesson) => ({
+        title: lesson.title,
+        kind: lesson.kind as "text" | "file" | "video" | "quiz" | "scorm12" | "scorm2004",
+        required: lesson.required,
+        content: lesson.content,
+        objectPath: lesson.objectPath,
+        objectName: lesson.objectName,
+      })), async (asset) => {
+        const lesson = lessons[asset.lessonIndex];
+        if (!lesson) throw new Error("No se pudo asociar un archivo con su lección.");
+        const object = await storage.getObjectEntityFile(asset.objectPath);
+        const file = await storage.downloadObject(object, 0);
+        return readBoundedCourseAsset(file, lesson.objectSize ?? undefined);
+      });
+      const appended = await appendCourseArchiveToBatch(
+        batch,
+        course.id,
+        course.title,
+        archive,
+        MAX_MULTI_COURSE_EXPANDED_SIZE - expandedBytes,
+        MAX_MULTI_COURSE_EXPORT_FILES - fileCount - 1,
+      );
+      expandedBytes += appended.expandedBytes;
+      fileCount += appended.fileCount;
+      included.push({
+        courseId: course.id,
+        title: course.title,
+        folder: appended.folderName,
+        expandedBytes: appended.expandedBytes,
+        fileCount: appended.fileCount,
+      });
+    } catch (error) {
+      if (error instanceof CourseExportValidationError) {
+        excluded.push({ courseId, title: course.title, reason: error.message });
+      } else {
+        req.log.error({ err: error, courseId }, "Could not add LMS course to batch export");
+        excluded.push({
+          courseId,
+          title: course.title,
+          reason: "No se pudieron leer todos los archivos del curso.",
+        });
+      }
+    }
+  }
+
+  const report = () => ({
+    format: "coordina-adg-course-batch",
+    version: 1,
+    included: included.map(({ courseId, title, folder }) => ({ courseId, title, folder })),
+    excluded,
+    limits: {
+      compressedBytes: MAX_MULTI_COURSE_EXPORT_SIZE,
+      expandedBytes: MAX_MULTI_COURSE_EXPANDED_SIZE,
+      files: MAX_MULTI_COURSE_EXPORT_FILES,
+      selectedCourses: 50,
+    },
+  });
+  const setReport = () => {
+    const bytes = Buffer.from(JSON.stringify(report(), null, 2), "utf8");
+    batch.file("informe-exportacion.json", bytes);
+    return bytes.length;
+  };
+
+  if (included.length === 0) {
+    res.status(422).json({
+      message: "No se pudo incluir ningún curso en el archivo.",
+      excluded,
+    });
+    return;
+  }
+
+  let reportBytes = setReport();
+  while (
+    included.length > 0 &&
+    (expandedBytes + reportBytes > MAX_MULTI_COURSE_EXPANDED_SIZE ||
+      fileCount + 1 > MAX_MULTI_COURSE_EXPORT_FILES)
+  ) {
+    const rejected = included.pop()!;
+    batch.remove(`cursos/${rejected.folder}/`);
+    expandedBytes -= rejected.expandedBytes;
+    fileCount -= rejected.fileCount;
+    excluded.push({
+      courseId: rejected.courseId,
+      title: rejected.title,
+      reason: "La exportación conjunta supera el límite agregado de tamaño o archivos.",
+    });
+    batch.remove("informe-exportacion.json");
+    reportBytes = setReport();
+  }
+
+  let archive: Buffer;
+  try {
+    archive = await batch.generateAsync({
+      type: "nodebuffer",
+      compression: "DEFLATE",
+      compressionOptions: { level: 3 },
+    });
+    while (archive.length > MAX_MULTI_COURSE_EXPORT_SIZE && included.length > 0) {
+      const rejected = included.pop()!;
+      batch.remove(`cursos/${rejected.folder}/`);
+      expandedBytes -= rejected.expandedBytes;
+      fileCount -= rejected.fileCount;
+      excluded.push({
+        courseId: rejected.courseId,
+        title: rejected.title,
+        reason: "Al incluir este curso se superaría el límite comprimido de 100 MB.",
+      });
+      batch.remove("informe-exportacion.json");
+      reportBytes = setReport();
+      archive = await batch.generateAsync({
+        type: "nodebuffer",
+        compression: "DEFLATE",
+        compressionOptions: { level: 3 },
+      });
+    }
+  } catch (error) {
+    req.log.error({ err: error, requestedIds }, "Could not generate LMS batch export");
+    res.status(500).json({ message: "No se pudo generar el ZIP de cursos." });
+    return;
+  }
+
+  if (included.length === 0 || archive.length > MAX_MULTI_COURSE_EXPORT_SIZE) {
+    res.status(422).json({
+      message: "No se pudo incluir ningún curso dentro de los límites de exportación.",
+      excluded,
+    });
+    return;
+  }
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Length", String(archive.length));
+  res.setHeader("Content-Disposition", 'attachment; filename="coordina-cursos.zip"');
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.send(archive);
 });
 
 router.post("/lms/courses", requireAuth, async (req, res): Promise<void> => {

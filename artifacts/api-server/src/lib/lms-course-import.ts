@@ -4,6 +4,9 @@ import JSZip from "jszip";
 const MAX_LESSON_TEXT = 100_000;
 const MAX_EXPORT_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_EXPORT_EXPANDED_SIZE = 250 * 1024 * 1024;
+export const MAX_MULTI_COURSE_EXPORT_SIZE = 100 * 1024 * 1024;
+export const MAX_MULTI_COURSE_EXPANDED_SIZE = 250 * 1024 * 1024;
+export const MAX_MULTI_COURSE_EXPORT_FILES = 5_000;
 
 const QuizQuestionSchema = z.object({
   prompt: z.string().trim().min(1).max(2_000),
@@ -179,6 +182,63 @@ export async function buildCourseExportArchive(
     throw new CourseExportValidationError("El ZIP generado supera el límite comprimido de 100 MB.");
   }
   return archive;
+}
+
+export async function appendCourseArchiveToBatch(
+  batch: JSZip,
+  courseId: number,
+  title: string,
+  archive: Buffer,
+  remainingExpandedBytes: number,
+  remainingFileCount: number,
+): Promise<{ expandedBytes: number; fileCount: number; folderName: string }> {
+  const courseZip = await JSZip.loadAsync(archive);
+  const entries = Object.values(courseZip.files).filter((entry) => !entry.dir);
+  const folderName = safeCourseExportFolderName(title, courseId);
+
+  if (entries.length > remainingFileCount) {
+    throw new CourseExportValidationError(
+      "La exportación conjunta supera el límite de 5.000 archivos.",
+    );
+  }
+
+  const files: Array<{ name: string; bytes: Buffer }> = [];
+  let expandedBytes = 0;
+  for (const entry of entries) {
+    const segments = entry.name.split("/");
+    if (
+      entry.name.startsWith("/") ||
+      segments.some((segment) => segment === "." || segment === "..")
+    ) {
+      throw new CourseExportValidationError(
+        "El curso contiene una ruta de archivo no válida.",
+      );
+    }
+    const bytes = await entry.async("nodebuffer");
+    expandedBytes += bytes.length;
+    if (expandedBytes > remainingExpandedBytes) {
+      throw new CourseExportValidationError(
+        "La exportación conjunta supera los 250 MB descomprimidos permitidos.",
+      );
+    }
+    files.push({ name: entry.name, bytes });
+  }
+
+  const prefix = `cursos/${folderName}`;
+  for (const file of files) {
+    batch.file(`${prefix}/${file.name}`, file.bytes);
+  }
+  return { expandedBytes, fileCount: files.length, folderName };
+}
+
+export function safeCourseExportFolderName(title: string, courseId: number): string {
+  const safeTitle = title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100) || "curso";
+  return `${safeTitle}-${courseId}`;
 }
 
 export class CourseImportValidationError extends Error {

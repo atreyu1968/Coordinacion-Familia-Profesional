@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import {
+  appendCourseArchiveToBatch,
   buildCourseExportArchive,
   createCourseExportManifest,
   CourseImportValidationError,
+  CourseExportValidationError,
   parseCourseImportManifest,
   validateCourseAssetPath,
 } from "../src/lib/lms-course-import";
@@ -172,6 +174,64 @@ describe("course ZIP manifest", () => {
       expect(reimportedScorm.file("imsmanifest.xml")).toBeTruthy();
       expect(await reimportedScorm.file("launch.html")!.async("string")).toContain("SCORM");
     }
+  });
+
+  it("puts each course manifest and same-named assets in a collision-free folder", async () => {
+    const courseArchive = (content: string) => buildCourseExportArchive({
+      title: "Curso compartido",
+      description: "",
+      certificateEnabled: true,
+    }, [{
+      title: "Material",
+      kind: "file",
+      required: true,
+      content: {},
+      objectPath: "/objects/material",
+      objectName: "material.pdf",
+    }], async () => Buffer.from(content));
+    const batch = new JSZip();
+    const first = await appendCourseArchiveToBatch(
+      batch, 41, "Curso compartido", await courseArchive("archivo uno"), 250_000_000, 4_999,
+    );
+    const second = await appendCourseArchiveToBatch(
+      batch, 42, "Curso compartido", await courseArchive("archivo dos"), 250_000_000 - first.expandedBytes, 4_999 - first.fileCount,
+    );
+    const archive = await batch.generateAsync({ type: "nodebuffer" });
+    const result = await JSZip.loadAsync(archive);
+
+    expect(first.folderName).not.toBe(second.folderName);
+    const firstManifest = result.file(`cursos/${first.folderName}/coordina-course.json`);
+    const secondManifest = result.file(`cursos/${second.folderName}/coordina-course.json`);
+    expect(firstManifest).toBeTruthy();
+    expect(secondManifest).toBeTruthy();
+    expect(parseCourseImportManifest(await firstManifest!.async("string")).course.title)
+      .toBe("Curso compartido");
+    expect(parseCourseImportManifest(await secondManifest!.async("string")).course.title)
+      .toBe("Curso compartido");
+    expect(await result.file(`cursos/${first.folderName}/assets/leccion-001-material.pdf`)!.async("string"))
+      .toBe("archivo uno");
+    expect(await result.file(`cursos/${second.folderName}/assets/leccion-001-material.pdf`)!.async("string"))
+      .toBe("archivo dos");
+  });
+
+  it("does not add a course when it exceeds the remaining aggregate export allowance", async () => {
+    const archive = await buildCourseExportArchive({
+      title: "Curso",
+      description: "",
+      certificateEnabled: true,
+    }, [{
+      title: "Texto",
+      kind: "text",
+      required: true,
+      content: { text: "Contenido del curso" },
+      objectPath: null,
+      objectName: null,
+    }], async () => Buffer.alloc(0));
+    const batch = new JSZip();
+
+    await expect(appendCourseArchiveToBatch(batch, 1, "Curso", archive, 1, 4_999))
+      .rejects.toBeInstanceOf(CourseExportValidationError);
+    expect(Object.values(batch.files).filter((entry) => !entry.dir)).toHaveLength(0);
   });
 
   it("rejects exporting file lessons whose private attachment is missing", () => {

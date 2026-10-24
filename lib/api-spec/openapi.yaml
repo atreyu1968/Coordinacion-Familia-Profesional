@@ -5568,6 +5568,29 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /lms/courses/export:
+    post:
+      operationId: exportLmsCourses
+      tags: [lms]
+      summary: Download multiple managed courses as one ZIP archive
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LmsCourseExportInput" }
+      responses:
+        "200":
+          description: ZIP archive containing the selected courses and an export report
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "400": { $ref: "#/components/responses/Error" }
+        "422":
+          description: No requested course could be included
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LmsCourseExportFailure" }
   /lms/courses/{courseId}/publish:
     post:
       operationId: publishLmsCourse
@@ -5844,6 +5867,30 @@ components:
         moduleId: { type: [integer, "null"] }
         certificateEnabled: { type: boolean }
       required: [title]
+    LmsCourseExportInput:
+      type: object
+      properties:
+        courseIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+      required: [courseIds]
+    LmsCourseExportFailure:
+      type: object
+      properties:
+        message: { type: string }
+        excluded:
+          type: array
+          items:
+            type: object
+            properties:
+              courseId: { type: integer }
+              title: { type: string }
+              reason: { type: string }
+            required: [courseId, title, reason]
+      required: [message, excluded]
     LmsCourseImportUploadInput:
       type: object
       properties:

@@ -38,6 +38,28 @@ La exportación respeta los mismos límites que la importación: 100 MB comprimi
 se supera un límite, la aplicación informa del error y no entrega un ZIP parcial.
 El progreso de usuarios no forma parte del formato de curso y no se exporta.
 
+## Exportar varios cursos juntos
+
+En **Autodirigido**, los administradores pueden marcar los cursos que gestionan
+y usar **Exportar selección** para descargar un único ZIP. El archivo contiene
+una carpeta dentro de `cursos/` por curso; cada carpeta conserva su propio
+`coordina-course.json` y sus recursos en `assets/`. El identificador del curso
+forma parte del nombre de la carpeta para evitar colisiones entre títulos o
+archivos iguales.
+
+El ZIP incluye `informe-exportacion.json`, con los cursos incluidos y el motivo
+por el que se omitió cualquiera que no se pudo exportar. La pantalla también
+muestra esos motivos al terminar la descarga. La solicitud admite hasta 50
+cursos y la operación completa se limita a 100 MB comprimidos, 250 MB
+descomprimidos y 5.000 archivos. Se mantienen además los límites por curso
+descritos arriba.
+
+Para importar uno de los cursos exportados, extrae el ZIP conjunto, entra en la
+carpeta correspondiente dentro de `cursos/` y crea un ZIP individual con
+`coordina-course.json` y `assets/` en su raíz. Después impórtalo como se indica
+en **Pasos de importación**. El ZIP conjunto no se importa directamente como un
+solo curso.
+
 ## Manifiesto `coordina-course.json`
 
 Este ejemplo incluye lecciones de texto, vídeo, cuestionario, archivo y SCORM:

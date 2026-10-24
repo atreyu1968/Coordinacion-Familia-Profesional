@@ -94,6 +94,26 @@ export interface LmsCourseInput {
   certificateEnabled?: boolean;
 }
 
+export interface LmsCourseExportInput {
+  /**
+     * @minItems 1
+     * @maxItems 50
+     * @items.minimum 1
+     */
+  courseIds: number[];
+}
+
+export type LmsCourseExportFailureExcludedItem = {
+  courseId: number;
+  title: string;
+  reason: string;
+};
+
+export interface LmsCourseExportFailure {
+  message: string;
+  excluded: LmsCourseExportFailureExcludedItem[];
+}
+
 export interface LmsCourseImportUploadInput {
   /**
      * @minLength 1
