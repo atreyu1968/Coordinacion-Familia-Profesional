@@ -79,6 +79,12 @@ const ALL = "all";
 const PAGE_SIZES = [25, 50, 100];
 type StatusFilter = "all" | "active" | "inactive";
 type ProfileFilter = "all" | "incomplete" | "complete";
+const TEACHING_PROFILE_ROLES: readonly Role[] = [
+  "teacher",
+  "department_head",
+  "coordinator",
+  "superadmin",
+];
 const MISSING_PROFILE_LABELS = {
   center: "Centro no asignado o no válido para la familia activa",
   province: "Provincia sin asignar o no coincidente con un centro válido",
@@ -152,7 +158,7 @@ export default function UsuariosPage() {
   const managedQ = useListManagedUsers(managedParams, {
     query: {
       enabled: isManager, queryKey: getListManagedUsersQueryKey(managedParams),
-      placeholderData: (prev) => prev, staleTime: 0, refetchOnMount: "always",
+      staleTime: 0, refetchOnMount: "always",
       refetchOnWindowFocus: true, refetchInterval: 60_000,
     },
   });
@@ -381,6 +387,9 @@ export default function UsuariosPage() {
               : "No hay curso activo: solo se comprueban centro y provincia; no se exigen módulos."}
           </p>
           <p className="text-muted-foreground">
+            El estado solo se muestra para las cuentas que puedes gestionar; tu propia cuenta y los perfiles del mismo nivel o superior aparecen como ocultos.
+          </p>
+          <p className="text-muted-foreground">
             La confirmación anual es una obligación independiente. Este indicador no desactiva cuentas.
           </p>
           {managedQ.isFetching && <p className="text-muted-foreground">Actualizando datos…</p>}
@@ -420,7 +429,7 @@ export default function UsuariosPage() {
                 <TableHead>Rol</TableHead>
                 <TableHead>Ámbito</TableHead>
                 <TableHead>Estado</TableHead>
-                {isManager && <TableHead>Perfil docente</TableHead>}
+                {isManager && <TableHead>Integridad del perfil docente</TableHead>}
                 {showActions && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
@@ -504,7 +513,15 @@ export default function UsuariosPage() {
                                 </ul>
                               </details>
                             )
-                          ) : <span className="text-muted-foreground">No aplica</span>}
+                          ) : !TEACHING_PROFILE_ROLES.includes(u.role) ? (
+                            <span className="text-muted-foreground">No requiere ficha docente</span>
+                          ) : isSelf ? (
+                            <span className="text-muted-foreground">Tu ficha se gestiona en Perfil</span>
+                          ) : (
+                            <span className="text-muted-foreground" title="No se muestra el estado de perfiles que no puedes gestionar.">
+                              Oculto por permisos
+                            </span>
+                          )}
                         </TableCell>
                       )}
                       {showActions && (
