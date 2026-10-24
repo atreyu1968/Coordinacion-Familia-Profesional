@@ -53,6 +53,8 @@ import {
   type ChatGroup,
   type ChatMember,
   type Message,
+  mergeChatMessageSnapshot,
+  subscribeToChatRoom,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -328,6 +330,7 @@ export default function ChatDetailScreen() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -425,6 +428,30 @@ export default function ChatDetailScreen() {
     }
   }, [groupId, mergeMessages]);
 
+  const refreshMessages = useCallback(async () => {
+    const previousMessages = messagesRef.current;
+    const previouslyLoadedCount = previousMessages.length;
+    const previouslyLoadedIds = new Set(previousMessages.map((message) => message.id));
+    const refreshed: Message[] = [];
+    let page = await listGroupMessages(groupId);
+    refreshed.push(...page);
+    while (refreshed.length < previouslyLoadedCount && page.length === CHAT_PAGE_SIZE) {
+      page = await listGroupMessages(groupId, { beforeId: page[0]!.id });
+      refreshed.push(...page);
+    }
+
+    setMessages((current) =>
+      mergeChatMessageSnapshot(
+        current,
+        refreshed,
+        previouslyLoadedIds,
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    );
+    setHasOlder(page.length === CHAT_PAGE_SIZE);
+  }, [groupId]);
+
   useEffect(() => {
     setMessages([]);
     setHasOlder(false);
@@ -455,7 +482,10 @@ export default function ChatDetailScreen() {
   useEffect(() => {
     if (!token || !Number.isInteger(groupId)) return;
     const socket = connectSocket(token);
-    socket.emit("join", groupId);
+    const unsubscribeFromRoom = subscribeToChatRoom(socket, groupId, () => {
+      void refreshMessages().catch(() => undefined);
+      void hiddenMessagesQuery.refetch();
+    });
     setActiveChat(groupId);
     markChatRead(groupId);
 
@@ -552,7 +582,7 @@ export default function ChatDetailScreen() {
         isTypingRef.current = false;
         socket.emit("stop_typing", groupId);
       }
-      socket.emit("leave", groupId);
+      unsubscribeFromRoom();
       socket.off("message", onMessage);
       socket.off("message_edited", onEdited);
       socket.off("message_deleted", onDeleted);
@@ -564,7 +594,7 @@ export default function ChatDetailScreen() {
       markChatRead(groupId);
       setActiveChat(null);
     };
-  }, [token, groupId, mergeMessages, markChatRead, setActiveChat, user?.id, queryClient]);
+  }, [token, groupId, mergeMessages, markChatRead, setActiveChat, user?.id, queryClient, refreshMessages, hiddenMessagesQuery.refetch]);
 
   // ----- typing emit -----
   const emitStopTyping = useCallback(() => {

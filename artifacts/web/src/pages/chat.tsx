@@ -35,6 +35,8 @@ import {
   type ChatGroup,
   type Message,
   type ChatMember,
+  mergeChatMessageSnapshot,
+  subscribeToChatRoom,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useModuleParam } from "@/lib/use-module-param";
@@ -694,6 +696,7 @@ function ConversationView({
       : undefined;
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const messagesRef = useRef(messages);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -709,8 +712,6 @@ function ConversationView({
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
-
-  const messagesRef = useRef(messages);
 
   const sendMut = useSendGroupMessage();
   const editMut = useEditMessage();
@@ -756,6 +757,29 @@ function ConversationView({
     messagesRef.current = messages;
   }, [messages]);
 
+  const refreshMessages = useCallback(async () => {
+    const previousMessages = messagesRef.current;
+    const previouslyLoadedCount = previousMessages.length;
+    const previouslyLoadedIds = new Set(previousMessages.map((message) => message.id));
+    const refreshed: Message[] = [];
+    let page = await listGroupMessages(groupId);
+    refreshed.push(...page);
+    while (refreshed.length < previouslyLoadedCount && page.length === CHAT_PAGE_SIZE) {
+      page = await listGroupMessages(groupId, { beforeId: page[0]!.id });
+      refreshed.push(...page);
+    }
+
+    setMessages((current) =>
+      mergeChatMessageSnapshot(
+        current,
+        refreshed,
+        previouslyLoadedIds,
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
+    );
+    setHasOlder(page.length === CHAT_PAGE_SIZE);
+  }, [groupId]);
   // Initial load
   useEffect(() => {
     let cancelled = false;
@@ -819,7 +843,10 @@ function ConversationView({
   useEffect(() => {
     if (!token) return;
     const socket = connectSocket(token);
-    socket.emit("join", groupId);
+    const unsubscribeFromRoom = subscribeToChatRoom(socket, groupId, () => {
+      void refreshMessages().catch(() => undefined);
+      void hiddenMessagesQuery.refetch();
+    });
     markReadMut.mutate({ id: groupId });
 
     const onMessage = (msg: Message) => {
@@ -908,7 +935,7 @@ function ConversationView({
     socket.on("stop_typing", onStopTyping);
 
     return () => {
-      socket.emit("leave", groupId);
+      unsubscribeFromRoom();
       socket.off("message", onMessage);
       socket.off("message_edited", onUpdate);
       socket.off("message_deleted", onDeleted);
@@ -923,7 +950,7 @@ function ConversationView({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, groupId, meId, mergeMessages, queryClient]);
+  }, [token, groupId, meId, mergeMessages, queryClient, refreshMessages, hiddenMessagesQuery.refetch]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -1609,9 +1636,11 @@ export default function ChatPage() {
       void refetch();
       void refetchHidden();
     };
+    socket.on("connect", onChatUpdate);
     socket.on("chat_update", onChatUpdate);
     socket.on("message", onChatUpdate);
     return () => {
+      socket.off("connect", onChatUpdate);
       socket.off("chat_update", onChatUpdate);
       socket.off("message", onChatUpdate);
     };
