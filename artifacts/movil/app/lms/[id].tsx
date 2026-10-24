@@ -1,12 +1,12 @@
 import React, { useRef, useState } from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { CourseMarkdown } from "@/components/CourseMarkdown";
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import * as WebBrowser from "expo-web-browser";
+import { openBrowserLink } from "@/lib/browser-link";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -262,22 +262,40 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
   const download = useCreateLmsLessonDownloadToken();
   const scorm = useCreateLmsLessonScormSession();
   const [selected, setSelected] = useState<number[]>([]);
+  const [accessError, setAccessError] = useState("");
   const questions = Array.isArray(lesson.content.questions) ? lesson.content.questions as Array<{ prompt?: string; question?: string; options?: string[] }> : [];
-  const openFile = () => download.mutate({ lessonId: lesson.id }, { onSuccess: (result) => void Linking.openURL(result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`) });
+  const reportAccessError = (error: unknown) => setAccessError(error instanceof Error ? error.message : "No se pudo abrir el contenido. Inténtalo de nuevo.");
+  const openFile = () => {
+    setAccessError("");
+    void openBrowserLink(async () => {
+      const result = await download.mutateAsync({ lessonId: lesson.id });
+      return result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`;
+    }).catch(reportAccessError);
+  };
   const lessonFileName = typeof lesson.content.fileName === "string" ? lesson.content.fileName : lesson.title;
-  const openPdf = () => download.mutate({ lessonId: lesson.id }, { onSuccess: (result) => router.push({
+  const openPdf = () => {
+    setAccessError("");
+    download.mutate({ lessonId: lesson.id }, { onError: reportAccessError, onSuccess: (result) => router.push({
     pathname: "/pdf-viewer",
     params: { uri: result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`, title: lessonFileName },
-  }) });
-  const openScorm = () => scorm.mutate({ lessonId: lesson.id }, { onSuccess: (session) => {
-    const url = `${API_HOST}/scorm-player?token=${encodeURIComponent(session.token)}`;
-    if (Platform.OS === "web") void Linking.openURL(url); else void WebBrowser.openBrowserAsync(url);
-  }});
+    }) });
+  };
+  const openScorm = () => {
+    setAccessError("");
+    void openBrowserLink(async () => {
+      const session = await scorm.mutateAsync({ lessonId: lesson.id });
+      return `${API_HOST}/scorm-player?token=${encodeURIComponent(session.token)}`;
+    }).catch(reportAccessError);
+  };
   const text = typeof lesson.content.text === "string" ? lesson.content.text : typeof lesson.content.body === "string" ? lesson.content.body : "";
   return <Card style={styles.lesson}>
     <View style={styles.lessonHeader}><View style={{ flex: 1, gap: 3 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
      {lesson.kind === "text" ? <CourseMarkdown text={text} /> : null}
-    {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => void Linking.openURL(lesson.content.url as string)} /> : null}
+    {accessError ? <Text accessibilityRole="alert" style={{ color: colors.destructive }}>{accessError}</Text> : null}
+    {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => {
+      setAccessError("");
+      void openBrowserLink(lesson.content.url as string).catch(reportAccessError);
+    }} /> : null}
     {lesson.kind === "file" ? <View style={{ flexDirection: "row", gap: 8 }}>
       <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="download" variant="secondary" onPress={openFile} loading={download.isPending} />
       {isPdfDocument(lessonFileName, typeof lesson.content.contentType === "string" ? lesson.content.contentType : undefined)

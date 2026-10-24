@@ -12,3 +12,5 @@ Render Nextcloud PDFs inside the authenticated Nextcloud session established by 
 For the mobile PWA, use a browser iframe, never React Native WebView (unsupported on web). Keep native WebView isolated from the web bundle. Any external-window fallback must obtain a fresh SSO ticket instead of reusing the iframe URL.
 
 **Why:** the first embedded navigation can consume the single-use ticket; browser privacy settings can also block cross-site iframe sessions.
+
+Reserve a blank browser tab synchronously during the click, before awaiting an API-created access URL (also for SCORM, lesson files and meeting links). Otherwise browsers may block the new window as an unsolicited popup; close the reserved tab if authorization fails.

@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -19,6 +17,7 @@ import { Avatar, Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { initials, roleLabel } from "@/lib/format";
+import { openBrowserLink } from "@/lib/browser-link";
 
 const CORPORATE_EMAIL_URL =
   "https://www3.gobiernodecanarias.org/sso/login?service=https%3A%2F%2Fecorreo.gobiernodecanarias.org%2Fpublic%2Fpreauth.jsp";
@@ -35,6 +34,7 @@ export default function MoreScreen() {
   } = useAuth();
   const [bioBusy, setBioBusy] = useState(false);
   const [bioError, setBioError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState("");
 
   const onToggleBiometric = async (next: boolean) => {
     setBioError(null);
@@ -54,12 +54,9 @@ export default function MoreScreen() {
   };
 
   const openCorporateEmail = () => {
-    if (Platform.OS === "web") {
-      window.open(CORPORATE_EMAIL_URL, "_blank", "noopener,noreferrer");
-      return;
-    }
-    void Linking.openURL(CORPORATE_EMAIL_URL).catch(() => {
-      Alert.alert("No se pudo abrir el correo", "Inténtalo de nuevo desde el navegador de tu dispositivo.");
+    setLinkError("");
+    void openBrowserLink(CORPORATE_EMAIL_URL).catch((error: unknown) => {
+      setLinkError(error instanceof Error ? error.message : "No se pudo abrir el correo. Inténtalo de nuevo desde el navegador de tu dispositivo.");
     });
   };
 
@@ -97,6 +94,7 @@ export default function MoreScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Más" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
+        {linkError ? <Text accessibilityRole="alert" style={{ color: colors.destructive }}>{linkError}</Text> : null}
         <Pressable
           onPress={() => router.push("/perfil")}
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}

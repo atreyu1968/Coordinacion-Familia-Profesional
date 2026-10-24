@@ -49,7 +49,7 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Volver"
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
             hitSlop={12}
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.5 : 1 }]}
           >

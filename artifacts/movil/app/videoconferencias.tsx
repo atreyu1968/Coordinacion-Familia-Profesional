@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
+import { openBrowserLink } from "@/lib/browser-link";
 
 import {
   useGetMeetingToken,
@@ -26,12 +26,14 @@ export default function VideoconferenciasScreen() {
     setError(null);
     setJoiningId(meeting.id);
     try {
-      const access = await tokenMut.mutateAsync({
-        data: { room: meeting.roomName, audioOnly: false },
+      await openBrowserLink(async () => {
+        const access = await tokenMut.mutateAsync({
+          data: { room: meeting.roomName, audioOnly: false },
+        });
+        return access.url;
       });
-      await WebBrowser.openBrowserAsync(access.url);
-    } catch {
-      setError("No se pudo abrir la sala. Inténtalo de nuevo.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo abrir la sala. Inténtalo de nuevo.");
     } finally {
       setJoiningId(null);
     }

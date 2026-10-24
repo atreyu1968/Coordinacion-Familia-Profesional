@@ -266,8 +266,7 @@ export default function NotificationsScreen() {
                         router.push("/actas");
                         break;
                       case "collaborative_space":
-                        // Documents live in the web app; it rechecks current access.
-                        void Linking.openURL(`https://${process.env.EXPO_PUBLIC_DOMAIN}/espacio`);
+                        router.push("/espacios-colaborativos");
                         break;
                       case "lms_course":
                         router.push("/lms");
