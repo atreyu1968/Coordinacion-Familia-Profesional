@@ -1,4 +1,4 @@
-# Importar cursos autodirigidos desde un ZIP
+# Importar y exportar cursos autodirigidos desde un ZIP
 
 Los administradores de cursos pueden crear un curso completo con varias
 lecciones desde **Autodirigido → Importar ZIP**. El ámbito se elige en la
@@ -23,6 +23,20 @@ mi-curso.zip
 
 No se debe incluir una carpeta superior que contenga el manifiesto. Los archivos
 que no estén referenciados por una lección se ignoran.
+
+## Exportar un curso
+
+Los administradores con acceso al curso pueden abrirlo en **Autodirigido** y
+usar **Exportar ZIP**. La descarga conserva el título, la descripción, la
+configuración de certificados, el orden y el tipo de las lecciones, además de
+sus contenidos, adjuntos y paquetes SCORM. El manifiesto queda en la raíz del
+archivo y sus recursos se incluyen bajo `assets/`, por lo que el ZIP se puede
+volver a importar con el flujo descrito abajo.
+
+La exportación respeta los mismos límites que la importación: 100 MB comprimidos,
+250 MB descomprimidos, 100 MB por adjunto y 200 lecciones. Si falta un adjunto o
+se supera un límite, la aplicación informa del error y no entrega un ZIP parcial.
+El progreso de usuarios no forma parte del formato de curso y no se exporta.
 
 ## Manifiesto `coordina-course.json`
 

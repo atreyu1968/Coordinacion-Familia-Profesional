@@ -6479,6 +6479,16 @@ export const DeleteLmsCourseParams = zod.object({
 export const DeleteLmsCourseResponse = zod.void()
 
 
+/**
+ * @summary Download a course as a version 1 ZIP archive
+ */
+export const ExportLmsCourseParams = zod.object({
+  "courseId": zod.coerce.number().int()
+})
+
+export const ExportLmsCourseResponse = zod.unknown()
+
+
 export const PublishLmsCourseParams = zod.object({
   "courseId": zod.coerce.number().int()
 })

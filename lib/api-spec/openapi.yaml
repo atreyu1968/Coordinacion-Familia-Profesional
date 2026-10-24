@@ -5550,6 +5550,24 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
       responses: { "204": { description: Deleted } }
+  /lms/courses/{courseId}/export:
+    get:
+      operationId: exportLmsCourse
+      tags: [lms]
+      summary: Download a course as a version 1 ZIP archive
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
+      responses:
+        "200":
+          description: Course ZIP archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /lms/courses/{courseId}/publish:
     post:
       operationId: publishLmsCourse

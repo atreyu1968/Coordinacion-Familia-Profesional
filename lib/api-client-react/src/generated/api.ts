@@ -23289,6 +23289,107 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteLmsCourseMutationOptions(options), queryClient);
     }
 
+export const getExportLmsCourseUrl = (courseId: number,) => {
+
+
+
+
+  return `/api/lms/courses/${courseId}/export`
+}
+
+/**
+ * @summary Download a course as a version 1 ZIP archive
+ */
+export const exportLmsCourse = async (courseId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExportLmsCourseUrl(courseId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportLmsCourseQueryKey = (courseId: number,) => {
+    return [
+    `/api/lms/courses/${courseId}/export`
+    ] as const;
+    }
+
+
+export const getExportLmsCourseQueryOptions = <TData = Awaited<ReturnType<typeof exportLmsCourse>>, TError = ErrorType<ErrorResponse>>(courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportLmsCourseQueryKey(courseId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportLmsCourse>>> = ({ signal }) => exportLmsCourse(courseId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: courseId !== null && courseId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportLmsCourseQueryResult = NonNullable<Awaited<ReturnType<typeof exportLmsCourse>>>
+export type ExportLmsCourseQueryError = ErrorType<ErrorResponse>
+
+
+export function useExportLmsCourse<TData = Awaited<ReturnType<typeof exportLmsCourse>>, TError = ErrorType<ErrorResponse>>(
+ courseId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportLmsCourse>>,
+          TError,
+          Awaited<ReturnType<typeof exportLmsCourse>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportLmsCourse<TData = Awaited<ReturnType<typeof exportLmsCourse>>, TError = ErrorType<ErrorResponse>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportLmsCourse>>,
+          TError,
+          Awaited<ReturnType<typeof exportLmsCourse>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportLmsCourse<TData = Awaited<ReturnType<typeof exportLmsCourse>>, TError = ErrorType<ErrorResponse>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Download a course as a version 1 ZIP archive
+ */
+
+export function useExportLmsCourse<TData = Awaited<ReturnType<typeof exportLmsCourse>>, TError = ErrorType<ErrorResponse>>(
+ courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportLmsCourse>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportLmsCourseQueryOptions(courseId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getPublishLmsCourseUrl = (courseId: number,) => {
 
 

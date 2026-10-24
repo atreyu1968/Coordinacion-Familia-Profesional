@@ -48,6 +48,8 @@ import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { resolveAudienceUserIds } from "../lib/audience";
 import { notifyUsers } from "../lib/notify";
 import {
+  buildCourseExportArchive,
+  CourseExportValidationError,
   CourseImportValidationError,
   parseCourseImportManifest,
 } from "../lib/lms-course-import";
@@ -257,6 +259,74 @@ router.get("/lms/courses/:courseId", requireAuth, async (req, res): Promise<void
   const detail = await courseDetail(parsed.data.courseId, req.user!);
   if (!detail) { res.status(404).json({ message: "Curso no encontrado" }); return; }
   res.json(GetLmsCourseResponse.parse(detail));
+});
+
+router.get("/lms/courses/:courseId/export", requireAuth, async (req, res): Promise<void> => {
+  const parsed = GetLmsCourseParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ message: "Identificador de curso no válido." });
+    return;
+  }
+  const courseId = parsed.data.courseId;
+  const [course] = await db.select().from(lmsCoursesTable).where(and(
+    eq(lmsCoursesTable.id, courseId),
+    isNull(lmsCoursesTable.deletedAt),
+  ));
+  if (!course || !(await visibleCourse(req.user!, course))) {
+    res.status(404).json({ message: "Curso no encontrado" });
+    return;
+  }
+  if (!(await canManageCourse(req.user!, course))) {
+    res.status(403).json({ message: "No tienes permiso para exportar este curso." });
+    return;
+  }
+
+  try {
+    const lessons = await db.select().from(lmsLessonsTable).where(and(
+      eq(lmsLessonsTable.courseId, courseId),
+      isNull(lmsLessonsTable.deletedAt),
+    )).orderBy(asc(lmsLessonsTable.position), asc(lmsLessonsTable.id));
+    const archive = await buildCourseExportArchive({
+      title: course.title,
+      description: course.description,
+      certificateEnabled: course.certificateEnabled,
+    }, lessons.map((lesson) => ({
+      title: lesson.title,
+      kind: lesson.kind as "text" | "file" | "video" | "quiz" | "scorm12" | "scorm2004",
+      required: lesson.required,
+      content: lesson.content,
+      objectPath: lesson.objectPath,
+      objectName: lesson.objectName,
+    })), async (asset) => {
+      const lesson = lessons[asset.lessonIndex];
+      if (!lesson) throw new Error("No se pudo asociar un archivo con su lección.");
+      const object = await storage.getObjectEntityFile(asset.objectPath);
+      const file = await storage.downloadObject(object, 0);
+      return readBoundedCourseAsset(file, lesson.objectSize ?? undefined);
+    });
+
+    const safeTitle = course.title
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 100) || `curso-${course.id}`;
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Length", String(archive.length));
+    res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}.zip"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(archive);
+  } catch (error) {
+    if (error instanceof CourseExportValidationError) {
+      res.status(422).json({ message: error.message });
+      return;
+    }
+    req.log.error({ err: error, courseId }, "Could not export LMS course");
+    res.status(500).json({
+      message: "No se pudo exportar el curso. Comprueba que sus archivos siguen disponibles.",
+    });
+  }
 });
 
 router.post("/lms/courses", requireAuth, async (req, res): Promise<void> => {
@@ -484,6 +554,50 @@ async function readBoundedZip(response: Response, expectedSize?: number): Promis
     throw new Error("El tamaño del archivo ZIP no coincide con el archivo registrado.");
   }
   if (totalSize === 0) throw new Error("El archivo ZIP está vacío.");
+  return Buffer.concat(chunks, totalSize);
+}
+
+async function readBoundedCourseAsset(response: Response, expectedSize?: number): Promise<Buffer> {
+  if (!response.ok) throw new Error("No se pudo leer un archivo del curso.");
+  if (expectedSize !== undefined && (
+    !Number.isSafeInteger(expectedSize) ||
+    expectedSize < 1 ||
+    expectedSize > MAX_SCORM_ARCHIVE_SIZE
+  )) {
+    throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
+  }
+
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_SCORM_ARCHIVE_SIZE) {
+    await response.body?.cancel();
+    throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
+  }
+  if (!response.body) throw new Error("No se pudo leer un archivo del curso.");
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalSize += value.byteLength;
+      if (totalSize > MAX_SCORM_ARCHIVE_SIZE) {
+        await reader.cancel();
+        throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB.");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (expectedSize !== undefined && totalSize !== expectedSize) {
+    throw new Error("El tamaño de un archivo del curso no coincide con el registrado.");
+  }
+  if (totalSize === 0) {
+    throw new CourseExportValidationError("Un archivo del curso está vacío y no se puede exportar.");
+  }
   return Buffer.concat(chunks, totalSize);
 }
 

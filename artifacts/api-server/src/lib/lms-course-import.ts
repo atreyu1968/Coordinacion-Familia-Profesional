@@ -1,6 +1,9 @@
 import { z } from "zod/v4";
+import JSZip from "jszip";
 
 const MAX_LESSON_TEXT = 100_000;
+const MAX_EXPORT_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_EXPORT_EXPANDED_SIZE = 250 * 1024 * 1024;
 
 const QuizQuestionSchema = z.object({
   prompt: z.string().trim().min(1).max(2_000),
@@ -43,6 +46,140 @@ export type CourseImportManifest = {
   };
   lessons: CourseImportLesson[];
 };
+
+export type CourseExportSourceLesson = {
+  title: string;
+  kind: CourseImportLesson["kind"];
+  required: boolean;
+  content: Record<string, unknown>;
+  objectPath: string | null;
+  objectName: string | null;
+};
+
+export type CourseExportManifest = {
+  format: "coordina-adg-course";
+  version: 1;
+  course: {
+    title: string;
+    description: string;
+    certificateEnabled: boolean;
+  };
+  lessons: Array<{
+    title: string;
+    kind: CourseImportLesson["kind"];
+    required: boolean;
+    content?: Record<string, unknown>;
+    file?: string;
+  }>;
+};
+
+export class CourseExportValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CourseExportValidationError";
+  }
+}
+
+function exportAssetName(objectName: string | null, index: number): string {
+  const rawName = objectName?.split(/[\\/]/).pop() ?? "";
+  const safeName = rawName
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^[.-]+/, "")
+    .slice(0, 100);
+  return `assets/leccion-${String(index + 1).padStart(3, "0")}-${safeName || "archivo.bin"}`;
+}
+
+export function createCourseExportManifest(
+  course: { title: string; description: string; certificateEnabled: boolean },
+  sourceLessons: CourseExportSourceLesson[],
+): {
+  manifest: CourseExportManifest;
+  assets: Array<{ lessonIndex: number; filePath: string; objectPath: string }>;
+} {
+  if (sourceLessons.length < 1 || sourceLessons.length > 200) {
+    throw new CourseExportValidationError("El curso debe tener entre 1 y 200 lecciones para exportarse.");
+  }
+
+  const assets: Array<{ lessonIndex: number; filePath: string; objectPath: string }> = [];
+  const lessons = sourceLessons.map((lesson, lessonIndex) => {
+    const isFile = lesson.kind === "file" || lesson.kind === "scorm12" || lesson.kind === "scorm2004";
+    if (isFile && !lesson.objectPath) {
+      throw new CourseExportValidationError(
+        `La lección «${lesson.title}» no tiene un archivo disponible para exportar.`,
+      );
+    }
+
+    if (isFile) {
+      const filePath = exportAssetName(lesson.objectName, lessonIndex);
+      assets.push({ lessonIndex, filePath, objectPath: lesson.objectPath! });
+      return {
+        title: lesson.title,
+        kind: lesson.kind,
+        required: lesson.required,
+        file: filePath,
+      };
+    }
+
+    return {
+      title: lesson.title,
+      kind: lesson.kind,
+      required: lesson.required,
+      content: lesson.content,
+    };
+  });
+
+  return {
+    manifest: {
+      format: "coordina-adg-course",
+      version: 1,
+      course,
+      lessons,
+    },
+    assets,
+  };
+}
+
+export async function buildCourseExportArchive(
+  course: { title: string; description: string; certificateEnabled: boolean },
+  lessons: CourseExportSourceLesson[],
+  readAsset: (asset: { lessonIndex: number; filePath: string; objectPath: string }) => Promise<Buffer>,
+): Promise<Buffer> {
+  const { manifest, assets } = createCourseExportManifest(course, lessons);
+  const manifestBytes = Buffer.from(JSON.stringify(manifest, null, 2), "utf8");
+  if (manifestBytes.length > 1024 * 1024) {
+    throw new CourseExportValidationError("El manifiesto del curso supera el límite de 1 MB.");
+  }
+
+  const zip = new JSZip();
+  zip.file("coordina-course.json", manifestBytes);
+  let expandedSize = manifestBytes.length;
+  for (const asset of assets) {
+    const bytes = await readAsset(asset);
+    if (bytes.length < 1 || bytes.length > MAX_EXPORT_FILE_SIZE) {
+      throw new CourseExportValidationError("Un archivo del curso supera el límite de 100 MB o está vacío.");
+    }
+    expandedSize += bytes.length;
+    if (expandedSize > MAX_EXPORT_EXPANDED_SIZE) {
+      throw new CourseExportValidationError("El curso supera los 250 MB descomprimidos permitidos.");
+    }
+    zip.file(asset.filePath, bytes);
+  }
+
+  if (assets.length + 1 > 5_000) {
+    throw new CourseExportValidationError("El curso contiene demasiados elementos para exportarse.");
+  }
+  const archive = await zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 3 },
+  });
+  if (archive.length > MAX_EXPORT_FILE_SIZE) {
+    throw new CourseExportValidationError("El ZIP generado supera el límite comprimido de 100 MB.");
+  }
+  return archive;
+}
 
 export class CourseImportValidationError extends Error {
   constructor(message: string) {

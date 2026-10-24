@@ -42,7 +42,7 @@ import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
-  Award, BookOpen, CheckCircle2, ChevronLeft, FileUp, GraduationCap,
+  Award, BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
   Pencil, Play, Plus, Send, Upload, Video, X,
 } from "lucide-react";
 import { Scorm12API } from "scorm-again/scorm12";
@@ -504,9 +504,44 @@ export default function AutodirigidoPage() {
   const [, navigate] = useLocation(); const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null); const [editor, setEditor] = useState<"create" | "edit" | null>(null); const [lessonEditor, setLessonEditor] = useState<number | null>(null); const [editingLesson, setEditingLesson] = useState<LmsLesson | undefined>();
   const [importingCourse, setImportingCourse] = useState(false);
+  const [exportingCourse, setExportingCourse] = useState(false);
   const courses = useListLmsCourses(); const detail = useGetLmsCourse(selectedId ?? 0, { query: { enabled: selectedId != null, queryKey: getGetLmsCourseQueryKey(selectedId ?? 0) } }); const scopes = useGetLmsManagementScopes();
   const publish = usePublishLmsCourse(); const manager = (scopes.data?.length ?? 0) > 0;
+  const canManageSelectedCourse = Boolean(scopes.data?.some(
+    (scope) => scope.canManage && scope.moduleId === detail.data?.moduleId,
+  ));
   const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getListLmsCoursesQueryKey() }); if (selectedId) await queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(selectedId) }); };
+  const exportCourse = async (course: LmsCourseDetail) => {
+    setExportingCourse(true);
+    try {
+      const token = localStorage.getItem("coordina_adg_token");
+      const response = await fetch(apiUrl(`/api/lms/courses/${course.id}/export`), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(body?.message ?? "No se pudo descargar el ZIP del curso.");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${course.title.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || `curso-${course.id}`}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      toast({ title: "Curso exportado", description: "El ZIP incluye el manifiesto y los archivos del curso." });
+    } catch (error) {
+      toast({
+        title: "No se pudo exportar el curso",
+        description: error instanceof Error ? error.message : "Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingCourse(false);
+    }
+  };
   useEffect(() => { const id = new URLSearchParams(window.location.search).get("curso"); if (id) setSelectedId(Number(id)); }, []);
   const scormToken = new URLSearchParams(window.location.search).get("scorm");
   if (scormToken) return <RemoteScormSession token={scormToken} />;
@@ -523,6 +558,6 @@ export default function AutodirigidoPage() {
     {importingCourse && manager && !selectedId && <CourseZipImport scopes={scopes.data ?? []} onClose={() => setImportingCourse(false)} onImported={() => { void refresh(); }} />}
     {editor && <CourseEditor course={editor === "edit" ? (course ?? null) : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} />}
      {selectedId && course && containsScorm && <div role="note" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
-     {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground"><AutoLinkText text={course.description} /></p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => <button key={item.id} className="text-left" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}><Card className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} /></CardContent></Card></button>)}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}
+      {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground"><AutoLinkText text={course.description} /></p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{canManageSelectedCourse && <Button variant="outline" onClick={() => void exportCourse(course)} disabled={exportingCourse}><Download className="mr-2 h-4 w-4" />{exportingCourse ? "Exportando..." : "Exportar ZIP"}</Button>}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{courses.isLoading ? <p>Cargando cursos...</p> : courses.data?.map((item: LmsCourse) => <button key={item.id} className="text-left" onClick={() => { setSelectedId(item.id); navigate(`/autodirigido?curso=${item.id}`); }}><Card className="h-full transition hover:-translate-y-0.5 hover:border-primary"><CardHeader><div className="mb-2 flex items-center justify-between"><BookOpen className="h-5 w-5 text-primary" /><Badge variant={item.status === "published" ? "default" : "secondary"}>{item.status === "published" ? "Publicado" : "Borrador"}</Badge></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="line-clamp-2 text-sm text-muted-foreground">{item.description || "Curso autodirigido"}</p><ProgressMark value={item.lessonCount ? Math.round(item.completed ? 100 : 0) : 0} /></CardContent></Card></button>)}</div>{!courses.isLoading && courses.data?.length === 0 && <Card><CardContent className="p-10 text-center text-sm text-muted-foreground">Todavía no hay cursos disponibles.</CardContent></Card>}</>}
   </div>;
 }
