@@ -157,6 +157,83 @@ describe("chat groups", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it.each(["inactive", "deleted"] as const)(
+    "rejects reopening an archived direct thread when the counterpart is %s",
+    async (counterpartState) => {
+      const caller = await createUser({ role: "teacher" });
+      const counterpart = await createUser({ role: "teacher" });
+      const created = await request(app)
+        .post("/api/chat/groups")
+        .set(authHeader(caller.token))
+        .send({ name: "Chat archivado", type: "direct", memberIds: [counterpart.user.id] });
+      expect(created.status).toBe(201);
+      trackGroup(created.body.id);
+
+      const message = await request(app)
+        .post(`/api/chat/groups/${created.body.id}/messages`)
+        .set(authHeader(caller.token))
+        .send({ content: "Historial que debe conservarse" });
+      expect(message.status).toBe(201);
+
+      const hiddenAt = new Date();
+      await db
+        .update(chatGroupMembersTable)
+        .set({ hiddenAt })
+        .where(
+          and(
+            eq(chatGroupMembersTable.groupId, created.body.id),
+            eq(chatGroupMembersTable.userId, caller.user.id),
+          ),
+        );
+      await db
+        .update(usersTable)
+        .set(
+          counterpartState === "inactive"
+            ? { status: "inactive" }
+            : { deletedAt: new Date() },
+        )
+        .where(eq(usersTable.id, counterpart.user.id));
+
+      const reopened = await request(app)
+        .post("/api/chat/groups")
+        .set(authHeader(caller.token))
+        .send({ name: "Chat", type: "direct", memberIds: [counterpart.user.id] });
+      expect(reopened.status).toBe(400);
+
+      const [membership] = await db
+        .select({ hiddenAt: chatGroupMembersTable.hiddenAt })
+        .from(chatGroupMembersTable)
+        .where(
+          and(
+            eq(chatGroupMembersTable.groupId, created.body.id),
+            eq(chatGroupMembersTable.userId, caller.user.id),
+          ),
+        );
+      expect(membership?.hiddenAt?.getTime()).toBe(hiddenAt.getTime());
+
+      const retainedGroups = await db
+        .select({ id: chatGroupsTable.id })
+        .from(chatGroupsTable)
+        .where(eq(chatGroupsTable.id, created.body.id));
+      const retainedMessages = await db
+        .select({ id: messagesTable.id, content: messagesTable.content })
+        .from(messagesTable)
+        .where(eq(messagesTable.groupId, created.body.id));
+      expect(retainedGroups).toHaveLength(1);
+      expect(retainedMessages).toEqual([
+        { id: message.body.id, content: "Historial que debe conservarse" },
+      ]);
+
+      const inbox = await request(app)
+        .get("/api/chat/groups?hidden=true")
+        .set(authHeader(caller.token));
+      expect(inbox.status).toBe(200);
+      expect(inbox.body).not.toContainEqual(
+        expect.objectContaining({ id: created.body.id }),
+      );
+    },
+  );
+
   it("rejects a direct thread without exactly one recipient", async () => {
     const a = await createUser({ role: "teacher" });
     const b = await createUser({ role: "teacher" });
