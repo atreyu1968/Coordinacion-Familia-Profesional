@@ -515,6 +515,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
       groupId: chatGroupMembersTable.groupId,
       userId: chatGroupMembersTable.userId,
       name: usersTable.name,
+      role: usersTable.role,
       status: usersTable.status,
       deletedAt: usersTable.deletedAt,
     })
@@ -527,6 +528,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     {
       userId: number;
       name: string | null;
+      role: string | null;
       status: string | null;
       deletedAt: Date | null;
     }[]
@@ -536,6 +538,7 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
     list.push({
       userId: m.userId,
       name: m.name,
+      role: m.role,
       status: m.status,
       deletedAt: m.deletedAt,
     });
@@ -576,13 +579,15 @@ router.get("/chat/groups", requireAuth, async (req, res): Promise<void> => {
 
   const result = visibleGroups.map((g) => {
     let name = g.name;
+    let directUserRole: string | null = null;
     if (g.type === "direct") {
       const other = (membersByGroup.get(g.id) ?? []).find(
         (m) => m.userId !== caller.id,
       );
       if (other?.name) name = other.name;
+      directUserRole = other?.role ?? null;
     }
-    return toChatGroup({ ...g, name, unreadCount: unreadByGroup.get(g.id) ?? 0 });
+    return { ...toChatGroup({ ...g, name, unreadCount: unreadByGroup.get(g.id) ?? 0 }), directUserRole };
   });
 
   res.json(ListChatGroupsResponse.parse(result));

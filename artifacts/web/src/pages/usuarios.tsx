@@ -472,6 +472,8 @@ export default function UsuariosPage() {
 
               {!activeQ.isError &&
                 rows.map((u) => {
+                  const personalCenter = u.role === "teacher" ? u.centerId : u.teachingCenterId ?? u.centerId;
+                  const personalCenterName = personalCenter ? centerName.get(personalCenter) ?? `Centro #${personalCenter}` : "Sin asignar";
                   const scope =
                     [
                       u.centerId ? centerName.get(u.centerId) ?? `Centro #${u.centerId}` : null,
@@ -500,7 +502,10 @@ export default function UsuariosPage() {
                         <TableCell data-testid={`teaching-profile-user-${u.id}`}>
                           {u.teachingProfile ? (
                             u.teachingProfile.complete ? (
-                              <Badge variant="secondary">Completo</Badge>
+                              <div className="space-y-1">
+                                <Badge variant="secondary">Completo</Badge>
+                                <p className="text-xs text-muted-foreground">Centro docente: {personalCenterName}</p>
+                              </div>
                             ) : (
                               <details>
                                 <summary className="cursor-pointer text-sm font-medium" aria-label={`Ver datos pendientes de ${u.name}`}>

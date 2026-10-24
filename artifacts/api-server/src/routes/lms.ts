@@ -87,7 +87,7 @@ function requiredSessionNonce(user: User): string {
 }
 
 function signLmsToken(
-  purpose: "lms_scorm" | "lms_file",
+  purpose: "lms_scorm" | "lms_scorm_preview" | "lms_file",
   userId: number,
   lessonId: number,
   tokenVersion: number,
@@ -105,13 +105,13 @@ function signLmsToken(
     ...(lessonRevision === undefined ? {} : { lessonRevision }),
   }, secret, {
     subject: String(userId),
-    expiresIn: purpose === "lms_scorm" ? 1800 : 600,
+    expiresIn: purpose !== "lms_file" ? 1800 : 600,
   });
 }
 
 function verifyLmsToken(
   token: string | string[],
-  purpose: "lms_scorm" | "lms_file",
+  purpose: "lms_scorm" | "lms_scorm_preview" | "lms_file",
 ): SignedLmsToken | undefined {
   const secret = process.env.JWT_SECRET;
   if (!secret) return undefined;
@@ -126,7 +126,7 @@ function verifyLmsToken(
       !Number.isSafeInteger(payload.tokenVersion) ||
       typeof payload.sessionNonce !== "string" ||
       payload.sessionNonce.length === 0 ||
-      (purpose === "lms_scorm" && !Number.isSafeInteger(payload.lessonRevision))
+      (purpose !== "lms_file" && !Number.isSafeInteger(payload.lessonRevision))
     ) {
       return undefined;
     }
@@ -1591,9 +1591,12 @@ async function scormSessionResponse(token: string): Promise<{
   user: User;
   lesson: typeof lmsLessonsTable.$inferSelect;
   course: typeof lmsCoursesTable.$inferSelect;
+  preview: boolean;
   response: { token: string; launchPath: string; version: string; expiresAt: Date; cmiData: Record<string, unknown> };
 } | undefined> {
-  const claims = verifyLmsToken(token, "lms_scorm");
+  const previewClaims = verifyLmsToken(token, "lms_scorm_preview");
+  const preview = Boolean(previewClaims);
+  const claims = previewClaims ?? verifyLmsToken(token, "lms_scorm");
   if (!claims) return undefined;
   const [user] = await db.select().from(usersTable).where(and(
     eq(usersTable.id, claims.userId),
@@ -1620,6 +1623,7 @@ async function scormSessionResponse(token: string): Promise<{
     isNull(lmsCoursesTable.deletedAt),
   ));
   if (!course || !(await visibleCourse(user, course))) return undefined;
+  if (preview && !(await canManageCourse(user, course))) return undefined;
   const [progress] = await db.select().from(lmsLessonProgressTable).where(and(
     eq(lmsLessonProgressTable.userId, user.id),
     eq(lmsLessonProgressTable.lessonId, lesson.id),
@@ -1632,25 +1636,27 @@ async function scormSessionResponse(token: string): Promise<{
     user,
     lesson,
     course,
+    preview,
     response: {
       token,
       launchPath: `/api/lms/scorm/sessions/${token}/content/${lesson.scormLaunchPath.split("/").map(encodeURIComponent).join("/")}`,
       version: lesson.scormVersion ?? lesson.kind,
       expiresAt: new Date(exp * 1000),
-      cmiData: progress?.cmiData ?? {},
+      cmiData: preview ? {} : progress?.cmiData ?? {},
     },
   };
 }
 
-async function startScormSession(user: User, lesson: typeof lmsLessonsTable.$inferSelect) {
+async function startScormSession(user: User, lesson: typeof lmsLessonsTable.$inferSelect, preview = false) {
   const token = signLmsToken(
-    "lms_scorm",
+    preview ? "lms_scorm_preview" : "lms_scorm",
     user.id,
     lesson.id,
     user.tokenVersion,
     requiredSessionNonce(user),
     lesson.updatedAt.getTime(),
   );
+  if (preview) return (await scormSessionResponse(token))?.response;
   const now = new Date();
   await db.insert(lmsLessonProgressTable).values({
     userId: user.id,
@@ -1699,6 +1705,10 @@ router.post("/lms/courses/:courseId/scorm-session", requireAuth, async (req, res
 });
 
 router.post("/lms/lessons/:lessonId/scorm-session", requireAuth, async (req, res): Promise<void> => {
+  if (req.query.preview !== undefined && !["true", "false"].includes(String(req.query.preview))) {
+    res.status(400).json({ message: "Vista previa no válida" }); return;
+  }
+  const preview = req.query.preview === "true";
   const lessonId = idParam(req.params.lessonId);
   if (!Number.isInteger(lessonId) || lessonId < 1) { res.status(400).json({ message: "Lección no válida" }); return; }
   const [lesson] = await db.select().from(lmsLessonsTable).where(and(
@@ -1715,7 +1725,10 @@ router.post("/lms/lessons/:lessonId/scorm-session", requireAuth, async (req, res
   if (!course || !(await visibleCourse(req.user!, course))) {
     res.status(404).json({ message: "Curso no encontrado" }); return;
   }
-  res.json(await startScormSession(req.user!, lesson));
+  if (preview && !(await canManageCourse(req.user!, course))) {
+    res.status(403).json({ message: "Permiso denegado" }); return;
+  }
+  res.json(await startScormSession(req.user!, lesson, preview));
 });
 
 router.get("/lms/scorm/session", async (req, res): Promise<void> => {
@@ -1782,6 +1795,9 @@ router.post("/lms/scorm/commit", async (req, res): Promise<void> => {
   const token = typeof req.query.token === "string" ? req.query.token : "";
   const session = await scormSessionResponse(token);
   if (!session) { res.status(404).json({ message: "Sesión SCORM no válida" }); return; }
+  if (session.preview) {
+    res.status(403).json({ message: "La vista previa no permite guardar progreso." }); return;
+  }
   const cmiData = req.body?.cmiData;
   if (!cmiData || typeof cmiData !== "object" || Array.isArray(cmiData)) {
     res.status(400).json({ message: "Datos SCORM no válidos" }); return;

@@ -41,6 +41,7 @@ import { disconnectUserSessions } from "../lib/realtime";
 import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { teachingCenterId } from "../lib/teachingProfileAccess";
+import { notifyTeachingProfileChanged } from "../lib/profileSync";
 import { logger } from "../lib/logger";
 import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
 
@@ -699,6 +700,7 @@ router.patch(
       }
     }
 
+    await notifyTeachingProfileChanged(caller, result.user);
     res.json(
       UpdateMyTeachingProfileResponse.parse({
         user: GetCurrentUserResponse.parse(result.user),

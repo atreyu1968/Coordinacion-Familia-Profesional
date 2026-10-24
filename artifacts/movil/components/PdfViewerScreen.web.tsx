@@ -1,67 +1,91 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { WebView } from "react-native-webview";
 import { AppHeader } from "@/components/AppHeader";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
+import { loadPdfBytes } from "@/lib/pdf-source";
+
+const BASE = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
 
 export default function PdfViewerScreen() {
   const colors = useColors();
   const params = useLocalSearchParams<{ uri?: string; title?: string }>();
-  const [blobUrl, setBlobUrl] = useState("");
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [data, setData] = useState<ArrayBuffer | null>(null);
+  const [ready, setReady] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const uri = typeof params.uri === "string" ? params.uri : "";
   const title = typeof params.title === "string" ? params.title : "Documento PDF";
 
   useEffect(() => {
-    let objectUrl: string | null = null;
-    let cancelled = false;
-    void (async () => {
-      const parsedUri = new URL(uri, window.location.href);
-      if (parsedUri.protocol !== "blob:" && parsedUri.origin !== window.location.origin) {
-        throw new Error("La dirección del documento no es válida.");
+    const receive = (event: MessageEvent) => {
+      if (event.source !== frame.current?.contentWindow || event.origin !== window.location.origin) return;
+      if (event.data?.type === "coordina-pdf-ready") setReady(true);
+      if (event.data?.type === "coordina-pdf-rendered") setRendered(true);
+      if (event.data?.type === "coordina-pdf-error") {
+        setError(typeof event.data.message === "string" ? event.data.message : "No se pudo mostrar el PDF.");
       }
-      const token = getAuthToken();
-      const response = await fetch(parsedUri.href, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      if (!response.ok) throw new Error(response.status === 401 || response.status === 403
-        ? "No tienes permiso para abrir este documento."
-        : "No se pudo cargar el PDF. Inténtalo de nuevo.");
-      const blob = await response.blob();
-      const header = await blob.slice(0, 1024).text();
-      if (!header.includes("%PDF-")) throw new Error("El archivo no es un PDF válido.");
-      const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
-      objectUrl = URL.createObjectURL(pdfBlob);
-      if (!cancelled) setBlobUrl(objectUrl);
+    };
+    window.addEventListener("message", receive);
+    return () => window.removeEventListener("message", receive);
+  }, []);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    setData(null); setError(""); setRendered(false);
+    void (async () => {
+      const bytes = await loadPdfBytes(uri, window.location.origin,
+        process.env.EXPO_PUBLIC_DOMAIN, getAuthToken(), abort.signal);
+      if (!abort.signal.aborted) setData(bytes);
     })().catch((reason: unknown) => {
-      if (!cancelled) setError(reason instanceof Error ? reason.message : "No se pudo abrir el PDF.");
+      if (!abort.signal.aborted) setError(reason instanceof Error ? reason.message : "No se pudo abrir el PDF.");
     });
     return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      abort.abort();
       if (uri.startsWith("blob:")) URL.revokeObjectURL(uri);
     };
-  }, [uri]);
+  }, [uri, attempt]);
+
+  useEffect(() => {
+    if (!ready || !data) return;
+    const bytes = data.slice(0);
+    frame.current?.contentWindow?.postMessage(
+      { type: "coordina-pdf-open", data: bytes }, window.location.origin, [bytes],
+    );
+  }, [ready, data]);
+
+  useEffect(() => {
+    if (ready || error) return;
+    const timer = window.setTimeout(() => setError("No se pudo iniciar el visor. Pulsa Reintentar."), 30_000);
+    return () => window.clearTimeout(timer);
+  }, [ready, error, attempt]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <AppHeader title={title} showBack />
-      {error ? <View style={styles.center}><Text style={{ color: colors.destructive, textAlign: "center" }}>{error}</Text></View> : null}
-      {!error && !blobUrl ? <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /><Text style={{ color: colors.mutedForeground, marginTop: 12 }}>Abriendo documento…</Text></View> : null}
-      {blobUrl ? (
-        <WebView
-          source={{ html: `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#eee"><iframe title="${title.replace(/[<>&"]/g, "")}" src="${blobUrl}" style="position:fixed;inset:0;width:100%;height:100%;border:0" /></body></html>` }}
-          style={styles.viewer}
-          originWhitelist={["*"]}
-          setSupportMultipleWindows={false}
-        />
-      ) : null}
+      {error ? <View style={styles.center}>
+        <Text style={{ color: colors.destructive, textAlign: "center" }}>{error}</Text>
+        {!uri.startsWith("blob:") && <Pressable accessibilityRole="button" onPress={() => {
+          setReady(false); setAttempt((value) => value + 1);
+        }} style={{ padding: 16 }}><Text style={{ color: colors.primary }}>Reintentar</Text></Pressable>}
+      </View> : null}
+      {!error && !rendered ? <View style={styles.loading}>
+        <ActivityIndicator color={colors.primary} /><Text style={{ color: colors.mutedForeground }}>Abriendo documento…</Text>
+      </View> : null}
+      <iframe key={attempt} ref={frame} title={`Visor de PDF: ${title}`}
+        src={`${BASE}/pdf-renderer/index.html`} referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin"
+        style={{ flex: 1, width: "100%", minHeight: 0, border: 0, display: error ? "none" : "block" }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  viewer: { flex: 1, backgroundColor: "#e5e7eb" },
+  loading: { alignItems: "center", justifyContent: "center", padding: 12, gap: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
 });

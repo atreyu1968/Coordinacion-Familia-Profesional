@@ -46,6 +46,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { chatMemberNameColor, chatMemberAvatarColor } from "@/lib/chat-role-colors";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
@@ -315,13 +316,7 @@ function chatMemberRole(role: string | null | undefined): string {
   }
 }
 
-function chatMemberNameColor(role: string | null | undefined): string {
-  if (role === "coordinator") return "text-violet-700 dark:text-violet-300";
-  if (role === "department_head") return "text-emerald-700 dark:text-emerald-300";
-  return "text-blue-700 dark:text-blue-300";
-}
-
-function MessageBubble({
+export function MessageBubble({
   message,
   mine,
   senderMeta,
@@ -354,8 +349,8 @@ function MessageBubble({
               : "bg-muted text-foreground rounded-bl-sm"
           }`}
         >
-          {!mine && !deleted && (
-            <div className="mb-0.5">
+          {!deleted && (
+            <div className={mine ? "mb-1 rounded-md bg-background px-2 py-1 text-foreground" : "mb-0.5"}>
               <div className={`text-xs font-semibold ${chatMemberNameColor(senderMeta?.role)}`}>
                 {message.senderName ?? "Usuario"}
               </div>
@@ -558,12 +553,12 @@ function MembersDialog({
                   }`}
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className={`text-xs ${chatMemberAvatarColor(m.role)}`}>
                       {initials(m.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">
+                    <div className={`text-sm font-medium truncate ${chatMemberNameColor(m.role)}`}>
                       {m.name ?? "Usuario"}
                       {self && (
                         <span className="text-xs text-muted-foreground"> (tú)</span>
@@ -647,11 +642,11 @@ function ForwardDialog({
                   onCheckedChange={() => toggle(g.id)}
                 />
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className={`text-xs ${accentClasses(g.type)}`}>
+                  <AvatarFallback className={`text-xs ${g.type === "direct" ? chatMemberAvatarColor(g.directUserRole) : accentClasses(g.type)}`}>
                     {initials(g.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm truncate">{g.name}</span>
+                <span className={`text-sm truncate ${g.type === "direct" ? chatMemberNameColor(g.directUserRole) : ""}`}>{g.name}</span>
               </label>
             </li>
           ))}
@@ -1300,12 +1295,12 @@ function ConversationView({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <Avatar className="h-9 w-9">
-          <AvatarFallback className={`text-xs ${accentClasses(group.type)}`}>
+          <AvatarFallback className={`text-xs ${directParticipant ? chatMemberAvatarColor(directParticipant.role) : accentClasses(group.type)}`}>
             {initials(group.name)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="font-semibold truncate">{group.name}</div>
+          <div className={`font-semibold truncate ${directParticipant ? chatMemberNameColor(directParticipant.role) : ""}`}>{group.name}</div>
           <div className="text-xs text-muted-foreground">
             {directParticipant
               ? `${chatMemberRole(directParticipant.role)} · ${directParticipant.centerName ?? "Sin centro indicado"}`
@@ -1445,7 +1440,8 @@ function ConversationView({
                   key={m.id}
                   message={m}
                   mine={m.senderId === meId}
-                  senderMeta={membersByUserId.get(m.senderId)}
+                  senderMeta={membersByUserId.get(m.senderId) ??
+                    (m.senderId === user?.id ? { role: user.role, centerName: null } : undefined)}
                   onReact={(emoji) => onReact(m, emoji)}
                   onReply={() => {
                     setEditing(null);
@@ -1933,10 +1929,10 @@ export default function ChatPage() {
                 className="flex w-full items-center gap-3 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-accent disabled:opacity-50"
               >
                 <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarFallback>{initials(contact.name)}</AvatarFallback>
+                  <AvatarFallback className={chatMemberAvatarColor(contact.role)}>{initials(contact.name)}</AvatarFallback>
                 </Avatar>
                 <span className="min-w-0 text-sm">
-                  <span className="block truncate">{contact.name}</span>
+                  <span className={`block truncate ${chatMemberNameColor(contact.role)}`}>{contact.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {contact.centerName ?? "Sin centro indicado"}
                   </span>
@@ -2050,14 +2046,14 @@ export default function ChatPage() {
                             >
                               <Avatar className="h-10 w-10 shrink-0">
                                 <AvatarFallback
-                                  className={`text-xs ${accentClasses(g.type)}`}
+                                  className={`text-xs ${g.type === "direct" ? chatMemberAvatarColor(g.directUserRole) : accentClasses(g.type)}`}
                                 >
                                   {initials(g.name)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium truncate">
+                                  <span className={`font-medium truncate ${g.type === "direct" ? chatMemberNameColor(g.directUserRole) : ""}`}>
                                     {g.name}
                                   </span>
                                   <span className="text-[10px] text-muted-foreground shrink-0">

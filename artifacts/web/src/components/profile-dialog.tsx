@@ -83,8 +83,8 @@ export function ProfileDialog({
         }),
         enabled: (open || forceOpen) && isTeacher,
         retry: false,
-        retryOnMount: false,
-        refetchOnMount: false,
+        retryOnMount: true,
+        refetchOnMount: "always",
       },
     },
   );

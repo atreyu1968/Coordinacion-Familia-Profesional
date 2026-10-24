@@ -215,7 +215,7 @@ export function UserEditDialog({
             <>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="edit-user-center">Centro</Label>
+                  <Label htmlFor="edit-user-center">{target.role === "teacher" ? "Centro" : "Centro de gestión"}</Label>
                   {canClearCenter && centerId != null && (
                     <Button
                       type="button"

@@ -1,0 +1,14 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #152e42; background: #e5e7eb; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: flex; flex-direction: column; }
+nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: #fff; border-bottom: 1px solid #d4dce2; }
+button, input { min-height: 40px; border: 1px solid #a8b8c5; border-radius: 6px; font: inherit; background: white; color: inherit; }
+button { padding: 6px 10px; cursor: pointer; touch-action: manipulation; }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 3px solid #006ac1; }
+input { width: 54px; padding: 4px; text-align: center; }
+#zoom, #total { font-size: 14px; }
+#status { margin: 0; padding: 6px 12px; text-align: center; font-size: 14px; background: #fff; }
+#status:empty { display: none; }
+#pages { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px; text-align: center; }
+canvas { display: block; margin: 0 auto; background: white; box-shadow: 0 2px 8px #0002; }

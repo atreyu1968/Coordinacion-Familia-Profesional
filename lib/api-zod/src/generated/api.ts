@@ -4416,6 +4416,7 @@ export const ListChatGroupsQueryParams = zod.object({
 })
 
 export const ListChatGroupsResponseItem = zod.object({
+  "directUserRole": zod.string().nullish().describe('Current role of the other participant in a direct conversation; null for groups.'),
   "id": zod.number().int(),
   "name": zod.string(),
   "type": zod.string().optional(),
@@ -4437,6 +4438,7 @@ export const CreateChatGroupBody = zod.object({
 })
 
 export const CreateChatGroupResponse = zod.object({
+  "directUserRole": zod.string().nullish().describe('Current role of the other participant in a direct conversation; null for groups.'),
   "id": zod.number().int(),
   "name": zod.string(),
   "type": zod.string().optional(),
@@ -6779,6 +6781,12 @@ export const CreateLmsScormSessionResponse = zod.object({
 
 export const CreateLmsLessonScormSessionParams = zod.object({
   "lessonId": zod.coerce.number().int()
+})
+
+export const createLmsLessonScormSessionQueryPreviewDefault = false;
+
+export const CreateLmsLessonScormSessionQueryParams = zod.object({
+  "preview": zod.coerce.boolean().default(createLmsLessonScormSessionQueryPreviewDefault).describe('Manager-only preview session that never records learner progress.')
 })
 
 export const CreateLmsLessonScormSessionResponse = zod.object({

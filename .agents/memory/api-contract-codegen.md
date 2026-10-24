@@ -21,3 +21,14 @@ keeps server, zod, and client in lockstep.
 openapi (mirror `InvitationCreated`'s shape: `{ entity, ...metadata }`), point the
 endpoint's 201 response at it, run codegen, then update the route to return the new
 shape and the frontend to read it.
+
+**Rule:** Restart the mobile development server after code generation if Metro
+reports that an existing generated client module cannot be resolved.
+
+**Why:** Orval temporarily removes generated files while cleaning its output.
+Metro can observe that gap and retain a missing-module error after generation
+and workspace type checks have completed successfully.
+
+**How to apply:** First verify that generation finished and the referenced files
+exist. Restart the existing Expo workflow rather than changing imports or
+creating another server.

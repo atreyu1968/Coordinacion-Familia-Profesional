@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { and, eq } from "drizzle-orm";
 import {
@@ -7,6 +7,7 @@ import {
   chatGroupMembersTable,
 } from "@workspace/db";
 import app from "../src/app";
+import * as realtime from "../src/lib/realtime";
 import { getSettings, getActiveFamily } from "../src/lib/settings";
 import {
   authHeader, cleanup, createCenter, createModule, createProvince, createTeachingAssignment, createUser,
@@ -27,6 +28,45 @@ beforeAll(async () => {
 describe("managed teacher profile integrity", () => {
   const management = (token: string, query: Record<string, string | number> = {}) =>
     request(app).get("/api/users/management").query(query).set(authHeader(token));
+
+  it("makes a mobile profile save visible to web reads and refreshes only authorized sessions", async () => {
+    const oldProvince = await createProvince();
+    const newProvince = await createProvince();
+    const oldCenter = await createCenter(oldProvince);
+    const newCenter = await createCenter(newProvince);
+    const moduleId = await createModule({ centerId: newCenter });
+    const admin = await createUser({ role: "superadmin" });
+    const oldManager = await createUser({ role: "coordinator", provinceId: oldProvince });
+    const newManager = await createUser({ role: "coordinator", provinceId: newProvince });
+    const outsider = await createUser({ role: "coordinator", provinceId: await createProvince() });
+    const teacher = await createUser({ centerId: oldCenter, provinceId: oldProvince, incompleteProfile: true });
+    const emitted = vi.spyOn(realtime, "emitToUser").mockResolvedValue(undefined);
+    try {
+      await request(app).patch("/api/auth/me/teaching-profile")
+        .set(authHeader(teacher.token))
+        .send({ centerId: newCenter, moduleIds: [moduleId], doesNotTeach: false }).expect(200);
+      const own = await request(app).get("/api/auth/me").set(authHeader(teacher.token)).expect(200);
+      expect(own.body.centerId).toBe(newCenter);
+      const profile = await request(app).get("/api/auth/me/teaching-profile")
+        .set(authHeader(teacher.token)).expect(200);
+      expect(profile.body.moduleIds).toEqual([moduleId]);
+      const web = await management(admin.token, { search: teacher.user.email });
+      expect(web.status).toBe(200);
+      expect(web.body.users.find((row: { id: number }) => row.id === teacher.user.id)).toMatchObject({
+        centerId: newCenter, provinceId: newProvince, teachingProfile: { complete: true },
+      });
+      const recipients = emitted.mock.calls
+        .filter(([, event]) => event === "teaching_profile:updated").map(([id]) => id);
+      expect(recipients).toEqual(expect.arrayContaining([
+        teacher.user.id, admin.user.id, oldManager.user.id, newManager.user.id,
+      ]));
+      expect(recipients).not.toContain(outsider.user.id);
+      expect(emitted.mock.calls.filter(([, event]) => event === "teaching_profile:updated")
+        .every(([, , payload]) => JSON.stringify(payload) === "{}")).toBe(true);
+    } finally {
+      emitted.mockRestore();
+    }
+  });
 
   it("automatically joins teaching chats and forums, repairs membership and follows module changes", async () => {
     await createUser({ role: "superadmin", incompleteProfile: true });

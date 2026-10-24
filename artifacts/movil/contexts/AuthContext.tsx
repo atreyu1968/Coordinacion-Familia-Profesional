@@ -9,7 +9,7 @@ import React, {
 import { AppState, type AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { login as loginRequest, type User } from "@workspace/api-client-react";
+import { login as loginRequest, getCurrentUser, type User } from "@workspace/api-client-react";
 
 import {
   authenticateBiometric,
@@ -22,7 +22,7 @@ import {
   getStoredItem,
   setStoredItem,
 } from "@/lib/secureStore";
-import { disconnectSocket } from "@/lib/socket";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 const TOKEN_KEY = "coordina_adg_token";
 const USER_KEY = "coordina_adg_user";
@@ -171,6 +171,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLockedSession((prev) => (prev ? { ...prev, user: next } : prev));
     await setStoredItem(USER_KEY, JSON.stringify(next));
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const socket = connectSocket(token);
+    const refresh = () => {
+      void queryClient.invalidateQueries();
+      void getCurrentUser().then((next) => {
+        if (!cancelled && currentToken === token) void updateUser(next);
+      }).catch(() => {
+        // Keep the session on temporary network errors; the profile gate retries.
+      });
+    };
+    socket.on("teaching_profile:updated", refresh);
+    socket.on("connect", refresh);
+    return () => {
+      cancelled = true;
+      socket.off("teaching_profile:updated", refresh);
+      socket.off("connect", refresh);
+    };
+  }, [token, queryClient, updateUser]);
 
   const signOut = useCallback(async () => {
     currentToken = null;

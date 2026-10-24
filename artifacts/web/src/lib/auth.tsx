@@ -8,6 +8,7 @@ import {
   type User,
 } from "@workspace/api-client-react";
 import { AuthContext } from "./auth-context";
+import { connectSocket, disconnectSocket } from "./socket";
 
 // Re-exported for backward compatibility so existing `@/lib/auth` imports keep
 // working. The hook + context now live in auth-context.ts to stay HMR-stable.
@@ -29,6 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       queryKey: currentUserQueryKey,
       enabled: !!token,
       retry: false,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+      refetchInterval: 30_000,
     }
   });
 
@@ -37,7 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // cached user data and mutation state before a different identity renders.
     void queryClient.cancelQueries();
     queryClient.clear();
+    disconnectSocket();
   };
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = connectSocket(token);
+    const refresh = () => { void queryClient.invalidateQueries(); };
+    socket.on("teaching_profile:updated", refresh);
+    socket.on("connect", refresh);
+    return () => {
+      socket.off("teaching_profile:updated", refresh);
+      socket.off("connect", refresh);
+    };
+  }, [token, queryClient]);
 
   const logout = () => {
     clearSessionData();

@@ -90,6 +90,22 @@ if [[ "${1:-}" == "--messaging-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--lms-preview-only" ]]; then
+  create_test_database coordina_lms_preview
+  migrate_database coordina_lms_preview
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_lms_preview?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/lms-preview.test.ts
+  exit 0
+fi
+
+if [[ "${1:-}" == "--chat-colors-only" ]]; then
+  create_test_database coordina_chat_colors
+  migrate_database coordina_chat_colors
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_chat_colors?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run test/chat-role-colors.test.ts
+  exit 0
+fi
+
 if [[ "${1:-}" == "--dashboard-only" ]]; then
   create_test_database coordina_dashboard
   migrate_database coordina_dashboard

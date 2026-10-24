@@ -3,10 +3,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import JSZip from "jszip";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AutodirigidoPage from "./autodirigido";
+import type { LmsCourseDetail } from "@workspace/api-client-react";
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   canManage: true,
+  courseDetail: undefined as LmsCourseDetail | undefined,
   downloadedFiles: [] as string[],
 }));
 
@@ -18,7 +20,7 @@ vi.mock("@workspace/api-client-react", () => ({
   useCreateLmsLesson: vi.fn(),
   useCreateLmsLessonDownloadToken: vi.fn(),
   useCreateLmsLessonScormSession: vi.fn(),
-  useGetLmsCourse: () => ({ data: undefined, isLoading: false }),
+  useGetLmsCourse: () => ({ data: mocks.courseDetail, isLoading: false }),
   useGetLmsManagementScopes: () => ({
     data: [{ canManage: mocks.canManage, moduleId: 10 }],
   }),
@@ -63,6 +65,7 @@ describe("exportación de cursos autodirigidos", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.canManage = true;
+    mocks.courseDetail = undefined;
     originalCreateObjectURL = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
     originalRevokeObjectURL = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
     originalAnchorClick = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, "click");
@@ -105,6 +108,23 @@ describe("exportación de cursos autodirigidos", () => {
   it("ofrece eliminar cursos del ámbito que puede gestionar", () => {
     render(<AutodirigidoPage />);
     expect(screen.getByRole("button", { name: "Eliminar curso Gestión administrativa" })).toBeTruthy();
+  });
+
+  it("abre la vista previa desde el borrador y permite volver a la gestión", () => {
+    mocks.courseDetail = {
+      id: 101, title: "Gestión administrativa", description: "Curso de prueba",
+      moduleId: 10, status: "draft", certificateEnabled: false,
+      lessonCount: 0, completed: false, certificateAvailable: false, lessons: [], progress: [],
+    };
+    render(<AutodirigidoPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Gestión administrativa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Vista previa como alumno" }));
+    expect(screen.getByText("Este curso todavía no tiene lecciones.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Publicar curso" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Volver a la gestión" }));
+    expect(screen.getByRole("button", { name: "Publicar curso" })).toBeTruthy();
+    window.history.replaceState({}, "", "/");
   });
 
   it("no ofrece eliminar un curso sin permisos de gestión", () => {

@@ -5717,7 +5717,12 @@ paths:
       operationId: createLmsLessonScormSession
       tags: [lms]
       security: [{ bearerAuth: [] }]
-      parameters: [{ $ref: "#/components/parameters/LessonIdPath" }]
+      parameters:
+        - { $ref: "#/components/parameters/LessonIdPath" }
+        - name: preview
+          in: query
+          description: Manager-only preview session that never records learner progress.
+          schema: { type: boolean, default: false }
       responses: { "200": { description: Session, content: { application/json: { schema: { $ref: "#/components/schemas/LmsScormSession" } } } } }
   /lms/scorm/session:
     get:
@@ -8741,6 +8746,10 @@ components:
     ChatGroup:
       type: object
       properties:
+        directUserRole:
+          type: string
+          nullable: true
+          description: Current role of the other participant in a direct conversation; null for groups.
         id:
           type: integer
         name:

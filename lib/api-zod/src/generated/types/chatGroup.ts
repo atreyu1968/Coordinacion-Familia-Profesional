@@ -7,6 +7,11 @@
  */
 
 export interface ChatGroup {
+  /**
+     * Current role of the other participant in a direct conversation; null for groups.
+     * @nullable
+     */
+  directUserRole?: string | null;
   id: number;
   name: string;
   type?: string;

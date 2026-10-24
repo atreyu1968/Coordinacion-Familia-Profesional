@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
+import { CourseMarkdown } from "@/components/course-markdown";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
+import { LmsCoursePreview } from "@/components/lms-course-preview";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
@@ -10,6 +12,7 @@ import {
   type LmsCourseDetail,
   type LmsLesson,
   type LmsLessonInput,
+  type LmsProgress,
   type LmsScormSession,
   useCompleteLmsLesson,
   useCreateLmsCourse,
@@ -45,7 +48,7 @@ import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-do
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import {
   Award, BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
-  Pencil, Play, Plus, Send, Upload, Video, X,
+  Eye, Pencil, Play, Plus, Send, Upload, Video, X,
 } from "lucide-react";
 import { Scorm12API } from "scorm-again/scorm12";
 import { Scorm2004API } from "scorm-again/scorm2004";
@@ -66,13 +69,14 @@ function courseImportScopeKey(moduleId: number | null) {
   return moduleId === null ? "general" : String(moduleId);
 }
 
-function ScormRunner({ session, courseId }: { session: LmsScormSession; courseId?: number }) {
+function ScormRunner({ session, courseId, preview = false }: { session: LmsScormSession; courseId?: number; preview?: boolean }) {
   const commit = useCommitLmsScormSession();
   const queryClient = useQueryClient();
   const apiRef = useRef<Scorm12API | Scorm2004API | null>(null);
   const [ready, setReady] = useState(false);
 
   const save = async () => {
+    if (preview) return;
     const api = apiRef.current;
     if (!api) return;
     await commit.mutateAsync({
@@ -117,7 +121,7 @@ function ScormRunner({ session, courseId }: { session: LmsScormSession; courseId
       bridge?.destroy();
       apiRef.current = null;
     };
-  }, [session.token, session.version, session.cmiData]);
+  }, [session.token, session.version, session.cmiData, preview]);
 
   const src = session.launchPath.startsWith("/") ? apiUrl(session.launchPath) : session.launchPath;
   return (
@@ -200,7 +204,11 @@ function CertificateDownloadButton({ courseId }: { courseId: number }) {
   </div>;
 }
 
-function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; lesson: LmsLesson; onRefresh: () => void }) {
+export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
+  course: LmsCourseDetail; lesson: LmsLesson; onRefresh: () => void;
+  onPreviewProgress?: (value: LmsProgress) => void;
+}) {
+  const preview = Boolean(onPreviewProgress);
   const progress = course.progress.find((p) => p.lessonId === lesson.id);
   const isScorm = lesson.kind === "scorm12" || lesson.kind === "scorm2004";
   const complete = useCompleteLmsLesson();
@@ -213,6 +221,12 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
   const questions = Array.isArray(lesson.content.questions) ? lesson.content.questions as Array<{ prompt?: string; text?: string; options?: string[] }> : [];
 
   const markComplete = async () => {
+    if (onPreviewProgress) {
+      onPreviewProgress({ lessonId: lesson.id, status: "completed", score: null,
+        attempts: 1, completedAt: new Date().toISOString() });
+      toast({ title: "Lección completada (simulación)" });
+      return;
+    }
     try {
       await complete.mutateAsync({ lessonId: lesson.id });
       toast({ title: "Lección completada" });
@@ -220,6 +234,24 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
     } catch { toast({ title: "No se pudo guardar el progreso", variant: "destructive" }); }
   };
   const takeQuiz = async () => {
+    if (onPreviewProgress) {
+      const grading = (Array.isArray(lesson.content.questions) ? lesson.content.questions : []) as Array<{ correctIndex?: number; options?: string[] }>;
+      if (!grading.length || grading.some((q, i) =>
+        !Number.isInteger(q.correctIndex) || !Number.isInteger(answers[i]) ||
+        !q.options || answers[i] < 0 || answers[i] >= q.options.length
+      )) {
+        toast({ title: "El cuestionario no tiene preguntas o las respuestas no son válidas.", variant: "destructive" });
+        return;
+      }
+      const score = Math.round(grading.filter((q, i) => q.correctIndex === answers[i]).length * 100 / grading.length);
+      const passed = score >= 70 || progress?.status === "completed";
+      onPreviewProgress({ lessonId: lesson.id, status: passed ? "completed" : "failed",
+        score: Math.max(score, progress?.score ?? 0), attempts: (progress?.attempts ?? 0) + 1,
+        completedAt: passed ? progress?.completedAt ?? new Date().toISOString() : null });
+      toast({ title: passed ? "¡Cuestionario superado!" : "Puedes volver a intentarlo",
+        description: `Puntuación: ${score}% · Simulación sin guardar` });
+      return;
+    }
     try {
       const result = await quiz.mutateAsync({ lessonId: lesson.id, data: { selectedIndexes: answers } });
       toast({ title: result.passed ? "¡Cuestionario superado!" : "Puedes volver a intentarlo", description: `Puntuación: ${result.score ?? 0}%` });
@@ -228,7 +260,7 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
   };
   const openScorm = async () => {
     try {
-      const result = await session.mutateAsync({ lessonId: lesson.id });
+      const result = await session.mutateAsync({ lessonId: lesson.id, ...(preview ? { params: { preview: true } } : {}) });
       setScorm(result);
     } catch { toast({ title: "No se pudo abrir el paquete SCORM", variant: "destructive" }); }
   };
@@ -254,7 +286,7 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
     <Card className="overflow-hidden">
       <CardHeader className="pb-3"><div className="flex items-center gap-2"><Badge variant="outline">{kindLabels[lesson.kind]}</Badge><CardTitle className="text-base">{lesson.title}</CardTitle>{progress?.status === "completed" && <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-600" />}</div></CardHeader>
       <CardContent className="space-y-4">
-        {lesson.kind === "text" && <div className="whitespace-pre-wrap text-sm leading-7"><AutoLinkText text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} /></div>}
+        {lesson.kind === "text" && <CourseMarkdown text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} />}
         {lesson.kind === "video" && Boolean(lesson.content.url || lesson.content.embedUrl) && <video controls className="max-h-[420px] w-full rounded-md bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />}
          {lesson.kind === "file" && <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><FileUp className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
@@ -282,7 +314,7 @@ function LessonView({ course, lesson, onRefresh }: { course: LmsCourseDetail; le
         </div>}
         {lesson.kind === "quiz" && <div className="space-y-4">{questions.map((question, index) => <fieldset key={index} className="space-y-2"><legend className="text-sm font-medium">{index + 1}. {question.prompt ?? question.text ?? "Pregunta"}</legend>{(question.options ?? []).map((option, optionIndex) => <label key={optionIndex} className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" name={`q-${lesson.id}-${index}`} checked={answers[index] === optionIndex} onChange={() => setAnswers((old) => { const next = [...old]; next[index] = optionIndex; return next; })} />{option}</label>)}</fieldset>)}<Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}>{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button></div>}
         {isScorm && <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
-        {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} />)}
+        {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} preview={preview} />)}
         {lesson.kind !== "quiz" && !["scorm12", "scorm2004"].includes(lesson.kind) && progress?.status !== "completed" && <Button onClick={markComplete} disabled={complete.isPending}>{complete.isPending ? "Guardando..." : "Marcar como completada"}</Button>}
         {progress?.score != null && <p className="text-xs text-muted-foreground">{isScorm ? "Puntuación SCORM autodeclarada (no verificada)" : "Mejor puntuación"}: {progress.score}% · Intentos: {progress.attempts}</p>}
       </CardContent>
@@ -506,6 +538,7 @@ export default function AutodirigidoPage() {
   const [, navigate] = useLocation(); const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null); const [editor, setEditor] = useState<"create" | "edit" | null>(null); const [lessonEditor, setLessonEditor] = useState<number | null>(null); const [editingLesson, setEditingLesson] = useState<LmsLesson | undefined>();
   const [importingCourse, setImportingCourse] = useState(false);
+  const [previewingCourse, setPreviewingCourse] = useState(false);
   const [exportingCourse, setExportingCourse] = useState(false);
   const [exportingCourses, setExportingCourses] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<Set<number>>(() => new Set());
@@ -648,12 +681,27 @@ export default function AutodirigidoPage() {
   const courseProgress = requiredLessons.length
     ? Math.round(completedRequired * 100 / requiredLessons.length)
     : course?.lessonCount ? 100 : 0;
+  if (previewingCourse && selectedId && course && canManageSelectedCourse) {
+    return <LmsCoursePreview key={course.id} course={course}
+      onClose={() => setPreviewingCourse(false)}
+      renderLesson={(previewCourse, lesson, onProgress) =>
+        <LessonView course={previewCourse} lesson={lesson} onRefresh={() => {}}
+          onPreviewProgress={onProgress} />}
+    />;
+  }
   return <div className="space-y-6">
     <header className="flex flex-wrap items-start gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap /></div><div className="flex-1"><h1 className="text-2xl font-bold">Autodirigido</h1><p className="text-sm text-muted-foreground">Aprende a tu ritmo, completa tus lecciones y consigue tus certificados.</p></div>{manager && !selectedId && <><Button variant="outline" onClick={() => { setEditor(null); setImportingCourse((value) => !value); }}><Upload className="mr-2 h-4 w-4" />Importar ZIP</Button><Button onClick={() => { setImportingCourse(false); setEditor("create"); }}><Plus className="mr-2 h-4 w-4" />Nuevo curso</Button></>}</header>
     {importingCourse && manager && !selectedId && <CourseZipImport scopes={scopes.data ?? []} onClose={() => setImportingCourse(false)} onImported={() => { void refresh(); }} />}
     {editor && <CourseEditor course={editor === "edit" ? (course ?? null) : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} />}
     {selectedId && course && canManageSelectedCourse && (
-      <LmsCourseDeleteButton course={course} onDeleted={() => onCourseDeleted(course.id)} />
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" disabled={editor !== null || lessonEditor !== null}
+          title={editor !== null || lessonEditor !== null ? "Guarda o cancela la edición antes de abrir la vista previa." : undefined}
+          onClick={() => {
+          setEditor(null); setLessonEditor(null); setPreviewingCourse(true);
+        }}><Eye className="mr-2 h-4 w-4" />Vista previa como alumno</Button>
+        <LmsCourseDeleteButton course={course} onDeleted={() => onCourseDeleted(course.id)} />
+      </div>
     )}
      {selectedId && course && containsScorm && <div role="note" className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
       {selectedId && course ? <div className="space-y-5"><Button variant="ghost" onClick={() => { setSelectedId(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button><Card><CardHeader><div className="flex flex-wrap items-start gap-3"><div className="flex-1"><div className="mb-2 flex gap-2"><Badge>{course.status === "published" ? "Publicado" : "Borrador"}</Badge>{course.certificateEnabled && <Badge variant="outline"><Award className="mr-1 h-3 w-3" />Certificado</Badge>}</div><CardTitle className="text-2xl">{course.title}</CardTitle><p className="mt-2 text-sm text-muted-foreground"><AutoLinkText text={course.description} /></p></div>{course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}{canManageSelectedCourse && <Button variant="outline" onClick={() => void exportCourse(course)} disabled={exportingCourse}><Download className="mr-2 h-4 w-4" />{exportingCourse ? "Exportando..." : "Exportar ZIP"}</Button>}{manager && <Button variant="outline" onClick={() => setEditor("edit")}><Pencil className="mr-2 h-4 w-4" />Editar</Button>}</div></CardHeader><CardContent><ProgressMark value={courseProgress} /></CardContent></Card>{course.lessons.map((lesson) => <div key={lesson.id}>{lessonEditor === lesson.id ? <LessonEditor courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); refresh(); }} /> : <><LessonView course={course} lesson={lesson} onRefresh={refresh} />{manager && <Button variant="ghost" size="sm" onClick={() => { setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-2 h-4 w-4" />Editar lección</Button>}</>}</div>)}{manager && <><Button variant="outline" onClick={() => { setEditingLesson(undefined); setLessonEditor(-1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button>{lessonEditor === -1 && <LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); refresh(); }} />}{course.status !== "published" && <Button onClick={async () => { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); refresh(); }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}</>}</div> : <>

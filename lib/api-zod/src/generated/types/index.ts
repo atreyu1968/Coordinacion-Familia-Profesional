@@ -140,6 +140,7 @@ export * from './createGdcanResourceInputType';
 export * from './createGroupInput';
 export * from './createInvitationInput';
 export * from './createLearningOutcomeInput';
+export * from './createLmsLessonScormSessionParams';
 export * from './createMeetingInput';
 export * from './createModuleInput';
 export * from './createProvinceInput';

@@ -58,6 +58,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { chatMemberColor } from "@/lib/chat-role-colors";
 import { LeaveChatGroupAction } from "@/components/LeaveChatGroupAction";
 import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
@@ -1061,6 +1062,9 @@ export default function ChatDetailScreen() {
             { borderBottomColor: colors.border, backgroundColor: colors.card },
           ]}
         >
+          <Text style={[styles.memberName, { color: chatMemberColor(directParticipant.role, colors) }]}>
+            {directParticipant.name ?? "Usuario"}
+          </Text>
           <Text style={[styles.conversationMetaText, { color: colors.mutedForeground }]}>
             {roleLabel(directParticipant.role)} · {directParticipant.centerName ?? "Sin centro indicado"}
           </Text>
@@ -1145,7 +1149,8 @@ export default function ChatDetailScreen() {
               <MessageBubble
                 message={item}
                 mine={item.senderId === user?.id}
-                senderMeta={membersByUserId.get(item.senderId)}
+                senderMeta={membersByUserId.get(item.senderId) ??
+                  (item.senderId === user?.id ? { role: user.role, centerName: null } : undefined)}
                 colors={colors}
                 onLongPress={() => setActionMessage(item)}
                 onReact={(emoji) => onReact(item, emoji)}
@@ -1558,13 +1563,13 @@ export default function ChatDetailScreen() {
                   const self = item.userId === user?.id;
                   return (
                     <View style={[styles.memberRow, { borderBottomColor: colors.border }]}>
-                      <View style={[styles.memberAvatar, { backgroundColor: colors.accent }]}>
-                        <Text style={[styles.memberInitials, { color: colors.accentForeground }]}>
+                      <View style={[styles.memberAvatar, { backgroundColor: `${chatMemberColor(item.role, colors)}22` }]}>
+                        <Text style={[styles.memberInitials, { color: chatMemberColor(item.role, colors) }]}>
                           {initials(item.name)}
                         </Text>
                       </View>
                       <View style={styles.flex}>
-                        <Text style={[styles.memberName, { color: colors.foreground }]} numberOfLines={1}>
+                        <Text style={[styles.memberName, { color: chatMemberColor(item.role, colors) }]} numberOfLines={1}>
                           {item.name ?? "Usuario"}
                           {self ? " (tú)" : ""}
                         </Text>
@@ -1671,12 +1676,7 @@ function MessageBubble({
   const bubbleBg = mine ? colors.primary : colors.card;
   const fg = mine ? colors.primaryForeground : colors.foreground;
   const mutedFg = mine ? colors.primaryForeground : colors.mutedForeground;
-  const senderColor =
-    senderMeta?.role === "coordinator"
-      ? colors.chatCoordinator
-      : senderMeta?.role === "department_head"
-        ? colors.chatDepartmentHead
-        : colors.chatMember;
+  const senderColor = chatMemberColor(senderMeta?.role, colors);
 
   return (
     <View
@@ -1698,8 +1698,7 @@ function MessageBubble({
           },
         ]}
       >
-        {!mine ? (
-          <View style={{ marginBottom: 2 }}>
+        <View style={{ marginBottom: 2, ...(mine ? { backgroundColor: colors.background, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 } : {}) }}>
             <Text style={[styles.sender, { color: senderColor }]}>
               {message.senderName ?? "Usuario"}
             </Text>
@@ -1707,7 +1706,6 @@ function MessageBubble({
               {roleLabel(senderMeta?.role)} · {senderMeta?.centerName ?? "Sin centro indicado"}
             </Text>
           </View>
-        ) : null}
 
         {message.forwardedFrom ? (
           <Text style={[styles.forwarded, { color: mutedFg }]}>↪ Reenviado</Text>

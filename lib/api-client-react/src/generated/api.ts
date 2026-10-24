@@ -104,6 +104,7 @@ import type {
   CreateGroupInput,
   CreateInvitationInput,
   CreateLearningOutcomeInput,
+  CreateLmsLessonScormSessionParams,
   CreateMeetingInput,
   CreateModuleInput,
   CreateProvinceInput,
@@ -24813,17 +24814,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateLmsScormSessionMutationOptions(options), queryClient);
     }
 
-export const getCreateLmsLessonScormSessionUrl = (lessonId: number,) => {
+export const getCreateLmsLessonScormSessionUrl = (lessonId: number,
+    params?: CreateLmsLessonScormSessionParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/lms/lessons/${lessonId}/scorm-session`
+  return stringifiedParams.length > 0 ? `/api/lms/lessons/${lessonId}/scorm-session?${stringifiedParams}` : `/api/lms/lessons/${lessonId}/scorm-session`
 }
 
-export const createLmsLessonScormSession = async (lessonId: number, options?: Parameters<typeof customFetch>[1]): Promise<LmsScormSession> => {
+export const createLmsLessonScormSession = async (lessonId: number,
+    params?: CreateLmsLessonScormSessionParams, options?: Parameters<typeof customFetch>[1]): Promise<LmsScormSession> => {
 
-  return customFetch<LmsScormSession>(getCreateLmsLessonScormSessionUrl(lessonId),
+  return customFetch<LmsScormSession>(getCreateLmsLessonScormSessionUrl(lessonId,params),
   {
     ...options,
     method: 'POST'
@@ -24853,9 +24863,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLmsLessonScormSession>>, CreateLmsLessonScormSessionMutationVariables> = (props) => {
-          const {lessonId} = props ?? {};
+          const {lessonId,params} = props ?? {};
 
-          return  createLmsLessonScormSession(lessonId,requestOptions)
+          return  createLmsLessonScormSession(lessonId,params,requestOptions)
         }
 
 
@@ -24868,7 +24878,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateLmsLessonScormSessionMutationResult = NonNullable<Awaited<ReturnType<typeof createLmsLessonScormSession>>>
 
     export type CreateLmsLessonScormSessionMutationError = ErrorType<unknown>
-    export type CreateLmsLessonScormSessionMutationVariables = {lessonId: number}
+    export type CreateLmsLessonScormSessionMutationVariables = {lessonId: number;params?: CreateLmsLessonScormSessionParams}
 
     export const useCreateLmsLessonScormSession = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLmsLessonScormSession>>, TError,CreateLmsLessonScormSessionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

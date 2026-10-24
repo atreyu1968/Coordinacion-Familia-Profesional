@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { chatMemberColor } from "@/lib/chat-role-colors";
 import {
   Alert,
   FlatList,
@@ -333,6 +334,7 @@ export default function ChatListScreen() {
           }
           renderItem={({ item }) => {
             const meta = chatTypeMeta(item.type, colors);
+            const identityColor = item.type === "direct" ? chatMemberColor(item.directUserRole, colors) : meta.color;
             return (
               <View style={[styles.row, { borderBottomColor: colors.border }]}>
                 <Pressable
@@ -349,11 +351,11 @@ export default function ChatListScreen() {
                   <View
                     style={[
                       styles.typeAvatar,
-                      { backgroundColor: meta.color + "22", borderColor: meta.color },
+                      { backgroundColor: identityColor + "22", borderColor: identityColor },
                     ]}
                   >
                     {item.type === "direct" ? (
-                      <Text style={[styles.typeAvatarText, { color: meta.color }]}>
+                      <Text style={[styles.typeAvatarText, { color: identityColor }]}>
                         {initials(item.name)}
                       </Text>
                     ) : (
@@ -362,7 +364,7 @@ export default function ChatListScreen() {
                   </View>
                   <View style={styles.rowBody}>
                     <Text
-                      style={[styles.name, { color: colors.foreground }]}
+                      style={[styles.name, { color: item.type === "direct" ? identityColor : colors.foreground }]}
                       numberOfLines={1}
                     >
                       {item.name}

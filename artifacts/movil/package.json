@@ -4,9 +4,9 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
+    "dev": "node scripts/prepare-pdf-assets.cjs && EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
     "build": "node scripts/build.js",
-    "build:web": "expo export --platform web --output-dir dist",
+    "build:web": "node scripts/prepare-pdf-assets.cjs && expo export --platform web --output-dir dist",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -19,6 +19,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@tanstack/react-query": "catalog:",
+    "@types/markdown-it": "^14.2.0",
     "@types/react": "~19.1.10",
     "@types/react-dom": "~19.1.7",
     "@ungap/structured-clone": "^1.3.0",
@@ -69,7 +70,10 @@
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "jsqr": "^1.4.0",
+    "markdown-it": "^15.0.3",
+    "pdfjs-dist": "6.4.299",
     "react-native-blob-util": "0.21.2",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-pdf": "6.7.7",
     "react-native-webview": "13.15.0",
     "socket.io-client": "^4.8.3"

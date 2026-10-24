@@ -173,7 +173,7 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-export function Avatar({ text, size = 44 }: { text: string; size?: number }) {
+export function Avatar({ text, size = 44, color }: { text: string; size?: number; color?: string }) {
   const colors = useColors();
   return (
     <View
@@ -183,11 +183,11 @@ export function Avatar({ text, size = 44 }: { text: string; size?: number }) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: colors.accent,
+          backgroundColor: color ? `${color}22` : colors.accent,
         },
       ]}
     >
-      <Text style={[styles.avatarText, { color: colors.accentForeground, fontSize: size * 0.38 }]}>
+      <Text style={[styles.avatarText, { color: color ?? colors.accentForeground, fontSize: size * 0.38 }]}>
         {text}
       </Text>
     </View>

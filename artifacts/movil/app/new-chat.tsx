@@ -12,6 +12,7 @@ import {
 
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, EmptyState, ErrorState, Loading } from "@/components/ui";
+import { chatMemberColor } from "@/lib/chat-role-colors";
 import { useColors } from "@/hooks/useColors";
 import { initials, roleLabel } from "@/lib/format";
 
@@ -102,9 +103,9 @@ export default function NewChatScreen() {
                 { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 },
               ]}
             >
-              <Avatar text={initials(item.name)} />
+              <Avatar text={initials(item.name)} color={chatMemberColor(item.role, colors)} />
               <View style={styles.rowBody}>
-                <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+                <Text style={[styles.name, { color: chatMemberColor(item.role, colors) }]} numberOfLines={1}>
                   {item.name}
                 </Text>
                 <Text style={[styles.role, { color: colors.mutedForeground }]} numberOfLines={1}>

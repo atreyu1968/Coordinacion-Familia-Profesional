@@ -31,4 +31,4 @@ In chat, identify coordinators in lilac, department heads in green, and everyone
 
 **Why:** The user explicitly assigned these colors to distinguish roles in conversations.
 
-**How to apply:** Color the sender's name consistently in both clients; keep the role and teaching-center text visible separately.
+**How to apply:** Apply the rule to own and received message names, direct-chat identity, participant lists and contact selection in both clients, not just received messages. Keep role/center text visible and group-type colors separate. Superadmins remain blue unless the user changes the rule.
