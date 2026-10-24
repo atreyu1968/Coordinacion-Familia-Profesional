@@ -36,6 +36,35 @@ function connect(token: string): Socket {
   });
 }
 
+function waitForSocketEvent<T>(socket: Socket, event: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      socket.off(event, onEvent);
+      reject(new Error(`Timed out waiting for Socket.io event "${event}"`));
+    }, 3000);
+    const onEvent = (payload: T) => {
+      clearTimeout(timeout);
+      resolve(payload);
+    };
+    socket.on(event, onEvent);
+  });
+}
+
+async function expectNoSocketEvent(
+  socket: Socket,
+  event: string,
+  durationMs = 200,
+): Promise<void> {
+  let received = false;
+  const onEvent = () => {
+    received = true;
+  };
+  socket.on(event, onEvent);
+  await new Promise((resolve) => setTimeout(resolve, durationMs));
+  socket.off(event, onEvent);
+  expect(received, `unexpected Socket.io event "${event}"`).toBe(false);
+}
+
 describe("realtime socket auth", () => {
   it("rejects teachers with an incomplete profile with a recoverable error code", async () => {
     const teacher = await createUser({ incompleteProfile: true });
@@ -192,5 +221,164 @@ describe("end-to-end: login -> send message -> receive over socket", () => {
     expect(payload.groupId).toBe(groupId);
 
     socket.close();
+  });
+});
+
+describe("end-to-end: private message trash updates across sessions", () => {
+  it("syncs hide and restore only to the same account and broadcasts safe deletion tombstones", async () => {
+    const author = await createUser({ role: "teacher" });
+    const recipient = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(author.token))
+      .send({ name: "Chat", type: "direct", memberIds: [recipient.user.id] });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+    const groupId = group.body.id as number;
+    const sent = await request(app)
+      .post(`/api/chat/groups/${groupId}/messages`)
+      .set(authHeader(author.token))
+      .send({ content: "Contenido privado de prueba" });
+    expect(sent.status).toBe(201);
+    const messageId = sent.body.id as number;
+
+    const authorSessionA = connect(author.token);
+    const authorSessionB = connect(author.token);
+    const recipientSession = connect(recipient.token);
+    const sockets = [authorSessionA, authorSessionB, recipientSession];
+
+    try {
+      await Promise.all(
+        sockets.map(
+          (socket) =>
+            new Promise<void>((resolve, reject) => {
+              socket.once("connect", resolve);
+              socket.once("connect_error", reject);
+            }),
+        ),
+      );
+      for (const socket of sockets) socket.emit("join", groupId);
+      // The server verifies group membership asynchronously before joining.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const hiddenForA = waitForSocketEvent<{ groupId: number; messageId: number }>(
+        authorSessionA,
+        "message_hidden_for_me",
+      );
+      const hiddenForB = waitForSocketEvent<{ groupId: number; messageId: number }>(
+        authorSessionB,
+        "message_hidden_for_me",
+      );
+      const hideResponse = await request(app)
+        .post(`/api/chat/messages/${messageId}/hide`)
+        .set(authHeader(author.token));
+      expect(hideResponse.status).toBe(204);
+      await expect(hiddenForA).resolves.toEqual({ groupId, messageId });
+      await expect(hiddenForB).resolves.toEqual({ groupId, messageId });
+      await expectNoSocketEvent(recipientSession, "message_hidden_for_me");
+
+      const authorTrash = await request(app)
+        .get(`/api/chat/groups/${groupId}/hidden-messages`)
+        .set(authHeader(author.token));
+      expect(authorTrash.body).toContainEqual(
+        expect.objectContaining({
+          id: messageId,
+          content: "Contenido privado de prueba",
+          deleted: false,
+        }),
+      );
+
+      const restoredForA = waitForSocketEvent<{
+        groupId: number;
+        message: { id: number; content: string; deleted: boolean };
+      }>(authorSessionA, "message_restored_for_me");
+      const restoredForB = waitForSocketEvent<{
+        groupId: number;
+        message: { id: number; content: string; deleted: boolean };
+      }>(authorSessionB, "message_restored_for_me");
+      const restoreResponse = await request(app)
+        .post(`/api/chat/messages/${messageId}/restore`)
+        .set(authHeader(author.token));
+      expect(restoreResponse.status).toBe(200);
+      const [restoreEventA, restoreEventB] = await Promise.all([
+        restoredForA,
+        restoredForB,
+      ]);
+      for (const event of [restoreEventA, restoreEventB]) {
+        expect(event).toMatchObject({
+          groupId,
+          message: {
+            id: messageId,
+            content: "Contenido privado de prueba",
+            deleted: false,
+          },
+        });
+      }
+      await expectNoSocketEvent(recipientSession, "message_restored_for_me");
+
+      const rehiddenForA = waitForSocketEvent(authorSessionA, "message_hidden_for_me");
+      const rehiddenForB = waitForSocketEvent(authorSessionB, "message_hidden_for_me");
+      expect(
+        (
+          await request(app)
+            .post(`/api/chat/messages/${messageId}/hide`)
+            .set(authHeader(author.token))
+        ).status,
+      ).toBe(204);
+      await Promise.all([rehiddenForA, rehiddenForB]);
+      await expectNoSocketEvent(recipientSession, "message_hidden_for_me");
+
+      const deletedForA = waitForSocketEvent<{
+        id: number;
+        groupId: number;
+        content: string;
+        deleted: boolean;
+      }>(authorSessionA, "message_deleted");
+      const deletedForB = waitForSocketEvent<{
+        id: number;
+        groupId: number;
+        content: string;
+        deleted: boolean;
+      }>(authorSessionB, "message_deleted");
+      const deletedForRecipient = waitForSocketEvent<{
+        id: number;
+        groupId: number;
+        content: string;
+        deleted: boolean;
+      }>(recipientSession, "message_deleted");
+      const deleteResponse = await request(app)
+        .delete(`/api/chat/messages/${messageId}`)
+        .set(authHeader(author.token));
+      expect(deleteResponse.status).toBe(200);
+      const deletionEvents = await Promise.all([
+        deletedForA,
+        deletedForB,
+        deletedForRecipient,
+      ]);
+      for (const event of deletionEvents) {
+        expect(event).toMatchObject({
+          id: messageId,
+          groupId,
+          deleted: true,
+        });
+        expect(event.content).not.toContain("Contenido privado de prueba");
+      }
+      expect(deleteResponse.body.content).not.toContain(
+        "Contenido privado de prueba",
+      );
+
+      const deletedTrash = await request(app)
+        .get(`/api/chat/groups/${groupId}/hidden-messages`)
+        .set(authHeader(author.token));
+      expect(deletedTrash.body).toContainEqual(
+        expect.objectContaining({
+          id: messageId,
+          content: "",
+          deleted: true,
+        }),
+      );
+    } finally {
+      sockets.forEach((socket) => socket.close());
+    }
   });
 });
