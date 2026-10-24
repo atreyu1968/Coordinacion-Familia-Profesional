@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { realpathSync } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
@@ -6,11 +6,25 @@ import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
 import type { SeededUser } from "./helpers";
 
+const exportLimits = vi.hoisted(() => ({
+  compressedBytes: 8_000,
+  expandedBytes: 250 * 1024 * 1024,
+  files: 5_000,
+}));
+
 vi.mock("../src/lib/lms-course-import", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/lib/lms-course-import")>();
   return {
     ...actual,
-    MAX_MULTI_COURSE_EXPORT_SIZE: 8_000,
+    get MAX_MULTI_COURSE_EXPORT_SIZE() {
+      return exportLimits.compressedBytes;
+    },
+    get MAX_MULTI_COURSE_EXPANDED_SIZE() {
+      return exportLimits.expandedBytes;
+    },
+    get MAX_MULTI_COURSE_EXPORT_FILES() {
+      return exportLimits.files;
+    },
   };
 });
 
@@ -166,6 +180,20 @@ function noisyText(length: number, seed: number): string {
   return text;
 }
 
+async function exportBatch(manager: SeededUser, courseIds: number[]) {
+  return request(api)
+    .post("/api/lms/courses/export")
+    .set(helpers.authHeader(manager.token))
+    .send({ courseIds })
+    .buffer(true)
+    .parse((stream, callback) => {
+      const chunks: Buffer[] = [];
+      stream.on("data", (chunk: Buffer | string) => chunks.push(Buffer.from(chunk)));
+      stream.on("end", () => callback(null, Buffer.concat(chunks)));
+      stream.on("error", callback);
+    });
+}
+
 async function privateFiles(): Promise<string[]> {
   const root = join(localStorageRoot(), "private");
   const files: string[] = [];
@@ -186,6 +214,12 @@ async function privateFiles(): Promise<string[]> {
   await visit(root);
   return files.sort();
 }
+
+beforeEach(() => {
+  exportLimits.compressedBytes = 8_000;
+  exportLimits.expandedBytes = 250 * 1024 * 1024;
+  exportLimits.files = 5_000;
+});
 
 describe("course ZIP import end-to-end with isolated local storage", () => {
   it("omits the overflowing course and explains why in the readable batch report", async () => {
@@ -224,17 +258,7 @@ describe("course ZIP import end-to-end with isolated local storage", () => {
       },
     ]);
 
-    const response = await request(api)
-      .post("/api/lms/courses/export")
-      .set(helpers.authHeader(manager.token))
-      .send({ courseIds: [remainingCourse.id, omittedCourse.id] })
-      .buffer(true)
-      .parse((stream, callback) => {
-        const chunks: Buffer[] = [];
-        stream.on("data", (chunk: Buffer | string) => chunks.push(Buffer.from(chunk)));
-        stream.on("end", () => callback(null, Buffer.concat(chunks)));
-        stream.on("error", callback);
-      });
+    const response = await exportBatch(manager, [remainingCourse.id, omittedCourse.id]);
 
     expect(response.status).toBe(200);
     expect(Buffer.isBuffer(response.body)).toBe(true);
@@ -272,6 +296,124 @@ describe("course ZIP import end-to-end with isolated local storage", () => {
     const remainingManifest = JSON.parse(await remainingManifestEntry!.async("string"));
     expect(remainingManifest.course.title).toBe("Curso que permanece");
     expect(remainingManifest.lessons[0].content.text).toBe(remainingText);
+  });
+
+  it("explains when the expanded-size limit excludes a course and keeps the other course readable", async () => {
+    exportLimits.expandedBytes = 12_000;
+    const manager = await createGeneralManager();
+    const courses = await t.db.insert(t.lmsCoursesTable).values([
+      { title: "Curso de tamaño conservado", description: "", createdBy: manager.user.id },
+      { title: "Curso de tamaño excluido", description: "", createdBy: manager.user.id },
+    ]).returning();
+    const [remainingCourse, omittedCourse] = courses;
+    expect(remainingCourse).toBeDefined();
+    expect(omittedCourse).toBeDefined();
+    if (!remainingCourse || !omittedCourse) return;
+
+    const remainingText = noisyText(7_000, 31);
+    const omittedText = noisyText(7_000, 42);
+    await t.db.insert(t.lmsLessonsTable).values([
+      {
+        courseId: remainingCourse.id,
+        title: "Texto conservado",
+        kind: "text",
+        content: { text: remainingText },
+      },
+      {
+        courseId: omittedCourse.id,
+        title: "Texto excluido",
+        kind: "text",
+        content: { text: omittedText },
+      },
+    ]);
+
+    const response = await exportBatch(manager, [remainingCourse.id, omittedCourse.id]);
+    expect(response.status).toBe(200);
+    const zip = await JSZip.loadAsync(response.body as Buffer);
+    const entryNames = Object.keys(zip.files);
+    const omittedPrefix = `cursos/Curso-de-tamano-excluido-${omittedCourse.id}/`;
+    expect(entryNames.filter((name) => name.startsWith(omittedPrefix))).toEqual([]);
+
+    const reportEntry = zip.file("informe-exportacion.json");
+    expect(reportEntry).toBeTruthy();
+    const report = JSON.parse(await reportEntry!.async("string")) as {
+      included: Array<{ title: string }>;
+      excluded: Array<{ title: string; reason: string }>;
+    };
+    expect(report.included.map(({ title }) => title)).toContain("Curso de tamaño conservado");
+    expect(report.excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "Curso de tamaño excluido",
+        reason: "La exportación conjunta supera los 250 MB descomprimidos permitidos.",
+      }),
+    ]));
+
+    const manifestEntry = zip.file(
+      `cursos/Curso-de-tamano-conservado-${remainingCourse.id}/coordina-course.json`,
+    );
+    expect(manifestEntry).toBeTruthy();
+    const manifest = JSON.parse(await manifestEntry!.async("string"));
+    expect(manifest.lessons[0].content.text).toBe(remainingText);
+    expect(manifest.lessons[0].content.text).not.toContain(omittedText);
+  });
+
+  it("explains when the file-count limit excludes a course and keeps the other course readable", async () => {
+    exportLimits.files = 2; // One course manifest plus the batch report.
+    const manager = await createGeneralManager();
+    const courses = await t.db.insert(t.lmsCoursesTable).values([
+      { title: "Curso de archivos conservado", description: "", createdBy: manager.user.id },
+      { title: "Curso de archivos excluido", description: "", createdBy: manager.user.id },
+    ]).returning();
+    const [remainingCourse, omittedCourse] = courses;
+    expect(remainingCourse).toBeDefined();
+    expect(omittedCourse).toBeDefined();
+    if (!remainingCourse || !omittedCourse) return;
+
+    const remainingText = "Lección legible que debe conservarse.";
+    const omittedText = "Lección que no debe incluirse.";
+    await t.db.insert(t.lmsLessonsTable).values([
+      {
+        courseId: remainingCourse.id,
+        title: "Texto conservado",
+        kind: "text",
+        content: { text: remainingText },
+      },
+      {
+        courseId: omittedCourse.id,
+        title: "Texto excluido",
+        kind: "text",
+        content: { text: omittedText },
+      },
+    ]);
+
+    const response = await exportBatch(manager, [remainingCourse.id, omittedCourse.id]);
+    expect(response.status).toBe(200);
+    const zip = await JSZip.loadAsync(response.body as Buffer);
+    const entryNames = Object.keys(zip.files);
+    const omittedPrefix = `cursos/Curso-de-archivos-excluido-${omittedCourse.id}/`;
+    expect(entryNames.filter((name) => name.startsWith(omittedPrefix))).toEqual([]);
+
+    const reportEntry = zip.file("informe-exportacion.json");
+    expect(reportEntry).toBeTruthy();
+    const report = JSON.parse(await reportEntry!.async("string")) as {
+      included: Array<{ title: string }>;
+      excluded: Array<{ title: string; reason: string }>;
+    };
+    expect(report.included.map(({ title }) => title)).toContain("Curso de archivos conservado");
+    expect(report.excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "Curso de archivos excluido",
+        reason: "La exportación conjunta supera el límite de 5.000 archivos.",
+      }),
+    ]));
+
+    const manifestEntry = zip.file(
+      `cursos/Curso-de-archivos-conservado-${remainingCourse.id}/coordina-course.json`,
+    );
+    expect(manifestEntry).toBeTruthy();
+    const manifest = JSON.parse(await manifestEntry!.async("string"));
+    expect(manifest.lessons[0].content.text).toBe(remainingText);
+    expect(manifest.lessons[0].content.text).not.toContain(omittedText);
   });
 
   it("imports a draft course and its lessons, keeps extracted files private, and rejects token replay", async () => {

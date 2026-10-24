@@ -462,6 +462,8 @@ router.post("/lms/courses/export", requireAuth, async (req, res): Promise<void> 
     (expandedBytes + reportBytes > MAX_MULTI_COURSE_EXPANDED_SIZE ||
       fileCount + 1 > MAX_MULTI_COURSE_EXPORT_FILES)
   ) {
+    const exceedsExpandedSize = expandedBytes + reportBytes > MAX_MULTI_COURSE_EXPANDED_SIZE;
+    const exceedsFileCount = fileCount + 1 > MAX_MULTI_COURSE_EXPORT_FILES;
     const rejected = included.pop()!;
     batch.remove(`cursos/${rejected.folder}/`);
     expandedBytes -= rejected.expandedBytes;
@@ -469,7 +471,11 @@ router.post("/lms/courses/export", requireAuth, async (req, res): Promise<void> 
     excluded.push({
       courseId: rejected.courseId,
       title: rejected.title,
-      reason: "La exportación conjunta supera el límite agregado de tamaño o archivos.",
+      reason: exceedsExpandedSize && exceedsFileCount
+        ? "La exportación conjunta supera los límites de tamaño descomprimido y de cantidad de archivos."
+        : exceedsExpandedSize
+          ? "La exportación conjunta supera el límite de 250 MB descomprimidos."
+          : "La exportación conjunta supera el límite de 5.000 archivos.",
     });
     batch.remove("informe-exportacion.json");
     reportBytes = setReport();
