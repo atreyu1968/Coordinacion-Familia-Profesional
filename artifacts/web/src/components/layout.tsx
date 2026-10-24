@@ -38,9 +38,11 @@ import {
   X,
   Award,
   CheckSquare,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { ProfileDialog } from "./profile-dialog";
+import { getTeachingProfileGateState } from "./teaching-profile-gate";
 import { TeacherConfirmationBanner } from "./teacher-confirmation-banner";
 import { AppNotifications } from "./collab/space-notifications";
 import logoWhite from "@/assets/logo-white.png";
@@ -70,26 +72,22 @@ export function AppLayout({ children }: LayoutProps) {
           targetCenterId: personalCenterId ?? undefined,
         }),
         enabled: isTeacher,
+        retry: false,
+        retryOnMount: false,
+        refetchOnMount: false,
       },
     },
   );
   const teachingProfile = teachingProfileQuery.data;
-  const savedCenterId = teachingProfile?.user.role === "teacher"
-    ? teachingProfile.user.centerId
-    : teachingProfile?.user.teachingCenterId ?? teachingProfile?.user.centerId;
-  const forceTeachingProfileCompletion =
-    isTeacher &&
-    (teachingProfileQuery.isPending ||
-      teachingProfileQuery.isError ||
-      !teachingProfile ||
-      savedCenterId == null ||
-      teachingProfile.targetProvinceId == null ||
-      teachingProfile.targetCenterId !== savedCenterId ||
-      (teachingProfile.user.role === "teacher" &&
-        teachingProfile.user.provinceId !== teachingProfile.targetProvinceId) ||
-      (Boolean(teachingProfile.activeYear) &&
-        teachingProfile.moduleIds.length === 0 &&
-        !teachingProfile.doesNotTeach));
+  const profileGate = getTeachingProfileGateState({
+    isTeacher,
+    isPending: teachingProfileQuery.isPending,
+    isError: teachingProfileQuery.isError,
+    profile: teachingProfile,
+  });
+  const profileCheckPending = profileGate.checking;
+  const profileCheckFailed = profileGate.failed;
+  const forceTeachingProfileCompletion = profileGate.requiresCompletion;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // The sidebar is collapsed (icons only) by default and expands on hover. The
   // pin (chincheta) at its foot keeps it open; that choice is persisted.
@@ -374,6 +372,46 @@ export function AppLayout({ children }: LayoutProps) {
           </footer>
         </main>
       </div>
+      {profileCheckPending && (
+        <div
+          className="absolute inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          <LoaderCircle className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">
+            Comprobando tu perfil docente…
+          </p>
+        </div>
+      )}
+      {profileCheckFailed && (
+        <div
+          className="absolute inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+          role="alert"
+        >
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">
+              No se pudo comprobar tu perfil docente
+            </h2>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Por seguridad, es necesario completar esta comprobación antes de
+              continuar.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              onClick={() => void teachingProfileQuery.refetch()}
+              disabled={teachingProfileQuery.isFetching}
+            >
+              {teachingProfileQuery.isFetching ? "Comprobando…" : "Reintentar"}
+            </Button>
+            <Button type="button" variant="outline" onClick={logout}>
+              Cerrar sesión
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

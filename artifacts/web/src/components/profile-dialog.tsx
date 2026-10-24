@@ -81,7 +81,10 @@ export function ProfileDialog({
         queryKey: getGetMyTeachingProfileQueryKey({
           targetCenterId: teachingCenterId ?? undefined,
         }),
-         enabled: (open || forceOpen) && isTeacher,
+        enabled: (open || forceOpen) && isTeacher,
+        retry: false,
+        retryOnMount: false,
+        refetchOnMount: false,
       },
     },
   );
