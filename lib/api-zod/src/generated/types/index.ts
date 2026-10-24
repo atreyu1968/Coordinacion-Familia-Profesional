@@ -200,6 +200,7 @@ export * from './getLmsScormSessionParams';
 export * from './getMyTeachingProfileParams';
 export * from './group';
 export * from './healthStatus';
+export * from './hiddenChatMessage';
 export * from './importEventAttendanceCsv200';
 export * from './importEventAttendanceCsvBody';
 export * from './integrationSettings';

@@ -170,6 +170,14 @@ export default function ChatListScreen() {
             >
               <Feather name="edit" size={22} color="#ffffff" />
             </Pressable>
+            <Pressable
+              onPress={() => router.push("/hidden-messages")}
+              accessibilityLabel="Mensajes ocultos"
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <Feather name="eye-off" size={22} color="#ffffff" />
+            </Pressable>
           </View>
         }
       />

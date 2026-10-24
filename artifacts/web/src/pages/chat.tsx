@@ -21,6 +21,8 @@ import {
   useHideMessageForMe,
   useListHiddenGroupMessages,
   getListHiddenGroupMessagesQueryKey,
+  useListHiddenChatMessages,
+  getListHiddenChatMessagesQueryKey,
   useRestoreHiddenMessage,
   useHideChatGroupForMe,
   useRestoreChatGroupForMe,
@@ -1485,6 +1487,7 @@ export default function ChatPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [hiddenMessagesOpen, setHiddenMessagesOpen] = useState(false);
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
   const {
@@ -1498,6 +1501,13 @@ export default function ChatPage() {
   const createDirect = useCreateChatGroup();
   const hideConversationMut = useHideChatGroupForMe();
   const restoreConversationMut = useRestoreChatGroupForMe();
+  const restoreHiddenMessageMut = useRestoreHiddenMessage();
+  const hiddenChatMessagesQuery = useListHiddenChatMessages({
+    query: {
+      queryKey: getListHiddenChatMessagesQueryKey(),
+      enabled: hiddenMessagesOpen,
+    },
+  });
   const [activeTab, setActiveTab] = useState<"people" | "groups" | "hidden">("people");
   const [didPreselect, setDidPreselect] = useState(false);
 
@@ -1647,6 +1657,13 @@ export default function ChatPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setHiddenMessagesOpen(true)}
+          >
+            <EyeOff className="mr-2 h-4 w-4" /> Mensajes ocultos
+          </Button>
           <Button type="button" variant="outline" onClick={() => setNewGroupOpen(true)}>Nuevo grupo</Button>
           <Button type="button" onClick={() => setContactsOpen(true)}>Nuevo mensaje</Button>
         </div>
@@ -1657,6 +1674,84 @@ export default function ChatPage() {
         setActiveTab("groups");
         void refetch();
       }} />
+      <Dialog open={hiddenMessagesOpen} onOpenChange={setHiddenMessagesOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="h-5 w-5" /> Mensajes ocultos
+            </DialogTitle>
+            <DialogDescription>
+              Esta lista solo la ves tú. Los mensajes eliminados para todos no se pueden restaurar.
+            </DialogDescription>
+          </DialogHeader>
+          {hiddenChatMessagesQuery.isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : hiddenChatMessagesQuery.isError ? (
+            <div className="py-4 text-sm">
+              No se pudieron cargar los mensajes ocultos.{" "}
+              <button
+                type="button"
+                className="text-primary underline"
+                onClick={() => void hiddenChatMessagesQuery.refetch()}
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : (hiddenChatMessagesQuery.data ?? []).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No tienes mensajes ocultos en tus conversaciones.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {(hiddenChatMessagesQuery.data ?? []).map((message) => (
+                <li key={message.id} className="flex items-center gap-3 rounded-md border p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className={`break-words text-sm ${message.deleted ? "italic text-muted-foreground" : ""}`}>
+                      {message.deleted
+                        ? "Mensaje eliminado para todos"
+                        : message.content || (message.attachmentName
+                          ? `Archivo adjunto · ${message.attachmentName}`
+                          : "Archivo adjunto")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {message.conversationName} · {formatTime(message.createdAt)}
+                    </p>
+                  </div>
+                  {!message.deleted && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={restoreHiddenMessageMut.isPending}
+                      onClick={() => restoreHiddenMessageMut.mutate(
+                        { id: message.id },
+                        {
+                          onSuccess: () => {
+                            void queryClient.invalidateQueries({
+                              queryKey: getListHiddenChatMessagesQueryKey(),
+                            });
+                            void queryClient.invalidateQueries({
+                              queryKey: getListHiddenGroupMessagesQueryKey(message.conversationId),
+                            });
+                            toast({ title: "Mensaje restaurado" });
+                          },
+                          onError: () => toast({
+                            title: "No se pudo restaurar el mensaje",
+                            description: "Comprueba que sigues perteneciendo a la conversación e inténtalo de nuevo.",
+                            variant: "destructive",
+                          }),
+                        },
+                      )}
+                    >
+                      Restaurar
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={contactsOpen} onOpenChange={setContactsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

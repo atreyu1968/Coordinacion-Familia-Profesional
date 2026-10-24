@@ -4639,6 +4639,22 @@ export const ListHiddenGroupMessagesResponse = zod.array(ListHiddenGroupMessages
 
 
 /**
+ * @summary List messages hidden by the caller across current conversations
+ */
+export const ListHiddenChatMessagesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "conversationId": zod.number().int(),
+  "conversationName": zod.string(),
+  "conversationType": zod.string(),
+  "content": zod.string().describe('Empty for messages deleted for everyone.'),
+  "attachmentName": zod.string().nullish().describe('Null for messages deleted for everyone.'),
+  "deleted": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListHiddenChatMessagesResponse = zod.array(ListHiddenChatMessagesResponseItem)
+
+
+/**
  * @summary Edit one's own message
  */
 export const EditMessageParams = zod.object({

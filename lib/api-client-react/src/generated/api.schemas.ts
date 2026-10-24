@@ -2629,6 +2629,22 @@ export interface ChatGroup {
   unreadCount?: number;
 }
 
+export interface HiddenChatMessage {
+  id: number;
+  conversationId: number;
+  conversationName: string;
+  conversationType: string;
+  /** Empty for messages deleted for everyone. */
+  content: string;
+  /**
+     * Null for messages deleted for everyone.
+     * @nullable
+     */
+  attachmentName?: string | null;
+  deleted: boolean;
+  createdAt: string;
+}
+
 export interface CreateChatGroupInput {
   name: string;
   type?: string;

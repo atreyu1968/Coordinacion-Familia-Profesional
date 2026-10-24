@@ -148,6 +148,7 @@ import type {
   GetMyTeachingProfileParams,
   Group,
   HealthStatus,
+  HiddenChatMessage,
   ImportEventAttendanceCsv200,
   ImportEventAttendanceCsvBody,
   IntegrationSettings,
@@ -16852,6 +16853,107 @@ export function useListHiddenGroupMessages<TData = Awaited<ReturnType<typeof lis
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListHiddenGroupMessagesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListHiddenChatMessagesUrl = () => {
+
+
+
+
+  return `/api/chat/hidden-messages`
+}
+
+/**
+ * @summary List messages hidden by the caller across current conversations
+ */
+export const listHiddenChatMessages = async ( options?: Parameters<typeof customFetch>[1]): Promise<HiddenChatMessage[]> => {
+
+  return customFetch<HiddenChatMessage[]>(getListHiddenChatMessagesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHiddenChatMessagesQueryKey = () => {
+    return [
+    `/api/chat/hidden-messages`
+    ] as const;
+    }
+
+
+export const getListHiddenChatMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listHiddenChatMessages>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHiddenChatMessagesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHiddenChatMessages>>> = ({ signal }) => listHiddenChatMessages({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListHiddenChatMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listHiddenChatMessages>>>
+export type ListHiddenChatMessagesQueryError = ErrorType<ErrorResponse>
+
+
+export function useListHiddenChatMessages<TData = Awaited<ReturnType<typeof listHiddenChatMessages>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listHiddenChatMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listHiddenChatMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListHiddenChatMessages<TData = Awaited<ReturnType<typeof listHiddenChatMessages>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listHiddenChatMessages>>,
+          TError,
+          Awaited<ReturnType<typeof listHiddenChatMessages>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListHiddenChatMessages<TData = Awaited<ReturnType<typeof listHiddenChatMessages>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List messages hidden by the caller across current conversations
+ */
+
+export function useListHiddenChatMessages<TData = Awaited<ReturnType<typeof listHiddenChatMessages>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listHiddenChatMessages>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListHiddenChatMessagesQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

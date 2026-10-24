@@ -536,6 +536,37 @@ describe("messages", () => {
     expect(
       (
         await request(app)
+          .get("/api/chat/hidden-messages")
+          .set(authHeader(author.token))
+      ).body,
+    ).toContainEqual(
+      expect.objectContaining({
+        id: hidden.body.id,
+        conversationId: group.body.id,
+        conversationName: "Chat",
+        conversationType: "direct",
+        content: "Solo para la otra persona",
+        deleted: false,
+      }),
+    );
+    expect(
+      (
+        await request(app)
+          .get("/api/chat/hidden-messages")
+          .set(authHeader(recipient.token))
+      ).body,
+    ).toEqual([]);
+    expect(
+      (
+        await request(app)
+          .get("/api/chat/hidden-messages")
+          .set(authHeader(outsider.token))
+      ).body,
+    ).toEqual([]);
+    expect((await request(app).get("/api/chat/hidden-messages")).status).toBe(401);
+    expect(
+      (
+        await request(app)
           .post(`/api/chat/messages/${hidden.body.id}/restore`)
           .set(authHeader(recipient.token))
       ).status,
@@ -612,6 +643,18 @@ describe("messages", () => {
         content: "",
       }),
     );
+    const deletedGlobalHidden = await request(app)
+      .get("/api/chat/hidden-messages")
+      .set(authHeader(author.token));
+    expect(deletedGlobalHidden.body).toContainEqual(
+      expect.objectContaining({
+        id: hiddenThenDeleted.body.id,
+        conversationId: group.body.id,
+        deleted: true,
+        content: "",
+        attachmentName: null,
+      }),
+    );
     const tombstoneRestore = await request(app)
       .post(`/api/chat/messages/${hiddenThenDeleted.body.id}/restore`)
       .set(authHeader(author.token));
@@ -625,6 +668,52 @@ describe("messages", () => {
         deleted: true,
       }),
     );
+  });
+
+  it("does not list private message hides after leaving a conversation", async () => {
+    const owner = await createUser({ role: "teacher" });
+    const member = await createUser({ role: "teacher" });
+    const group = await request(app)
+      .post("/api/chat/groups")
+      .set(authHeader(owner.token))
+      .send({ name: "Grupo con salida", type: "group", memberIds: [member.user.id] });
+    expect(group.status).toBe(201);
+    trackGroup(group.body.id);
+
+    const message = await request(app)
+      .post(`/api/chat/groups/${group.body.id}/messages`)
+      .set(authHeader(member.token))
+      .send({ content: "Oculto antes de salir" });
+    expect(message.status).toBe(201);
+    expect(
+      (
+        await request(app)
+          .post(`/api/chat/messages/${message.body.id}/hide`)
+          .set(authHeader(member.token))
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await request(app)
+          .get("/api/chat/hidden-messages")
+          .set(authHeader(member.token))
+      ).body,
+    ).toContainEqual(expect.objectContaining({ id: message.body.id }));
+
+    expect(
+      (
+        await request(app)
+          .post(`/api/chat/groups/${group.body.id}/leave`)
+          .set(authHeader(member.token))
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await request(app)
+          .get("/api/chat/hidden-messages")
+          .set(authHeader(member.token))
+      ).body,
+    ).toEqual([]);
   });
 
   it("hides a conversation only for its caller and resurfaces it after activity or reopening", async () => {

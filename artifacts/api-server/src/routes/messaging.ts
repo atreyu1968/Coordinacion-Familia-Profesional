@@ -41,6 +41,7 @@ import {
   ListGroupMessagesResponse,
   ListHiddenGroupMessagesParams,
   ListHiddenGroupMessagesResponse,
+  ListHiddenChatMessagesResponse,
   SendGroupMessageParams,
   SendGroupMessageBody,
   ListChatMembersParams,
@@ -1052,6 +1053,88 @@ router.get(
     const reads = await groupMemberReads(groupId);
     const messages = await assembleMessages(rows, caller.id, reads);
     res.json(ListHiddenGroupMessagesResponse.parse(messages));
+  },
+);
+
+router.get(
+  "/chat/hidden-messages",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const caller = req.user!;
+    const rows = await db
+      .select({
+        id: messagesTable.id,
+        conversationId: chatGroupsTable.id,
+        conversationName: chatGroupsTable.name,
+        conversationType: chatGroupsTable.type,
+        content: sql<string>`case when ${messagesTable.deletedAt} is not null then '' else ${messagesTable.content} end`,
+        attachmentName: sql<string | null>`case when ${messagesTable.deletedAt} is not null then null else ${messagesTable.attachmentName} end`,
+        deleted: sql<boolean>`${messagesTable.deletedAt} is not null`,
+        createdAt: messagesTable.createdAt,
+      })
+      .from(messagesTable)
+      .innerJoin(
+        messageUserHidesTable,
+        and(
+          eq(messageUserHidesTable.messageId, messagesTable.id),
+          eq(messageUserHidesTable.userId, caller.id),
+        ),
+      )
+      .innerJoin(
+        chatGroupsTable,
+        eq(chatGroupsTable.id, messagesTable.groupId),
+      )
+      .innerJoin(
+        chatGroupMembersTable,
+        and(
+          eq(chatGroupMembersTable.groupId, chatGroupsTable.id),
+          eq(chatGroupMembersTable.userId, caller.id),
+        ),
+      )
+      .where(eq(messagesTable.senderId, caller.id))
+      .orderBy(desc(messagesTable.createdAt), desc(messagesTable.id));
+
+    // Direct conversations with inactive/deleted counterparts are not
+    // accessible through messaging APIs, even while their membership row is
+    // retained for historical records.
+    const directGroupIds = Array.from(
+      new Set(rows.filter((row) => row.conversationType === "direct").map((row) => row.conversationId)),
+    );
+    let visibleDirectGroupIds = new Set<number>();
+    if (directGroupIds.length > 0) {
+      const members = await db
+        .select({
+          groupId: chatGroupMembersTable.groupId,
+          userId: chatGroupMembersTable.userId,
+          status: usersTable.status,
+          deletedAt: usersTable.deletedAt,
+        })
+        .from(chatGroupMembersTable)
+        .innerJoin(usersTable, eq(usersTable.id, chatGroupMembersTable.userId))
+        .where(inArray(chatGroupMembersTable.groupId, directGroupIds));
+      const byGroup = new Map<number, typeof members>();
+      for (const member of members) {
+        const current = byGroup.get(member.groupId) ?? [];
+        current.push(member);
+        byGroup.set(member.groupId, current);
+      }
+      visibleDirectGroupIds = new Set(
+        directGroupIds.filter((id) => {
+          const groupMembers = byGroup.get(id) ?? [];
+          return groupMembers.length === 2 &&
+            groupMembers.every((member) => member.status === "active" && member.deletedAt == null);
+        }),
+      );
+    }
+    res.json(
+      ListHiddenChatMessagesResponse.parse(
+        rows.filter(
+          (row) =>
+            row.conversationType !== "direct" ||
+            visibleDirectGroupIds.has(row.conversationId),
+        ),
+      ),
+    );
   },
 );
 
