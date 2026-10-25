@@ -43,7 +43,7 @@ test("teacher can sign in and navigate the real demo classroom", async ({ page }
   await expect(page.getByText("VERI*FACTU: curso de demostración", { exact: false }).first()).toBeVisible();
 
   if (mobile) {
-    await page.getByRole("button", { name: /Mostrar temario del curso/ }).click();
+    await page.getByRole("button", { name: "Abrir temario" }).click();
     await page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ }).click();
     await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Lección siguiente" }).click();
