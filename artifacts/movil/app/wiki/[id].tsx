@@ -25,6 +25,7 @@ import { Card, ErrorState } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
+import { openBrowserLink } from "@/lib/browser-link";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -235,7 +236,7 @@ export default function WikiPageScreen() {
                     accessibilityLabel={`Enlace: ${link.title}`}
                     accessibilityHint="Abre el enlace externo"
                     onPress={() =>
-                      void Linking.openURL(link.url).catch(() =>
+                      void openBrowserLink(link.url).catch(() =>
                         Alert.alert(
                           "No se pudo abrir el enlace",
                           "Comprueba tu conexión e inténtalo de nuevo.",

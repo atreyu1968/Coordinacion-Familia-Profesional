@@ -17,6 +17,7 @@ import { ErrorState } from "@/components/ui";
 import { getAuthToken, useAuth } from "@/contexts/AuthContext";
 import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { useColors } from "@/hooks/useColors";
+import { openBrowserLink } from "@/lib/browser-link";
 
 async function downloadPrivateFile(path: string, fileName: string) {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -89,7 +90,7 @@ export default function ActaScreen() {
 
   const onOpenLink = async (url: string) => {
     try {
-      await Linking.openURL(url);
+      await openBrowserLink(url);
     } catch {
       Alert.alert("No se pudo abrir el enlace", "Comprueba la conexión e inténtalo de nuevo.");
     }

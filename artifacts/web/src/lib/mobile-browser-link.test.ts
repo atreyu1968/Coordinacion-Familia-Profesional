@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { openBrowserLink } from "../../../movil/lib/browser-link.web";
 import { validateBrowserUrl } from "../../../movil/lib/browser-link.types";
+import { clearExternalBrowserResumeExemption } from "../../../movil/lib/external-browser-resume";
+
+afterEach(() => clearExternalBrowserResumeExemption());
 
 describe("mobile PWA browser links", () => {
   it("reserves a window before requesting a protected URL", async () => {

@@ -3,6 +3,7 @@ import { Alert, Linking, ScrollView, View } from "react-native";
 import Markdown, { type RenderRules } from "react-native-markdown-display";
 import MarkdownIt from "markdown-it";
 import { useColors } from "@/hooks/useColors";
+import { openBrowserLink } from "@/lib/browser-link";
 
 const parser = new MarkdownIt({ html: false, linkify: true, breaks: true });
 const rules: RenderRules = {
@@ -36,7 +37,8 @@ export function CourseMarkdown({ text }: { text: string }) {
 
   return <Markdown markdownit={parser} style={styles} rules={rules} onLinkPress={(href) => {
     if (!/^(https?:|mailto:|tel:)/i.test(href)) return false;
-    void Linking.openURL(href).catch(() => Alert.alert("No se pudo abrir el enlace", "Comprueba tu conexión e inténtalo de nuevo."));
+    const open = /^https?:/i.test(href) ? openBrowserLink(href) : Linking.openURL(href);
+    void open.catch(() => Alert.alert("No se pudo abrir el enlace", "Comprueba tu conexión e inténtalo de nuevo."));
     return false;
   }}>{text}</Markdown>;
 }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { NextcloudViewerProps } from "./NextcloudViewer.types";
+import { watchExternalBrowserTab } from "../lib/external-browser-resume";
 
 /** Never import react-native-webview here: its browser implementation is unsupported. */
 export function NextcloudViewer({ url, title, onError, requestFreshUrl }: NextcloudViewerProps) {
@@ -14,6 +15,7 @@ export function NextcloudViewer({ url, title, onError, requestFreshUrl }: Nextcl
       return;
     }
     tab.opener = null;
+    const stopWatching = watchExternalBrowserTab(tab);
     setOpening(true);
     setError("");
     try {
@@ -24,6 +26,7 @@ export function NextcloudViewer({ url, title, onError, requestFreshUrl }: Nextcl
       tab.location.replace(freshUrl.href);
     } catch {
       tab.close();
+      stopWatching(false);
       setError("No se pudo abrir Nextcloud. Comprueba tu conexión y tus permisos e inténtalo de nuevo.");
     } finally {
       setOpening(false);

@@ -1,5 +1,6 @@
 import React from "react";
-import { Alert, Linking, Text, type StyleProp, type TextStyle } from "react-native";
+import { Alert, Text, type StyleProp, type TextStyle } from "react-native";
+import { openBrowserLink } from "@/lib/browser-link";
 
 type LinkSegment = { text: string; href?: string };
 
@@ -44,7 +45,7 @@ function splitLinks(text: string): LinkSegment[] {
 
 async function openLink(href: string) {
   try {
-    await Linking.openURL(href);
+    await openBrowserLink(href);
   } catch {
     Alert.alert(
       "No se pudo abrir el enlace",

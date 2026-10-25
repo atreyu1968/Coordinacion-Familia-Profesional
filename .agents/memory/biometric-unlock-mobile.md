@@ -34,3 +34,13 @@ Use `lib/secureStore.ts` (SecureStore on native, `localStorage` on web, all best
   password is the only way in. Sign-out fully clears session + disables biometric.
 **Why:** the task asked for both a login-screen button AND a lock screen; routing-based cold
 lock + overlay resume lock satisfies both without auto-entering an unlocked app.
+
+## Returning from links opened by the app
+Keep the session unlocked for the handoff back from an external link opened by the app, but
+retain biometric re-locking for ordinary app background/resume and clear any pending exception
+on sign-out or when biometrics are disabled.
+**Why:** the user explicitly approved this narrow exception after the app asked for biometrics
+when returning from a new browser tab; disabling the biometric lock globally would be broader
+than requested.
+**How to apply:** open outbound web links through the tracked browser-link path; avoid bypassing
+that tracking with direct browser navigation for ordinary external links.

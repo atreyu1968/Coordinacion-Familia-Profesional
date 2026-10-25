@@ -71,3 +71,55 @@ test("teacher can sign in and navigate the real demo classroom", async ({ page }
   await page.getByRole("button", { name: "Desactivar encabezado fijo" }).click();
   await page.screenshot({ path: testInfo.outputPath("lms-classroom-desktop.png") });
 });
+
+test("PWA does not ask for biometrics when returning from an app-opened link", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "This regression covers the installed mobile PWA.");
+  const account = fixtures.classroomAccounts.mobile;
+  await page.goto("/login");
+  await page.getByPlaceholder("nombre@coordinaadg.es").fill(account.email);
+  await page.getByPlaceholder("••••••••", { exact: true }).fill(account.password);
+  const loginResponse = page.waitForResponse(response =>
+    response.url().endsWith("/api/auth/login") && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: /Iniciar sesi[oó]n/i }).click();
+  expect((await loginResponse).status()).toBe(200);
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+
+  // Enable the real resume-lock path while using a one-time handoff marker to
+  // keep the initial page reload authenticated in this isolated browser test.
+  await page.evaluate(() => {
+    localStorage.setItem("coordina_adg_biometric", "1");
+    sessionStorage.setItem(
+      "coordina_adg_external_browser_resume",
+      String(Date.now() + 30_000),
+    );
+  });
+  await page.reload();
+  await page.getByRole("tab", { name: /Más/ }).click();
+  const corporateEmail = page.getByTestId("more-item-correo-corporativo");
+  await expect(corporateEmail).toBeVisible();
+
+  const popupPromise = page.waitForEvent("popup");
+  await corporateEmail.click();
+  const popup = await popupPromise;
+  const simulateBackgroundAndResume = async () => {
+    await page.evaluate(() => {
+      const original = Object.getOwnPropertyDescriptor(document, "visibilityState");
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      if (original) Object.defineProperty(document, "visibilityState", original);
+      else Reflect.deleteProperty(document, "visibilityState");
+    });
+  };
+
+  await simulateBackgroundAndResume();
+  await expect(page.getByText("App bloqueada", { exact: true })).toHaveCount(0);
+  await popup.close();
+  await page.waitForTimeout(300);
+
+  // Ordinary background/resume still applies the biometric lock.
+  await simulateBackgroundAndResume();
+  await expect(page.getByText("App bloqueada", { exact: true })).toBeVisible();
+});

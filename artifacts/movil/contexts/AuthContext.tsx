@@ -22,6 +22,10 @@ import {
   getStoredItem,
   setStoredItem,
 } from "@/lib/secureStore";
+import {
+  clearExternalBrowserResumeExemption,
+  consumeExternalBrowserResumeExemption,
+} from "@/lib/external-browser-resume";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 const TOKEN_KEY = "coordina_adg_token";
@@ -93,13 +97,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isBiometricAvailable(),
           ]);
 
+        const returnedFromExternalBrowser =
+          consumeExternalBrowserResumeExemption();
         setBiometricAvailable(available);
         const wantsBiometric = storedBiometric === "1";
         setBiometricEnabled(wantsBiometric);
 
         if (storedToken && storedUser) {
           const parsedUser = JSON.parse(storedUser) as User;
-          if (wantsBiometric) {
+          if (wantsBiometric && !returnedFromExternalBrowser) {
             // Keep the saved session locked behind biometrics — the login
             // screen will reveal a "Entrar con huella" button.
             setLockedSession({ token: storedToken, user: parsedUser });
@@ -129,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentToken &&
         biometricEnabled
       ) {
-        setLocked(true);
+        if (!consumeExternalBrowserResumeExemption()) setLocked(true);
       }
     });
     return () => sub.remove();
@@ -151,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       // Never let one account's cached responses survive into another login.
+      clearExternalBrowserResumeExemption();
       currentToken = null;
       setToken(null);
       setUser(null);
@@ -194,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, queryClient, updateUser]);
 
   const signOut = useCallback(async () => {
+    clearExternalBrowserResumeExemption();
     currentToken = null;
     disconnectSocket();
     setToken(null);
@@ -257,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const disableBiometricUnlock = useCallback(async (): Promise<void> => {
+    clearExternalBrowserResumeExemption();
     setBiometricEnabled(false);
     await disableBiometric();
     await deleteStoredItem(BIOMETRIC_KEY);
