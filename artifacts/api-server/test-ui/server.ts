@@ -52,18 +52,26 @@ for (const surface of ["desktop", "mobile"]) {
     }
   }
 }
-const classroomAccount = await createUser({
-  role: "teacher",
-  provinceId,
-  centerId,
-  name: "Docente de prueba para el aula",
-});
+const classroomAccounts: Record<string, { email: string; password: string; id: number }> = {};
+for (const surface of ["desktop", "mobile"]) {
+  const account = await createUser({
+    role: "teacher",
+    provinceId,
+    centerId,
+    name: `Docente de prueba para el aula (${surface})`,
+  });
+  classroomAccounts[surface] = {
+    email: account.email,
+    password: account.password,
+    id: account.user.id,
+  };
+}
 const [classroomCourse] = await db.insert(lmsCoursesTable).values({
   title: "VERI*FACTU: curso de demostración",
   description: "Curso de prueba para comprobar el aula de aprendizaje.",
   status: "published",
   certificateEnabled: false,
-  createdBy: classroomAccount.user.id,
+  createdBy: classroomAccounts.desktop!.id,
   publishedAt: new Date(),
 }).returning();
 const classroomLessons = [
@@ -106,10 +114,7 @@ for (const [client, origin] of [
 }
 writeFileSync(join(root, "ready.json"), JSON.stringify({
   accounts,
-  classroomAccount: {
-    email: classroomAccount.email,
-    password: classroomAccount.password,
-  },
+  classroomAccounts,
   classroomCourseId: classroomCourse!.id,
   centerId, centerName: center.name, provinceId, moduleId, moduleName, year,
 }));

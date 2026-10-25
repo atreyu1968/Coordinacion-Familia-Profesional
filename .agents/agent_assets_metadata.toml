@@ -103,3 +103,31 @@ mtime_ms = 1792610455522
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/ae3b5303-3996-4380-b270-ffa13f98a929/264d7b71-82d5-4268-8fbb-94c93edd7d61"
 storage_version_token = "1792610530044330"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "8NfdBN1gGMbqma6Wg8lyJ"
+uri = "file://generated-artifacts/profile-ui/results/lms-classroom-teacher-can--46553-ate-the-real-demo-classroom-desktop/lms-classroom-desktop.png"
+type = "image"
+title = "Aula del curso en escritorio"
+description = "Captura tras iniciar sesión con una cuenta temporal en la base de pruebas aislada."
+logical_id = "42b8d6c4-bf46-49d1-ada7-f0c3a3780c65"
+content_hash = "sha256:2c505a0c6ef8204ee0ac35b0d3c346d2026f586934c05892a6466bda384c4edc"
+size = 70894
+mtime_ms = 1792919908122
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/42b8d6c4-bf46-49d1-ada7-f0c3a3780c65/5b6e72c6-0791-447c-84bf-fa03a3775fb6"
+storage_version_token = "1792919956902810"
+content_type = "image/png"
+
+[[outputs]]
+id = "8_hY31UbHITAXgEXYAyEF"
+uri = "file://generated-artifacts/profile-ui/results/lms-classroom-teacher-can--46553-ate-the-real-demo-classroom-mobile/lms-classroom-mobile.png"
+type = "image"
+title = "Aula del curso en móvil"
+description = "Captura tras iniciar sesión con una cuenta temporal en la base de pruebas aislada."
+logical_id = "50cad622-de80-4583-8576-0115e51a2443"
+content_hash = "sha256:859ad6f03b3015486dd5a5dd88d4f00ff2412ed5e4d9288531655bf83fb8a6d2"
+size = 47064
+mtime_ms = 1792919911394
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/50cad622-de80-4583-8576-0115e51a2443/1e0c4f51-70d4-46f5-943e-beb0d9350217"
+storage_version_token = "1792919957624426"
+content_type = "image/png"

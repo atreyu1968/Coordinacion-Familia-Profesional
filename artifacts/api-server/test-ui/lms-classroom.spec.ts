@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 interface Fixtures {
-  classroomAccount: { email: string; password: string };
+  classroomAccounts: Record<string, { email: string; password: string }>;
   classroomCourseId: number;
 }
 
@@ -22,13 +22,14 @@ test.beforeEach(async ({ context, baseURL }) => {
 
 test("teacher can sign in and navigate the real demo classroom", async ({ page }, testInfo) => {
   const mobile = testInfo.project.name === "mobile";
+  const account = fixtures.classroomAccounts[testInfo.project.name];
   await page.goto("/login");
   if (mobile) {
-    await page.getByPlaceholder("nombre@coordinaadg.es").fill(fixtures.classroomAccount.email);
-    await page.getByPlaceholder("••••••••", { exact: true }).fill(fixtures.classroomAccount.password);
+    await page.getByPlaceholder("nombre@coordinaadg.es").fill(account.email);
+    await page.getByPlaceholder("••••••••", { exact: true }).fill(account.password);
   } else {
-    await page.getByLabel("Correo electrónico", { exact: true }).fill(fixtures.classroomAccount.email);
-    await page.getByLabel("Contraseña", { exact: true }).fill(fixtures.classroomAccount.password);
+    await page.getByLabel("Correo electrónico", { exact: true }).fill(account.email);
+    await page.getByLabel("Contraseña", { exact: true }).fill(account.password);
   }
   const loginResponse = page.waitForResponse(response =>
     response.url().endsWith("/api/auth/login") && response.request().method() === "POST",
