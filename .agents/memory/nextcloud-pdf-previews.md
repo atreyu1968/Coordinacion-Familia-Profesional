@@ -14,3 +14,9 @@ For the mobile PWA, use a browser iframe, never React Native WebView (unsupporte
 **Why:** the first embedded navigation can consume the single-use ticket; browser privacy settings can also block cross-site iframe sessions.
 
 Reserve a blank browser tab synchronously during the click, before awaiting an API-created access URL (also for SCORM, lesson files and meeting links). Otherwise browsers may block the new window as an unsolicited popup; close the reserved tab if authorization fails.
+
+If an installed PWA still reports unsupported WebView after the web viewer has been corrected, check a refreshed session on the correct origin before proposing a Nextcloud reinstall.
+
+**Why:** the user confirmed that refreshing resolved this error; an already-open PWA can continue running old JavaScript despite the published bundle being corrected.
+
+**How to apply:** distinguish a stale running client from a server failure. Do not assume the service worker caches application files or clear user data without evidence.
