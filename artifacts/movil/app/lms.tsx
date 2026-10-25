@@ -13,6 +13,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { LmsCourseCover } from "@/components/LmsCourseCover";
+import { openBrowserLink } from "@/lib/browser-link";
 
 export default function LmsScreen() {
   const colors = useColors();
@@ -22,6 +23,7 @@ export default function LmsScreen() {
   const [description, setDescription] = useState("");
   const [scopeKey, setScopeKey] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "completed" | "draft">("all");
+  const [openError, setOpenError] = useState("");
   const courses = useListLmsCourses();
   const scopes = useGetLmsManagementScopes();
   const create = useCreateLmsCourse();
@@ -40,9 +42,9 @@ export default function LmsScreen() {
   const visible = all.filter((c) => filter === "all" ? true : filter === "pending" ? !c.completed && c.status === "published" : filter === "completed" ? c.completed : c.status === "draft");
   const openCourse = (id: number) => {
     if (Platform.OS === "web") {
-      const open = (globalThis as typeof globalThis & { open?: (url?: string, target?: string, features?: string) => unknown }).open;
       const basePath = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
-      open?.(`${basePath}/lms/${id}`, "_blank", "noopener,noreferrer");
+      setOpenError("");
+      void openBrowserLink(new URL(`${basePath}/lms/${id}`, window.location.origin).href).catch((error) => setOpenError(error instanceof Error ? error.message : "No se pudo abrir el aula."));
       return;
     }
     router.push(`/lms/${id}`);
@@ -60,6 +62,7 @@ export default function LmsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Cursos autodirigidos" subtitle="Aprende a tu ritmo" showBack />
+      {openError ? <Text accessibilityRole="alert" style={{ color: colors.destructive, padding: 16 }}>{openError}</Text> : null}
       {courses.isLoading ? <Loading /> : courses.isError ? <ErrorState onRetry={courses.refetch} /> : (
         <FlatList
           data={visible}

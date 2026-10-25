@@ -40,6 +40,7 @@ async function renderPage() {
     element("next").disabled = page >= pdf.numPages;
     for (const id of ["page", "less", "more", "fit"]) element(id).disabled = false;
     rendering = documentPage.render({
+      canvas,
       canvasContext: canvas.getContext("2d"), viewport,
       transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
     });

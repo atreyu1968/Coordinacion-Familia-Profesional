@@ -175,3 +175,51 @@ test("PWA does not ask for biometrics when returning from an app-opened link", a
   await simulateBackgroundAndResume();
   await expect(page.getByText("App bloqueada", { exact: true })).toBeVisible();
 });
+
+test("course opens a separate classroom and plays PDF, SCORM and video inline", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name !== "desktop";
+  const account = fixtures.classroomAccounts[mobile ? "mobile" : "desktop"];
+  await page.goto("/login");
+  if (mobile) {
+    await page.getByPlaceholder("nombre@coordinaadg.es").fill(account.email);
+    await page.getByPlaceholder("••••••••", { exact: true }).fill(account.password);
+  } else {
+    await page.getByLabel("Correo electrónico", { exact: true }).fill(account.email);
+    await page.getByLabel("Contraseña", { exact: true }).fill(account.password);
+  }
+  await page.getByRole("button", { name: /Iniciar sesi[oó]n/i }).click();
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+  await page.goto(mobile ? "/lms" : "/autodirigido");
+  const popup = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Abrir curso VERI*FACTU: curso de demostración en una pestaña nueva", exact: true }).first().click();
+  const classroom = await popup;
+  await expect(classroom).toHaveURL(new RegExp(`/${mobile ? "lms" : "aula"}/${fixtures.classroomCourseId}$`));
+  await expect(classroom.getByText("VERI*FACTU: curso de demostración", { exact: false }).first()).toBeVisible();
+  const selectLesson = async (title: string) => {
+    if (mobile && testInfo.project.name === "mobile") {
+      await classroom.getByRole("button", { name: "Abrir temario", exact: true }).click();
+    }
+    await classroom.getByRole("button", { name: new RegExp(title) }).first().click();
+  };
+  await selectLesson("Guía PDF de prueba");
+  if (mobile) {
+    await expect(classroom.frameLocator('iframe[title="Visor de PDF: guia-aula.pdf"]').locator("canvas"))
+      .toHaveAttribute("aria-label", "Página 1 de 1", { timeout: 20_000 });
+  } else {
+    await expect(classroom.locator("canvas")).toHaveAttribute("aria-label", "Página 1 de 1", { timeout: 20_000 });
+  }
+  expect(classroom.context().pages()).toHaveLength(2);
+  await classroom.screenshot({ path: testInfo.outputPath("inline-pdf-classroom.png") });
+  await selectLesson("Actividad SCORM de prueba");
+  const scormFrame = mobile
+    ? classroom.frameLocator('iframe[title="Actividad SCORM de prueba"]').frameLocator('iframe[title="Contenido SCORM"]')
+    : classroom.frameLocator('iframe[title="Contenido SCORM"]');
+  await expect(scormFrame.getByText("Actividad SCORM ejecutada dentro del aula")).toBeVisible({ timeout: 20_000 });
+  expect(classroom.context().pages()).toHaveLength(2);
+  await selectLesson("Vídeo de prueba");
+  await expect(classroom.locator("video")).toBeVisible();
+  await expect(classroom.locator("video")).toHaveAttribute("controls", "");
+  await expect.poll(() => classroom.locator("video").evaluate(video => (video as HTMLVideoElement).readyState), { timeout: 20_000 }).toBeGreaterThan(0);
+  expect(classroom.context().pages()).toHaveLength(2);
+  await classroom.screenshot({ path: testInfo.outputPath("inline-video-classroom.png") });
+});

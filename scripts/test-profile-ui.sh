@@ -10,7 +10,7 @@ if [[ "${COORDINA_PROFILE_UI_CLEAN_ENV:-}" != 1 ]]; then
     COORDINA_PROFILE_UI_CLEAN_ENV=1 bash "$0" "$@"
 fi
 [[ "$EUID" != 0 ]] || { echo "Run as an unprivileged user." >&2; exit 1; }
-for tool in initdb pg_ctl createdb openssl pnpm node; do
+for tool in initdb pg_ctl createdb openssl pnpm node ffmpeg; do
   command -v "$tool" >/dev/null || { echo "Missing test tool: $tool" >&2; exit 1; }
 done
 cd "$APP_DIR"

@@ -32,3 +32,11 @@ Never use Vite/Vitest `mergeConfig` to narrow a general test configuration to a 
 **Why:** concatenation can silently broaden a specialized run to unrelated suites or exclude its intended tests.
 
 **How to apply:** explicitly replace test selection arrays in specialized configurations. Destructive fixtures must also verify the temporary server's identity before their first write; an environment flag alone is not proof of isolation.
+
+## Playwright browser in this workspace
+
+When Playwright's expected downloaded Chromium revision is absent, check the existing system browser before installing another one.
+
+**Why:** the workspace provides Chromium at `/repl/tools/bin/chromium`, while a newer Playwright package may expect a different browser in its cache; this stops the run before any app test executes.
+
+**How to apply:** verify that executable still exists, then supply it through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the isolated UI runner. A browser-launch failure is not an application-test failure.

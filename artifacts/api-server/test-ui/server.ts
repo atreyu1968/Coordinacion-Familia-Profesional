@@ -2,6 +2,7 @@
 import { realpathSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServer } from "node:https";
+import { execFileSync } from "node:child_process";
 import express from "express";
 import { eq, sql } from "drizzle-orm";
 
@@ -87,6 +88,34 @@ await db.insert(lmsLessonsTable).values(classroomLessons.map(([title, text], pos
   required: true,
   content: { text },
 })));
+const { ObjectStorageService } = await import("../src/lib/objectStorage");
+const { PDFDocument } = await import("pdf-lib");
+const { default: JSZip } = await import("jszip");
+const storage = new ObjectStorageService();
+const pdf = await PDFDocument.create();
+pdf.addPage([440, 620]).drawText("Guia PDF del aula de prueba", { x: 35, y: 550, size: 18 });
+const pdfBytes = Buffer.from(await pdf.save());
+const scormZip = new JSZip();
+scormZip.file("imsmanifest.xml", "<manifest/>");
+scormZip.file("index.html", "<!doctype html><html lang='es'><body><h1>Actividad SCORM ejecutada dentro del aula</h1></body></html>");
+const scormBytes = await scormZip.generateAsync({ type: "nodebuffer" });
+const owner = String(classroomAccounts.desktop!.id);
+const pdfPath = await storage.savePrivateObjectBytes(pdfBytes, "application/pdf", owner);
+const scormPath = await storage.savePrivateObjectBytes(scormBytes, "application/zip", owner);
+await db.insert(lmsLessonsTable).values([
+  { courseId: classroomCourse!.id, title: "Guía PDF de prueba", kind: "file", position: 3, required: true,
+    objectPath: pdfPath, objectName: "guia-aula.pdf", objectContentType: "application/pdf", objectSize: pdfBytes.length },
+  { courseId: classroomCourse!.id, title: "Actividad SCORM de prueba", kind: "scorm12", position: 4, required: true,
+    objectPath: scormPath, objectName: "actividad.zip", objectContentType: "application/zip", objectSize: scormBytes.length,
+    scormLaunchPath: "index.html", scormVersion: "1.2" },
+  { courseId: classroomCourse!.id, title: "Vídeo de prueba", kind: "video", position: 5, required: true,
+    content: { url: "/demo-classroom.mp4" } },
+]);
+const demoVideo = execFileSync("ffmpeg", [
+  "-v", "error", "-f", "lavfi", "-i", "color=c=navy:s=320x180:d=1",
+  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-f", "mp4",
+  "-movflags", "frag_keyframe+empty_moov", "pipe:1",
+]);
 const api = (await import("../src/app")).default;
 const { initRealtime } = await import("../src/lib/realtime");
 const certificates = {
@@ -103,7 +132,10 @@ for (const [client, origin] of [
     throw new Error("The browser fixtures must use loopback HTTPS only.");
   }
   const app = express();
+  app.get("/demo-classroom.mp4", (_req, res) => res.type("video/mp4").send(demoVideo));
   app.use(api);
+  app.get("/scorm-player", (_req, res) => res.sendFile(join(root, "web", "index.html")));
+  app.use("/assets", express.static(join(root, "web", "assets")));
   app.use(express.static(join(root, client)));
   app.get("/{*path}", (_req, res) => res.sendFile(join(root, client, "index.html")));
   const server = createServer(certificates, app);
