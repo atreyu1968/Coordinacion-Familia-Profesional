@@ -21,8 +21,9 @@ test.beforeEach(async ({ context, baseURL }) => {
 });
 
 test("teacher can sign in and navigate the real demo classroom", async ({ page }, testInfo) => {
-  const mobile = testInfo.project.name === "mobile";
-  const account = fixtures.classroomAccounts[testInfo.project.name];
+  const mobile = testInfo.project.name !== "desktop";
+  const surface = mobile ? "mobile" : "desktop";
+  const account = fixtures.classroomAccounts[surface];
   await page.goto("/login");
   if (mobile) {
     await page.getByPlaceholder("nombre@coordinaadg.es").fill(account.email);
@@ -39,15 +40,58 @@ test("teacher can sign in and navigate the real demo classroom", async ({ page }
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 
   await page.goto(mobile ? `/lms/${fixtures.classroomCourseId}` : `/autodirigido?curso=${fixtures.classroomCourseId}`);
-  await expect(page.getByText("Contenido de prueba: presentación y objetivos.", { exact: true })).toBeVisible();
+  if (testInfo.project.name !== "mobile-tablet") {
+    await expect(page.getByText("Contenido de prueba: presentación y objetivos.", { exact: true })).toBeVisible();
+  }
   await expect(page.getByText("VERI*FACTU: curso de demostración", { exact: false }).first()).toBeVisible();
 
   if (mobile) {
-    await page.getByRole("button", { name: "Abrir temario" }).click();
+    const classroomUrl = page.url();
+    if (testInfo.project.name === "mobile-tablet") {
+      expect(await page.evaluate<number>("window.innerWidth")).toBe(1024);
+      await page.getByRole("button", { name: /Lección 1: Presentación y objetivos/ }).click();
+      await expect(page.getByText("Contenido de prueba: presentación y objetivos.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ }).click();
+      await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ })).toBeVisible();
+      expect(page.url()).toBe(classroomUrl);
+      expect(page.context().pages()).toHaveLength(1);
+      await page.getByRole("button", { name: "Lección siguiente" }).click();
+      await expect(page.getByText("Contenido de prueba: caso práctico.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Lección anterior" }).click();
+      await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Contraer temario", exact: true }).first().click();
+      await expect(page.getByRole("button", { name: "Expandir temario", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Expandir temario", exact: true }).click();
+      await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath("lms-classroom-tablet.png") });
+      return;
+    }
+
+    expect(await page.evaluate<number>("window.innerWidth")).toBe(400);
+    await page.getByRole("button", { name: "Abrir temario", exact: true }).click();
     await page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ }).click();
     await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ })).toHaveCount(0);
+    expect(page.url()).toBe(classroomUrl);
+    expect(page.context().pages()).toHaveLength(1);
+
     await page.getByRole("button", { name: "Lección siguiente" }).click();
     await expect(page.getByText("Contenido de prueba: caso práctico.", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Lección anterior" }).click();
+    await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+
+    // On a phone the curriculum closes after selecting a lesson, but can be
+    // opened again without leaving the active lesson.
+    await page.getByRole("button", { name: "Abrir temario", exact: true }).click();
+    await expect(page.getByRole("button", { name: /Lección 2: Normativa y comprobación/ })).toBeVisible();
+    await expect(page.getByText("Contenido de prueba: normativa y comprobación.", { exact: true })).toBeVisible();
+
+    // Pinning and unpinning the course toolbar must not hide the app header.
+    await page.getByRole("button", { name: "Desfijar encabezado compacto", exact: true }).click();
+    await page.getByRole("button", { name: "Fijar encabezado compacto", exact: true }).click();
+    await expect(page.getByText("Aula", { exact: true })).toBeVisible();
+
     await page.screenshot({ path: testInfo.outputPath("lms-classroom-mobile.png") });
     return;
   }
@@ -104,13 +148,21 @@ test("PWA does not ask for biometrics when returning from an app-opened link", a
   const popup = await popupPromise;
   const simulateBackgroundAndResume = async () => {
     await page.evaluate(() => {
-      const original = Object.getOwnPropertyDescriptor(document, "visibilityState");
-      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
-      document.dispatchEvent(new Event("visibilitychange"));
-      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-      document.dispatchEvent(new Event("visibilitychange"));
-      if (original) Object.defineProperty(document, "visibilityState", original);
-      else Reflect.deleteProperty(document, "visibilityState");
+      const browserGlobals = globalThis as unknown as {
+        document: {
+          visibilityState: string;
+          dispatchEvent: (event: unknown) => boolean;
+        };
+        Event: new (type: string) => unknown;
+      };
+      const doc = browserGlobals.document;
+      const original = Object.getOwnPropertyDescriptor(doc, "visibilityState");
+      Object.defineProperty(doc, "visibilityState", { configurable: true, value: "hidden" });
+      doc.dispatchEvent(new browserGlobals.Event("visibilitychange"));
+      Object.defineProperty(doc, "visibilityState", { configurable: true, value: "visible" });
+      doc.dispatchEvent(new browserGlobals.Event("visibilitychange"));
+      if (original) Object.defineProperty(doc, "visibilityState", original);
+      else Reflect.deleteProperty(doc, "visibilityState");
     });
   };
 

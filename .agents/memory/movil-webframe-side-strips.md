@@ -21,9 +21,16 @@ perceives it as strips beside the header only.
 
 **Fix / rule:** gate the centered frame on viewport width. Render children
 edge-to-edge when `useWindowDimensions().width < 600` (real phones / installed
-PWA); only apply the centered phone-width frame on wide desktop. Phones report
-CSS widths ~360–430, well under 600.
+PWA); only apply the centered phone-width frame on wide desktop. The LMS
+classroom is an exception at widths of 900px and above: its two-column lesson
+layout must use the available width instead of being squeezed into the 440px
+phone frame.
 
 **Why:** safe-area / `viewport-fit=cover` fixes the TOP/BOTTOM (status bar, home
 indicator, tab bar) but never the left/right strips — those came entirely from
-the desktop frame. Don't chase safe-area for horizontal strips on mobile.
+the desktop frame. Also, the LMS classroom switches to side-by-side columns at
+900px, so retaining the phone frame there left almost no room for lesson content.
+
+**How to apply:** keep the centered frame for other routes on wide desktop
+browsers; when adding another route-specific wide layout, verify whether it
+needs an exception rather than globally removing the mobile frame.

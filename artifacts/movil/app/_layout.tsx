@@ -245,6 +245,7 @@ function RootLayoutNav() {
 function WebMobileFrame({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const { width } = useWindowDimensions();
+  const pathname = usePathname();
   if (Platform.OS !== "web") {
     return <>{children}</>;
   }
@@ -252,7 +253,10 @@ function WebMobileFrame({ children }: { children: React.ReactNode }) {
   // blue header and tab bar reach the screen sides. Otherwise the muted backdrop
   // around the centered phone-width frame shows as light strips beside the
   // header. Keep the centered frame only on wide desktop browsers.
-  if (width < 600) {
+  // The LMS classroom has its own wide, two-column layout, so let it use the
+  // available desktop/tablet width instead of squeezing that layout into the
+  // phone frame.
+  if (width < 600 || (pathname.startsWith("/lms/") && width >= 900)) {
     return <>{children}</>;
   }
   return (

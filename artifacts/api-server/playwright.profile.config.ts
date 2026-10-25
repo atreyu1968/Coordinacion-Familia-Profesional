@@ -37,5 +37,10 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { baseURL: process.env.PROFILE_UI_WEB_URL, viewport: { width: 1440, height: 1000 } } },
     { name: "mobile", use: { baseURL: process.env.PROFILE_UI_MOBILE_URL, viewport: { width: 400, height: 820 }, isMobile: true, hasTouch: true } },
+    {
+      name: "mobile-tablet",
+      testMatch: ["lms-classroom.spec.ts"],
+      use: { baseURL: process.env.PROFILE_UI_MOBILE_URL, viewport: { width: 1024, height: 900 } },
+    },
   ],
 });
