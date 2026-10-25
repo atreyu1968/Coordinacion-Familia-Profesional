@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CourseMarkdown } from "@/components/course-markdown";
 import { LmsCourseCoverField } from "@/components/lms-course-cover-field";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
@@ -48,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-docx-download-button";
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
+import { LmsPdfPlayer } from "@/components/lms-pdf-player";
 import {
   Award, BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
   Eye, Pencil, Play, Plus, Search, Send, Settings2, Upload, X,
@@ -65,6 +66,42 @@ const kindLabels: Record<string, string> = {
 
 function apiUrl(path: string) {
   return `${BASE}${path.replace(/^\/+/, "")}`;
+}
+
+function youtubeOrVimeoEmbed(source: string) {
+  try {
+    const url = new URL(source);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "youtu.be") {
+      const id = url.pathname.split("/").filter(Boolean)[0];
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?playsinline=1&rel=0` : null;
+    }
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+      const id = url.pathname.startsWith("/embed/")
+        ? url.pathname.split("/")[2]
+        : url.searchParams.get("v");
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?playsinline=1&rel=0` : null;
+    }
+    if (host === "vimeo.com" || host === "player.vimeo.com") {
+      const id = url.pathname.split("/").filter(Boolean).find((part) => /^\d+$/.test(part));
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function LmsWebVideoPlayer({ title, source }: { title: string; source: string }) {
+  const embedUrl = youtubeOrVimeoEmbed(source);
+  if (embedUrl) {
+    return <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+      <iframe title={title} src={embedUrl} className="h-full w-full border-0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+    </div>;
+  }
+  return <video controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" src={source} aria-label={title} />;
 }
 
 function courseImportScopeKey(moduleId: number | null) {
@@ -213,6 +250,7 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
   const quiz = useSubmitLmsQuizAttempt();
   const download = useCreateLmsLessonDownloadToken();
   const session = useCreateLmsLessonScormSession();
+  const [pdfUrl, setPdfUrl] = useState("");
   const commit = useCommitLmsScormSession();
   const [answers, setAnswers] = useState<number[]>([]);
   const [scorm, setScorm] = useState<LmsScormSession | null>(null);
@@ -256,12 +294,30 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
       onRefresh();
     } catch { toast({ title: "No se pudo corregir el cuestionario", variant: "destructive" }); }
   };
-  const openScorm = async () => {
-    try {
-      const result = await session.mutateAsync({ lessonId: lesson.id, ...(preview ? { params: { preview: true } } : {}) });
-      setScorm(result);
-    } catch { toast({ title: "No se pudo abrir el paquete SCORM", variant: "destructive" }); }
-  };
+  useEffect(() => {
+    if (!isScorm || scorm) return;
+    let active = true;
+    void session.mutateAsync({ lessonId: lesson.id, ...(preview ? { params: { preview: true } } : {}) })
+      .then((result) => { if (active) setScorm(result); })
+      .catch(() => {
+        if (active) toast({ title: "No se pudo abrir el paquete SCORM", variant: "destructive" });
+      });
+    return () => { active = false; };
+  }, [lesson.id, isScorm, preview]);
+  useEffect(() => {
+    if (lesson.kind !== "file" || !isPdfDocument(lesson.objectName)) {
+      setPdfUrl("");
+      return;
+    }
+    let current = true;
+    setPdfUrl("");
+    void download.mutateAsync({ lessonId: lesson.id }).then((result) => {
+      if (current) setPdfUrl(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
+    }).catch(() => {
+      if (current) toast({ title: "No se pudo cargar el PDF", variant: "destructive" });
+    });
+    return () => { current = false; };
+  }, [lesson.id, lesson.kind]);
   const downloadFile = async () => {
     try {
       const result = await download.mutateAsync({ lessonId: lesson.id });
@@ -278,6 +334,19 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch { toast({ title: "No se pudo descargar el archivo", variant: "destructive" }); }
   };
+  const loadPdf = useCallback(async () => {
+    if (!pdfUrl) throw new Error("El PDF todavía se está preparando.");
+    const token = localStorage.getItem("coordina_adg_token");
+    const response = await fetch(pdfUrl, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) throw new Error("No se pudo abrir el PDF. Comprueba tus permisos e inténtalo de nuevo.");
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength < 5 || new TextDecoder().decode(bytes.slice(0, 1024)).indexOf("%PDF-") < 0) {
+      throw new Error("El archivo no es un PDF válido.");
+    }
+    return bytes;
+  }, [pdfUrl]);
   const htmlDownloadAvailable = lesson.kind === "file" && isHtmlDocumentName(lesson.objectName ?? "");
 
   const statusLabel = progress?.status === "completed" ? "Completada" : progress?.status === "failed" ? "No superada" : progress?.status === "in_progress" ? "En curso" : null;
@@ -290,23 +359,17 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
       </div>
       {lesson.kind === "text" && <div className="max-w-[72ch] text-[15px]"><CourseMarkdown text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} /></div>}
       {lesson.kind === "video" && (Boolean(lesson.content.url || lesson.content.embedUrl)
-        ? <video controls className="aspect-video w-full rounded-xl bg-black" src={String(lesson.content.url ?? lesson.content.embedUrl)} />
+        ? <LmsWebVideoPlayer title={lesson.title} source={String(lesson.content.embedUrl ?? lesson.content.url)} />
         : <p className="text-sm text-muted-foreground">Este vídeo todavía no tiene una dirección configurada.</p>)}
-      {lesson.kind === "file" && <div className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-5 sm:flex-row sm:items-center">
+      {lesson.kind === "file" && isPdfDocument(lesson.objectName) ? <div className="space-y-4">
+        {pdfUrl ? <LmsPdfPlayer title={lesson.objectName ?? lesson.title} loadPdf={loadPdf} />
+          : <div role="status" className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">Preparando el PDF…</div>}
+        <div className="flex justify-end"><Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><Download className="mr-2 h-4 w-4" />Descargar PDF</Button></div>
+      </div> : lesson.kind === "file" && <div className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-5 sm:flex-row sm:items-center">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileUp className="h-5 w-5" /></div>
         <div className="min-w-0 flex-1"><p className="truncate font-semibold">{lesson.objectName ?? "Archivo de la lección"}</p>{lesson.objectSize != null && <p className="text-xs text-muted-foreground">{(lesson.objectSize / (1024 * 1024)).toFixed(1)} MB</p>}</div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void downloadFile()} disabled={download.isPending}><Download className="mr-2 h-4 w-4" />{download.isPending ? "Preparando..." : `Descargar ${lesson.objectName ?? "archivo"}`}</Button>
-          {isPdfDocument(lesson.objectName) && <PdfPreviewDialog
-            title={lesson.objectName ?? lesson.title}
-            disabled={download.isPending}
-            loadPdf={async () => {
-              const result = await download.mutateAsync({ lessonId: lesson.id });
-              const response = await fetch(result.url.startsWith("/") ? apiUrl(result.url) : result.url);
-              if (!response.ok) throw new Error("No se pudo abrir el PDF.");
-              return response.blob();
-            }}
-          />}
           {htmlDownloadAvailable && <HtmlDocxDownloadButton
             fileName={lesson.objectName ?? "documento.html"}
             testId={`button-download-lesson-docx-${lesson.id}`}
@@ -331,7 +394,7 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
         <Button onClick={takeQuiz} disabled={quiz.isPending || answers.length !== questions.length || !answers.every(Number.isInteger)}><Send className="mr-2 h-4 w-4" />{quiz.isPending ? "Corrigiendo..." : "Enviar respuestas"}</Button>
       </div>}
       {isScorm && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">El estado y la puntuación comunicados por SCORM son autodeclarados y no se verifican en el servidor; no acreditan la finalización académica.</p>}
-      {isScorm && (!scorm ? <Button onClick={openScorm} disabled={session.isPending}><Play className="mr-2 h-4 w-4" />{session.isPending ? "Preparando..." : "Abrir contenido SCORM"}</Button> : <ScormRunner session={scorm} courseId={course.id} preview={preview} />)}
+      {isScorm && (!scorm ? <div role="status" className="flex aspect-video w-full items-center justify-center gap-2 rounded-xl border bg-muted/30 text-sm text-muted-foreground"><span className="animate-spin">◌</span>{session.isPending ? "Preparando actividad…" : "Cargando actividad SCORM…"}</div> : <ScormRunner session={scorm} courseId={course.id} preview={preview} />)}
       {(lesson.kind !== "quiz" && !isScorm && progress?.status !== "completed") || progress?.score != null ? <div className="flex flex-wrap items-center gap-3 border-t pt-5">
         {lesson.kind !== "quiz" && !isScorm && progress?.status !== "completed" && <Button variant="secondary" onClick={markComplete} disabled={complete.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />{complete.isPending ? "Guardando..." : "Marcar como completada"}</Button>}
         {progress?.score != null && <p className="text-xs text-muted-foreground">{isScorm ? "Puntuación SCORM autodeclarada (no verificada)" : "Mejor puntuación"}: {progress.score}% · Intentos: {progress.attempts}</p>}
@@ -580,7 +643,7 @@ function CourseZipImport({
 }
 
 export default function AutodirigidoPage() {
-  const [, navigate] = useLocation(); const queryClient = useQueryClient();
+  const [location, navigate] = useLocation(); const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null); const [editor, setEditor] = useState<"create" | "edit" | null>(null); const [lessonEditor, setLessonEditor] = useState<number | null>(null); const [editingLesson, setEditingLesson] = useState<LmsLesson | undefined>();
   const [importingCourse, setImportingCourse] = useState(false);
   const [previewingCourse, setPreviewingCourse] = useState(false);
@@ -733,7 +796,11 @@ export default function AutodirigidoPage() {
       setExportingCourses(false);
     }
   };
-  useEffect(() => { const id = new URLSearchParams(window.location.search).get("curso"); if (id) setSelectedId(Number(id)); }, []);
+  useEffect(() => {
+    const pathId = window.location.pathname.match(/\/aula\/(\d+)\/?$/)?.[1];
+    const id = pathId ?? new URLSearchParams(window.location.search).get("curso");
+    if (id && Number.isInteger(Number(id))) setSelectedId(Number(id));
+  }, []);
   const scormToken = new URLSearchParams(window.location.search).get("scorm");
   if (scormToken) return <RemoteScormSession token={scormToken} />;
   if (selectedId && (detail.isLoading || (detail.isFetching && selectedLessonId == null))) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
@@ -747,7 +814,11 @@ export default function AutodirigidoPage() {
           onPreviewProgress={onProgress} />}
     />;
   }
-  const openCourse = (id: number) => { setSelectedId(id); setEditor(null); setLessonEditor(null); setEditingLesson(undefined); navigate(`/autodirigido?curso=${id}`); };
+  const immersive = location.startsWith("/aula/");
+  const openCourse = (id: number) => {
+    const target = `${BASE}aula/${id}`;
+    window.open(target, "_blank", "noopener,noreferrer");
+  };
   const allCourses = courses.data ?? [];
   const term = search.trim().toLowerCase();
   const visibleCourses = allCourses.filter((item) => {
@@ -775,10 +846,10 @@ export default function AutodirigidoPage() {
       {containsScorm && <div role="note" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
       {positionSave.error && <p role="alert" className="text-sm text-destructive">No se pudo guardar la última lección abierta. <Button variant="link" onClick={positionSave.retry}>Reintentar</Button></p>}
       <LmsClassroom course={course} selectedLessonId={selectedLessonId} onSelect={selectLesson}
-        onBack={() => { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); }}
+        onBack={() => { if (immersive) navigate("/autodirigido"); else { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); } }}
         headerActions={course.certificateAvailable ? <CertificateDownloadButton courseId={course.id} /> : undefined}
         renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
-      {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="overflow-hidden rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03]">
+      {!immersive && canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="overflow-hidden rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03]">
         <details>
           <summary className="flex cursor-pointer list-none items-center gap-3 p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring md:p-7">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Settings2 className="h-5 w-5" /></div>
@@ -872,7 +943,7 @@ export default function AutodirigidoPage() {
       : <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">{visibleCourses.map((item: LmsCourse) => {
         const canManageItem = scopes.data?.some((scope) => scope.canManage && scope.moduleId === item.moduleId) ?? false;
         return <li key={item.id} className="group flex flex-col">
-          <button type="button" onClick={() => openCourse(item.id)} className="overflow-hidden rounded-2xl text-left transition-transform duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:-translate-y-1" aria-label={`Abrir curso ${item.title}`}>
+          <button type="button" onClick={() => openCourse(item.id)} className="overflow-hidden rounded-2xl text-left transition-transform duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:-translate-y-1" aria-label={`Abrir curso ${item.title} en una pestaña nueva`}>
             <CourseCover course={item} />
           </button>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]">
@@ -880,7 +951,7 @@ export default function AutodirigidoPage() {
             {item.status === "draft" && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-800">Borrador</span>}
             {item.certificateEnabled && <span className="flex items-center gap-1 text-muted-foreground"><Award className="h-3.5 w-3.5" />Certificado</span>}
           </div>
-          <h3 className="mt-1.5 text-lg font-bold leading-snug"><button type="button" className="text-left hover:underline focus-visible:underline focus-visible:outline-none" onClick={() => openCourse(item.id)}>{item.title}</button></h3>
+          <h3 className="mt-1.5 text-lg font-bold leading-snug"><button type="button" className="text-left hover:underline focus-visible:underline focus-visible:outline-none" onClick={() => openCourse(item.id)} aria-label={`Abrir curso ${item.title} en una pestaña nueva`}>{item.title}</button></h3>
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{item.description || "Curso autodirigido"}</p>
           {canManageItem && <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
             <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={selectedExportIds.has(item.id)} onChange={(event) => setSelectedExportIds((current) => { const next = new Set(current); if (event.target.checked) next.add(item.id); else next.delete(item.id); return next; })} aria-label={`Seleccionar ${item.title} para exportar`} />Exportar</label>

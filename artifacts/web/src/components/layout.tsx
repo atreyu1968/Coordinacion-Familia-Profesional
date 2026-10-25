@@ -122,6 +122,39 @@ export function AppLayout({ children }: LayoutProps) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Redirigiendo al acceso...</div>;
   }
 
+  if (location.startsWith("/aula/")) {
+    return (
+      <div className="relative h-[100dvh] w-full overflow-y-auto bg-background">
+        {children}
+        {forceTeachingProfileCompletion && (
+          <ProfileDialog user={user} forceOpen>
+            <button type="button" className="hidden" aria-hidden="true" tabIndex={-1} />
+          </ProfileDialog>
+        )}
+        {profileCheckPending && (
+          <div role="status" aria-live="polite" className="absolute inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+            <LoaderCircle className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">Comprobando tu perfil docente…</p>
+          </div>
+        )}
+        {profileCheckFailed && (
+          <div role="alert" className="absolute inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">No se pudo comprobar tu perfil docente</h2>
+              <p className="max-w-md text-sm text-muted-foreground">Por seguridad, es necesario completar esta comprobación antes de continuar.</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button type="button" onClick={() => void teachingProfileQuery.refetch()} disabled={teachingProfileQuery.isFetching}>
+                {teachingProfileQuery.isFetching ? "Comprobando…" : "Reintentar"}
+              </Button>
+              <Button type="button" variant="outline" onClick={logout}>Cerrar sesión</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const role = user.role;
 
   const navItems = [

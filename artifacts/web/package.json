@@ -89,6 +89,7 @@
     "docx": "^9.13.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "pdfjs-dist": "6.4.299",
     "qrcode.react": "^4.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",

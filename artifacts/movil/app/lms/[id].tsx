@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { CourseMarkdown } from "@/components/CourseMarkdown";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
@@ -32,8 +32,10 @@ import { getAuthToken } from "@/contexts/AuthContext";
 import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import { isPdfDocument, PdfPreviewButton } from "@/components/PdfPreviewButton";
+import { isPdfDocument } from "@/components/PdfPreviewButton";
 import { lessonKindIcons, lessonKindLabels } from "@/components/LmsCourseCover";
+import { LmsVideoPlayer, LmsScormPlayer } from "@/components/LmsVideoPlayer";
+import PdfViewerScreen from "@/components/PdfViewerScreen";
 
 const API_HOST = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 const kindLabels = lessonKindLabels;
@@ -336,7 +338,12 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
   const scorm = useCreateLmsLessonScormSession();
   const [selected, setSelected] = useState<number[]>([]);
   const [accessError, setAccessError] = useState("");
+  const [pdfUri, setPdfUri] = useState("");
+  const [scormToken, setScormToken] = useState("");
   const questions = Array.isArray(lesson.content.questions) ? lesson.content.questions as Array<{ prompt?: string; question?: string; options?: string[] }> : [];
+  const lessonFileName = typeof lesson.content.fileName === "string" ? lesson.content.fileName : lesson.title;
+  const isPdf = lesson.kind === "file" && isPdfDocument(lessonFileName, typeof lesson.content.contentType === "string" ? lesson.content.contentType : undefined);
+  const isScorm = lesson.kind === "scorm12" || lesson.kind === "scorm2004";
   const reportAccessError = (error: unknown) => setAccessError(error instanceof Error ? error.message : "No se pudo abrir el contenido. Inténtalo de nuevo.");
   const openFile = () => {
     setAccessError("");
@@ -345,37 +352,55 @@ function LessonCard({ lesson, courseId, progress, colors, onRefresh }: { lesson:
       return result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`;
     }).catch(reportAccessError);
   };
-  const lessonFileName = typeof lesson.content.fileName === "string" ? lesson.content.fileName : lesson.title;
-  const openPdf = () => {
+  useEffect(() => {
+    if (!isPdf) {
+      setPdfUri("");
+      return;
+    }
     setAccessError("");
-    download.mutate({ lessonId: lesson.id }, { onError: reportAccessError, onSuccess: (result) => router.push({
-    pathname: "/pdf-viewer",
-    params: { uri: result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`, title: lessonFileName },
-    }) });
-  };
-  const openScorm = () => {
+    let active = true;
+    setPdfUri("");
+    void download.mutateAsync({ lessonId: lesson.id }).then((result) => {
+      if (active) setPdfUri(result.url.startsWith("http") ? result.url : `${API_HOST}${result.url}`);
+    }).catch((error) => {
+      if (active) reportAccessError(error);
+    });
+    return () => { active = false; };
+  }, [lesson.id, isPdf]);
+  useEffect(() => {
+    if (!isScorm) {
+      setScormToken("");
+      return;
+    }
     setAccessError("");
-    void openBrowserLink(async () => {
-      const session = await scorm.mutateAsync({ lessonId: lesson.id });
-      return `${API_HOST}/scorm-player?token=${encodeURIComponent(session.token)}`;
-    }).catch(reportAccessError);
-  };
+    let active = true;
+    setScormToken("");
+    void scorm.mutateAsync({ lessonId: lesson.id }).then((session) => {
+      if (active) setScormToken(session.token);
+    }).catch((error) => {
+      if (active) reportAccessError(error);
+    });
+    return () => { active = false; };
+  }, [lesson.id, isScorm]);
   const text = typeof lesson.content.text === "string" ? lesson.content.text : typeof lesson.content.body === "string" ? lesson.content.body : "";
   return <Card style={styles.lesson}>
     <View style={styles.lessonHeader}><View style={{ flex: 1, gap: 3 }}><Text style={[styles.lessonTitle, { color: colors.foreground }]}>{lesson.title}</Text><Text style={[styles.meta, { color: colors.mutedForeground }]}>{kindLabels[lesson.kind] ?? lesson.kind} · {lesson.required ? "Obligatoria" : "Opcional"}</Text></View><Feather name={progress?.status === "completed" ? "check-circle" : "circle"} size={21} color={progress?.status === "completed" ? colors.primary : colors.mutedForeground} /></View>
      {lesson.kind === "text" ? <CourseMarkdown text={text} /> : null}
     {accessError ? <Text accessibilityRole="alert" style={{ color: colors.destructive }}>{accessError}</Text> : null}
-    {lesson.kind === "video" && typeof lesson.content.url === "string" ? <Button label="Ver vídeo" icon="play-circle" variant="secondary" onPress={() => {
-      setAccessError("");
-      void openBrowserLink(lesson.content.url as string).catch(reportAccessError);
-    }} /> : null}
-    {lesson.kind === "file" ? <View style={{ flexDirection: "row", gap: 8 }}>
-      <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="download" variant="secondary" onPress={openFile} loading={download.isPending} />
-      {isPdfDocument(lessonFileName, typeof lesson.content.contentType === "string" ? lesson.content.contentType : undefined)
-        ? <Button label="Ver PDF" icon="eye" variant="secondary" onPress={openPdf} loading={download.isPending} />
-        : null}
-    </View> : null}
-    {(lesson.kind === "scorm12" || lesson.kind === "scorm2004") ? <View style={styles.scorm}><Text style={[styles.meta, { color: colors.mutedForeground }]}>El reproductor SCORM se abrirá en el navegador seguro del dispositivo.</Text><Button label="Abrir SCORM" icon="external-link" onPress={openScorm} loading={scorm.isPending} /></View> : null}
+     {lesson.kind === "video" && typeof (lesson.content.embedUrl ?? lesson.content.url) === "string"
+       ? <LmsVideoPlayer title={lesson.title} source={String(lesson.content.embedUrl ?? lesson.content.url)} />
+       : lesson.kind === "video" ? <Text style={[styles.meta, { color: colors.mutedForeground }]}>Este vídeo todavía no tiene una dirección configurada.</Text> : null}
+     {lesson.kind === "file" && isPdf
+       ? pdfUri
+         ? <PdfViewerScreen uri={pdfUri} title={lessonFileName} embedded />
+         : <View accessibilityRole="status" style={{ minHeight: 180, alignItems: "center", justifyContent: "center" }}><Text style={[styles.meta, { color: colors.mutedForeground }]}>{download.isError ? "No se pudo cargar el PDF." : "Preparando el PDF…"}</Text></View>
+       : lesson.kind === "file"
+         ? <Button label={download.isPending ? "Preparando…" : "Abrir archivo"} icon="external-link" variant="secondary" onPress={openFile} loading={download.isPending} />
+         : null}
+     {isScorm ? scormToken
+       ? <LmsScormPlayer token={scormToken} title={lesson.title} />
+       : <View accessibilityRole="status" style={styles.scorm}><Text style={[styles.meta, { color: colors.mutedForeground }]}>{scorm.isError ? "No se pudo preparar la actividad SCORM." : "Preparando actividad SCORM…"}</Text></View>
+       : null}
     {lesson.kind === "quiz" ? <View style={styles.quiz}>{questions.map((question, index) => <View key={index} style={styles.question}><Text style={[styles.questionText, { color: colors.foreground }]}>{question.prompt ?? question.question ?? `Pregunta ${index + 1}`}</Text>{(question.options ?? []).map((option, optionIndex) => <Pressable key={optionIndex} onPress={() => setSelected((prev) => { const next = [...prev]; next[index] = optionIndex; return next; })} style={[styles.option, { borderColor: selected[index] === optionIndex ? colors.primary : colors.border, backgroundColor: selected[index] === optionIndex ? colors.accent : colors.background }]}><Feather name={selected[index] === optionIndex ? "check-circle" : "circle"} size={17} color={selected[index] === optionIndex ? colors.primary : colors.mutedForeground} /><Text style={[styles.optionText, { color: colors.foreground }]}>{option}</Text></Pressable>)}</View>)}<Button label="Enviar respuestas" icon="check" onPress={() => quiz.mutate({ lessonId: lesson.id, data: { selectedIndexes: selected } }, { onSuccess: (result) => { Alert.alert(result.passed ? "¡Superado!" : "A seguir practicando", `Puntuación: ${result.score}%`); onRefresh(); } })} loading={quiz.isPending} disabled={selected.length !== questions.length || questions.length === 0} /></View> : null}
     {lesson.kind !== "quiz" && lesson.kind !== "scorm12" && lesson.kind !== "scorm2004" && progress?.status !== "completed" ? <Button label="Marcar como completada" icon="check" variant="secondary" onPress={() => complete.mutate({ lessonId: lesson.id }, { onSuccess: onRefresh })} loading={complete.isPending} /> : null}
     {progress?.status === "completed" && progress.score != null ? <Text style={[styles.meta, { color: colors.primary }]}>Mejor puntuación: {progress.score}%</Text> : null}

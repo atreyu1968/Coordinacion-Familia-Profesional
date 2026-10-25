@@ -74,6 +74,7 @@ function AuthedRoutes() {
           <Route path="/centros/:id" component={CentroDetallePage} />
           <Route path="/academica" component={AcademicaPage} />
           <Route path="/academica/modulo/:id" component={ModuloDetallePage} />
+          <Route path="/aula/:id" component={AutodirigidoPage} />
           <Route path="/recursos" component={RecursosPage} />
           <Route path="/fct" component={FctPage} />
           <Route path="/encuestas" component={EncuestasPage} />

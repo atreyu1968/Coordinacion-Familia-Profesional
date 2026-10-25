@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +38,15 @@ export default function LmsScreen() {
     ...(canManage ? [["draft", "Borradores", all.filter((c) => c.status === "draft").length] as [typeof filter, string, number]] : []),
   ];
   const visible = all.filter((c) => filter === "all" ? true : filter === "pending" ? !c.completed && c.status === "published" : filter === "completed" ? c.completed : c.status === "draft");
+  const openCourse = (id: number) => {
+    if (Platform.OS === "web") {
+      const open = (globalThis as typeof globalThis & { open?: (url?: string, target?: string, features?: string) => unknown }).open;
+      const basePath = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
+      open?.(`${basePath}/lms/${id}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    router.push(`/lms/${id}`);
+  };
   const submit = () => {
     if (!title.trim()) return;
     create.mutate({ data: { title: title.trim(), description: description.trim(), moduleId: selectedScope?.moduleId ?? null } }, {
@@ -96,7 +105,7 @@ export default function LmsScreen() {
           }
           ListEmptyComponent={all.length === 0 ? <EmptyState icon="book-open" title="Sin cursos disponibles" message="Cuando haya cursos asignados a tu cuenta aparecerán aquí." /> : <EmptyState icon="filter" title="Sin resultados" message="Ningún curso coincide con este filtro." />}
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/lms/${item.id}`)} accessibilityRole="button" accessibilityLabel={`Abrir curso ${item.title}`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+            <Pressable onPress={() => openCourse(item.id)} accessibilityRole="button" accessibilityLabel={`Abrir curso ${item.title} en una pestaña nueva`} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
               <View style={styles.course}>
                 <LmsCourseCover id={item.id} title={item.title} coverUrl={item.coverUrl} height={168} />
                 <View style={styles.metaRow}>

@@ -8,7 +8,11 @@ import { loadPdfBytes } from "@/lib/pdf-source";
 
 const BASE = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
 
-export default function PdfViewerScreen() {
+export default function PdfViewerScreen({ uri: uriProp, title: titleProp, embedded = false }: {
+  uri?: string;
+  title?: string;
+  embedded?: boolean;
+}) {
   const colors = useColors();
   const params = useLocalSearchParams<{ uri?: string; title?: string }>();
   const frame = useRef<HTMLIFrameElement>(null);
@@ -17,8 +21,8 @@ export default function PdfViewerScreen() {
   const [rendered, setRendered] = useState(false);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const uri = typeof params.uri === "string" ? params.uri : "";
-  const title = typeof params.title === "string" ? params.title : "Documento PDF";
+  const uri = uriProp ?? (typeof params.uri === "string" ? params.uri : "");
+  const title = titleProp ?? (typeof params.title === "string" ? params.title : "Documento PDF");
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -64,8 +68,8 @@ export default function PdfViewerScreen() {
   }, [ready, error, attempt]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <AppHeader title={title} showBack />
+    <View style={[styles.screen, embedded ? styles.embedded : null, { backgroundColor: colors.background }]}>
+      {!embedded ? <AppHeader title={title} showBack /> : null}
       {error ? <View style={styles.center}>
         <Text style={{ color: colors.destructive, textAlign: "center" }}>{error}</Text>
         {!uri.startsWith("blob:") && <Pressable accessibilityRole="button" onPress={() => {
@@ -86,6 +90,7 @@ export default function PdfViewerScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  embedded: { height: 700, minHeight: 500, flex: undefined, borderRadius: 12, overflow: "hidden" },
   loading: { alignItems: "center", justifyContent: "center", padding: 12, gap: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
 });

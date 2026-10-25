@@ -7,13 +7,17 @@ import { AppHeader } from "@/components/AppHeader";
 import { useColors } from "@/hooks/useColors";
 import { getAuthToken } from "@/contexts/AuthContext";
 
-export default function PdfViewerScreen() {
+export default function PdfViewerScreen({ uri: uriProp, title: titleProp, embedded = false }: {
+  uri?: string;
+  title?: string;
+  embedded?: boolean;
+}) {
   const colors = useColors();
   const params = useLocalSearchParams<{ uri?: string; title?: string }>();
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const uri = typeof params.uri === "string" ? params.uri : "";
-  const title = typeof params.title === "string" ? params.title : "Documento PDF";
+  const uri = uriProp ?? (typeof params.uri === "string" ? params.uri : "");
+  const title = titleProp ?? (typeof params.title === "string" ? params.title : "Documento PDF");
   const headers = useMemo(() => {
     const token = getAuthToken();
     return token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -60,8 +64,8 @@ export default function PdfViewerScreen() {
   }, [uri, title, headers]);
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <AppHeader title={title} showBack />
+    <View style={[styles.screen, embedded ? styles.embedded : null, { backgroundColor: colors.background }]}>
+      {!embedded ? <AppHeader title={title} showBack /> : null}
       {error ? <View style={styles.center}><Text style={[styles.error, { color: colors.destructive }]}>{error}</Text></View> : null}
       {!error && !localUri ? <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /><Text style={{ color: colors.mutedForeground, marginTop: 12 }}>Abriendo documento…</Text></View> : null}
       {localUri ? (
@@ -79,6 +83,7 @@ export default function PdfViewerScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  embedded: { height: 700, minHeight: 500, flex: undefined, borderRadius: 12, overflow: "hidden" },
   pdf: { flex: 1, width: "100%", backgroundColor: "transparent" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   error: { textAlign: "center", fontSize: 15 },

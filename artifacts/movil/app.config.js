@@ -6,6 +6,7 @@ module.exports = ({ config }) => {
   const basePath = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
   return {
     ...config,
+    plugins: [...(config.plugins || []), "expo-video"],
     experiments: {
       ...(config.experiments || {}),
       ...(basePath ? { baseUrl: basePath } : {}),
