@@ -22,9 +22,10 @@ interface AppHeaderProps {
   subtitle?: string;
   showBack?: boolean;
   right?: React.ReactNode;
+  compact?: boolean;
 }
 
-export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) {
+export function AppHeader({ title, subtitle, showBack, right, compact = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   // On web the safe-area inset is 0 inside a normal browser tab but reports the
   // real notch on an installed PWA; clamp to a small minimum so the header never
@@ -38,7 +39,8 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
       style={[
         styles.container,
         {
-          paddingTop: topInset + 10,
+          paddingTop: topInset + (compact ? 5 : 10),
+          paddingBottom: compact ? 9 : 14,
           paddingLeft: 16 + insets.left,
           paddingRight: 16 + insets.right,
         },
@@ -58,11 +60,11 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
         ) : null}
         <Image
           source={require("@/assets/images/icon-mark.png")}
-          style={styles.mark}
+          style={[styles.mark, compact && styles.markCompact]}
           resizeMode="contain"
         />
         <View style={styles.titleWrap}>
-          <Text style={[styles.title, { color: HEADER_FG }]} numberOfLines={1}>
+          <Text style={[styles.title, compact && styles.titleCompact, { color: HEADER_FG }]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
@@ -82,7 +84,6 @@ export function AppHeader({ title, subtitle, showBack, right }: AppHeaderProps) 
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 14,
     backgroundColor: BRAND,
     ...Platform.select({
       web: { boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)" } as object,
@@ -109,6 +110,10 @@ const styles = StyleSheet.create({
     marginRight: 11,
     tintColor: "#ffffff",
   },
+  markCompact: {
+    width: 28,
+    height: 28,
+  },
   titleWrap: {
     flex: 1,
   },
@@ -117,6 +122,11 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
+  },
+  titleCompact: {
+    fontSize: 18,
+    lineHeight: 22,
+    letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 13.5,

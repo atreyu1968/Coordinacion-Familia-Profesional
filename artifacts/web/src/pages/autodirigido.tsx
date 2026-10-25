@@ -778,11 +778,17 @@ export default function AutodirigidoPage() {
         onBack={() => { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); }}
         headerActions={course.certificateAvailable ? <CertificateDownloadButton courseId={course.id} /> : undefined}
         renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
-      {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03] p-5 md:p-7">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Settings2 className="h-5 w-5" /></div>
-          <div className="min-w-0 flex-1"><h2 id="lms-manage-title" className="text-lg font-bold">Área de gestión</h2><p className="text-sm text-muted-foreground">Solo visible para responsables del curso. Los cambios afectan a todo el alumnado.</p></div>
-          <div className="flex flex-wrap gap-2">
+      {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="overflow-hidden rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03]">
+        <details>
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring md:p-7">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Settings2 className="h-5 w-5" /></div>
+            <div className="min-w-0 flex-1"><h2 id="lms-manage-title" className="text-lg font-bold">Gestión del curso</h2><p className="text-sm text-muted-foreground">Publicación, lecciones y configuración, separadas del aula.</p></div>
+            <span aria-hidden className="text-xl leading-none text-muted-foreground">⌄</span>
+          </summary>
+          <div className="border-t border-primary/15 px-5 py-5 md:px-7">
+            <div className="mb-4 flex flex-wrap items-start gap-3">
+              <p className="min-w-0 flex-1 text-sm text-muted-foreground">Solo visible para responsables del curso. Los cambios afectan a todo el alumnado.</p>
+              <div className="flex flex-wrap gap-2">
             {course.status !== "published" && <Button onClick={async () => { try { await publish.mutateAsync({ courseId: course.id }); toast({ title: "Curso publicado" }); void refresh(); } catch { toast({ title: "No se pudo publicar el curso", variant: "destructive" }); } }} disabled={publish.isPending}><Send className="mr-2 h-4 w-4" />Publicar curso</Button>}
             <Button variant="outline" onClick={() => { setLessonEditor(null); setEditor("edit"); }}><Pencil className="mr-2 h-4 w-4" />Editar curso</Button>
             {canManageSelectedCourse && <>
@@ -792,29 +798,31 @@ export default function AutodirigidoPage() {
               <Button variant="outline" onClick={() => void exportCourse(course)} disabled={exportingCourse}><Download className="mr-2 h-4 w-4" />{exportingCourse ? "Exportando..." : "Exportar ZIP"}</Button>
               <LmsCourseDeleteButton course={course} onDeleted={() => onCourseDeleted(course.id)} />
             </>}
-          </div>
-        </div>
-        {editor && <div className="mt-5"><CourseEditor course={editor === "edit" ? course : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} /></div>}
-        <div className="mt-6">
-          <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-muted-foreground">Lecciones ({course.lessons.length})</h3>
-            <Button size="sm" variant="outline" onClick={() => { setEditor(null); setEditingLesson(undefined); setLessonEditor(lessonEditor === -1 ? null : -1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button></div>
-          {lessonEditor === -1 && <div className="mb-4"><LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
-          <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
-            {course.lessons.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">Añade la primera lección para poder publicar el curso.</li>}
-            {course.lessons.map((lesson, i) => <li key={lesson.id}>
-              <div className="flex items-center gap-3 px-4 py-3">
-                <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
-                <LessonKindIcon kind={lesson.kind} className="h-4 w-4 text-primary" />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{lesson.title}</span>
-                <span className="hidden text-xs text-muted-foreground sm:inline">{lessonKindLabels[lesson.kind]} · {lesson.required ? "Obligatoria" : "Opcional"}</span>
-                {lessonEditor === lesson.id
-                  ? <Button variant="ghost" size="sm" onClick={() => setLessonEditor(null)}><X className="mr-1 h-4 w-4" />Cerrar</Button>
-                  : <Button variant="ghost" size="sm" onClick={() => { setEditor(null); setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-1 h-4 w-4" />Editar lección</Button>}
               </div>
-              {lessonEditor === lesson.id && <div className="border-t bg-muted/30 p-4"><LessonEditor key={lesson.id} courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
-            </li>)}
-          </ol>
-        </div>
+            </div>
+            {editor && <div className="mb-5"><CourseEditor course={editor === "edit" ? course : null} scopes={scopes.data ?? []} onClose={() => setEditor(null)} onSaved={refresh} /></div>}
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-muted-foreground">Lecciones ({course.lessons.length})</h3>
+                <Button size="sm" variant="outline" onClick={() => { setEditor(null); setEditingLesson(undefined); setLessonEditor(lessonEditor === -1 ? null : -1); }}><Plus className="mr-2 h-4 w-4" />Añadir lección</Button></div>
+              {lessonEditor === -1 && <div className="mb-4"><LessonEditor courseId={course.id} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
+              <ol className="divide-y overflow-hidden rounded-2xl border bg-card">
+                {course.lessons.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">Añade la primera lección para poder publicar el curso.</li>}
+                {course.lessons.map((lesson, i) => <li key={lesson.id}>
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                    <LessonKindIcon kind={lesson.kind} className="h-4 w-4 text-primary" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{lesson.title}</span>
+                    <span className="hidden text-xs text-muted-foreground sm:inline">{lessonKindLabels[lesson.kind]} · {lesson.required ? "Obligatoria" : "Opcional"}</span>
+                    {lessonEditor === lesson.id
+                      ? <Button variant="ghost" size="sm" onClick={() => setLessonEditor(null)}><X className="mr-1 h-4 w-4" />Cerrar</Button>
+                      : <Button variant="ghost" size="sm" onClick={() => { setEditor(null); setEditingLesson(lesson); setLessonEditor(lesson.id); }}><Pencil className="mr-1 h-4 w-4" />Editar lección</Button>}
+                  </div>
+                  {lessonEditor === lesson.id && <div className="border-t bg-muted/30 p-4"><LessonEditor key={lesson.id} courseId={course.id} lesson={editingLesson} onSaved={() => { setLessonEditor(null); void refresh(); }} /></div>}
+                </li>)}
+              </ol>
+            </div>
+          </div>
+        </details>
       </section>}
     </div>;
   }
