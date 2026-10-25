@@ -32,6 +32,7 @@ function Classroom({ course }: { course: LmsCourseDetail }) {
 
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
+  window.localStorage.clear();
 });
 afterEach(cleanup);
 
@@ -80,6 +81,21 @@ describe("aula del curso", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Respuesta de otra lección" } });
     fireEvent.click(within(screen.getByRole("navigation")).getByRole("button", { name: /Siguiente/ }));
     expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("");
+  });
+
+  it("collapses the curriculum without hiding the lesson and remembers the sticky-header preference", () => {
+    render(<Classroom course={fixture()} />);
+    const collapse = screen.getByRole("button", { name: "Contraer contenido del curso" });
+    fireEvent.click(collapse);
+    expect(within(screen.getByRole("complementary")).queryByRole("button", { name: /Segunda lección/ })).toBeNull();
+    expect(screen.getByText("Contenido exclusivo 1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir contenido del curso" }));
+    expect(within(screen.getByRole("complementary")).getByRole("button", { name: /Segunda lección/ })).toBeTruthy();
+
+    const stickyToggle = screen.getByRole("button", { name: "Desactivar encabezado fijo" });
+    fireEvent.click(stickyToggle);
+    expect(window.localStorage.getItem("coordina-lms-sticky-header")).toBe("false");
+    expect(screen.getByRole("button", { name: "Activar encabezado fijo" }).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("resets selection when changing course and handles a deleted selected lesson", () => {

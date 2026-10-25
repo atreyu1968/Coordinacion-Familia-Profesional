@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLmsCourseCover } from "@/hooks/use-lms-course-cover";
 export { useLmsLessonSelection as useLessonSelection } from "@workspace/api-client-react";
 import type { LmsCourse, LmsCourseDetail, LmsLesson } from "@workspace/api-client-react";
@@ -6,7 +6,7 @@ import { AutoLinkText } from "@/components/auto-link-text";
 import { Button } from "@/components/ui/button";
 import {
   Award, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, FileDown, FileText,
-  ListChecks, Package, PlayCircle, XCircle,
+  ListChecks, Package, PanelLeftClose, PanelLeftOpen, PlayCircle, Pin, PinOff, XCircle,
 } from "lucide-react";
 
 export const lessonKindLabels: Record<string, string> = {
@@ -112,14 +112,31 @@ function StatusGlyph({ status, index }: { status?: string; index: number }) {
   return <span className="flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold text-muted-foreground" aria-label="Pendiente">{index + 1}</span>;
 }
 
-export function LmsClassroom({ course, selectedLessonId, onSelect, renderLesson, emptyMessage }: {
+export function LmsClassroom({ course, selectedLessonId, onSelect, renderLesson, emptyMessage, onBack, headerActions }: {
   course: LmsCourseDetail;
   selectedLessonId: number | null;
   onSelect: (id: number) => void;
   renderLesson: (lesson: LmsLesson) => ReactNode;
   emptyMessage?: string;
+  onBack?: () => void;
+  headerActions?: ReactNode;
 }) {
   const { percent, completedRequired, requiredCount } = courseProgressStats(course);
+  const [curriculumCollapsed, setCurriculumCollapsed] = useState(false);
+  const [stickyHeader, setStickyHeader] = useState(() => {
+    try {
+      return typeof window === "undefined" || window.localStorage.getItem("coordina-lms-sticky-header") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("coordina-lms-sticky-header", String(stickyHeader));
+    } catch {
+      // The classroom remains fully usable when browser storage is unavailable.
+    }
+  }, [stickyHeader]);
   const index = course.lessons.findIndex((l) => l.id === selectedLessonId);
   const lesson = index >= 0 ? course.lessons[index] : undefined;
   const prev = index > 0 ? course.lessons[index - 1] : undefined;
@@ -127,8 +144,77 @@ export function LmsClassroom({ course, selectedLessonId, onSelect, renderLesson,
   const go = (id: number) => { onSelect(id); document.getElementById("lms-stage")?.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
   return (
-    <section aria-label="Aula del curso" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div id="lms-stage" className="min-w-0 scroll-mt-4">
+    <section aria-label="Aula del curso" className="space-y-4">
+      <header className={`z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-card/95 px-4 py-3 shadow-sm backdrop-blur ${stickyHeader ? "sticky top-2" : ""}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {onBack && <Button variant="ghost" size="icon" aria-label="Volver a los cursos" title="Volver a los cursos" onClick={onBack} className="shrink-0">
+            <ChevronLeft className="h-5 w-5" aria-hidden />
+          </Button>}
+          <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Aula del curso</p>
+          <h1 className="truncate text-base font-bold leading-tight">{course.title}</h1>
+          </div>
+        </div>
+        {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+        <div className="flex items-center gap-3">
+          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+            {lesson ? `Lección ${index + 1} de ${course.lessons.length}` : `${course.lessons.length} lecciones`}
+          </span>
+          <button type="button" onClick={() => setStickyHeader((value) => !value)}
+            aria-pressed={stickyHeader} aria-label={stickyHeader ? "Desactivar encabezado fijo" : "Activar encabezado fijo"}
+            title={stickyHeader ? "Desactivar encabezado fijo" : "Activar encabezado fijo"}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {stickyHeader ? <Pin className="h-4 w-4" aria-hidden /> : <PinOff className="h-4 w-4" aria-hidden />}
+          </button>
+        </div>
+      </header>
+      <div className={`grid min-w-0 gap-4 lg:items-start ${curriculumCollapsed ? "lg:grid-cols-[72px_minmax(0,1fr)]" : "lg:grid-cols-[320px_minmax(0,1fr)]"}`}>
+        <aside aria-label="Currículo del curso" className="order-1 min-w-0 lg:sticky lg:top-20 lg:self-start">
+          <div className="overflow-hidden rounded-2xl border bg-card">
+            <div className={`border-b ${curriculumCollapsed ? "p-2" : "p-5"}`}>
+              <div className={`flex items-center ${curriculumCollapsed ? "flex-col gap-3" : "justify-between gap-3"}`}>
+                {!curriculumCollapsed && <div className="min-w-0">
+                  <h2 className="text-sm font-bold">Contenido del curso</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{completedRequired} de {requiredCount} obligatorias completadas</p>
+                </div>}
+                <span className={`font-extrabold tabular-nums tracking-tight text-primary ${curriculumCollapsed ? "text-sm" : "text-2xl"}`}>{percent}%</span>
+                <button type="button" onClick={() => setCurriculumCollapsed((value) => !value)}
+                  aria-expanded={!curriculumCollapsed}
+                  aria-label={curriculumCollapsed ? "Expandir contenido del curso" : "Contraer contenido del curso"}
+                  title={curriculumCollapsed ? "Expandir contenido del curso" : "Contraer contenido del curso"}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  {curriculumCollapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden /> : <PanelLeftClose className="h-4 w-4" aria-hidden />}
+                </button>
+              </div>
+              {!curriculumCollapsed && <>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Progreso del curso">
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${percent}%` }} />
+                </div>
+              </>}
+            </div>
+            {!curriculumCollapsed && <ol className="max-h-[60vh] overflow-y-auto p-2">
+              {course.lessons.map((item, i) => {
+                const status = course.progress.find((p) => p.lessonId === item.id)?.status;
+                const active = item.id === selectedLessonId;
+                return <li key={item.id}>
+                  <button type="button" onClick={() => go(item.id)} aria-current={active ? "step" : undefined}
+                    className={`flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "bg-primary/10" : "hover:bg-muted"}`}>
+                    <span className="mt-0.5 shrink-0"><StatusGlyph status={status} index={i} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block leading-snug ${active ? "font-semibold text-primary" : ""}`}>{item.title}</span>
+                      <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><LessonKindIcon kind={item.kind} className="h-3 w-3" />{lessonKindLabels[item.kind] ?? item.kind}<span aria-hidden>·</span>{item.required ? "Obligatoria" : "Opcional"}</span>
+                    </span>
+                  </button>
+                </li>;
+              })}
+            </ol>}
+            {curriculumCollapsed && <div className="hidden px-2 pb-2 lg:block">
+              <span className="sr-only">Currículo contraído</span>
+              {lesson && <span className="flex h-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary" aria-label={`Lección ${index + 1} seleccionada`}>{index + 1}</span>}
+            </div>}
+          </div>
+        </aside>
+        <div id="lms-stage" className="order-2 min-w-0 scroll-mt-24">
         {!lesson ? (
           <div className="rounded-2xl border border-dashed bg-muted/30 p-12 text-center text-sm text-muted-foreground">{emptyMessage ?? "Este curso todavía no tiene lecciones."}</div>
         ) : (
@@ -136,7 +222,7 @@ export function LmsClassroom({ course, selectedLessonId, onSelect, renderLesson,
             <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-5 py-3 text-xs text-muted-foreground md:px-7">
               <span className="font-semibold text-foreground">Lección {index + 1} de {course.lessons.length}</span>
               <span className="flex items-center gap-1"><LessonKindIcon kind={lesson.kind} className="h-3.5 w-3.5" />{lessonKindLabels[lesson.kind] ?? lesson.kind}</span>
-              <span>{lesson.required ? "Obligatoria" : "Opcional"}</span>
+              <span className={`rounded-full px-2 py-0.5 ${lesson.required ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{lesson.required ? "Obligatoria" : "Opcional"}</span>
             </header>
             <div key={lesson.id} className="px-5 py-6 md:px-7 md:py-8">{renderLesson(lesson)}</div>
             <nav aria-label="Navegación entre lecciones" className="flex items-stretch justify-between gap-3 border-t px-5 py-4 md:px-7">
@@ -151,37 +237,8 @@ export function LmsClassroom({ course, selectedLessonId, onSelect, renderLesson,
             </nav>
           </article>
         )}
-      </div>
-      <aside className="lg:sticky lg:top-4 lg:self-start">
-        <div className="overflow-hidden rounded-2xl border bg-card">
-          <div className="border-b p-5">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-bold">Contenido del curso</h2>
-              <span className="text-2xl font-extrabold tabular-nums tracking-tight text-primary">{percent}%</span>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Progreso del curso">
-              <div className="h-full rounded-full bg-primary transition-transform duration-500" style={{ width: "100%", transform: `translateX(-${100 - percent}%)` }} />
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">{completedRequired} de {requiredCount} lecciones obligatorias completadas</p>
-          </div>
-          <ol className="max-h-[60vh] overflow-y-auto p-2">
-            {course.lessons.map((item, i) => {
-              const status = course.progress.find((p) => p.lessonId === item.id)?.status;
-              const active = item.id === selectedLessonId;
-              return <li key={item.id}>
-                <button type="button" onClick={() => go(item.id)} aria-current={active ? "step" : undefined}
-                  className={`flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "bg-primary/10" : "hover:bg-muted"}`}>
-                  <span className="mt-0.5 shrink-0"><StatusGlyph status={status} index={i} /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className={`block leading-snug ${active ? "font-semibold text-primary" : ""}`}>{item.title}</span>
-                    <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"><LessonKindIcon kind={item.kind} className="h-3 w-3" />{lessonKindLabels[item.kind] ?? item.kind}{!item.required && " · Opcional"}</span>
-                  </span>
-                </button>
-              </li>;
-            })}
-          </ol>
         </div>
-      </aside>
+      </div>
     </section>
   );
 }

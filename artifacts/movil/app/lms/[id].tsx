@@ -76,6 +76,7 @@ export default function LmsDetailScreen() {
   const [correctIndex, setCorrectIndex] = useState("0");
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [showManager, setShowManager] = useState(false);
+  const [showCurriculum, setShowCurriculum] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const stageY = useRef(0);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(courseId) });
@@ -164,11 +165,11 @@ export default function LmsDetailScreen() {
   const lesson = index >= 0 ? data.lessons[index] : undefined;
   const prev = index > 0 ? data.lessons[index - 1] : undefined;
   const next = index >= 0 && index < data.lessons.length - 1 ? data.lessons[index + 1] : undefined;
-  const go = (lessonId: number) => { selectLesson(lessonId); scrollRef.current?.scrollTo({ y: Math.max(stageY.current - 8, 0), animated: true }); };
+  const go = (lessonId: number) => { selectLesson(lessonId); setShowCurriculum(false); scrollRef.current?.scrollTo({ y: Math.max(stageY.current - 8, 0), animated: true }); };
   const input = [styles.input, { color: colors.foreground, borderColor: colors.border, borderRadius: colors.radius }];
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppHeader title="Curso" subtitle={data.status === "published" ? "Publicado" : "Borrador"} showBack />
+      <AppHeader title="Curso" subtitle={data.title} showBack />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
         <LmsCourseCover id={data.id} title={data.title} coverUrl={data.coverUrl} height={170} radius={20} />
         <Text style={[styles.eyebrow, { color: colors.primary }]}>CURSO AUTODIRIGIDO · {data.lessons.length} {data.lessons.length === 1 ? "LECCIÓN" : "LECCIONES"}{data.certificateEnabled ? " · CON CERTIFICADO" : ""}</Text>
@@ -197,7 +198,12 @@ export default function LmsDetailScreen() {
         </View>
 
         {data.lessons.length > 0 ? <>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contenido del curso</Text>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: showCurriculum }} accessibilityLabel={`${showCurriculum ? "Ocultar" : "Mostrar"} temario del curso`} onPress={() => setShowCurriculum((value) => !value)} style={[styles.curriculumToggle, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Feather name="list" size={18} color={colors.primary} />
+            <Text style={[styles.curTitle, { color: colors.foreground, flex: 1 }]}>Temario del curso ({data.lessons.length})</Text>
+            <Feather name={showCurriculum ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+          </Pressable>
+          {showCurriculum ? <View>
           <View style={[styles.curriculum, { borderColor: colors.border, backgroundColor: colors.card }]}>
             {data.lessons.map((item, i) => {
               const status = data.progress.find((p) => p.lessonId === item.id)?.status;
@@ -208,6 +214,7 @@ export default function LmsDetailScreen() {
               </Pressable>;
             })}
           </View>
+          </View> : null}
         </> : null}
 
         {canManage ? <View style={[styles.managerBar, { borderColor: colors.primary + "55" }]}>
@@ -359,6 +366,7 @@ const styles = StyleSheet.create({
   navLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   navTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   curriculum: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, overflow: "hidden" },
+  curriculumToggle: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, borderWidth: StyleSheet.hairlineWidth, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 10 },
   curItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 52 },
   curNum: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   curNumText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },

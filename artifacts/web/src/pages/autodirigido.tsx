@@ -3,7 +3,7 @@ import { CourseMarkdown } from "@/components/course-markdown";
 import { LmsCourseCoverField } from "@/components/lms-course-cover-field";
 import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
 import { LmsCoursePreview } from "@/components/lms-course-preview";
-import { CourseCover, CourseHero, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
+import { CourseCover, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
 import { getLmsCourse, waitForLmsCoursePosition } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -739,11 +739,6 @@ export default function AutodirigidoPage() {
   if (selectedId && (detail.isLoading || (detail.isFetching && selectedLessonId == null))) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
   const course = detail.data;
   const containsScorm = course?.lessons.some((lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004") ?? false;
-  const requiredLessons = course?.lessons.filter((lesson) => lesson.required) ?? [];
-  const completedRequired = requiredLessons.filter((lesson) => course?.progress.some((progress) => progress.lessonId === lesson.id && progress.status === "completed")).length;
-  const courseProgress = requiredLessons.length
-    ? Math.round(completedRequired * 100 / requiredLessons.length)
-    : course?.lessonCount ? 100 : 0;
   if (previewingCourse && selectedId && course && canManageSelectedCourse) {
     return <LmsCoursePreview key={course.id} course={course}
       onClose={() => { void detail.refetch(); setPreviewingCourse(false); }}
@@ -768,8 +763,6 @@ export default function AutodirigidoPage() {
     ["completed", "Completados", allCourses.filter((c) => c.completed).length],
     ...(manager ? [["draft", "Borradores", allCourses.filter((c) => c.status === "draft").length] as [typeof catalogFilter, string, number]] : []),
   ];
-  const selectedLesson = course?.lessons.find((l) => l.id === selectedLessonId);
-
   if (selectedId && (!course || (detail.isError && selectedLessonId == null))) {
     return <div className="space-y-4 py-10 text-center">
       <p className="text-sm text-destructive">No se pudo cargar el curso.</p>
@@ -779,15 +772,11 @@ export default function AutodirigidoPage() {
 
   if (selectedId && course) {
     return <div className="space-y-8 pb-10">
-      <Button variant="ghost" className="-ml-3" onClick={() => { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); }}><ChevronLeft className="mr-1 h-4 w-4" />Todos los cursos</Button>
-      <CourseHero course={course}
-        actions={<>
-          {selectedLesson && <Button className="h-auto w-full min-w-0 max-w-full justify-start whitespace-normal py-3 text-left sm:w-auto" onClick={() => document.getElementById("lms-stage")?.scrollIntoView({ behavior: "smooth" })}><Play className="mr-2 h-4 w-4 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">{courseProgress > 0 ? "Continuar" : "Empezar"}: {selectedLesson.title}</span></Button>}
-          {course.certificateAvailable && <CertificateDownloadButton courseId={course.id} />}
-        </>} />
       {containsScorm && <div role="note" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
       {positionSave.error && <p role="alert" className="text-sm text-destructive">No se pudo guardar la última lección abierta. <Button variant="link" onClick={positionSave.retry}>Reintentar</Button></p>}
       <LmsClassroom course={course} selectedLessonId={selectedLessonId} onSelect={selectLesson}
+        onBack={() => { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); }}
+        headerActions={course.certificateAvailable ? <CertificateDownloadButton courseId={course.id} /> : undefined}
         renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
       {canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03] p-5 md:p-7">
         <div className="flex flex-wrap items-start gap-3">
