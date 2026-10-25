@@ -13,7 +13,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { LmsCourseCover } from "@/components/LmsCourseCover";
-import { openBrowserLink } from "@/lib/browser-link";
+import { openClassroomWindow } from "@/lib/classroom-window";
 
 export default function LmsScreen() {
   const colors = useColors();
@@ -42,9 +42,12 @@ export default function LmsScreen() {
   const visible = all.filter((c) => filter === "all" ? true : filter === "pending" ? !c.completed && c.status === "published" : filter === "completed" ? c.completed : c.status === "draft");
   const openCourse = (id: number) => {
     if (Platform.OS === "web") {
-      const basePath = (process.env.EXPO_PUBLIC_BASE_PATH || "").replace(/\/+$/, "");
       setOpenError("");
-      void openBrowserLink(new URL(`${basePath}/lms/${id}`, window.location.origin).href).catch((error) => setOpenError(error instanceof Error ? error.message : "No se pudo abrir el aula."));
+      try {
+        openClassroomWindow(id);
+      } catch (error) {
+        setOpenError(error instanceof Error ? error.message : "No se pudo abrir el aula.");
+      }
       return;
     }
     router.push(`/lms/${id}`);

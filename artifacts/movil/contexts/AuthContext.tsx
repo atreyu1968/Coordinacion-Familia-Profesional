@@ -27,6 +27,7 @@ import {
   consumeExternalBrowserResumeExemption,
 } from "@/lib/external-browser-resume";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { consumeClassroomHandoff } from "@/lib/classroom-window";
 
 const TOKEN_KEY = "coordina_adg_token";
 const USER_KEY = "coordina_adg_user";
@@ -99,13 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const returnedFromExternalBrowser =
           consumeExternalBrowserResumeExemption();
+        const openedClassroom = consumeClassroomHandoff();
         setBiometricAvailable(available);
         const wantsBiometric = storedBiometric === "1";
         setBiometricEnabled(wantsBiometric);
 
         if (storedToken && storedUser) {
           const parsedUser = JSON.parse(storedUser) as User;
-          if (wantsBiometric && !returnedFromExternalBrowser) {
+          if (wantsBiometric && !returnedFromExternalBrowser && !openedClassroom) {
             // Keep the saved session locked behind biometrics — the login
             // screen will reveal a "Entrar con huella" button.
             setLockedSession({ token: storedToken, user: parsedUser });

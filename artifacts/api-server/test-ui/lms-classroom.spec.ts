@@ -190,11 +190,25 @@ test("course opens a separate classroom and plays PDF, SCORM and video inline", 
   await page.getByRole("button", { name: /Iniciar sesi[oó]n/i }).click();
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
   await page.goto(mobile ? "/lms" : "/autodirigido");
+  const openCourseButton = page.getByRole("button", { name: "Abrir curso VERI*FACTU: curso de demostración en una pestaña nueva", exact: true }).first();
+  // Wait for session restoration before enabling the cold-tab biometric case.
+  await expect(openCourseButton).toBeVisible();
+  if (mobile) {
+    // Regression: a signed-in user with biometrics must not be sent through
+    // the login screen again when opening their classroom in another tab.
+    await page.evaluate(() => {
+      localStorage.setItem("coordina_adg_biometric", "1");
+    });
+  }
   const popup = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Abrir curso VERI*FACTU: curso de demostración en una pestaña nueva", exact: true }).first().click();
+  await openCourseButton.click();
   const classroom = await popup;
   await expect(classroom).toHaveURL(new RegExp(`/${mobile ? "lms" : "aula"}/${fixtures.classroomCourseId}$`));
   await expect(classroom.getByText("VERI*FACTU: curso de demostración", { exact: false }).first()).toBeVisible();
+  if (mobile) {
+    expect(await classroom.evaluate(() => sessionStorage.getItem("coordina_adg_classroom_handoff"))).toBeNull();
+    await expect(classroom.getByText("Entrar con huella", { exact: true })).toHaveCount(0);
+  }
   const selectLesson = async (title: string) => {
     if (mobile && testInfo.project.name === "mobile") {
       await classroom.getByRole("button", { name: "Abrir temario", exact: true }).click();

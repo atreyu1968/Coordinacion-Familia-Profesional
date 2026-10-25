@@ -78,12 +78,16 @@ function RootLayoutNav() {
   // Attendance token opened while signed out; restored right after login.
   // Only an opaque token is kept (never a full URL) so the return is safe.
   const pendingAttendanceToken = useRef<string | null>(null);
+  const pendingClassroom = useRef<`/lms/${number}` | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
     const isPublicAuthRoute =
       segments[0] === "login" || segments[0] === "recuperar";
     if (!token && !isPublicAuthRoute) {
+      if (/^\/lms\/[1-9]\d*$/.test(pathname)) {
+        pendingClassroom.current = pathname as `/lms/${number}`;
+      }
       if (
         (segments[0] as string) === "asistencia" &&
         typeof routeToken === "string" &&
@@ -98,10 +102,12 @@ function RootLayoutNav() {
       if (pending) {
         router.replace({ pathname: "/asistencia", params: { token: pending } });
       } else {
-        router.replace("/(tabs)");
+        const classroom = pendingClassroom.current;
+        pendingClassroom.current = null;
+        router.replace(classroom ?? "/(tabs)");
       }
     }
-  }, [token, isLoading, segments, router, routeToken]);
+  }, [token, isLoading, segments, router, routeToken, pathname]);
 
   useEffect(() => {
     if (

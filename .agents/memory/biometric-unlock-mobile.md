@@ -44,3 +44,14 @@ when returning from a new browser tab; disabling the biometric lock globally wou
 than requested.
 **How to apply:** open outbound web links through the tracked browser-link path; avoid bypassing
 that tracking with direct browser navigation for ordinary external links.
+
+## Classroom tabs from an unlocked PWA
+An internal course opened in another tab must inherit the already-unlocked
+session for that specific opening; it must not be treated as an unrelated cold
+start. Keep any handoff one-use, short-lived, and bound to the exact course path.
+Never put session tokens in URLs or disable biometric locking globally.
+**Why:** opening a separate classroom otherwise sends biometric-enabled users
+back through login and loses the course destination.
+**How to apply:** exercise new-tab course tests with biometrics enabled, not
+only ordinary password-login fixtures. Preserve the destination across any
+genuinely required login.
