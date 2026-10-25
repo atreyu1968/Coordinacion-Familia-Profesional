@@ -13,7 +13,7 @@ const url = new URL(process.env.DATABASE_URL ?? "");
 if (url.pathname !== "/coordina_profile_ui" || url.searchParams.get("host") !== join(root, "socket")) {
   throw new Error("Refusing a database outside the disposable private socket.");
 }
-const { db, pool, integrationSettingsTable } = await import("@workspace/db");
+const { db, pool, integrationSettingsTable, lmsCoursesTable, lmsLessonsTable } = await import("@workspace/db");
 const identity = await db.execute(sql`
   SELECT current_database() AS name, current_setting('data_directory') AS directory,
          current_setting('listen_addresses') AS listeners
@@ -52,6 +52,33 @@ for (const surface of ["desktop", "mobile"]) {
     }
   }
 }
+const classroomAccount = await createUser({
+  role: "teacher",
+  provinceId,
+  centerId,
+  name: "Docente de prueba para el aula",
+});
+const [classroomCourse] = await db.insert(lmsCoursesTable).values({
+  title: "VERI*FACTU: curso de demostración",
+  description: "Curso de prueba para comprobar el aula de aprendizaje.",
+  status: "published",
+  certificateEnabled: false,
+  createdBy: classroomAccount.user.id,
+  publishedAt: new Date(),
+}).returning();
+const classroomLessons = [
+  ["Presentación y objetivos", "Contenido de prueba: presentación y objetivos."],
+  ["Normativa y comprobación", "Contenido de prueba: normativa y comprobación."],
+  ["Caso práctico", "Contenido de prueba: caso práctico."],
+] as const;
+await db.insert(lmsLessonsTable).values(classroomLessons.map(([title, text], position) => ({
+  courseId: classroomCourse!.id,
+  title,
+  kind: "text",
+  position,
+  required: true,
+  content: { text },
+})));
 const api = (await import("../src/app")).default;
 const { initRealtime } = await import("../src/lib/realtime");
 const certificates = {
@@ -78,7 +105,13 @@ for (const [client, origin] of [
   servers.push(server);
 }
 writeFileSync(join(root, "ready.json"), JSON.stringify({
-  accounts, centerId, centerName: center.name, provinceId, moduleId, moduleName, year,
+  accounts,
+  classroomAccount: {
+    email: classroomAccount.email,
+    password: classroomAccount.password,
+  },
+  classroomCourseId: classroomCourse!.id,
+  centerId, centerName: center.name, provinceId, moduleId, moduleName, year,
 }));
 const stop = async () => {
   for (const server of servers) server.close();

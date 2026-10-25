@@ -12,7 +12,7 @@ for (const origin of [process.env.PROFILE_UI_WEB_URL, process.env.PROFILE_UI_MOB
 
 export default defineConfig({
   testDir: "./test-ui",
-  testMatch: "mandatory-profile.spec.ts",
+  testMatch: ["mandatory-profile.spec.ts", "lms-classroom.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,
