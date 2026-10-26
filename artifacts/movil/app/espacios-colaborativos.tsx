@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNoticeItems, useNoticeId } from "@/lib/notification-selection";
 import {
   ActivityIndicator,
   Pressable,
@@ -35,6 +36,8 @@ export default function CollaborativeSpacesScreen() {
   const status = useGetCollabStatus();
   const modules = useListModules({});
   const spaces = useListCollaborativeSpaces();
+  const noticeSpaces = useNoticeItems(spaces.data ?? []);
+  const noticeSpaceId = useNoticeId();
   const openModule = useOpenModuleSpace();
   const openSpace = useOpenCollaborativeSpace();
   const [active, setActive] = useState<ActiveSpace | null>(null);
@@ -150,7 +153,7 @@ export default function CollaborativeSpacesScreen() {
             </Text>
           ) : null}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Módulos</Text>
-          {modules.data?.length ? modules.data.map((module) => (
+          {noticeSpaceId == null && modules.data?.length ? modules.data.map((module) => (
             <SpaceRow
               key={`module-${module.id}`}
               title={module.code ? `${module.code} · ${module.name}` : module.name}
@@ -168,7 +171,7 @@ export default function CollaborativeSpacesScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 12 }]}>
             Otros espacios
           </Text>
-          {spaces.data?.length ? spaces.data.map((space) => (
+          {noticeSpaces.length ? noticeSpaces.map((space) => (
             <SpaceRow
               key={`space-${space.id}`}
               title={space.name}

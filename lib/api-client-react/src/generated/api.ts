@@ -3734,6 +3734,107 @@ export const useCreateForumThread = <TError = ErrorType<ErrorResponse>,
       return useMutation(getCreateForumThreadMutationOptions(options), queryClient);
     }
 
+export const getGetForumThreadUrl = (id: number,) => {
+
+
+
+
+  return `/api/forum/threads/${id}`
+}
+
+/**
+ * @summary Read a visible thread by its internal identifier
+ */
+export const getForumThread = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumThread> => {
+
+  return customFetch<ForumThread>(getGetForumThreadUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumThreadQueryKey = (id: number,) => {
+    return [
+    `/api/forum/threads/${id}`
+    ] as const;
+    }
+
+
+export const getGetForumThreadQueryOptions = <TData = Awaited<ReturnType<typeof getForumThread>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumThreadQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumThread>>> = ({ signal }) => getForumThread(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumThreadQueryResult = NonNullable<Awaited<ReturnType<typeof getForumThread>>>
+export type GetForumThreadQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumThread<TData = Awaited<ReturnType<typeof getForumThread>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumThread>>,
+          TError,
+          Awaited<ReturnType<typeof getForumThread>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumThread<TData = Awaited<ReturnType<typeof getForumThread>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumThread>>,
+          TError,
+          Awaited<ReturnType<typeof getForumThread>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumThread<TData = Awaited<ReturnType<typeof getForumThread>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read a visible thread by its internal identifier
+ */
+
+export function useGetForumThread<TData = Awaited<ReturnType<typeof getForumThread>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumThread>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumThreadQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateForumThreadUrl = (id: number,) => {
 
 

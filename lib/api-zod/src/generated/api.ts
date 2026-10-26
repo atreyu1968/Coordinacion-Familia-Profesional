@@ -1243,6 +1243,31 @@ export const CreateForumThreadResponse = zod.object({
 
 
 /**
+ * @summary Read a visible thread by its internal identifier
+ */
+export const GetForumThreadParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetForumThreadResponse = zod.object({
+  "id": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "moduleName": zod.string().nullish(),
+  "cycleName": zod.string().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "title": zod.string(),
+  "authorId": zod.number().int().nullish(),
+  "authorName": zod.string().nullish(),
+  "postCount": zod.number().int(),
+  "unreadCount": zod.number().int(),
+  "pinnedAt": zod.coerce.date().nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "lastPostAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Edit a thread title (author only)
  */
 export const UpdateForumThreadParams = zod.object({
@@ -4281,10 +4306,14 @@ export const GenerateEventAttendanceZipResponse = zod.object({
 })
 
 
+
+
+
 export const ListMyAttendanceCertificatesResponse = zod.object({
   "emailVerified": zod.boolean(),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
+  "eventId": zod.number().int().min(1).optional(),
   "code": zod.string(),
   "eventName": zod.string(),
   "attendeeName": zod.string(),
@@ -4938,11 +4967,19 @@ export const DeleteAnnouncementParams = zod.object({
 export const DeleteAnnouncementResponse = zod.void()
 
 
+export const listNotificationsResponseTargetOneIdMax = 2147483647;
+
+
+
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "body": zod.string().nullish(),
   "type": zod.string().nullish(),
+  "target": zod.union([zod.object({
+  "kind": zod.enum(['event', 'calendar', 'course', 'chat', 'survey', 'form', 'forum', 'space', 'announcement', 'meeting', 'company_alert', 'minutes', 'certificate_event']),
+  "id": zod.number().int().min(1).max(listNotificationsResponseTargetOneIdMax)
+}).describe('Destino interno; no concede acceso. El recurso se consulta con los permisos actuales del usuario.'),zod.null()]).optional().describe('Ausente o nulo en avisos históricos; abrir la sección según type.'),
   "readAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date().optional()
 })

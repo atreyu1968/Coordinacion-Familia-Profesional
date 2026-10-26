@@ -10,6 +10,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useNoticeId } from "@/lib/notification-selection";
 
 // Corporate header: brand blue bar with the white "AG" mark beside the title,
 // mirroring the web app while keeping the work area as tall as possible.
@@ -26,6 +27,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ title, subtitle, showBack, right, compact = false }: AppHeaderProps) {
+  const noticeId = useNoticeId();
+  const calendarNoticeId = useNoticeId("calendario");
   const insets = useSafeAreaInsets();
   // On web the safe-area inset is 0 inside a normal browser tab but reports the
   // real notch on an installed PWA; clamp to a small minimum so the header never
@@ -46,6 +49,11 @@ export function AppHeader({ title, subtitle, showBack, right, compact = false }:
         },
       ]}
     >
+      {(noticeId != null || calendarNoticeId != null) && (
+        <Text accessibilityRole="text" style={{ color: HEADER_FG_MUTED, marginBottom: 8 }}>
+          Elemento del aviso. Si no aparece, ya no está disponible o no tienes acceso.
+        </Text>
+      )}
       <View style={styles.row}>
         {showBack ? (
           <Pressable

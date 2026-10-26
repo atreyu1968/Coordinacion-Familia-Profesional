@@ -3,6 +3,12 @@ name: Messaging groups and mobile notifications
 description: User requirements for voluntary groups and mobile activity notices.
 ---
 
+Do not reconstruct historical notification destinations from their titles or bodies.
+
+**Why:** Old notices do not contain reliable resource identifiers; guessing from text can open an unrelated item. Compatibility means retaining the section destination, not inventing a backfill.
+
+**How to apply:** Only give an exact destination to notices with validated structured identifiers. Treat that destination as a navigation hint, never as proof of current resource access.
+
 Los usuarios deben poder crear grupos nuevos y salir de ellos. Los avisos de eventos y los anuncios del Tablón deben llegar también al móvil.
 
 **Why:** El usuario lo pidió expresamente.

@@ -2438,6 +2438,8 @@ export interface AttendanceCsvPreview {
 
 export interface MyAttendanceCertificate {
   id: number;
+  /** @minimum 1 */
+  eventId?: number;
   code: string;
   eventName: string;
   attendeeName: string;
@@ -2967,6 +2969,37 @@ export interface CreateAnnouncementInput {
   attachments?: AnnouncementAttachmentInput[];
 }
 
+export type NotificationTargetKind = typeof NotificationTargetKind[keyof typeof NotificationTargetKind];
+
+
+export const NotificationTargetKind = {
+  event: 'event',
+  calendar: 'calendar',
+  course: 'course',
+  chat: 'chat',
+  survey: 'survey',
+  form: 'form',
+  forum: 'forum',
+  space: 'space',
+  announcement: 'announcement',
+  meeting: 'meeting',
+  company_alert: 'company_alert',
+  minutes: 'minutes',
+  certificate_event: 'certificate_event',
+} as const;
+
+/**
+ * Destino interno; no concede acceso. El recurso se consulta con los permisos actuales del usuario.
+ */
+export interface NotificationTarget {
+  kind: NotificationTargetKind;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  id: number;
+}
+
 export interface Notification {
   id: number;
   title: string;
@@ -2974,6 +3007,8 @@ export interface Notification {
   body?: string | null;
   /** @nullable */
   type?: string | null;
+  /** Ausente o nulo en avisos históricos; abrir la sección según type. */
+  target?: NotificationTarget | null;
   /** @nullable */
   readAt?: string | null;
   createdAt?: string;

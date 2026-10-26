@@ -333,6 +333,8 @@ export * from './myTeachingProfile';
 export * from './myTeachingProfileUpdateResult';
 export * from './myYearConfirmation';
 export * from './notification';
+export * from './notificationTarget';
+export * from './notificationTargetKind';
 export * from './okResult';
 export * from './openConfirmationInput';
 export * from './openConfirmationResult';

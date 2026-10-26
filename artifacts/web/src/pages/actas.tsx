@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { useListPublishedMinutes, type PublishedMinutes } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,7 +130,7 @@ export default function ActasPage() {
   const isDepartmentHead = user?.role === "department_head";
   const query = useListPublishedMinutes({ query: { enabled: isDepartmentHead } });
   const [search, setSearch] = useState("");
-  const minutes = query.data ?? [];
+  const minutes = useNoticeItems(query.data ?? [], "eventId");
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("es");
     if (!term) return minutes;

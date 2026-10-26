@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useSearch } from "wouter";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -1042,7 +1043,7 @@ export default function EncuestasPage() {
     surveyParams.provinceId = requestedProvinceId;
   }
   const { data: allSurveys = [], isLoading } = useListSurveys(surveyParams);
-  const surveys = allSurveys.filter((survey) => matchesDashboardPeriod(survey.createdAt, searchParams));
+  const surveys = useNoticeItems(allSurveys.filter((survey) => matchesDashboardPeriod(survey.createdAt, searchParams)));
   const { data: provinces = [] } = useListProvinces();
   const deleteMut = useDeleteSurvey();
 

@@ -845,6 +845,27 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
   /forum/threads/{id}:
+    get:
+      operationId: getForumThread
+      tags: [forum]
+      summary: Read a visible thread by its internal identifier
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Visible thread.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForumThread"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     patch:
       operationId: updateForumThread
       tags: [forum]
@@ -8465,6 +8486,7 @@ components:
       type: object
       properties:
         id: { type: integer }
+        eventId: { type: integer, minimum: 1 }
         code: { type: string }
         eventName: { type: string }
         attendeeName: { type: string }
@@ -9122,6 +9144,19 @@ components:
           items:
             $ref: "#/components/schemas/AnnouncementAttachmentInput"
       required: [title, body]
+    NotificationTarget:
+      type: object
+      additionalProperties: false
+      description: Destino interno; no concede acceso. El recurso se consulta con los permisos actuales del usuario.
+      properties:
+        kind:
+          type: string
+          enum: [event, calendar, course, chat, survey, form, forum, space, announcement, meeting, company_alert, minutes, certificate_event]
+        id:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+      required: [kind, id]
     Notification:
       type: object
       properties:
@@ -9135,6 +9170,11 @@ components:
         type:
           type: string
           nullable: true
+        target:
+          anyOf:
+            - $ref: "#/components/schemas/NotificationTarget"
+            - type: "null"
+          description: Ausente o nulo en avisos históricos; abrir la sección según type.
         readAt:
           type: string
           format: date-time

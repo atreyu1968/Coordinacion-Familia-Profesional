@@ -97,7 +97,7 @@ router.get("/me/attendance-certificates", requireAuth, attendanceHandler(async (
   res.json({
     emailVerified: true,
     items: certificates.map(({ certificate: c }) => ({
-      id: c.id, code: c.snapshot.code, eventName: c.snapshot.eventName,
+      id: c.id, eventId: c.eventId, code: c.snapshot.code, eventName: c.snapshot.eventName,
       attendeeName: c.snapshot.attendeeName, issuedAt: c.issuedAt.toISOString(),
       revokedAt: c.revokedAt?.toISOString() ?? null,
     })),

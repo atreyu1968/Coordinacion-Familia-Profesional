@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NotificationTarget } from './notificationTarget';
 
 export interface Notification {
   id: number;
@@ -13,6 +14,8 @@ export interface Notification {
   body?: string | null;
   /** @nullable */
   type?: string | null;
+  /** Ausente o nulo en avisos históricos; abrir la sección según type. */
+  target?: NotificationTarget | null;
   /** @nullable */
   readAt?: Date | null;
   createdAt?: Date;

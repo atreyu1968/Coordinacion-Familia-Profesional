@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListMyAttendanceCertificates,
@@ -194,7 +195,8 @@ export default function MisCertificadosPage() {
   const q = useListMyAttendanceCertificates({
     query: { queryKey: getListMyAttendanceCertificatesQueryKey(), retry: false },
   });
-  const pending = q.data?.pendingEvents ?? [];
+  const pending = useNoticeItems(q.data?.pendingEvents ?? [], "eventId");
+  const items = useNoticeItems(q.data?.items ?? [], "eventId");
 
   return (
     <div className="space-y-6">
@@ -225,7 +227,7 @@ export default function MisCertificadosPage() {
               {pending.map((p) => <PendingRow key={p.eventId} p={p} />)}
             </section>
           )}
-          {q.data.items.length === 0 && pending.length === 0 ? (
+          {items.length === 0 && pending.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center space-y-2">
                 <Award className="w-10 h-10 mx-auto text-muted-foreground/50" />
@@ -237,7 +239,7 @@ export default function MisCertificadosPage() {
             </Card>
           ) : (
             <section className="space-y-2">
-              {q.data.items.map((c) => <CertificateRow key={c.id} c={c} />)}
+              {items.map((c) => <CertificateRow key={c.id} c={c} />)}
             </section>
           )}
         </div>

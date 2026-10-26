@@ -5,7 +5,7 @@ import { LmsCourseDeleteButton } from "@/components/lms-course-delete-button";
 import { LmsCoursePreview } from "@/components/lms-course-preview";
 import { CourseCover, LessonKindIcon, LmsClassroom, lessonKindLabels, useLessonSelection } from "@/components/lms-classroom";
 import { getLmsCourse, waitForLmsCoursePosition } from "@workspace/api-client-react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
 import {
@@ -667,6 +667,7 @@ function CourseZipImport({
 
 export default function AutodirigidoPage() {
   const [location, navigate] = useLocation(); const queryClient = useQueryClient();
+  const routeSearch = useSearch();
   const [selectedId, setSelectedId] = useState<number | null>(null); const [editor, setEditor] = useState<"create" | "edit" | null>(null); const [lessonEditor, setLessonEditor] = useState<number | null>(null); const [editingLesson, setEditingLesson] = useState<LmsLesson | undefined>();
   const [importingCourse, setImportingCourse] = useState(false);
   const [previewingCourse, setPreviewingCourse] = useState(false);
@@ -823,7 +824,7 @@ export default function AutodirigidoPage() {
     const pathId = window.location.pathname.match(/\/aula\/(\d+)\/?$/)?.[1];
     const id = pathId ?? new URLSearchParams(window.location.search).get("curso");
     if (id && Number.isInteger(Number(id))) setSelectedId(Number(id));
-  }, []);
+  }, [location, routeSearch]);
   const scormToken = new URLSearchParams(window.location.search).get("scorm");
   if (scormToken) return <RemoteScormSession token={scormToken} />;
   if (selectedId && (detail.isLoading || (detail.isFetching && selectedLessonId == null))) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;

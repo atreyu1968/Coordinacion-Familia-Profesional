@@ -1,4 +1,5 @@
 import { AutoLinkText } from "@/components/auto-link-text";
+import { useNoticeId } from "@/lib/notification-selection";
 import {
   useState,
   useEffect,
@@ -1622,6 +1623,7 @@ function ConversationView({
 // Page
 // ---------------------------------------------------------------------------
 export default function ChatPage() {
+  const noticeGroupId = useNoticeId("grupo");
   const queryClient = useQueryClient();
   const moduleParam = useModuleParam();
   const token = useMemo(() => localStorage.getItem(TOKEN_KEY), []);
@@ -1666,6 +1668,18 @@ export default function ChatPage() {
   });
   const [activeTab, setActiveTab] = useState<"people" | "groups" | "hidden">("people");
   const [didPreselect, setDidPreselect] = useState(false);
+  const consumedNoticeGroup = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (noticeGroupId == null) { consumedNoticeGroup.current = null; return; }
+    if (consumedNoticeGroup.current === noticeGroupId) return;
+    const match = groups.find((group) => group.id === noticeGroupId)
+      ?? hiddenGroups.find((group) => group.id === noticeGroupId);
+    if (!match && (isLoading || hiddenLoading)) return;
+    setSelectedId(match?.id ?? null);
+    if (match) setActiveTab(match.type === "direct" ? "people" : "groups");
+    consumedNoticeGroup.current = noticeGroupId;
+  }, [noticeGroupId, groups, hiddenGroups, isLoading, hiddenLoading]);
 
   useEffect(() => {
     if (didPreselect || moduleParam == null || groups.length === 0) return;
@@ -1805,6 +1819,9 @@ export default function ChatPage() {
 
   return (
     <div className="space-y-4">
+      {noticeGroupId != null && !isLoading && !hiddenLoading &&
+        ![...groups, ...hiddenGroups].some((group) => group.id === noticeGroupId) &&
+        <p role="status">La conversación ya no está disponible o no tienes acceso.</p>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">

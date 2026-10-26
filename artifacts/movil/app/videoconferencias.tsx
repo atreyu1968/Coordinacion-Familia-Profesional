@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { formatDateTime } from "@/lib/format";
 export default function VideoconferenciasScreen() {
   const colors = useColors();
   const { data, isLoading, isError, refetch, isRefetching } = useListMeetings();
+  const items = useNoticeItems(data ?? []);
   const tokenMut = useGetMeetingToken();
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function VideoconferenciasScreen() {
         <ErrorState onRetry={refetch} />
       ) : (
         <FlatList
-          data={data ?? []}
+          data={items}
           keyExtractor={(item: Meeting) => String(item.id)}
           contentContainerStyle={[styles.list, { flexGrow: 1 }]}
           onRefresh={refetch}

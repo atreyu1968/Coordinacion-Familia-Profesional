@@ -12,12 +12,10 @@ on AbortSignal, URL and fetch body types. Adding DOM libraries to the whole
 project instead exposed incompatible Node/DOM ReadableStream declarations.
 Neither failure was caused by the application logic under test.
 
-**How to apply:** For pure shared utilities, load the real implementation at
-runtime behind a narrow test-side signature, while the mobile project owns
-its native typechecking. Use structural types in browser evaluation callbacks
-when a Node-oriented project only needs a small browser property; do not
-broaden global libraries or change server production code just to typecheck
-the harness.
+**How to apply:** Keep native, browser and server type environments separate.
+The native project owns native compatibility; a Node/browser test should
+depend only on the types it actually needs. Do not broaden global libraries
+or change server production code to compensate for test-only type pollution.
 
 The same isolation applies to mobile components using private `@/` import
 aliases: a web test's static import can make TypeScript resolve those aliases

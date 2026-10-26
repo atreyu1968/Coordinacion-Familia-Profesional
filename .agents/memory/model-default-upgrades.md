@@ -8,3 +8,9 @@ When `deploy/db.sh migrate` handles an existing database, schema preflight runs 
 **Why:** an intentional vision-model default upgrade was already encoded in migration SQL, but preflight rejected the prior default before that SQL could run, causing post-merge setup to stop without applying the migration.
 
 **How to apply:** scope compatibility to the exact table, column, and old value; test both the old-default upgrade and preservation of custom values on an isolated existing database. Do not broadly accept arbitrary string defaults.
+
+An additive column on an existing table also needs an explicit missing-column allowance in preflight, not just migration SQL.
+
+**Why:** The installer verifies existing databases before running additive SQL; without that allowance it rejects the prior supported schema before reaching the migration.
+
+**How to apply:** Permit only that missing table/column pair in upgrade mode. Continue rejecting an incompatible existing column and keep final verification strict. Exercise the complete installer against a prior schema, not just the SQL file in isolation.

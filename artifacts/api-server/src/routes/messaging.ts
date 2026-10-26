@@ -91,7 +91,6 @@ import {
 } from "../lib/audience";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy, setObjectAclPolicy } from "../lib/objectAcl";
-import { sendPushToUsers } from "../lib/push";
 import { buildChatPushPayload } from "../lib/chatPushPayload";
 import { sendEmail } from "../lib/email";
 import { escapeEmailHtml } from "../lib/email-layout";
@@ -1365,9 +1364,9 @@ router.post(
         (userId) => userId !== caller.id,
       );
       if (currentMemberIds.has(caller.id) && currentRecipients.length > 0) {
-        void sendPushToUsers(
+        void notifyUsers(
           currentRecipients,
-          buildChatPushPayload(caller.name, groupId),
+          { ...buildChatPushPayload(caller.name, groupId), type: "message" },
         );
       }
     } catch (err) {

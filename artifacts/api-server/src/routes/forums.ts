@@ -24,6 +24,8 @@ import {
 } from "@workspace/db";
 import {
   ListForumModulesResponse,
+  GetForumThreadParams,
+  GetForumThreadResponse,
   ListForumThreadsQueryParams,
   ListForumThreadsResponse,
   CreateForumThreadBody,
@@ -899,5 +901,19 @@ async function loadVisibleThread(
   }
   return { ok: true, thread };
 }
+
+router.get("/forum/threads/:id", requireAuth, async (req, res): Promise<void> => {
+  const params = GetForumThreadParams.safeParse(req.params);
+  if (!params.success || !Number.isSafeInteger(params.data.id) || params.data.id < 1 || params.data.id > 2147483647) {
+    res.status(400).json({ error: "Identificador no válido" });
+    return;
+  }
+  const loaded = await loadVisibleThread(params.data.id, req.user!);
+  if (!loaded.ok) {
+    res.status(loaded.status).json({ error: loaded.message });
+    return;
+  }
+  res.json(GetForumThreadResponse.parse(await loadThreadResponse(loaded.thread.id, req.user!.id)));
+});
 
 export default router;

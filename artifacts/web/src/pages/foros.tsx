@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useGetForumThread } from "@workspace/api-client-react";
+import { useNoticeId } from "@/lib/notification-selection";
+import { useLocation } from "wouter";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -707,7 +710,16 @@ function ModuleThreads({
 // ---------------------------------------------------------------------------
 // Landing: modules grouped by cycle
 // ---------------------------------------------------------------------------
+function NoticeThread({ id, onBack }: { id: number; onBack: () => void }) {
+  const query = useGetForumThread(id);
+  if (query.isLoading) return <p role="status">Cargando tema…</p>;
+  if (!query.data || query.isError) return <div><p>El tema ya no está disponible o no tienes acceso.</p><Button onClick={onBack}>Ver foros</Button></div>;
+  return <ThreadDetail thread={query.data} onBack={onBack} />;
+}
+
 export default function ForosPage() {
+  const noticeThreadId = useNoticeId("tema");
+  const [, navigate] = useLocation();
   const moduleParam = useModuleParam();
   const { data: modules = [], isLoading } = useListForumModules();
   const [active, setActive] = useState<ForumModule | null>(null);
@@ -759,7 +771,9 @@ export default function ForosPage() {
         </div>
       </div>
 
-      {active ? (
+      {noticeThreadId != null ? (
+        <NoticeThread id={noticeThreadId} onBack={() => navigate("/foros")} />
+      ) : active ? (
         <ModuleThreads module={active} onBack={() => setActive(null)} />
       ) : isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>

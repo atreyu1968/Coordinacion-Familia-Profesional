@@ -9,6 +9,7 @@ import { emitToUser } from "./realtime";
 import { sendPushToUsers, withPushPath } from "./push";
 import { toNotification } from "./mappers";
 import { logger } from "./logger";
+import { notificationTarget } from "./notificationTarget";
 
 type Role =
   | "superadmin"
@@ -104,6 +105,7 @@ export async function notifyUsers(
   if (userIds.length === 0) return 0;
   try {
     const recipients = Array.from(new Set(userIds));
+    const target = notificationTarget(notification.type, notification.data);
     const rows = await db
       .insert(notificationsTable)
       .values(
@@ -112,6 +114,7 @@ export async function notifyUsers(
           title: notification.title,
           body: notification.body ?? null,
           type: notification.type ?? null,
+          target,
         })),
       )
       .returning();
@@ -122,6 +125,7 @@ export async function notifyUsers(
       data: {
         ...(notification.data ?? {}),
         type: notification.type ?? "general",
+        target,
       },
     });
 

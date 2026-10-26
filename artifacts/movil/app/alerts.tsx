@@ -3,6 +3,7 @@ import { AutoLinkText } from "@/components/AutoLinkText";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 
 import { useListCompanyAlerts, type CompanyAlert } from "@workspace/api-client-react";
+import { useNoticeItems } from "@/lib/notification-selection";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Card, EmptyState, ErrorState, Loading } from "@/components/ui";
@@ -12,6 +13,7 @@ import { formatRelative } from "@/lib/format";
 export default function AlertsScreen() {
   const colors = useColors();
   const { data, isLoading, isError, refetch, isRefetching } = useListCompanyAlerts();
+  const items = useNoticeItems(data ?? []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -22,7 +24,7 @@ export default function AlertsScreen() {
         <ErrorState onRetry={refetch} />
       ) : (
         <FlatList
-          data={data ?? []}
+          data={items}
           keyExtractor={(item: CompanyAlert) => String(item.id)}
           contentContainerStyle={[styles.list, { flexGrow: 1 }]}
           onRefresh={refetch}

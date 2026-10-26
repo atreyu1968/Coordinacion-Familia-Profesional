@@ -18,6 +18,7 @@ export async function notifyCertificateRecipients(
     .select({
       userId: eventAttendancesTable.userId,
       email: eventAttendancesTable.email,
+      eventId: eventAttendancesTable.eventId,
     })
     .from(eventAttendancesTable)
     .where(inArray(eventAttendancesTable.id, ids));
@@ -62,5 +63,6 @@ export async function notifyCertificateRecipients(
     title: "Certificado de asistencia disponible",
     body: `Ya puedes consultar tu certificado de asistencia a «${eventName}» en Mis certificados.`,
     type: "certificate",
+    data: { eventId: attendances[0]?.eventId },
   });
 }

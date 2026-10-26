@@ -107,6 +107,12 @@ describe("forum thread creation", () => {
     expect(res.status).toBe(201);
     expect(res.body.title).toBe("Dudas");
     expect(res.body.postCount).toBe(1);
+    const detail = await request(app)
+      .get(`/api/forum/threads/${res.body.id}`)
+      .set(authHeader(teacher.token));
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({ id: res.body.id, title: "Dudas", postCount: 1, moduleId });
+    expect((await request(app).get("/api/forum/threads/2147483648").set(authHeader(teacher.token))).status).toBe(400);
 
     const posts = await request(app)
       .get(`/api/forum/threads/${res.body.id}/posts`)

@@ -53,6 +53,43 @@ migrate_database() {
 
 # A fast, independently runnable security regression suite. Both the URL and
 # server identity are checked by the test before it creates any fixtures.
+run_notification_target_migrations() {
+  echo "==> Testing fresh and existing notification schemas"
+  create_test_database coordina_notification_targets
+  migrate_database coordina_notification_targets
+  # Remove exactly the new column to reproduce the previously released schema.
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" \
+    --command="INSERT INTO notifications (user_id, title, body, type, read_at) VALUES (42, 'upgrade-notice', 'Retained body', 'event', '2026-01-01T00:00:00Z'); ALTER TABLE notifications DROP COLUMN target"
+  if pnpm --filter @workspace/scripts exec tsx "${SCRIPT_DIR}/verify-schema.ts"; then
+    echo "Strict verification must reject the missing notification target before migration." >&2
+    exit 1
+  fi
+  # Exercises the actual preflight -> SQL -> strict verification installer path.
+  migrate_database coordina_notification_targets
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT count(*) = 1 AND bool_and(user_id = 42 AND body = 'Retained body' AND type = 'event' AND read_at = '2026-01-01T00:00:00Z'::timestamptz AND target IS NULL) FROM notifications WHERE title = 'upgrade-notice'" \
+    | grep -qx t
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" \
+    --command="UPDATE notifications SET target = '{\"kind\":\"event\",\"id\":123}'::jsonb WHERE title = 'upgrade-notice'"
+  migrate_database coordina_notification_targets
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT count(*) = 1 AND bool_and(target = '{\"kind\":\"event\",\"id\":123}'::jsonb AND read_at = '2026-01-01T00:00:00Z'::timestamptz) FROM notifications WHERE title = 'upgrade-notice'" \
+    | grep -qx t
+  # Preflight tolerates absence only, never a present but incompatible column.
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" \
+    --command="ALTER TABLE notifications ALTER COLUMN target TYPE text USING target::text"
+  if migrate_database coordina_notification_targets; then
+    echo "Preflight must reject an incompatible notification target type." >&2
+    exit 1
+  fi
+  echo "Notification fresh-install, legacy-upgrade, preservation and repeatability checks passed."
+}
+
+if [[ "${1:-}" == "--notification-targets-only" ]]; then
+  run_notification_target_migrations
+  exit 0
+fi
+
 run_ai_knowledge_tests() {
   create_test_database coordina_ai_knowledge
   migrate_database coordina_ai_knowledge

@@ -37,6 +37,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { EventMinutesSection } from "@/components/events/event-minutes";
 import { useSearch, useLocation } from "wouter";
+import { useNoticeItems, useNoticeId } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import { AttendanceManager } from "@/components/events/attendance-manager";
 import { useBranding } from "@/lib/branding";
@@ -1072,7 +1073,7 @@ function EventDetailView({
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { data: event, isLoading } = useGetEvent(eventId);
+  const { data: event, isLoading, isError } = useGetEvent(eventId);
   const deleteMut = useDeleteEvent();
   const canManage =
     user?.role === "superadmin" ||
@@ -1080,6 +1081,9 @@ function EventDetailView({
       user.provinceId != null &&
       event?.provinceId === user.provinceId);
 
+  if (isError || (!isLoading && !event)) {
+    return <div className="py-12 text-center"><p>El evento ya no está disponible o no tienes acceso.</p><Button onClick={onBack}>Ver eventos</Button></div>;
+  }
   if (isLoading || !event) {
     return (
       <p className="text-muted-foreground py-12 text-center">
@@ -1423,7 +1427,8 @@ function CreateCalendarEntryDialog() {
 }
 
 function CalendarSection({ canManage }: { canManage: boolean }) {
-  const { data: entries = [] } = useListCalendarEvents();
+  const { data: allEntries = [] } = useListCalendarEvents();
+  const entries = useNoticeItems(allEntries, "id", "calendario");
 
   const sorted = useMemo(
     () =>
@@ -1668,6 +1673,7 @@ function EventsCalendarView({
 // Page
 // ---------------------------------------------------------------------------
 export default function EventosPage() {
+  const calendarNoticeId = useNoticeId("calendario");
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const search = useSearch();
@@ -1702,6 +1708,10 @@ export default function EventosPage() {
         <EventDetailView key={`${selectedId}-${initialTab ?? ""}`} eventId={selectedId} initialTab={initialTab} onBack={() => setSelectedId(null)} />
       </div>
     );
+  }
+
+  if (calendarNoticeId != null) {
+    return <div className="p-4 md:p-8"><CalendarSection canManage={canManage} /></div>;
   }
 
   const now = Date.now();

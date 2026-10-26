@@ -39,21 +39,16 @@ session states. Switching from the saved account to a complete-profile user
 in another province checks real API denials (events, minutes and someone
 else's certificate), and checks that protected content is absent from the UI.
 
-### Known regression: expired-session destination loss
+### Expired-session return regression coverage
 
-The four expired-session return cases currently use **expected failure**,
-not a skip. They first require a real 401 from the profile API, the blocking
-recovery UI, sign-out, a rejected password, and a successful login. Only the
-final return-URL assertion is marked as an expected failure. Failure during
-setup or authentication remains an ordinary failure.
-
-The profile guard currently treats the expired token's profile-query error as
-an incomplete profile and navigates to `/perfil`. Closing the session captures
-that intermediate route rather than the original notice; login then ends on
-Tablón instead of the notice. This is a discovered application defect, **not a
-passing return journey**. Fixing it will produce an unexpected pass so the
-expected-failure marker must be removed as part of that fix. The tests do not
-change application behavior to work around the defect.
+The four expired-session return cases are ordinary passing requirements, not
+expected failures or skips. They require a real 401 from the profile API, the
+blocking recovery UI, sign-out, a rejected password, and a successful login.
+The original protected destination must survive the intermediate `/perfil`
+route. Two additional cases cover persisted event and certificate targets,
+including their identifier in the query string. An incomplete teaching
+profile still blocks access, and switching accounts never grants access to
+the original account's content.
 
 These tests exercise the destination and authentication guards, **not delivery**
 of notices, email, native push, WebAuthn hardware, or service-worker activation.

@@ -33,6 +33,7 @@ import {
   useNotificationDeepLinks,
 } from "@/lib/push";
 import { registerWebPush, setupPwa } from "@/lib/pwa";
+import { protectedReturnPath } from "@/lib/protected-return-path";
 
 // Expo bundles run outside the web proxy and need absolute URLs to reach
 // the API server, plus a bearer-token getter for authenticated calls.
@@ -71,7 +72,7 @@ function RootLayoutNav() {
     },
   );
   const profileWasForced = useRef(false);
-  const globalParams = useGlobalSearchParams<{ token?: string | string[] }>();
+  const globalParams = useGlobalSearchParams<Record<string, string | string[]>>();
   const routeToken = Array.isArray(globalParams.token)
     ? globalParams.token[0]
     : globalParams.token;
@@ -79,14 +80,18 @@ function RootLayoutNav() {
   // Only an opaque token is kept (never a full URL) so the return is safe.
   const pendingAttendanceToken = useRef<string | null>(null);
   const pendingProtectedRoute = useRef<Href | null>(null);
+  // A profile error/mandatory profile redirect must not replace the original
+  // notice with /perfil when the user signs out to recover an expired session.
+  const profileReturnRoute = useRef<Href | null>(null);
+  const currentProtectedRoute = protectedReturnPath(pathname, globalParams);
 
   useEffect(() => {
     if (isLoading) return;
     const isPublicAuthRoute =
       segments[0] === "login" || segments[0] === "recuperar";
     if (!token && !isPublicAuthRoute) {
-      if (pathname.startsWith("/") && !pathname.startsWith("//")) {
-        pendingProtectedRoute.current = pathname as Href;
+      if (profileReturnRoute.current || currentProtectedRoute) {
+        pendingProtectedRoute.current = profileReturnRoute.current ?? currentProtectedRoute as Href;
       }
       if (
         (segments[0] as string) === "asistencia" &&
@@ -97,6 +102,8 @@ function RootLayoutNav() {
       }
       router.replace("/login");
     } else if (token && isPublicAuthRoute) {
+      profileWasForced.current = false;
+      profileReturnRoute.current = null;
       const pending = pendingAttendanceToken.current;
       pendingAttendanceToken.current = null;
       if (pending) {
@@ -107,7 +114,7 @@ function RootLayoutNav() {
         router.replace(destination ?? "/(tabs)");
       }
     }
-  }, [token, isLoading, segments, router, routeToken, pathname]);
+  }, [token, isLoading, segments, router, routeToken, currentProtectedRoute]);
 
   useEffect(() => {
     if (
@@ -138,6 +145,9 @@ function RootLayoutNav() {
         segments[0] !== "recuperar"
       ) {
         profileWasForced.current = true;
+        if (profileReturnRoute.current == null && currentProtectedRoute) {
+          profileReturnRoute.current = currentProtectedRoute as Href;
+        }
         router.replace("/perfil");
       }
       return;
@@ -145,7 +155,9 @@ function RootLayoutNav() {
 
     if (profileWasForced.current && pathname === "/perfil") {
       profileWasForced.current = false;
-      router.replace("/(tabs)");
+      const destination = profileReturnRoute.current;
+      profileReturnRoute.current = null;
+      router.replace(destination ?? "/(tabs)");
     }
   }, [
     isLoading,
@@ -155,6 +167,7 @@ function RootLayoutNav() {
     teachingProfileQuery.isError,
     teachingProfileQuery.isPending,
     pathname,
+    currentProtectedRoute,
     segments,
     router,
   ]);

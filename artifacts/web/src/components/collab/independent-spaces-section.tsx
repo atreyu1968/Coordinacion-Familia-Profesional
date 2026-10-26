@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { AutoLinkText } from "@/components/auto-link-text";
 import {
   useListCollaborativeSpaces,
@@ -29,7 +30,7 @@ export function IndependentSpacesSection({
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [managing, setManaging] = useState<number | null>(null);
-  const spaces = list.data ?? [];
+  const spaces = useNoticeItems(list.data ?? []);
 
   return (
     <Card>

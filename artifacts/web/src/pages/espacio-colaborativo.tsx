@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNoticeId } from "@/lib/notification-selection";
 import {
   useListModules,
   useGetCollabStatus,
@@ -73,6 +74,7 @@ function SpaceOverlay({
 }
 
 export default function EspacioColaborativoPage() {
+  const noticeSpaceId = useNoticeId();
   const { user } = useAuth();
   const { data: status, isLoading: statusLoading } = useGetCollabStatus();
   const { data: modules = [], isLoading: modulesLoading } = useListModules();
@@ -89,6 +91,7 @@ export default function EspacioColaborativoPage() {
   const [didAutoOpen, setDidAutoOpen] = useState(false);
 
   const filtered = useMemo(() => {
+    if (noticeSpaceId != null) return [];
     const term = search.trim().toLowerCase();
     if (!term) return modules;
     return modules.filter(
@@ -96,7 +99,7 @@ export default function EspacioColaborativoPage() {
         m.name.toLowerCase().includes(term) ||
         (m.code ?? "").toLowerCase().includes(term),
     );
-  }, [modules, search]);
+  }, [modules, search, noticeSpaceId]);
 
   const onOpen = async (module: Module) => {
     try {

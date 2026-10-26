@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
 import {
   useListCompanyAlerts,
@@ -309,7 +310,7 @@ function AlertsTab() {
             alert.provinceId == null ||
             alert.provinceId === selectedProvinceId,
         );
-  const alerts = scopedAlerts.filter((alert) => matchesDashboardPeriod(alert.createdAt, searchParams));
+  const alerts = useNoticeItems(scopedAlerts.filter((alert) => matchesDashboardPeriod(alert.createdAt, searchParams)));
 
   const provinceName = (id: number | null | undefined) =>
     id == null ? "Global" : provinces.find((p) => p.id === id)?.name ?? "—";

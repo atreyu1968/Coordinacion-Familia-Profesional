@@ -1,12 +1,15 @@
 import type { Href } from "expo-router";
+import { notificationTargetPath } from "@workspace/api-client-react";
 
 /** Pure routing map, with no native notification imports in browser callers. */
 export function notificationRoute(data: unknown): Href | null {
   if (!data || typeof data !== "object") return null;
   const payload = data as Record<string, unknown>;
+  const exact = notificationTargetPath(payload.target, "mobile");
+  if (exact) return exact as Href;
   const id = (value: unknown) => {
     const text = typeof value === "number" || typeof value === "string" ? String(value) : "";
-    return /^[1-9]\d*$/.test(text) ? text : null;
+    return /^[1-9]\d*$/.test(text) && Number(text) <= 2147483647 ? text : null;
   };
   switch (payload.type) {
     case "chat_group":

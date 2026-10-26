@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import webpush from "web-push";
 import { logger } from "./logger";
 import { getSettings } from "./settings";
+import { validNotificationTarget } from "./notificationTarget";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
@@ -29,12 +30,32 @@ function isExpoPushToken(token: string): boolean {
 function positiveId(value: unknown): number | null {
   return typeof value === "number" &&
     Number.isSafeInteger(value) &&
+    value <= 2147483647 &&
     value > 0
     ? value
     : null;
 }
 
 function pushPath(data: Record<string, unknown>): string {
+  const target = validNotificationTarget(data.target);
+  if (target) {
+    const paths: Record<string, string> = {
+      event: `/eventos?aviso=${target.id}`,
+      calendar: `/eventos?calendario=${target.id}`,
+      course: `/lms/${target.id}`,
+      chat: `/chat/${target.id}`,
+      survey: `/survey/${target.id}`,
+      form: `/form/${target.id}`,
+      forum: `/foros/tema/${target.id}`,
+      space: `/espacios-colaborativos?aviso=${target.id}`,
+      announcement: `/?aviso=${target.id}`,
+      meeting: `/videoconferencias?aviso=${target.id}`,
+      company_alert: `/alerts?aviso=${target.id}`,
+      minutes: `/acta/${target.id}`,
+      certificate_event: `/mis-certificados?aviso=${target.id}`,
+    };
+    return paths[target.kind];
+  }
   const groupId = positiveId(data.groupId);
   const surveyId = positiveId(data.surveyId);
   const formId = positiveId(data.documentFormId);
@@ -79,9 +100,8 @@ function pushPath(data: Record<string, unknown>): string {
 
 export function withPushPath(payload: PushPayload): PushPayload {
   const data = { ...(payload.data ?? {}) };
-  if (typeof data.path !== "string" || !data.path.startsWith("/")) {
-    data.path = pushPath(data);
-  }
+  // Producers cannot inject arbitrary external, protocol-relative or internal URLs.
+  data.path = pushPath(data);
   return { ...payload, data };
 }
 

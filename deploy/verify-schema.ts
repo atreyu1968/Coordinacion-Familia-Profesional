@@ -473,6 +473,7 @@ for (const column of expected.columns) {
         ["token_version", "session_nonce", "legal_accepted_at", "legal_terms_version", "legal_privacy_version", "teaching_center_id"].includes(column.column)) ||
        (column.table === "coordinator_mail_cases" && column.column === "group_id") ||
        (column.table === "lms_courses" && column.column === "cover_object_path") ||
+       (column.table === "notifications" && column.column === "target") ||
        (column.table === "invitations" &&
          ["max_uses", "used_count"].includes(column.column)) ||
         (column.table === "teacher_year_confirmations" &&

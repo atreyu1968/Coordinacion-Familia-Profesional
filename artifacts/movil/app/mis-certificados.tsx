@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -237,7 +238,8 @@ export default function MisCertificadosScreen() {
       retry: false,
     },
   });
-  const pending = q.data?.pendingEvents ?? [];
+  const pending = useNoticeItems(q.data?.pendingEvents ?? [], "eventId");
+  const items = useNoticeItems(q.data?.items ?? [], "eventId");
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -253,10 +255,10 @@ export default function MisCertificadosScreen() {
           ) : (
             <>
               {pending.map((p) => <PendingCard key={p.eventId} p={p} />)}
-              {q.data.items.length === 0 && pending.length === 0 ? (
+              {items.length === 0 && pending.length === 0 ? (
                 <EmptyState icon="award" title="Aún no tienes certificados" message="Escanea el QR de asistencia en un evento. Cuando la organización valide tu asistencia aparecerá aquí." />
               ) : (
-                q.data.items.map((c) => <CertCard key={c.id} c={c} />)
+                items.map((c) => <CertCard key={c.id} c={c} />)
               )}
             </>
           )}

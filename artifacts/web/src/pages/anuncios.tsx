@@ -1,4 +1,5 @@
 import { useState, useRef, type FormEvent } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -412,7 +413,8 @@ export default function AnunciosPage() {
   const { user } = useAuth();
   const isManager =
     user?.role === "superadmin" || user?.role === "coordinator";
-  const { data: items = [], isLoading } = useListAnnouncements();
+  const { data: allItems = [], isLoading } = useListAnnouncements();
+  const items = useNoticeItems(allItems);
   const canCreate = isManager;
 
   return (

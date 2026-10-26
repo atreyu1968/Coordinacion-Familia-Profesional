@@ -62,9 +62,12 @@ function RouteLoading() {
   );
 }
 
+import { NotificationSelection } from "@/lib/notification-selection";
+
 function AuthedRoutes() {
   return (
     <AppLayout>
+      <NotificationSelection />
       <Suspense fallback={<RouteLoading />}>
         <Switch>
           <Route path="/" component={DashboardPage} />

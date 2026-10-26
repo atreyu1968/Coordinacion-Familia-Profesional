@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AutoLinkText,
@@ -1020,7 +1021,7 @@ export default function FormulariosPage() {
   const now = useAvailabilityNow();
   const moduleParam = useModuleParam();
   const { data: allForms = [], isLoading } = useListDocumentForms();
-  const forms =
+  const scopedForms =
     moduleParam == null
       ? allForms
       : allForms.filter(
@@ -1028,6 +1029,7 @@ export default function FormulariosPage() {
             f.audienceType === "module" &&
             (f.audienceIds ?? []).includes(moduleParam),
         );
+  const forms = useNoticeItems(scopedForms);
   const { data: provinces = [] } = useListProvinces();
   const deleteMut = useDeleteDocumentForm();
 

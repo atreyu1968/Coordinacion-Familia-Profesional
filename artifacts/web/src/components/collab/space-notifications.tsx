@@ -8,6 +8,7 @@ import {
   useListNotifications,
   useDeleteNotification,
   useMarkNotificationRead,
+  notificationTargetPath,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -82,7 +83,12 @@ export function AppNotifications({ userId, role }: { userId: number; role: strin
           : items.length === 0 ? <p className="text-sm text-muted-foreground">No tienes notificaciones.</p>
           : items.map((item) => (
               (() => {
-                const target = destination(item.type, role);
+                const section = destination(item.type, role);
+                const internalPath = notificationTargetPath(item.target, "web");
+                const exact = internalPath && item.target?.kind === "minutes" && role !== "department_head"
+                  ? `/eventos?evento=${item.target.id}&seccion=acta`
+                  : internalPath;
+                const target = exact ? { href: exact, label: "Abrir elemento del aviso" } : section;
                 return (
                   <div key={item.id}
                     role="link"

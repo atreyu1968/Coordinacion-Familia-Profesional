@@ -4,6 +4,7 @@ import {
   text,
   integer,
   timestamp,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const notificationsTable = pgTable("notifications", {
@@ -12,6 +13,7 @@ export const notificationsTable = pgTable("notifications", {
   title: text("title").notNull(),
   body: text("body"),
   type: text("type"),
+  target: jsonb("target").$type<{ kind: string; id: number }>(),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

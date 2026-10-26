@@ -8,6 +8,8 @@
 
 export interface MyAttendanceCertificate {
   id: number;
+  /** @minimum 1 */
+  eventId?: number;
   code: string;
   eventName: string;
   attendeeName: string;

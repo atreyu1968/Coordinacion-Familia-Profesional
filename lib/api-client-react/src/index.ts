@@ -1,5 +1,6 @@
 export * from "./generated/api";
 export * from "./generated/api.schemas";
+export { notificationTargetPath } from "./notification-target";
 export { defaultLmsLesson, useLmsLessonSelection, waitForLmsCoursePosition } from "./lms-position";
 export { setBaseUrl, setAuthTokenGetter } from "./custom-fetch";
 export type { AuthTokenGetter } from "./custom-fetch";

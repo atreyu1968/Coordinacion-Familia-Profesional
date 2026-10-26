@@ -98,19 +98,6 @@ for (const destination of destinations) {
       expect((await login(page, accounts.member, "incorrect-password")).status()).toBe(401);
       await expect(page).toHaveURL(/\/login$/);
       expect((await login(page, accounts.member)).status()).toBe(200);
-      // Known production defect, deliberately not fixed in this test-only task:
-      // a 401 in the mandatory profile query forces /perfil before sign-out,
-      // overwriting the notice. The later login lands on Tablón. Mark only
-      // after all setup/auth assertions pass, so unrelated failures stay red.
-      // A future fix causes an unexpected pass until this marker is removed.
-      if (state === "expired") {
-        test.fail(true, "The profile guard loses the notice destination after an expired session.");
-        await expect.poll(() => {
-          const url = new URL(page.url());
-          return url.pathname + url.search;
-        }).toBe(destination.path);
-        return;
-      }
       await expectDestination(page, destination);
       await page.reload();
       if (state === "locked") {
@@ -178,5 +165,21 @@ for (const destination of destinations) {
     expect((await certificates.json()).items).toEqual([]);
     await expect(page.getByText(event.name, { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Descargar acta acta-navegacion-ui.pdf", exact: true })).toHaveCount(0);
+  });
+}
+
+for (const target of [
+  { kind: "event", type: "event", heading: "Eventos" },
+  { kind: "certificate_event", type: "certificate", heading: "Mis certificados" },
+]) {
+  test(`${target.type}: expired login retains the structured target query`, async ({ page }) => {
+    const destination = {
+      type: target.type,
+      path: notificationPath({ type: target.type, target: { kind: target.kind, id: event.id } }),
+      heading: target.heading,
+    };
+    await openDestination(page, destination.path, accounts.member, "expired");
+    expect((await login(page, accounts.member)).status()).toBe(200);
+    await expectDestination(page, destination);
   });
 }

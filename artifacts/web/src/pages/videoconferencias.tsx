@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useNoticeItems } from "@/lib/notification-selection";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -327,10 +328,11 @@ export default function VideoconferenciasPage() {
     user?.role === "superadmin" || user?.role === "coordinator";
   const moduleParam = useModuleParam();
   const { data: allItems = [], isLoading } = useListMeetings();
-  const items =
+  const scopedItems =
     moduleParam == null
       ? allItems
       : allItems.filter((m) => m.moduleId === moduleParam);
+  const items = useNoticeItems(scopedItems);
   // Anyone who may create forms/surveys may also open a meeting room.
   const { canCreate } = useFormSurveyCreator();
   const tokenMut = useGetMeetingToken();

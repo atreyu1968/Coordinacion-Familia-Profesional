@@ -1,3 +1,4 @@
+import { validNotificationTarget } from "./notificationTarget";
 import type {
   Center,
   Province,
@@ -478,6 +479,7 @@ export function toNotification(row: Notification) {
     title: row.title,
     body: row.body,
     type: row.type,
+    target: validNotificationTarget(row.target),
     readAt: row.readAt,
     createdAt: row.createdAt,
   };

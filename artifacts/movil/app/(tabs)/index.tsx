@@ -2,6 +2,7 @@ import React from "react";
 import { AutoLinkText } from "@/components/AutoLinkText";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { useNoticeItems } from "@/lib/notification-selection";
 import {
   Alert,
   FlatList,
@@ -95,6 +96,7 @@ export default function BoardScreen() {
   const colors = useColors();
   const { data, isLoading, isError, refetch, isRefetching } =
     useListAnnouncements();
+  const items = useNoticeItems(data ?? []);
 
   const bottomPad = Platform.OS === "web" ? 100 : 90;
 
@@ -107,7 +109,7 @@ export default function BoardScreen() {
         <ErrorState onRetry={refetch} />
       ) : (
         <FlatList
-          data={data ?? []}
+          data={items}
           keyExtractor={(item: Announcement) => String(item.id)}
           contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
           onRefresh={refetch}
