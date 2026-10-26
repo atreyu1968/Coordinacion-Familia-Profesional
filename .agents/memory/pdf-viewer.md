@@ -22,3 +22,9 @@ autogestionadas, salvo que se haya comprobado el MIME de `.mjs` en el servidor.
 como su importación de respaldo. No era un problema del PDF ni de sus permisos.
 **How to apply:** comprobar extensión y referencia del worker en la compilación
 real; una respuesta 200 no basta para validar un módulo JavaScript.
+
+Los PDF del LMS deben leerse con desplazamiento vertical continuo, no página
+a página mediante botones.
+**Why:** el usuario pidió expresamente que en el LMS los PDF se vean en scroll.
+**How to apply:** mantener las páginas consecutivas dentro del aula y el acceso
+autenticado; no sustituir la lectura integrada por una descarga.

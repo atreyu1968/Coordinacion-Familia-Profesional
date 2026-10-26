@@ -27,19 +27,3 @@ JAAS_APP_ID = "vpaas-magic-cookie-e59392d6d00048ea90ea3027a421f6ea"
 [nix]
 channel = "stable-25_05"
 packages = ["freetype", "glibcLocales", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "xcbuild"]
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
-
-[[ports]]
-localPort = 20788
-externalPort = 3000
-
-[[ports]]
-localPort = 22333
-externalPort = 3001
