@@ -28,14 +28,18 @@ export function notificationRoute(data: unknown): Href | null {
       return threadId ? { pathname: "/foros/tema/[id]", params: { id: threadId } } : "/foros";
     }
     case "collaborative_space": return "/espacios-colaborativos";
-    case "lms_course": return "/lms";
+    case "lms_course": {
+      const courseId = id(payload.courseId);
+      return courseId ? { pathname: "/lms/[id]", params: { id: courseId } } : "/lms";
+    }
+    case "announcement": return "/(tabs)";
     case "certificate": return "/mis-certificados";
     case "meeting_minutes": return "/actas";
     case "meeting": return "/videoconferencias";
     case "company_alert": return "/alerts";
     case "year_confirmation": return "/confirmar-curso";
     case "event":
-    case "calendar": return "/(tabs)";
+    case "calendar": return "/eventos";
     default: return "/(tabs)/notifications";
   }
 }

@@ -21,6 +21,12 @@ Mobile notices must cover creation, updates and cancellation of calendar events,
 
 **How to apply:** Preserve in-app notices and use both configured push channels. Do not promise device delivery without notification permission and a working device subscription or native push credentials.
 
+Avisos must be actionable: tapping the notification card should open its
+corresponding section in both web and mobile, not merely mark it as read.
+**Why:** the user reported that pressing notices did not take them anywhere.
+**How to apply:** keep in-app and system-push destinations consistent, including
+announcements, voluntary groups, events, courses, certificates and published minutes.
+
 For a user's own messages, support both hiding only from that user's view and deleting for everyone. Hiding a conversation affects only that user's list; preserve the membership and history for everyone else.
 
 **Why:** The user explicitly chose both message deletion options and hiding conversations only for themselves.

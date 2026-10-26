@@ -51,7 +51,7 @@ describe("announcement notifications", () => {
     }
     expect(sendPushToUsers).toHaveBeenCalledExactlyOnceWith([recipient.user.id], {
       title: "Aviso de coordinación", body: "Consulta el nuevo anuncio.",
-      data: { type: "announcement", announcementId: response.body.id, path: "/notifications" },
+      data: { type: "announcement", announcementId: response.body.id, path: "/" },
     });
   });
 

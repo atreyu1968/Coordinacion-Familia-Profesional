@@ -53,20 +53,25 @@ function pushPath(data: Record<string, unknown>): string {
     case "year_confirmation":
       return "/confirmar-curso";
     case "collaborative_space":
-      return "/espacio";
+      return "/espacios-colaborativos";
     case "company_alert":
       return "/alerts";
     case "forum_thread":
     case "forum_reply":
       return threadId == null ? "/foros" : `/foros/tema/${threadId}`;
     case "announcement":
-      return "/notifications";
+      return "/";
+    case "lms_course": {
+      const courseId = positiveId(data.courseId);
+      return courseId == null ? "/lms" : `/lms/${courseId}`;
+    }
     case "certificate":
       return "/mis-certificados";
     case "meeting_minutes":
       return "/actas";
     case "event":
     case "calendar":
+      return "/eventos";
     default:
       return "/";
   }

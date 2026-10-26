@@ -57,7 +57,7 @@ describe("independent collaborative spaces", () => {
       type: "collaborative_space", title: "Te han añadido a un espacio colaborativo", readAt: null,
     });
     expect(notices[0]!.body).toContain("Equipo de innovación");
-    expect(withPushPath({ title: "Aviso", data: { type: notices[0]!.type } }).data?.path).toBe("/espacio");
+    expect(withPushPath({ title: "Aviso", data: { type: notices[0]!.type } }).data?.path).toBe("/espacios-colaborativos");
     const later = await createUser({ centerId });
     const unchanged = await request(app).get(`/api/collab/spaces/${created.body.id}`).set(authHeader(admin.token));
     expect(unchanged.body.members.some((m: { id: number }) => m.id === later.user.id)).toBe(false);

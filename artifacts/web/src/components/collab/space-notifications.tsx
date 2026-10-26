@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { Bell, Trash2 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListNotificationsQueryKey,
@@ -52,6 +52,7 @@ function destination(type: string | null | undefined, role: string) {
 
 export function AppNotifications({ userId, role }: { userId: number; role: string }) {
   const [open, setOpen] = useState(false);
+  const [, navigate] = useLocation();
   const client = useQueryClient();
   const queryKey = [...getListNotificationsQueryKey(), userId];
   const notices = useListNotifications({
@@ -84,7 +85,23 @@ export function AppNotifications({ userId, role }: { userId: number; role: strin
                 const target = destination(item.type, role);
                 return (
                   <div key={item.id}
-                    className={`rounded-md p-3 mb-1 hover:bg-accent ${!item.readAt ? "bg-accent/60" : ""}`}>
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Abrir aviso: ${item.title}`}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("a, button")) return;
+                      if (!item.readAt) markRead.mutate({ id: item.id });
+                      setOpen(false);
+                      navigate(target.href);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || !["Enter", " "].includes(event.key)) return;
+                      event.preventDefault();
+                      if (!item.readAt) markRead.mutate({ id: item.id });
+                      setOpen(false);
+                      navigate(target.href);
+                    }}
+                    className={`cursor-pointer rounded-md p-3 mb-1 hover:bg-accent focus-visible:outline focus-visible:outline-2 ${!item.readAt ? "bg-accent/60" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="min-w-0 flex-1 text-sm font-medium">{item.title}</p>
                       {item.readAt && (

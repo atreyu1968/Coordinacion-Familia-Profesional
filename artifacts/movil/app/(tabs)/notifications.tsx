@@ -32,6 +32,7 @@ import {
   type PushRegistrationResult,
 } from "@/lib/push";
 import { registerWebPush } from "@/lib/pwa";
+import { notificationRoute } from "@/lib/notification-route";
 
 type PushScreenStatus = PushRegistrationResult | "checking";
 
@@ -236,47 +237,11 @@ export default function NotificationsScreen() {
                 <Pressable
                   onPress={() => {
                     if (isUnread) markOne.mutate({ id: item.id });
-                    switch (item.type) {
-                      case "message":
-                        router.push("/(tabs)/chat");
-                        break;
-                      case "survey":
-                        router.push("/surveys");
-                        break;
-                      case "document_form":
-                        router.push("/forms");
-                        break;
-                      case "meeting":
-                        router.push("/videoconferencias");
-                        break;
-                      case "company_alert":
-                        router.push("/alerts");
-                        break;
-                      case "forum_thread":
-                      case "forum_reply":
-                        router.push("/foros");
-                        break;
-                      case "year_confirmation":
-                        router.push("/confirmar-curso");
-                        break;
-                      case "certificate":
-                        router.push("/mis-certificados");
-                        break;
-                      case "meeting_minutes":
-                        router.push("/actas");
-                        break;
-                      case "collaborative_space":
-                        router.push("/espacios-colaborativos");
-                        break;
-                      case "lms_course":
-                        router.push("/lms");
-                        break;
-                      case "event":
-                      case "calendar":
-                        router.push("/(tabs)");
-                        break;
-                    }
+                    const target = notificationRoute(item);
+                    if (target) router.push(target);
                   }}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Abrir aviso: ${item.title}`}
                   style={({ pressed }) => [
                     styles.rowContent,
                     { opacity: pressed ? 0.7 : 1 },

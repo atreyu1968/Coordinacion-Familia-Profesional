@@ -26,7 +26,8 @@ describe("mobile access routes", () => {
         checked++;
       }
     }
-    expect(checked).toBeGreaterThan(40);
+    // Notice destinations are now centralized instead of duplicated per row.
+    expect(checked).toBeGreaterThan(30);
   });
 
   it.each([
@@ -35,14 +36,17 @@ describe("mobile access routes", () => {
     ["meeting_minutes", "/actas"], ["meeting", "/videoconferencias"],
     ["message", "/(tabs)/chat"], ["survey", "/surveys"], ["document_form", "/forms"],
     ["forum_reply", "/foros"], ["year_confirmation", "/confirmar-curso"],
-    ["company_alert", "/alerts"], ["announcement", "/(tabs)/notifications"],
-    ["event", "/(tabs)"], ["calendar", "/(tabs)"],
+    ["company_alert", "/alerts"], ["announcement", "/(tabs)"],
+    ["event", "/eventos"], ["calendar", "/eventos"],
   ])("opens %s in the existing app screen", (type, route) => {
     expect(notificationRoute({ type })).toBe(route);
     expect(routeExists(route)).toBe(true);
   });
 
   it("preserves valid detail targets and rejects malformed identifiers", () => {
+    expect(notificationRoute({ type: "lms_course", courseId: 11 }))
+      .toEqual({ pathname: "/lms/[id]", params: { id: "11" } });
+    expect(notificationRoute({ type: "lms_course", courseId: "../login" })).toBe("/lms");
     expect(notificationRoute({ type: "message", groupId: 7 }))
       .toEqual({ pathname: "/chat/[id]", params: { id: "7" } });
     expect(notificationRoute({ type: "survey", surveyId: 8 }))

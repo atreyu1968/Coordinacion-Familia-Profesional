@@ -66,6 +66,7 @@ export default function MoreScreen() {
     description?: string;
     onPress: () => void;
   }[] = [
+    { icon: "calendar", label: "Eventos", description: "Actividades y reuniones de la red", onPress: () => router.push("/eventos") },
     { icon: "video", label: "Videoconferencias", onPress: () => router.push("/videoconferencias") },
     { icon: "book-open", label: "Mis módulos", onPress: () => router.push("/modulos") },
     { icon: "folder", label: "Espacios colaborativos", description: "Archivos y PDF de Nextcloud", onPress: () => router.push("/espacios-colaborativos") },
