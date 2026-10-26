@@ -67,7 +67,6 @@ export type CourseExportManifest = {
   course: {
     title: string;
     description: string;
-    certificateEnabled: boolean;
     cover?: string;
   };
   lessons: Array<{
@@ -146,7 +145,6 @@ export function createCourseExportManifest(
       course: {
         title: course.title,
         description: course.description,
-        certificateEnabled: course.certificateEnabled,
         ...(course.coverObjectPath ? { cover: "assets/portada.webp" } : {}),
       },
       lessons,
@@ -405,7 +403,7 @@ export function parseCourseImportManifest(source: string): CourseImportManifest 
     course: {
       title: result.data.course.title,
       description: result.data.course.description ?? "",
-      certificateEnabled: result.data.course.certificateEnabled ?? true,
+      certificateEnabled: false,
       ...(result.data.course.cover ? { cover: validateCourseAssetPath(result.data.course.cover) } : {}),
     },
     lessons,

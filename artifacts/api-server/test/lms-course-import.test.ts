@@ -34,7 +34,7 @@ describe("course ZIP manifest", () => {
     expect(manifest.course).toEqual({
       title: "Curso de prueba",
       description: "",
-      certificateEnabled: true,
+      certificateEnabled: false,
     });
     expect(manifest.lessons.map(({ title }) => title)).toEqual([
       "Primera lección",

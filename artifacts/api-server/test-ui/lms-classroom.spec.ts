@@ -40,6 +40,11 @@ test("teacher can sign in and navigate the real demo classroom", async ({ page }
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 
   await page.goto(mobile ? `/lms/${fixtures.classroomCourseId}` : `/autodirigido?curso=${fixtures.classroomCourseId}`);
+  if (mobile) {
+    await expect(page.getByText("Disponible en la aplicación web", { exact: true })).toBeVisible();
+    await expect(page.locator("iframe, video")).toHaveCount(0);
+    return;
+  }
   if (testInfo.project.name !== "mobile-tablet") {
     await expect(page.getByText("Contenido de prueba: presentación y objetivos.", { exact: true })).toBeVisible();
   }
@@ -190,6 +195,12 @@ test("course opens a separate classroom and plays PDF, SCORM and video inline", 
   await page.getByRole("button", { name: /Iniciar sesi[oó]n/i }).click();
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
   await page.goto(mobile ? "/lms" : "/autodirigido");
+  if (mobile) {
+    await expect(page.getByText("Disponible en la aplicación web", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Abrir curso/ })).toHaveCount(0);
+    expect(page.context().pages()).toHaveLength(1);
+    return;
+  }
   const openCourseButton = page.getByRole("button", { name: "Abrir curso VERI*FACTU: curso de demostración en una pestaña nueva", exact: true }).first();
   // Wait for session restoration before enabling the cold-tab biometric case.
   await expect(openCourseButton).toBeVisible();
@@ -210,6 +221,12 @@ test("course opens a separate classroom and plays PDF, SCORM and video inline", 
     await expect(classroom.getByText("Entrar con huella", { exact: true })).toHaveCount(0);
   }
   const selectLesson = async (title: string) => {
+    // A previously opened SCORM may be restored automatically on course entry.
+    const activeScorm = classroom.locator('[aria-label="Reproductor SCORM"][data-fullscreen="true"]');
+    if (await activeScorm.count()) {
+      await activeScorm.getByRole("button", { name: "Volver al curso", exact: true }).click();
+      await expect(activeScorm).toHaveCount(0);
+    }
     if (mobile && testInfo.project.name === "mobile") {
       await classroom.getByRole("button", { name: "Abrir temario", exact: true }).click();
     }
@@ -230,6 +247,19 @@ test("course opens a separate classroom and plays PDF, SCORM and video inline", 
     : classroom.frameLocator('iframe[title="Contenido SCORM"]');
   await expect(scormFrame.getByText("Actividad SCORM ejecutada dentro del aula")).toBeVisible({ timeout: 20_000 });
   expect(classroom.context().pages()).toHaveLength(2);
+  const scormPlayer = classroom.locator('[aria-label="Reproductor SCORM"]');
+  await expect(scormPlayer).toHaveAttribute("data-fullscreen", "true");
+  const playerBounds = await scormPlayer.boundingBox();
+  const viewport = classroom.viewportSize()!;
+  expect(playerBounds!.x).toBeCloseTo(0, 0);
+  expect(playerBounds!.y).toBeCloseTo(0, 0);
+  expect(playerBounds!.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  expect(playerBounds!.height).toBeGreaterThanOrEqual(viewport.height - 1);
+  await classroom.screenshot({ path: testInfo.outputPath("fullscreen-scorm.png") });
+  await scormPlayer.getByRole("button", { name: "Volver al curso", exact: true }).click();
+  await expect(scormPlayer).toHaveAttribute("data-fullscreen", "false");
+  // The package stays alive when minimizing the player.
+  await expect(scormFrame.getByText("Actividad SCORM ejecutada dentro del aula")).toHaveCount(1);
   await selectLesson("Vídeo de prueba");
   await expect(classroom.locator("video")).toBeVisible();
   await expect(classroom.locator("video")).toHaveAttribute("controls", "");

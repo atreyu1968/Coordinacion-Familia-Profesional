@@ -34,7 +34,6 @@ import {
   useRemoveLmsCourseCover,
   useUpdateLmsLesson,
   useCommitLmsScormSession,
-  downloadLmsCertificate,
   getListLmsCoursesQueryKey,
   getGetLmsCourseQueryKey,
   getGetLmsScormSessionQueryKey,
@@ -50,7 +49,7 @@ import { HtmlDocxDownloadButton, isHtmlDocumentName } from "@/components/html-do
 import { PdfPreviewDialog, isPdfDocument } from "@/components/pdf-preview-dialog";
 import { LmsPdfPlayer } from "@/components/lms-pdf-player";
 import {
-  Award, BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
+  BookOpen, CheckCircle2, ChevronLeft, Download, FileUp, GraduationCap,
   Eye, Pencil, Play, Plus, Search, Send, Settings2, Upload, X,
 } from "lucide-react";
 import { Scorm12API } from "scorm-again/scorm12";
@@ -113,6 +112,8 @@ function ScormRunner({ session, courseId, preview = false }: { session: LmsScorm
   const queryClient = useQueryClient();
   const apiRef = useRef<Scorm12API | Scorm2004API | null>(null);
   const [ready, setReady] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const playerRef = useRef<HTMLDivElement>(null);
 
   const save = async () => {
     if (preview) return;
@@ -128,6 +129,44 @@ function ScormRunner({ session, courseId, preview = false }: { session: LmsScorm
       await queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(courseId) });
     }
   };
+
+  const returnToCourse = async () => {
+    try {
+      await save();
+      if (document.fullscreenElement === playerRef.current) await document.exitFullscreen();
+      setExpanded(false);
+      (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } })
+        .ReactNativeWebView?.postMessage(JSON.stringify({ type: "scorm-save", ok: true }));
+      if (window.parent !== window && document.referrer) {
+        window.parent.postMessage({ type: "coordina-scorm-return" }, new URL(document.referrer).origin);
+      }
+    } catch {
+      toast({ title: "No se pudo guardar el progreso. Reintenta antes de salir.", variant: "destructive" });
+    }
+  };
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [expanded]);
+
+  // The native fullscreen host asks for a confirmed commit before closing its
+  // WebView. Never discard the running package on a failed save.
+  useEffect(() => {
+    const onSaveRequest = () => {
+      void save().then(() => {
+        (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } })
+          .ReactNativeWebView?.postMessage(JSON.stringify({ type: "scorm-save", ok: true }));
+      }).catch(() => {
+        (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } })
+          .ReactNativeWebView?.postMessage(JSON.stringify({ type: "scorm-save", ok: false }));
+      });
+    };
+    window.addEventListener("coordina-scorm-save-request", onSaveRequest);
+    return () => window.removeEventListener("coordina-scorm-save-request", onSaveRequest);
+  }, [save]);
 
   useEffect(() => {
     let bridge: CrossFrameLMS | undefined;
@@ -164,17 +203,34 @@ function ScormRunner({ session, courseId, preview = false }: { session: LmsScorm
 
   const src = session.launchPath.startsWith("/") ? apiUrl(session.launchPath) : session.launchPath;
   return (
-    <div className="space-y-2">
+    <div ref={playerRef} role="region" aria-label="Reproductor SCORM"
+      data-fullscreen={expanded ? "true" : "false"}
+      className={expanded ? "fixed inset-0 z-[100] flex h-dvh w-screen flex-col bg-background" : "flex flex-col gap-2"}>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
+        <span className="text-sm font-semibold">Actividad SCORM{preview ? " · Vista previa" : ""}</span>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void save()} disabled={preview || commit.isPending || !ready}>
+            {commit.isPending ? "Guardando..." : "Guardar progreso SCORM"}
+          </Button>
+          {expanded ? <>
+            <Button variant="outline" onClick={() => {
+              void playerRef.current?.requestFullscreen?.().catch(() => {
+                // The viewport-filling player remains available when unsupported.
+              });
+            }}>Ocultar barras del navegador</Button>
+            <Button onClick={() => void returnToCourse()} disabled={commit.isPending || !ready}>Volver al curso</Button>
+          </> : <Button onClick={() => setExpanded(true)}>Ver SCORM a pantalla completa</Button>}
+        </div>
+      </div>
       <iframe
         title="Contenido SCORM"
         src={ready ? src : undefined}
-        className="h-[560px] w-full rounded-md border bg-white"
+        className={expanded ? "min-h-0 w-full flex-1 border-0 bg-white" : "h-[560px] w-full rounded-md border bg-white"}
         sandbox="allow-scripts allow-forms allow-downloads"
         referrerPolicy="origin"
+        allow="fullscreen"
+        allowFullScreen
       />
-      <Button variant="outline" onClick={() => void save()} disabled={commit.isPending || !ready}>
-        {commit.isPending ? "Guardando..." : "Guardar progreso SCORM"}
-      </Button>
     </div>
   );
 }
@@ -200,43 +256,6 @@ export function ScormPlayerPage() {
       </div>
     </main>
   );
-}
-
-function CertificateDownloadButton({ courseId }: { courseId: number }) {
-  const [downloading, setDownloading] = useState(false);
-  const download = async () => {
-    setDownloading(true);
-    try {
-      const certificate = await downloadLmsCertificate(courseId);
-      const url = URL.createObjectURL(certificate);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `certificado-${courseId}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
-      toast({
-        title: "No se pudo descargar el certificado",
-        description: error instanceof Error ? error.message : "Inténtalo de nuevo más tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  return <div className="flex flex-wrap items-center gap-2">
-    <PdfPreviewDialog
-      title="Certificado del curso"
-      disabled={downloading}
-      loadPdf={() => downloadLmsCertificate(courseId)}
-    />
-    <Button variant="outline" onClick={download} disabled={downloading}>
-      <Award className="mr-2 h-4 w-4" />{downloading ? "Preparando certificado..." : "Descargar certificado"}
-    </Button>
-  </div>;
 }
 
 export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
@@ -358,10 +377,9 @@ export function LessonView({ course, lesson, onRefresh, onPreviewProgress }: {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <h2 className="min-w-0 flex-1 text-2xl font-extrabold leading-tight tracking-tight">{lesson.title}</h2>
+      {statusLabel && <div className="flex flex-wrap items-start gap-3">
         {statusLabel && <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${progress?.status === "completed" ? "bg-emerald-600/10 text-emerald-700" : progress?.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>{progress?.status === "completed" && <CheckCircle2 className="h-3.5 w-3.5" />}{statusLabel}</span>}
-      </div>
+      </div>}
       {lesson.kind === "text" && <div className="max-w-[72ch] text-[15px]"><CourseMarkdown text={String(lesson.content.text ?? lesson.content.body ?? "Esta lección aún no tiene texto.")} /></div>}
       {lesson.kind === "video" && (Boolean(lesson.content.url || lesson.content.embedUrl || pdfUrl)
         ? <LmsWebVideoPlayer title={lesson.title} source={String(lesson.content.embedUrl ?? lesson.content.url ?? pdfUrl)} />
@@ -420,12 +438,12 @@ function CourseEditor({ course, scopes, onClose, onSaved }: { course: LmsCourse 
   const savedId = useRef<number | null>(course?.id ?? null);
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(course?.title ?? ""); const [description, setDescription] = useState(course?.description ?? "");
-  const [moduleId, setModuleId] = useState(course?.moduleId == null ? "" : String(course.moduleId)); const [certificate, setCertificate] = useState(course?.certificateEnabled ?? true);
+  const [moduleId, setModuleId] = useState(course?.moduleId == null ? "" : String(course.moduleId));
   const save = async () => {
     if (saving) return;
     setSaving(true);
     try {
-      const data = { title: title.trim(), description, moduleId: moduleId ? Number(moduleId) : null, certificateEnabled: certificate };
+      const data = { title: title.trim(), description, moduleId: moduleId ? Number(moduleId) : null, certificateEnabled: false };
       const saved = savedId.current
         ? await update.mutateAsync({ courseId: savedId.current, data })
         : await create.mutateAsync({ data });
@@ -447,7 +465,7 @@ function CourseEditor({ course, scopes, onClose, onSaved }: { course: LmsCourse 
       if (savedId.current) void queryClient.invalidateQueries({ queryKey: getGetLmsCourseQueryKey(savedId.current) });
     }
   };
-  return <Card className="border-primary/30"><CardHeader><CardTitle>{course ? "Editar curso" : "Nuevo curso"}</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={saving} /></div><div><Label>Descripción</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} /></div><LmsCourseCoverField course={course} title={title} file={coverFile} removed={coverRemoved} disabled={saving} onFile={(file) => { setCoverFile(file); setCoverRemoved(false); }} onRemove={() => { setCoverFile(null); setCoverRemoved(true); }} /><div><Label>Ámbito</Label><select disabled={saving} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={moduleId} onChange={(e) => setModuleId(e.target.value)}>{scopes.map((scope) => <option key={scope.moduleId ?? "general"} value={scope.moduleId ?? ""}>{scope.label}</option>)}</select></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={saving} checked={certificate} onChange={(e) => setCertificate(e.target.checked)} /> Emitir certificado al completar</label><div className="flex gap-2"><Button onClick={save} disabled={!title.trim() || saving}>{saving ? "Guardando..." : "Guardar"}</Button><Button variant="ghost" disabled={saving} onClick={onClose}>Cancelar</Button></div></CardContent></Card>;
+  return <Card className="border-primary/30"><CardHeader><CardTitle>{course ? "Editar curso" : "Nuevo curso"}</CardTitle></CardHeader><CardContent className="space-y-4"><div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={saving} /></div><div><Label>Descripción</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} /></div><LmsCourseCoverField course={course} title={title} file={coverFile} removed={coverRemoved} disabled={saving} onFile={(file) => { setCoverFile(file); setCoverRemoved(false); }} onRemove={() => { setCoverFile(null); setCoverRemoved(true); }} /><div><Label>Ámbito</Label><select disabled={saving} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={moduleId} onChange={(e) => setModuleId(e.target.value)}>{scopes.map((scope) => <option key={scope.moduleId ?? "general"} value={scope.moduleId ?? ""}>{scope.label}</option>)}</select></div><div className="flex gap-2"><Button onClick={save} disabled={!title.trim() || saving}>{saving ? "Guardando..." : "Guardar"}</Button><Button variant="ghost" disabled={saving} onClick={onClose}>Cancelar</Button></div></CardContent></Card>;
 }
 
 function LessonEditor({ courseId, lesson, onSaved }: { courseId: number; lesson?: LmsLesson; onSaved: () => void }) {
@@ -631,8 +649,7 @@ function CourseZipImport({
 }`}</pre>
             <p>
               Tipos: text, file, video, quiz, scorm12 y scorm2004. Máximo 100 MB
-              comprimidos, 250 MB descomprimidos y 200 lecciones. Los cursos SCORM
-              no emiten certificados automáticos.
+              comprimidos, 250 MB descomprimidos y 200 lecciones.
             </p>
           </div>
         </details>
@@ -811,7 +828,6 @@ export default function AutodirigidoPage() {
   if (scormToken) return <RemoteScormSession token={scormToken} />;
   if (selectedId && (detail.isLoading || (detail.isFetching && selectedLessonId == null))) return <p className="py-12 text-center text-muted-foreground">Cargando curso...</p>;
   const course = detail.data;
-  const containsScorm = course?.lessons.some((lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004") ?? false;
   if (previewingCourse && selectedId && course && canManageSelectedCourse) {
     return <LmsCoursePreview key={course.id} course={course}
       onClose={() => { void detail.refetch(); setPreviewingCourse(false); }}
@@ -849,11 +865,9 @@ export default function AutodirigidoPage() {
 
   if (selectedId && course) {
     return <div className="space-y-8 pb-10">
-      {containsScorm && <div role="note" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-muted-foreground">Este curso incluye SCORM. Su seguimiento es autodeclarado y no se verifica en el servidor, por lo que no habilita un certificado académico automático.</div>}
       {positionSave.error && <p role="alert" className="text-sm text-destructive">No se pudo guardar la última lección abierta. <Button variant="link" onClick={positionSave.retry}>Reintentar</Button></p>}
       <LmsClassroom course={course} selectedLessonId={selectedLessonId} onSelect={selectLesson}
         onBack={() => { if (immersive) navigate("/autodirigido"); else { setSelectedId(null); setEditor(null); setLessonEditor(null); navigate("/autodirigido"); } }}
-        headerActions={course.certificateAvailable ? <CertificateDownloadButton courseId={course.id} /> : undefined}
         renderLesson={(lesson) => <LessonView key={lesson.id} course={course} lesson={lesson} onRefresh={() => void refresh()} />} />
       {!immersive && canManageSelectedCourse && <section aria-labelledby="lms-manage-title" className="overflow-hidden rounded-3xl border-2 border-dashed border-primary/25 bg-primary/[0.03]">
         <details>
@@ -911,7 +925,7 @@ export default function AutodirigidoPage() {
       <div className="relative max-w-2xl">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] opacity-80"><GraduationCap className="h-4 w-4" />Coordina FP · Autodirigido</p>
         <h1 className="mt-3 text-3xl font-extrabold leading-[1.05] tracking-tight md:text-5xl">Formación a tu ritmo, lección a lección.</h1>
-        <p className="mt-4 text-[15px] leading-7 opacity-85">Elige un curso, avanza por su temario y consigue el certificado cuando completes las lecciones obligatorias.</p>
+        <p className="mt-4 text-[15px] leading-7 opacity-85">Elige un curso y avanza por su temario a tu ritmo.</p>
       </div>
     </header>
 
@@ -955,7 +969,6 @@ export default function AutodirigidoPage() {
           <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]">
             {item.completed ? <span className="flex items-center gap-1 text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />Completado</span> : <span className="text-primary">{item.lessonCount} {item.lessonCount === 1 ? "lección" : "lecciones"}</span>}
             {item.status === "draft" && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-800">Borrador</span>}
-            {item.certificateEnabled && <span className="flex items-center gap-1 text-muted-foreground"><Award className="h-3.5 w-3.5" />Certificado</span>}
           </div>
           <h3 className="mt-1.5 text-lg font-bold leading-snug"><button type="button" className="text-left hover:underline focus-visible:underline focus-visible:outline-none" onClick={() => openCourse(item.id)} aria-label={`Abrir curso ${item.title} en una pestaña nueva`}>{item.title}</button></h3>
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{item.description || "Curso autodirigido"}</p>

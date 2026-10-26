@@ -27,8 +27,8 @@ que no estén referenciados por una lección se ignoran.
 ## Exportar un curso
 
 Los administradores con acceso al curso pueden abrirlo en **Autodirigido** y
-usar **Exportar ZIP**. La descarga conserva el título, la descripción, la
-configuración de certificados, el orden y el tipo de las lecciones, además de
+usar **Exportar ZIP**. La descarga conserva el título, la descripción,
+el orden y el tipo de las lecciones, además de
 sus contenidos, adjuntos y paquetes SCORM. El manifiesto queda en la raíz del
 archivo y sus recursos se incluyen bajo `assets/`, por lo que el ZIP se puede
 volver a importar con el flujo descrito abajo.
@@ -70,8 +70,7 @@ Este ejemplo incluye lecciones de texto, vídeo, cuestionario, archivo y SCORM:
   "version": 1,
   "course": {
     "title": "Introducción a la gestión administrativa",
-    "description": "Material de apoyo para trabajar los conceptos básicos.",
-    "certificateEnabled": true
+    "description": "Material de apoyo para trabajar los conceptos básicos."
   },
   "lessons": [
     {
@@ -127,7 +126,7 @@ Este ejemplo incluye lecciones de texto, vídeo, cuestionario, archivo y SCORM:
 
 - `format` debe ser `coordina-adg-course` y `version` debe ser `1`.
 - `course.title` es obligatorio. `description` puede omitirse y, en ese caso,
-  queda vacía. `certificateEnabled` puede omitirse y, en ese caso, se activa.
+  queda vacía.
 - `lessons` conserva el orden del manifiesto y debe contener entre 1 y 200
   lecciones.
 - `kind` admite `text`, `file`, `video`, `quiz`, `scorm12` y `scorm2004`.
@@ -152,9 +151,8 @@ Este ejemplo incluye lecciones de texto, vídeo, cuestionario, archivo y SCORM:
 - Cada archivo de lección: máximo 100 MB.
 - Solo se importa al ámbito elegido por el administrador. Para cursos de módulo,
   el módulo debe pertenecer a la familia profesional activa.
-- Si el curso incluye una lección SCORM, la plataforma desactiva los
-  certificados automáticos. El seguimiento SCORM se comunica desde el navegador
-  y no acredita por sí solo la finalización académica.
+- El seguimiento SCORM se comunica desde el navegador y se utiliza como
+  información de progreso dentro del curso.
 - La importación valida todos los datos antes de guardar el curso. Si falla,
   elimina los archivos temporales y los recursos ya copiados; no deja un curso
   parcial.

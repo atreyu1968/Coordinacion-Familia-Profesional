@@ -1,12 +1,12 @@
 ---
-name: SCORM completion and certificates
-description: Trust boundary for learner-supplied SCORM runtime data and academic certificate eligibility
+name: Formación sin certificación docente
+description: Los cursos no ofrecen ni emiten certificados; se mantienen los de asistencia a eventos.
 ---
 
-# SCORM certificate policy
+# Formación sin certificación docente
 
-**Rule:** SCORM runtime data from the learner's browser is self-reported telemetry, not verified academic completion. It must not by itself complete a lesson or grant an academic certificate. Courses containing SCORM are ineligible for automatic certificates until a trusted graded assessment or explicit manual-verification policy is built.
+**Rule:** La plataforma no debe ofrecer, anunciar ni emitir una certificación del profesorado por realizar cursos. Retirar también las referencias del catálogo, administración, vista previa y documentación del LMS. Los certificados de asistencia a eventos son una función distinta y se conservan.
 
-**Why:** an authenticated learner can submit completion and success fields directly without actually completing the browser-run package. Client-side CMI validation cannot establish independent proof of achievement.
+**Why:** el usuario pidió «elimina de la plataforma cualquier referencia a una certificación del profesorado». Esta decisión sustituye la posibilidad anterior de emitir certificados para algunos cursos.
 
-**How to apply:** keep display of self-reported status separate from verified progress and make the certificate gate apply to every issuance/download path, including old progress records. If introducing teacher verification later, define who can attest it and how edits invalidate the attestation.
+**How to apply:** no reactivar la emisión aunque un curso no contenga SCORM o sus registros antiguos indiquen que estaba habilitada. No borrar el historial ni retirar los certificados de asistencia. Conservar compatibilidad de almacenamiento y contratos cuando sea necesaria para actualizar instalaciones existentes sin migraciones destructivas.

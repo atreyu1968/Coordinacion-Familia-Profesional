@@ -1,5 +1,6 @@
-import React, { createElement } from "react";
-import { Text, View } from "react-native";
+import React, { createElement, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Pressable, Text, View } from "react-native";
 
 function getEmbedUrl(source: string) {
   try {
@@ -52,17 +53,50 @@ export function LmsVideoPlayer({ source, title }: { source: string; title: strin
 }
 
 export function LmsScormPlayer({ token, title }: { token: string; title: string }) {
+  const [expanded, setExpanded] = useState(true);
+  const frame = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [expanded]);
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  useEffect(() => {
+    const onReturn = (event: MessageEvent) => {
+      if (domain && event.origin === `https://${domain}` &&
+        event.source === frame.current?.contentWindow &&
+        event.data?.type === "coordina-scorm-return") setExpanded(false);
+    };
+    window.addEventListener("message", onReturn);
+    return () => window.removeEventListener("message", onReturn);
+  }, [domain]);
   if (!domain || !token) return <Text accessibilityRole="alert">No se pudo iniciar la actividad SCORM.</Text>;
   const source = `https://${domain}/scorm-player?token=${encodeURIComponent(token)}`;
-  return <View style={{ height: 620, width: "100%", overflow: "hidden", borderRadius: 12, borderWidth: 1, borderColor: "#d7dee8", backgroundColor: "#fff" }}>
+  return <>
+    {!expanded && <Pressable accessibilityRole="button" onPress={() => setExpanded(true)} style={{ padding: 16 }}>
+      <Text style={{ color: "#124996", fontWeight: "600" }}>Ver SCORM a pantalla completa</Text>
+    </Pressable>}
+    {typeof document !== "undefined" && createPortal(<div role="region" aria-label="Reproductor SCORM" data-fullscreen={expanded ? "true" : "false"} style={{
+      // RN Web scroll containers can establish a fixed-position containing
+      // block. A body portal avoids clipping or offsets. Keep it mounted when
+      // hidden so returning to the course never reloads the active package.
+      display: expanded ? "flex" : "none", flexDirection: "column", position: "fixed",
+      inset: 0, height: "100dvh", width: "100%", zIndex: 10000, backgroundColor: "#fff",
+    }}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Volver al curso"
+      onPress={() => setExpanded(false)} style={{ padding: 12, backgroundColor: "#fff", borderBottomWidth: 1, borderColor: "#d7dee8" }}>
+      <Text style={{ color: "#124996", fontWeight: "600" }}>Volver al curso</Text>
+    </Pressable>
     {createElement("iframe", {
+      ref: frame,
       title,
       src: source,
       allow: "fullscreen",
       allowFullScreen: true,
       referrerPolicy: "strict-origin",
-      style: { width: "100%", height: "100%", border: 0 },
+      style: { width: "100%", flex: 1, minHeight: 0, border: 0 },
     })}
-  </View>;
+    </div>, document.body)}
+  </>;
 }

@@ -57,6 +57,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Some self-hosted nginx mime.types files do not recognize .mjs.
+        // PDF.js loads its worker as a module and rejects octet-stream, even
+        // when the file exists. Keep hashing/base routing, but emit raw module
+        // assets with .js so both workers and the fallback import can load.
+        assetFileNames: (asset) => asset.names.some((name) => name.endsWith(".mjs"))
+          ? "assets/[name]-[hash].js"
+          : "assets/[name]-[hash][extname]",
+      },
+    },
   },
   server: {
     port,

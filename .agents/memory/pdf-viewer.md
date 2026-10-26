@@ -14,3 +14,11 @@ El visor web/PWA debe renderizar los PDF con PDF.js, no con `react-native-webvie
 **Why:** En Android/iOS la PWA usa la implementación web; WebView no admite esa plataforma y los PDF incrustados directamente no son fiables en navegadores móviles. Los documentos privados no deben enviarse a visores de terceros.
 
 **How to apply:** Mantener separadas las implementaciones web y nativa. Servir los recursos de PDF.js localmente y pasar al visor solo bytes ya autorizados, nunca credenciales. El directorio estático del renderer no debe coincidir con la ruta de Expo: nginx prioriza directorios existentes frente al fallback de la aplicación y rompería los enlaces directos.
+
+Los recursos de módulo de PDF.js deben publicarse como `.js` en las instalaciones
+autogestionadas, salvo que se haya comprobado el MIME de `.mjs` en el servidor.
+**Why:** el nginx de producción entregaba el worker `.mjs` existente con estado
+200 pero `application/octet-stream`; el navegador rechazaba tanto el worker
+como su importación de respaldo. No era un problema del PDF ni de sus permisos.
+**How to apply:** comprobar extensión y referencia del worker en la compilación
+real; una respuesta 200 no basta para validar un módulo JavaScript.

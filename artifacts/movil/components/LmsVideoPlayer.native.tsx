@@ -1,5 +1,6 @@
-import React from "react";
-import { Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Modal, Pressable, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { WebView } from "react-native-webview";
 
@@ -47,12 +48,65 @@ function DirectVideo({ source, title }: { source: string; title: string }) {
 }
 
 export function LmsScormPlayer({ token, title }: { token: string; title: string }) {
+  const [expanded, setExpanded] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const player = useRef<WebView>(null);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearSaveTimeout = () => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = null;
+  };
+  useEffect(() => () => clearSaveTimeout(), []);
+  const requestClose = () => {
+    if (loadFailed) { setExpanded(false); return; }
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    player.current?.injectJavaScript('window.dispatchEvent(new Event("coordina-scorm-save-request")); true;');
+    saveTimeout.current = setTimeout(() => {
+      setSaving(false);
+      setError("No se pudo confirmar el guardado. Comprueba la conexión y vuelve a pulsar «Volver al curso».");
+    }, 12_000);
+  };
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (!domain || !token) return <Text accessibilityRole="alert">No se pudo iniciar la actividad SCORM.</Text>;
   const source = `https://${domain}/scorm-player?token=${encodeURIComponent(token)}`;
-  return <View style={{ height: 620, width: "100%", overflow: "hidden", borderRadius: 12, borderWidth: 1, borderColor: "#d7dee8", backgroundColor: "#fff" }}>
-    <WebView source={{ uri: source }} javaScriptEnabled domStorageEnabled allowsFullscreenVideo
-      allowsInlineMediaPlayback originWhitelist={["https://*"]} setSupportMultipleWindows={false}
-      accessibilityLabel={title} />
-  </View>;
+  return <>
+    <Pressable accessibilityRole="button" onPress={() => { setError(""); setLoadFailed(false); setExpanded(true); }} style={{ padding: 16 }}>
+      <Text style={{ color: "#124996" }}>Ver SCORM a pantalla completa</Text>
+    </Pressable>
+    <Modal visible={expanded} presentationStyle="fullScreen" animationType="slide" onRequestClose={requestClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <Pressable accessibilityRole="button" disabled={saving} onPress={requestClose} style={{ padding: 12 }}>
+          <Text style={{ color: "#124996", fontWeight: "600" }}>{saving ? "Guardando progreso…" : "Volver al curso"}</Text>
+        </Pressable>
+        {error ? <View style={{ padding: 12, gap: 8 }}>
+          <Text accessibilityRole="alert" style={{ color: "#b42318" }}>{error}</Text>
+          <Pressable accessibilityRole="button" onPress={() => Alert.alert(
+            "Salir sin guardar",
+            "Se pueden perder los cambios desde el último guardado. ¿Quieres salir de la actividad?",
+            [{ text: "Cancelar", style: "cancel" }, { text: "Salir", style: "destructive", onPress: () => {
+              clearSaveTimeout(); setSaving(false); setExpanded(false);
+            } }],
+          )}><Text style={{ color: "#b42318" }}>Salir sin guardar</Text></Pressable>
+        </View> : null}
+        <WebView ref={player} source={{ uri: source }} javaScriptEnabled domStorageEnabled allowsFullscreenVideo
+          style={{ flex: 1 }} allowsInlineMediaPlayback originWhitelist={["https://*"]} setSupportMultipleWindows={false}
+          onMessage={(event) => {
+            try {
+              const result = JSON.parse(event.nativeEvent.data);
+              if (result.type !== "scorm-save") return;
+              clearSaveTimeout();
+              setSaving(false);
+              if (result.ok === true) setExpanded(false);
+              else setError("No se pudo guardar el progreso. Reintenta antes de salir.");
+            } catch { /* Ignore unrelated messages from the package. */ }
+          }}
+          onError={() => { clearSaveTimeout(); setLoadFailed(true); setSaving(false); setError("No se pudo cargar el contenido SCORM. Comprueba la conexión."); }}
+          accessibilityLabel={title} />
+      </SafeAreaView>
+    </Modal>
+  </>;
 }

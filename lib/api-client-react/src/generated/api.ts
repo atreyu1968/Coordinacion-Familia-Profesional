@@ -24978,9 +24978,13 @@ export const getDownloadLmsCertificateUrl = (courseId: number,) => {
   return `/api/lms/courses/${courseId}/certificate`
 }
 
-export const downloadLmsCertificate = async (courseId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+/**
+ * @deprecated
+ * @summary Retired endpoint
+ */
+export const downloadLmsCertificate = async (courseId: number, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
-  return customFetch<Blob>(getDownloadLmsCertificateUrl(courseId),
+  return customFetch<unknown>(getDownloadLmsCertificateUrl(courseId),
   {
     ...options,
     method: 'GET'
@@ -25000,7 +25004,7 @@ export const getDownloadLmsCertificateQueryKey = (courseId: number,) => {
     }
 
 
-export const getDownloadLmsCertificateQueryOptions = <TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getDownloadLmsCertificateQueryOptions = <TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<void>>(courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -25019,10 +25023,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type DownloadLmsCertificateQueryResult = NonNullable<Awaited<ReturnType<typeof downloadLmsCertificate>>>
-export type DownloadLmsCertificateQueryError = ErrorType<unknown>
+export type DownloadLmsCertificateQueryError = ErrorType<void>
 
 
-export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(
+export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<void>>(
  courseId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof downloadLmsCertificate>>,
@@ -25032,7 +25036,7 @@ export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof down
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(
+export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<void>>(
  courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof downloadLmsCertificate>>,
@@ -25042,12 +25046,16 @@ export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof down
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(
+export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<void>>(
  courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @deprecated
+ * @summary Retired endpoint
+ */
 
-export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<unknown>>(
+export function useDownloadLmsCertificate<TData = Awaited<ReturnType<typeof downloadLmsCertificate>>, TError = ErrorType<void>>(
  courseId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof downloadLmsCertificate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

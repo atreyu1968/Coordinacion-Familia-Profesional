@@ -6893,11 +6893,15 @@ export const UpdateLmsModuleManagersResponseItem = zod.object({
 export const UpdateLmsModuleManagersResponse = zod.array(UpdateLmsModuleManagersResponseItem)
 
 
+/**
+ * @deprecated
+ * @summary Retired endpoint
+ */
 export const DownloadLmsCertificateParams = zod.object({
   "courseId": zod.coerce.number().int()
 })
 
-export const DownloadLmsCertificateResponse = zod.unknown()
+export const DownloadLmsCertificateResponse = zod.void()
 
 
 export const CreateLmsScormSessionParams = zod.object({

@@ -5750,10 +5750,12 @@ paths:
   /lms/courses/{courseId}/certificate:
     get:
       operationId: downloadLmsCertificate
+      deprecated: true
+      summary: Retired endpoint
       tags: [lms]
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/CourseIdPath" }]
-      responses: { "200": { description: PDF certificate, content: { application/pdf: { schema: { type: string, format: binary } } } } }
+      responses: { "401": { description: Authentication required }, "404": { description: Resource unavailable } }
   /lms/courses/{courseId}/scorm-session:
     post:
       operationId: createLmsScormSession

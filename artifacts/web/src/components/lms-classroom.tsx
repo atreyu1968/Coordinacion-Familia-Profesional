@@ -5,7 +5,7 @@ import type { LmsCourse, LmsCourseDetail, LmsLesson } from "@workspace/api-clien
 import { AutoLinkText } from "@/components/auto-link-text";
 import { Button } from "@/components/ui/button";
 import {
-  Award, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, FileDown, FileText,
+  CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, FileDown, FileText,
   ListChecks, Package, PanelLeftClose, PanelLeftOpen, PlayCircle, Pin, PinOff, XCircle,
 } from "lucide-react";
 
@@ -90,7 +90,6 @@ export function CourseHero({ course, eyebrow, actions, aside }: {
         <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-3 border-t pt-4 text-sm sm:grid-cols-3">
           <div><dt className="text-xs text-muted-foreground">Lecciones</dt><dd className="font-semibold">{course.lessons.length}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Obligatorias superadas</dt><dd className="font-semibold">{completedRequired} de {requiredCount}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Certificado</dt><dd className="flex items-center gap-1 font-semibold">{course.certificateEnabled ? <><Award className="h-4 w-4 text-primary" />Incluido</> : "No incluido"}</dd></div>
         </dl>
         {kinds.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="Formatos del curso">
           {kinds.map((k) => <li key={k} className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium"><LessonKindIcon kind={k} className="h-3.5 w-3.5" />{lessonKindLabels[k] ?? k}</li>)}

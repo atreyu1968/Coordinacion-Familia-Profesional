@@ -371,13 +371,9 @@ Si el curso se vincula a un módulo, se comprobará que la relación sea correct
 
 Las marcas de progreso sirven al seguimiento dentro de la aplicación. No deben utilizarse sin más como una medida de competencia profesional.
 
-## Precaución con SCORM y certificados
+## Seguimiento de contenidos SCORM
 
-Los estados y puntuaciones comunicados por contenidos SCORM proceden del navegador y son autodeclarados: no constituyen una verificación académica fiable por sí solos.
-
-No se anunciará ni emitirá una acreditación académica automática basada únicamente en ese seguimiento. Cualquier constancia o certificado disponible requiere comprobar las condiciones del curso, la evidencia válida y la autorización de quien deba expedirlo.
-
-Una constancia técnica de participación no equivale necesariamente a un título, crédito o certificación oficial.
+Los estados y puntuaciones comunicados por contenidos SCORM proceden del navegador y se utilizan como información de progreso dentro del curso.
 
 ## Mejora del contenido
 

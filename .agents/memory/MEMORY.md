@@ -19,7 +19,7 @@
 - [Black Nextcloud iframe on self-host](nextcloud-iframe-sso-https.md) — usually Mixed Content; fix overwriteprotocol+PUBLIC_APP_URL; DB nextcloud_url overrides env.
 - [Nextcloud PDF previews](nextcloud-pdf-previews.md) — use the user's one-use SSO session in an embedded Nextcloud view; never proxy files with an admin account or public links.
 - [Backup & restore (server migration)](backup-restore-migration.md) — fail-closed DB restore needs matching external object bytes and fresh session IDs.
-- [SCORM certificate policy](scorm-certificate-policy.md) — browser CMI is self-reported; no automatic academic certificate without trusted verification.
+- [Sin certificación docente](scorm-certificate-policy.md) — el LMS no ofrece ni emite certificados; se mantienen los certificados de asistencia a eventos.
 - [Contract-driven workflow](contract-driven-workflow.md) — the OpenAPI-first edit/codegen/db-push loop for the monorepo.
 - [API contract changes need codegen](api-contract-codegen.md) — change a response/request shape via openapi → orval → zod + react client.
 - [orval-generated api client](api-client-orval.md) — how @workspace/api-client-react exposes hooks/functions; naming gotcha + mutation variable shapes.

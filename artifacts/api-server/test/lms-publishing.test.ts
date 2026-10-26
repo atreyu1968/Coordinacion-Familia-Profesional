@@ -6,6 +6,7 @@ import {
   db,
   lmsCoursesTable,
   lmsLessonsTable,
+  lmsCertificatesTable,
   notificationsTable,
 } from "@workspace/db";
 import app from "../src/app";
@@ -20,6 +21,7 @@ afterAll(async () => {
     await db.delete(announcementsTable).where(eq(announcementsTable.id, announcementId));
   }
   if (courseId != null) {
+    await db.delete(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, courseId));
     await db.delete(lmsLessonsTable).where(eq(lmsLessonsTable.courseId, courseId));
     await db.delete(lmsCoursesTable).where(eq(lmsCoursesTable.id, courseId));
   }
@@ -28,6 +30,35 @@ afterAll(async () => {
 });
 
 describe("LMS course publication notices", () => {
+  it("keeps the retired course download unavailable without issuing or deleting historical records", async () => {
+    const owner = await createUser("coordinator");
+    const [course] = await db.insert(lmsCoursesTable).values({
+      title: `${testMarker}-legacy`, description: "", status: "published",
+      certificateEnabled: true, createdBy: owner.user.id,
+    }).returning();
+    const [lesson] = await db.insert(lmsLessonsTable).values({
+      courseId: course.id, title: "Lectura", kind: "text", required: true,
+    }).returning();
+    try {
+      const detail = await request(app).get(`/api/lms/courses/${course.id}`).set(authHeader(owner.token));
+      expect(detail.status).toBe(200);
+      expect(detail.body.certificateEnabled).toBe(false);
+      expect(detail.body.certificateAvailable).toBe(false);
+      const completed = await request(app).post(`/api/lms/lessons/${lesson.id}/complete`).set(authHeader(owner.token));
+      expect(completed.status).toBe(200);
+      expect(await db.select().from(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, course.id))).toHaveLength(0);
+      await db.insert(lmsCertificatesTable).values({
+        courseId: course.id, userId: owner.user.id, certificateNumber: `${testMarker}-historical`,
+      });
+      const download = await request(app).get(`/api/lms/courses/${course.id}/certificate`).set(authHeader(owner.token));
+      expect(download.status).toBe(404);
+      expect(await db.select().from(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, course.id))).toHaveLength(1);
+    } finally {
+      await db.delete(lmsCertificatesTable).where(eq(lmsCertificatesTable.courseId, course.id));
+      await db.delete(lmsLessonsTable).where(eq(lmsLessonsTable.courseId, course.id));
+      await db.delete(lmsCoursesTable).where(eq(lmsCoursesTable.id, course.id));
+    }
+  });
   it("creates one Tablón announcement and notifies active users only once", async () => {
     const publisher = await createUser({ role: "superadmin" });
     const recipient = await createUser();

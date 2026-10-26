@@ -62,7 +62,6 @@ import {
   MAX_MULTI_COURSE_EXPANDED_SIZE,
   MAX_MULTI_COURSE_EXPORT_FILES,
 } from "../lib/lms-course-import";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { MAX_COURSE_COVER_SIZE, normalizeCourseCover } from "../lib/lms-course-cover";
 
 const router: IRouter = Router();
@@ -236,8 +235,8 @@ async function courseDetail(courseId: number, user: User) {
   return {
     id: course.id, title: course.title, description: course.description, moduleId: course.moduleId,
     coverUrl: courseCoverUrl(course),
-    status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length,
-    completed, certificateAvailable: completed && course.certificateEnabled,
+    status: course.status, certificateEnabled: false, lessonCount: lessons.length,
+    completed, certificateAvailable: false,
     lastOpenedLessonId: lessons.some((lesson) => lesson.id === position?.lessonId) ? position!.lessonId : null,
     lessons: lessons.map(({ objectPath: _path, ...lesson }) => ({
       ...lesson,
@@ -269,7 +268,7 @@ router.get("/lms/courses", requireAuth, async (req, res): Promise<void> => {
     const required = lessons.filter((l) => l.required);
     const containsScorm = lessons.some((lesson) => isScormKind(lesson.kind));
     const completed = !containsScorm && required.length > 0 && required.every((l) => progress.some((p) => p.lessonId === l.id && p.status === "completed"));
-    result.push({ id: course.id, title: course.title, description: course.description, moduleId: course.moduleId, coverUrl: courseCoverUrl(course), status: course.status, certificateEnabled: course.certificateEnabled, lessonCount: lessons.length, completed, certificateAvailable: completed && course.certificateEnabled });
+    result.push({ id: course.id, title: course.title, description: course.description, moduleId: course.moduleId, coverUrl: courseCoverUrl(course), status: course.status, certificateEnabled: false, lessonCount: lessons.length, completed, certificateAvailable: false });
   }
   res.json(ListLmsCoursesResponse.parse(result));
 });
@@ -655,7 +654,7 @@ router.post("/lms/courses", requireAuth, async (req, res): Promise<void> => {
   if (!(await canManageCourse(req.user!, { moduleId }))) {
     res.status(403).json({ message: "No puedes crear cursos en este ámbito" }); return;
   }
-  const [course] = await db.insert(lmsCoursesTable).values({ ...parsed.data, moduleId, createdBy: req.user!.id }).returning();
+  const [course] = await db.insert(lmsCoursesTable).values({ ...parsed.data, certificateEnabled: false, moduleId, createdBy: req.user!.id }).returning();
   const detail = await courseDetail(course.id, req.user!);
   res.status(201).json(detail);
 });
@@ -674,7 +673,7 @@ router.patch("/lms/courses/:courseId", requireAuth, async (req, res): Promise<vo
   ) {
     res.status(403).json({ message: "No puedes trasladar el curso a ese ámbito" }); return;
   }
-  await db.update(lmsCoursesTable).set({ ...parsed.data, updatedAt: new Date() }).where(eq(lmsCoursesTable.id, course.id));
+  await db.update(lmsCoursesTable).set({ ...parsed.data, certificateEnabled: false, updatedAt: new Date() }).where(eq(lmsCoursesTable.id, course.id));
   res.json(await courseDetail(course.id, req.user!));
 });
 
@@ -1441,12 +1440,7 @@ router.post(
         createdObjectPaths.add(coverObjectPath);
       }
 
-      const containsScorm = manifest.lessons.some(
-        (lesson) => lesson.kind === "scorm12" || lesson.kind === "scorm2004",
-      );
-      const warnings = containsScorm && manifest.course.certificateEnabled
-        ? ["Se desactivaron los certificados automáticos porque el curso incluye contenido SCORM."]
-        : [];
+      const warnings: string[] = [];
 
       const courseId = await db.transaction(async (tx) => {
         const [consumed] = await tx.update(lmsCourseImportIntentsTable)
@@ -1464,9 +1458,7 @@ router.post(
           coverObjectPath,
           moduleId,
           status: "draft",
-          certificateEnabled: containsScorm
-            ? false
-            : manifest.course.certificateEnabled,
+          certificateEnabled: false,
           createdBy: req.user!.id,
         }).returning({ id: lmsCoursesTable.id });
         await tx.insert(lmsLessonsTable).values(
@@ -1564,41 +1556,8 @@ router.post("/lms/lessons/:lessonId/complete", requireAuth, async (req, res): Pr
   if (!course || !(await visibleCourse(req.user!, course))) { res.status(404).json({ message: "Curso no encontrado" }); return; }
   const now = new Date();
   const [progress] = await db.insert(lmsLessonProgressTable).values({ userId: req.user!.id, courseId: course.id, lessonId: lesson.id, status: "completed", attempts: 1, startedAt: now, completedAt: now }).onConflictDoUpdate({ target: [lmsLessonProgressTable.userId, lmsLessonProgressTable.lessonId], set: { status: "completed", completedAt: now, updatedAt: now } }).returning();
-  await issueCertificateIfComplete(course.id, req.user!.id);
   res.json({ lessonId: progress.lessonId, status: progress.status, score: progress.score, attempts: progress.attempts, completedAt: progress.completedAt });
 });
-
-async function issueCertificateIfComplete(courseId: number, userId: number): Promise<void> {
-  const [course] = await db.select().from(lmsCoursesTable).where(and(
-    eq(lmsCoursesTable.id, courseId),
-    isNull(lmsCoursesTable.deletedAt),
-  ));
-  if (!course?.certificateEnabled) return;
-  const lessons = await db.select({
-    id: lmsLessonsTable.id,
-    required: lmsLessonsTable.required,
-    kind: lmsLessonsTable.kind,
-  }).from(lmsLessonsTable)
-    .where(and(
-      eq(lmsLessonsTable.courseId, courseId),
-      isNull(lmsLessonsTable.deletedAt),
-    ));
-  if (lessons.some((lesson) => isScormKind(lesson.kind))) return;
-  const required = lessons.filter((lesson) => lesson.required);
-  if (!required.length) return;
-  const completed = await db.select({ lessonId: lmsLessonProgressTable.lessonId }).from(lmsLessonProgressTable)
-    .where(and(
-      eq(lmsLessonProgressTable.userId, userId),
-      eq(lmsLessonProgressTable.courseId, courseId),
-      eq(lmsLessonProgressTable.status, "completed"),
-    ));
-  if (!required.every((lesson) => completed.some((row) => row.lessonId === lesson.id))) return;
-  await db.insert(lmsCertificatesTable).values({
-    courseId,
-    userId,
-    certificateNumber: `ADG-${randomUUID()}`,
-  }).onConflictDoNothing({ target: [lmsCertificatesTable.courseId, lmsCertificatesTable.userId] });
-}
 
 router.post("/lms/lessons/:lessonId/quiz-attempt", requireAuth, async (req, res): Promise<void> => {
   const params = SubmitLmsQuizAttemptParams.safeParse(req.params);
@@ -1633,7 +1592,6 @@ router.post("/lms/lessons/:lessonId/quiz-attempt", requireAuth, async (req, res)
   const recordedScore = Math.max(score, previous?.score ?? 0);
   const now = new Date();
   const [progress] = await db.insert(lmsLessonProgressTable).values({ userId: req.user!.id, courseId: lesson.courseId, lessonId: lesson.id, status: passed ? "completed" : "failed", score: recordedScore, attempts: 1, completedAt: passed ? (previous?.completedAt ?? now) : null }).onConflictDoUpdate({ target: [lmsLessonProgressTable.userId, lmsLessonProgressTable.lessonId], set: { status: passed ? "completed" : "failed", score: recordedScore, attempts: sql`${lmsLessonProgressTable.attempts} + 1`, completedAt: passed ? (previous?.completedAt ?? now) : null, updatedAt: now } }).returning();
-  if (passed) await issueCertificateIfComplete(course.id, req.user!.id);
   res.json({ lessonId: progress.lessonId, status: progress.status, score: recordedScore, attempts: progress.attempts, completedAt: progress.completedAt, passed });
 });
 
@@ -2025,19 +1983,7 @@ router.get("/lms/files", async (req, res): Promise<void> => {
 });
 
 router.get("/lms/courses/:courseId/certificate", requireAuth, async (req, res): Promise<void> => {
-  const detail = await courseDetail(idParam(req.params.courseId), req.user!);
-  if (!detail?.certificateAvailable) {
-    res.status(409).json({ message: "El curso aún no está completado o incluye seguimiento SCORM no verificado." }); return;
-  }
-  const existing = await db.select().from(lmsCertificatesTable).where(and(eq(lmsCertificatesTable.courseId, detail.id), eq(lmsCertificatesTable.userId, req.user!.id)));
-  const certificate = existing[0] ?? (await db.insert(lmsCertificatesTable).values({ courseId: detail.id, userId: req.user!.id, certificateNumber: `ADG-${randomUUID()}` }).returning())[0];
-  const pdf = await PDFDocument.create();
-  const page = pdf.addPage([595, 420]);
-  const font = await pdf.embedFont(StandardFonts.HelveticaBold);
-  page.drawText("Certificado de finalización", { x: 150, y: 290, size: 24, font, color: rgb(0.08, 0.2, 0.35) });
-  page.drawText(detail.title, { x: 150, y: 240, size: 18, font });
-  page.drawText(`N.º ${certificate.certificateNumber}`, { x: 150, y: 190, size: 12 });
-  res.type("application/pdf").set("Content-Disposition", `attachment; filename="certificado-${certificate.certificateNumber}.pdf"`).send(Buffer.from(await pdf.save()));
+  res.status(404).json({ message: "Recurso no disponible." });
 });
 
 export default router;

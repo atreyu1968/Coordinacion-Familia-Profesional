@@ -18,3 +18,13 @@ its native typechecking. Use structural types in browser evaluation callbacks
 when a Node-oriented project only needs a small browser property; do not
 broaden global libraries or change server production code just to typecheck
 the harness.
+
+The same isolation applies to mobile components using private `@/` import
+aliases: a web test's static import can make TypeScript resolve those aliases
+against the wrong app, even when Vitest mocks the dependency successfully.
+**Why:** runtime mocking does not stop TypeScript from traversing the imported
+mobile source under the web project's alias configuration.
+**How to apply:** load the real route/component through `vi.importActual` with
+a narrow test-side component signature; let the mobile project typecheck the
+implementation. Prefer Vitest's resolver over a variable dynamic import, which
+can instead resolve relative to the Vite served root.

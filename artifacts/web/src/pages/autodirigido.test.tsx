@@ -117,8 +117,8 @@ describe("exportación de cursos autodirigidos", () => {
       moduleId: 10, status: "draft", certificateEnabled: false,
       lessonCount: 0, completed: false, certificateAvailable: false, lessons: [], progress: [], lastOpenedLessonId: null,
     };
+    window.history.replaceState({}, "", "/autodirigido?curso=101");
     render(<AutodirigidoPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Gestión administrativa" }));
     fireEvent.click(screen.getByRole("button", { name: "Vista previa como alumno" }));
     expect(screen.getByText("Este curso todavía no tiene lecciones.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Publicar curso" })).toBeNull();

@@ -30,7 +30,7 @@ export function LmsCoursePreview({ course, onClose, renderLesson }: {
         <p className="font-semibold">Vista previa como alumno</p>
         <p className="text-sm text-muted-foreground">
           Estás viendo la versión guardada. El curso no se publica y las pruebas
-          no guardan progreso, intentos ni certificados. Al salir se reinicia la simulación.
+          no guardan progreso ni intentos. Al salir se reinicia la simulación.
         </p>
       </div>
       <Button variant="outline" onClick={onClose}>
@@ -38,10 +38,6 @@ export function LmsCoursePreview({ course, onClose, renderLesson }: {
       </Button>
     </aside>
     <LmsClassroom course={previewCourse} selectedLessonId={selectedLessonId} onSelect={selectLesson}
-      headerActions={previewCourse.completed && course.certificateEnabled &&
-        !course.lessons.some((lesson) => ["scorm12", "scorm2004"].includes(lesson.kind))
-        ? <Button disabled title="Los certificados no se emiten en la vista previa">Descargar certificado</Button>
-        : undefined}
       renderLesson={(lesson) => <div key={lesson.id}>{renderLesson(previewCourse, lesson, onProgress)}</div>} />
   </div>;
 }
