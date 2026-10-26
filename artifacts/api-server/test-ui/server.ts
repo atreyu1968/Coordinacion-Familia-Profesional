@@ -95,6 +95,62 @@ const storage = new ObjectStorageService();
 const pdf = await PDFDocument.create();
 pdf.addPage([440, 620]).drawText("Guia PDF del aula de prueba", { x: 35, y: 550, size: 18 });
 const pdfBytes = Buffer.from(await pdf.save());
+// Navigation fixtures are inserted only after the disposable database identity
+// check above. No notice delivery, email, push, AI or production data is involved.
+const {
+  eventsTable, meetingMinutesTable, meetingMinutesSourcesTable,
+  eventAttendancesTable, eventAttendanceCertificatesTable,
+  certificateEmailVerificationsTable,
+} = await import("@workspace/db");
+const { default: jwt } = await import("jsonwebtoken");
+const notificationAccounts = {};
+const navigationUsers = {
+  member: await createUser({ role: "teacher", provinceId, centerId }),
+  outsider: await createUser({ role: "teacher", provinceId: await createProvince("Otra provincia UI") }),
+  incomplete: await createUser({ role: "teacher", provinceId, centerId, incompleteProfile: true }),
+};
+for (const [key, account] of Object.entries(navigationUsers)) {
+  Object.assign(notificationAccounts, {
+    [key]: { email: account.email, password: account.password, id: account.user.id, user: account.user,
+      token: account.token,
+      expiredToken: jwt.sign({
+        sub: account.user.id, role: account.user.role, tokenVersion: account.user.tokenVersion,
+        sessionNonce: account.user.sessionNonce, exp: 1,
+      }, process.env.JWT_SECRET!) },
+  });
+  await db.insert(certificateEmailVerificationsTable).values({
+    userId: account.user.id, email: account.email, verifiedAt: new Date(),
+  });
+}
+const [notificationEvent] = await db.insert(eventsTable).values({
+  name: "Reunión destino de aviso UI", type: "coordination_meeting", provinceId,
+  createdById: classroomAccounts.desktop!.id, startAt: new Date("2098-10-01T10:00:00Z"),
+}).returning();
+const finalPath = await storage.savePrivateObjectBytes(pdfBytes, "application/pdf", String(navigationUsers.member.user.id));
+await db.insert(meetingMinutesTable).values({
+  eventId: notificationEvent!.id, enabled: true, publishedText: "Acta oficial UI",
+  publishedAt: new Date(), draftText: "BORRADOR PRIVADO NO VISIBLE UI",
+});
+await db.insert(meetingMinutesSourcesTable).values({
+  eventId: notificationEvent!.id, objectPath: finalPath, fileName: "acta-navegacion-ui.pdf",
+  contentType: "application/pdf", size: pdfBytes.length, purpose: "final_document",
+  status: "ready", createdAt: new Date(Date.now() - 1000),
+});
+const [attendance] = await db.insert(eventAttendancesTable).values({
+  eventId: notificationEvent!.id, userId: navigationUsers.member.user.id,
+  fullName: navigationUsers.member.user.name, email: navigationUsers.member.email, status: "confirmed",
+}).returning();
+const [navigationCertificate] = await db.insert(eventAttendanceCertificatesTable).values({
+  eventId: notificationEvent!.id, attendanceId: attendance!.id, verificationToken: "ui-navigation-certificate",
+  snapshot: {
+    attendeeName: navigationUsers.member.user.name, eventName: notificationEvent!.name,
+    startAt: "2098-10-01T10:00:00Z", endAt: "2098-10-01T11:00:00Z",
+    location: null, modality: "presencial", durationMinutes: 60, signerName: "Firmante UI",
+    signerRole: "Coordinación", issuePlace: "Provincia UI", issueDate: "2098-10-01",
+    additionalText: "", professionalFamily: "Familia UI", appName: "Coordina UI",
+    verificationUrl: "", code: "CERTIFICADO-DESTINO-UI", issuedAt: "2098-10-01T12:00:00Z",
+  },
+}).returning();
 const scormZip = new JSZip();
 scormZip.file("imsmanifest.xml", "<manifest/>");
 scormZip.file("index.html", "<!doctype html><html lang='es'><body><h1>Actividad SCORM ejecutada dentro del aula</h1></body></html>");
@@ -148,6 +204,9 @@ writeFileSync(join(root, "ready.json"), JSON.stringify({
   accounts,
   classroomAccounts,
   classroomCourseId: classroomCourse!.id,
+  notificationAccounts,
+  notificationEvent: { id: notificationEvent!.id, name: notificationEvent!.name },
+  notificationCertificateId: navigationCertificate!.id,
   centerId, centerName: center.name, provinceId, moduleId, moduleName, year,
 }));
 const stop = async () => {

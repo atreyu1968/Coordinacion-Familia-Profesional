@@ -233,7 +233,7 @@ test("course opens a separate classroom and plays PDF, SCORM and video inline", 
   await selectLesson("Vídeo de prueba");
   await expect(classroom.locator("video")).toBeVisible();
   await expect(classroom.locator("video")).toHaveAttribute("controls", "");
-  await expect.poll(() => classroom.locator("video").evaluate(video => (video as HTMLVideoElement).readyState), { timeout: 20_000 }).toBeGreaterThan(0);
+  await expect.poll(() => classroom.locator("video").evaluate(video => (video as unknown as { readyState: number }).readyState), { timeout: 20_000 }).toBeGreaterThan(0);
   expect(classroom.context().pages()).toHaveLength(2);
   await classroom.screenshot({ path: testInfo.outputPath("inline-video-classroom.png") });
 });

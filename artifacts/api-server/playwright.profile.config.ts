@@ -12,7 +12,7 @@ for (const origin of [process.env.PROFILE_UI_WEB_URL, process.env.PROFILE_UI_MOB
 
 export default defineConfig({
   testDir: "./test-ui",
-  testMatch: ["mandatory-profile.spec.ts", "lms-classroom.spec.ts"],
+  testMatch: ["mandatory-profile.spec.ts", "lms-classroom.spec.ts", "notification-return.spec.ts", "notification-route.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -35,7 +35,11 @@ export default defineConfig({
       : {},
   },
   projects: [
-    { name: "desktop", use: { baseURL: process.env.PROFILE_UI_WEB_URL, viewport: { width: 1440, height: 1000 } } },
+    {
+      name: "desktop",
+      testMatch: ["mandatory-profile.spec.ts", "lms-classroom.spec.ts"],
+      use: { baseURL: process.env.PROFILE_UI_WEB_URL, viewport: { width: 1440, height: 1000 } },
+    },
     { name: "mobile", use: { baseURL: process.env.PROFILE_UI_MOBILE_URL, viewport: { width: 400, height: 820 }, isMobile: true, hasTouch: true } },
     {
       name: "mobile-tablet",

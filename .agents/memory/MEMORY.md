@@ -55,6 +55,7 @@
 - [Expo push notifications & web preview](expo-push-web-crash.md) — native APIs crash the web preview; deep-link routing + EAS projectId.
 - [React Native Web checkbox state](react-native-web-checkbox-state.md) — RN Web 0.21 ignores native accessibilityState; expose aria-checked for web assertions and screen readers.
 - [Testing mobile controls in web Vitest](mobile-controls-vitest.md) — alias `react-native` to a small DOM shim; Vite cannot parse React Native's Flow entry and RN Web may not be installed in web.
+- [Mobile test type isolation](mobile-test-type-isolation.md) — importing Expo types into Node/browser test projects can change global fetch, URL and AbortSignal types.
 - [Expo export environment cache](expo-export-env-cache.md) — cached mobile bundles can retain an old API origin; private TMPDIR and network allowlists keep isolated tests safe.
 - [React context + Vite HMR stability](react-context-hmr.md) — context must live in a component-free module to survive HMR.
 - [Tailwind v4 remote font imports](tailwind-v4-fonts.md) — load web fonts via <link>, not CSS @import.
