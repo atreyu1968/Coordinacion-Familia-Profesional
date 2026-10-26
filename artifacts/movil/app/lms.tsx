@@ -1,1 +1,1 @@
-export { default } from "../components/LmsWebOnlyNotice";
+export { default } from "../components/LmsCourseCatalog";

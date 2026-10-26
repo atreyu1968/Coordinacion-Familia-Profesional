@@ -8,11 +8,15 @@ La experiencia de los cursos debe tener una presentación profesional inspirada 
 **Why:** El usuario calificó la interfaz anterior como poco profesional y pidió «algo más parecido a Domestika».
 
 Los cursos se realizan únicamente en la aplicación web desde un ordenador. En
-la app móvil y la PWA solo se muestra un aviso de disponibilidad en la web,
-también al abrir enlaces directos a un curso.
+la app móvil y la PWA se puede consultar el catálogo de cursos publicados,
+pero los enlaces directos a un curso solo muestran un aviso de disponibilidad
+en la web.
 **Why:** el usuario considera demasiado difícil realizar los cursos en móvil y
 pidió expresamente que no puedan realizarse desde la PWA.
-**How to apply:** no restaurar el aula ni el catálogo interactivo en móvil/PWA.
+**How to apply:** mostrar el catálogo informativo (título, descripción y lecciones),
+sin restaurar el aula, reproductores ni acciones para realizar cursos en móvil/PWA.
+**Why:** el usuario aclaró que sí deben poder verse los cursos disponibles desde
+el móvil aunque no puedan realizarse allí.
 Conservar los cursos y su progreso en el servidor; esta limitación no afecta a
 los certificados personales descargables desde móvil.
 
