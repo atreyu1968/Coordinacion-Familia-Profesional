@@ -97,9 +97,31 @@ export default function EspacioColaborativoPage() {
     return modules.filter(
       (m) =>
         m.name.toLowerCase().includes(term) ||
-        (m.code ?? "").toLowerCase().includes(term),
+        (m.code ?? "").toLowerCase().includes(term) ||
+        (m.cycleName ?? "").toLowerCase().includes(term),
     );
   }, [modules, search, noticeSpaceId]);
+
+  const modulesByCycle = useMemo(() => {
+    const grouped = new Map<string, Module[]>();
+    for (const module of filtered) {
+      const cycleName = module.cycleName?.trim() || "Sin ciclo";
+      const cycleModules = grouped.get(cycleName) ?? [];
+      cycleModules.push(module);
+      grouped.set(cycleName, cycleModules);
+    }
+
+    return [...grouped.entries()]
+      .map(([cycleName, cycleModules]) => [
+        cycleName,
+        cycleModules.sort((a, b) => a.name.localeCompare(b.name, "es")),
+      ] as const)
+      .sort(([a], [b]) => {
+        if (a === "Sin ciclo") return 1;
+        if (b === "Sin ciclo") return -1;
+        return a.localeCompare(b, "es");
+      });
+  }, [filtered]);
 
   const onOpen = async (module: Module) => {
     try {
@@ -195,14 +217,15 @@ export default function EspacioColaborativoPage() {
         </p>
       </div>
 
-      {notConfigured ? (
+      {notConfigured && (
         <Card>
-          <CardContent className="p-6 space-y-3">
-            <h2 className="font-semibold">Aún no está configurado</h2>
-            <p className="text-sm text-muted-foreground">
-              El espacio colaborativo (Nextcloud + Collabora) todavía no se ha
-              configurado en esta instalación.
-            </p>
+          <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Aún no está configurado</h2>
+              <p className="text-sm text-muted-foreground">
+                Puedes consultar los espacios disponibles, pero no abrirlos hasta configurar Nextcloud y Collabora.
+              </p>
+            </div>
             {user?.role === "superadmin" && (
               <Button asChild variant="outline">
                 <Link href="/panel-control">
@@ -212,63 +235,86 @@ export default function EspacioColaborativoPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <div className="space-y-2 max-w-md">
-              <Label htmlFor="module-search">Buscar módulo</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="module-search"
-                  className="pl-8"
-                  placeholder="Nombre o código del módulo"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {modulesLoading ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                Cargando módulos...
-              </p>
-            ) : filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No hay módulos disponibles.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {filtered.map((module) => (
-                  <div
-                    key={module.id}
-                    className="flex items-center justify-between gap-3 rounded-md border p-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">
-                        {module.code ? `${module.code} · ` : ""}
-                        {module.name}
-                      </div>
-                      {module.cycleName && (
-                        <div className="text-xs text-muted-foreground truncate">
-                          {module.cycleName}
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => onOpen(module)}
-                      disabled={openMut.isPending}
-                    >
-                      <FolderKanban className="w-4 h-4 mr-1.5" /> Abrir espacio
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       )}
+
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold">Espacios de los módulos</h2>
+            <p className="text-sm text-muted-foreground">
+              Módulos de la familia activa, organizados por ciclo formativo.
+            </p>
+          </div>
+          <div className="space-y-2 max-w-md">
+            <Label htmlFor="module-search">Buscar módulo o ciclo</Label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="module-search"
+                className="pl-8"
+                placeholder="Nombre, código o ciclo"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {modulesLoading ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Cargando módulos...
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              No hay módulos disponibles.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {modulesByCycle.map(([cycleName, cycleModules]) => {
+                const isAdaptedCycle = cycleName.toLocaleLowerCase("es").startsWith("fpa ·");
+                const headingId = `cycle-${cycleModules[0]?.id}`;
+                return (
+                  <section key={cycleName} className="space-y-2" aria-labelledby={headingId}>
+                    <div className="flex flex-wrap items-center gap-2 border-b pb-2">
+                      <h3 id={headingId} className="font-medium">{cycleName}</h3>
+                      {isAdaptedCycle && (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-950 dark:text-violet-200">
+                          FP Adaptada
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {cycleModules.length} {cycleModules.length === 1 ? "módulo" : "módulos"}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {cycleModules.map((module) => (
+                        <div
+                          key={module.id}
+                          className="flex items-center justify-between gap-3 rounded-md border p-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">
+                              {module.code ? `${module.code} · ` : ""}
+                              {module.name}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => onOpen(module)}
+                            disabled={!status?.configured || openMut.isPending}
+                            title={!status?.configured ? "Nextcloud y Collabora no están configurados" : undefined}
+                          >
+                            <FolderKanban className="w-4 h-4 mr-1.5" /> Abrir espacio
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <IndependentSpacesSection
         isAdmin={user?.role === "superadmin"}
