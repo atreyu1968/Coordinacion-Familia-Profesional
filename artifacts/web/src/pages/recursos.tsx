@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useSearch } from "wouter";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
+import { invalidateResourceDashboardQueries } from "@/lib/resource-dashboard-cache";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListResources,
@@ -113,7 +114,10 @@ function CreateResourceDialog() {
     };
     try {
       await createMut.mutateAsync({ data: payload });
-      await qc.invalidateQueries({ queryKey: getListResourcesQueryKey() });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListResourcesQueryKey() }),
+        invalidateResourceDashboardQueries(qc),
+      ]);
       toast({ title: "Recurso publicado", description: title.trim() });
       setOpen(false);
     } catch {
@@ -274,7 +278,10 @@ export default function RecursosPage() {
   const onDelete = async (id: number) => {
     try {
       await deleteMut.mutateAsync({ id });
-      await qc.invalidateQueries({ queryKey: getListResourcesQueryKey() });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListResourcesQueryKey() }),
+        invalidateResourceDashboardQueries(qc),
+      ]);
       toast({ title: "Recurso eliminado" });
     } catch {
       toast({
