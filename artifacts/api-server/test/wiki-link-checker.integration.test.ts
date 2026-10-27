@@ -92,6 +92,107 @@ async function readLink(id: number) {
   return result.rows[0];
 }
 
+it.each([
+  {
+    name: "soft-deleted links",
+    statement: "UPDATE wiki_external_links SET deleted_at = now() WHERE id = $1",
+    target: "link",
+  },
+  {
+    name: "soft-deleted pages",
+    statement: "UPDATE wiki_pages SET deleted_at = now() WHERE id = $1",
+    target: "page",
+  },
+  {
+    name: "module pages even when tagged normativa",
+    statement: "UPDATE wiki_pages SET module_id = 1 WHERE id = $1",
+    target: "page",
+  },
+  {
+    name: "pages with no tags",
+    statement: "UPDATE wiki_pages SET tags = ARRAY[]::text[] WHERE id = $1",
+    target: "page",
+  },
+  {
+    name: "pages with other tags but not normativa",
+    statement: "UPDATE wiki_pages SET tags = ARRAY['otra', 'normativa-extra']::text[] WHERE id = $1",
+    target: "page",
+  },
+  {
+    name: "links scheduled in the future",
+    statement: "UPDATE wiki_external_links SET next_check_at = now() + interval '1 year' WHERE id = $1",
+    target: "link",
+  },
+])("does not probe or change $name", async ({ statement, target }) => {
+  const excluded = await seedLink("excluded");
+  await database.pool.query(statement, [target === "link" ? excluded.id : excluded.pageId]);
+  const before = await readLink(excluded.id);
+  // The older excluded row must not prevent a valid due row from being checked.
+  const valid = await seedLink("valid-control", new Date("2020-01-02T00:00:00Z"));
+  const pagesBefore = await database.pool.query("SELECT * FROM wiki_pages ORDER BY id");
+
+  await first.checkDueWikiLinks();
+
+  expect(mocks.probe.mock.calls).toEqual([[valid.url]]);
+  expect(await readLink(excluded.id)).toEqual(before);
+  expect(await readLink(valid.id)).toMatchObject({
+    check_status: "healthy", http_status: 200, checked_at: expect.any(Date),
+  });
+  expect((await database.pool.query("SELECT * FROM wiki_pages ORDER BY id")).rows).toEqual(pagesBefore.rows);
+});
+
+it("checks due links by deadline then id, at most ten per run, and leaves the rest pending", async () => {
+  // Deliberately insert out of deadline order, with ties on both sides of the
+  // batch boundary: sorting only by id or only by deadline must not suffice.
+  const offsets = [4, 2, 2, 0, 3, 1, 0, 4, 1, 3, 2, 0, 1];
+  const links = [];
+  for (const [index, offset] of offsets.entries()) {
+    links.push(await seedLink(`batch-${index}`, new Date(Date.UTC(2020, 0, 1 + offset))));
+  }
+  // Normativa may be one of several tags, not necessarily the first.
+  await database.pool.query("UPDATE wiki_pages SET tags = ARRAY['otra', 'normativa']::text[]");
+  const ordered = [...links].sort((a, b) =>
+    a.nextCheckAt.getTime() - b.nextCheckAt.getTime() || a.id - b.id,
+  );
+  const before = await Promise.all(ordered.map((link) => readLink(link.id)));
+  const pagesBefore = await database.pool.query("SELECT * FROM wiki_pages ORDER BY id");
+  const started = Date.now();
+
+  await first.checkDueWikiLinks();
+
+  const finished = Date.now();
+  expect(mocks.probe.mock.calls).toEqual(ordered.slice(0, 10).map((link) => [link.url]));
+  const firstBatch = await Promise.all(ordered.slice(0, 10).map((link) => readLink(link.id)));
+  for (const row of firstBatch) {
+    expect(row).toMatchObject({
+      check_status: "healthy", http_status: 200, missing_count: 0, failure_count: 0,
+    });
+    expect(row.checked_at.getTime()).toBeGreaterThanOrEqual(started);
+    expect(row.checked_at.getTime()).toBeLessThanOrEqual(finished);
+    expect(row.next_check_at.getTime() - row.checked_at.getTime()).toBe(168 * 3_600_000);
+  }
+  for (let index = 10; index < ordered.length; index++) {
+    expect(await readLink(ordered[index]!.id)).toEqual(before[index]);
+  }
+
+  await first.checkDueWikiLinks();
+
+  expect(mocks.probe.mock.calls).toEqual(ordered.map((link) => [link.url]));
+  for (const link of ordered.slice(10)) {
+    expect(await readLink(link.id)).toMatchObject({
+      check_status: "healthy", http_status: 200, checked_at: expect.any(Date),
+    });
+  }
+  expect(await Promise.all(ordered.slice(0, 10).map((link) => readLink(link.id)))).toEqual(firstBatch);
+  const completed = await Promise.all(ordered.map((link) => readLink(link.id)));
+
+  await first.checkDueWikiLinks();
+
+  expect(mocks.probe).toHaveBeenCalledTimes(13);
+  expect(await Promise.all(ordered.map((link) => readLink(link.id)))).toEqual(completed);
+  expect((await database.pool.query("SELECT * FROM wiki_pages ORDER BY id")).rows).toEqual(pagesBefore.rows);
+});
+
 it("skips a locked link across independent instances and persists deadlines across a restart", async () => {
   const a = await seedLink("first");
   const b = await seedLink("second", new Date("2020-01-02T00:00:00Z"));
