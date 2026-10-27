@@ -1558,6 +1558,7 @@ export interface ModuleMember {
   /** @nullable */
   email?: string | null;
   role: string;
+  forumModerator: boolean;
   createdAt: string;
 }
 
@@ -1583,7 +1584,8 @@ export const UpdateModuleMemberInputRole = {
 } as const;
 
 export interface UpdateModuleMemberInput {
-  role: UpdateModuleMemberInputRole;
+  role?: UpdateModuleMemberInputRole;
+  forumModerator?: boolean;
 }
 
 export interface CreateModuleInput {
@@ -2173,6 +2175,7 @@ export interface ForumThread {
   authorName?: string | null;
   postCount: number;
   unreadCount: number;
+  canModerate: boolean;
   /** @nullable */
   pinnedAt?: string | null;
   /** @nullable */

@@ -20,6 +20,7 @@ import {
   centersTable,
   usersTable,
   teachingAssignmentsTable,
+  moduleMembershipsTable,
   type User,
 } from "@workspace/db";
 import {
@@ -48,6 +49,7 @@ import {
   resolveReadScope,
   hasScopeOver,
   isModuleCoordinator,
+  isModuleForumModerator,
   type ReadScope,
 } from "../middlewares/auth";
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
@@ -132,6 +134,12 @@ async function moduleVisibleTo(
   module: { id: number; centerId: number | null },
 ): Promise<boolean> {
   if (!(await moduleBelongsToActiveFamily(module.id))) return false;
+  if (
+    (await isModuleCoordinator(caller.id, module.id)) ||
+    (await isModuleForumModerator(caller.id, module.id))
+  ) {
+    return true;
+  }
   if (module.centerId == null) return true; // global module
   const scope = resolveReadScope(caller);
   if (scope.kind === "global") return true;
@@ -183,6 +191,24 @@ async function provinceOfCenter(centerId: number | null): Promise<number | null>
   return center?.provinceId ?? null;
 }
 
+async function canModerateForumModule(
+  caller: User,
+  moduleId: number,
+  centerId: number | null,
+): Promise<boolean> {
+  const managerWithinScope =
+    MANAGER_ROLES.includes(caller.role) &&
+    hasScopeOver(caller, {
+      provinceId: await provinceOfCenter(centerId),
+      centerId,
+    });
+  return (
+    managerWithinScope ||
+    (await isModuleCoordinator(caller.id, moduleId)) ||
+    (await isModuleForumModerator(caller.id, moduleId))
+  );
+}
+
 // ---------------------------------------------------------------------------
 // List modules with their forum thread counts (UI groups them by cycle)
 // ---------------------------------------------------------------------------
@@ -197,15 +223,39 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
   const scopeMatch = moduleScopeFilter(scope);
   if (scopeMatch) {
     const year = await getActiveAcademicYear();
-    filters.push(year ? or(
+    const visibleModuleClauses: SQL[] = [
       scopeMatch,
-      inArray(modulesTable.id, db.select({ moduleId: teachingAssignmentsTable.moduleId })
-        .from(teachingAssignmentsTable).where(and(
-          eq(teachingAssignmentsTable.teacherId, caller.id),
-          eq(teachingAssignmentsTable.schoolYear, year),
-          isNull(teachingAssignmentsTable.deletedAt),
-        ))),
-    )! : scopeMatch);
+      inArray(
+        modulesTable.id,
+        db
+          .select({ moduleId: moduleMembershipsTable.moduleId })
+          .from(moduleMembershipsTable)
+          .where(and(
+            eq(moduleMembershipsTable.userId, caller.id),
+            or(
+              eq(moduleMembershipsTable.role, "coordinator"),
+              eq(moduleMembershipsTable.forumModerator, true),
+            ),
+            isNull(moduleMembershipsTable.deletedAt),
+          )),
+      ),
+    ];
+    if (year) {
+      visibleModuleClauses.push(
+        inArray(
+          modulesTable.id,
+          db
+            .select({ moduleId: teachingAssignmentsTable.moduleId })
+            .from(teachingAssignmentsTable)
+            .where(and(
+              eq(teachingAssignmentsTable.teacherId, caller.id),
+              eq(teachingAssignmentsTable.schoolYear, year),
+              isNull(teachingAssignmentsTable.deletedAt),
+            )),
+        ),
+      );
+    }
+    filters.push(or(...visibleModuleClauses)!);
   }
 
   const modules = await db
@@ -284,6 +334,11 @@ router.get("/forum/threads", requireAuth, async (req, res): Promise<void> => {
     res.status(403).json({ message: "Módulo fuera de tu ámbito" });
     return;
   }
+  const canModerate = await canModerateForumModule(
+    caller,
+    module.id,
+    module.centerId,
+  );
 
   const threadFilters: SQL[] = [
     eq(forumThreadsTable.moduleId, query.data.moduleId),
@@ -323,7 +378,11 @@ router.get("/forum/threads", requireAuth, async (req, res): Promise<void> => {
       desc(forumThreadsTable.lastPostAt),
     );
 
-  res.json(ListForumThreadsResponse.parse(rows.map(toForumThread)));
+  res.json(
+    ListForumThreadsResponse.parse(
+      rows.map((row) => ({ ...toForumThread(row), canModerate })),
+    ),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -385,14 +444,21 @@ router.post("/forum/threads", requireAuth, async (req, res): Promise<void> => {
   }
 
   res.status(201).json(
-    toForumThread({
-      ...thread,
-      moduleName: module.name,
-      cycleName: module.cycleName,
-      authorName: caller.name,
-      postCount: 1,
-      unreadCount: 0,
-    }),
+    {
+      ...toForumThread({
+        ...thread,
+        moduleName: module.name,
+        cycleName: module.cycleName,
+        authorName: caller.name,
+        postCount: 1,
+        unreadCount: 0,
+      }),
+      canModerate: await canModerateForumModule(
+        caller,
+        module.id,
+        module.centerId,
+      ),
+    },
   );
 });
 
@@ -429,13 +495,11 @@ router.delete(
     }
 
     const isAuthor = thread.authorId === caller.id;
-    const canManage =
-      (MANAGER_ROLES.includes(caller.role) &&
-        hasScopeOver(caller, {
-          provinceId: await provinceOfCenter(thread.centerId),
-          centerId: thread.centerId,
-        })) ||
-      (await isModuleCoordinator(caller.id, thread.moduleId));
+    const canManage = await canModerateForumModule(
+      caller,
+      thread.moduleId,
+      thread.centerId,
+    );
     if (!isAuthor && !canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -579,13 +643,12 @@ router.delete(
 
     const isAuthor = post.authorId === caller.id;
     const canManage =
-      (MANAGER_ROLES.includes(caller.role) &&
-        hasScopeOver(caller, {
-          provinceId: await provinceOfCenter(thread?.centerId ?? null),
-          centerId: thread?.centerId ?? null,
-        })) ||
-      (thread != null &&
-        (await isModuleCoordinator(caller.id, thread.moduleId)));
+      thread != null &&
+      (await canModerateForumModule(
+        caller,
+        thread.moduleId,
+        thread.centerId,
+      ));
     if (!isAuthor && !canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -645,7 +708,7 @@ router.patch(
       .set({ title: body.data.title, editedAt: new Date() })
       .where(eq(forumThreadsTable.id, thread.id));
 
-    const out = await loadThreadResponse(thread.id, caller.id);
+    const out = await loadThreadResponse(thread.id, caller);
     res.json(out);
   },
 );
@@ -687,13 +750,11 @@ router.put(
       return;
     }
 
-    const canManage =
-      (MANAGER_ROLES.includes(caller.role) &&
-        hasScopeOver(caller, {
-          provinceId: await provinceOfCenter(thread.centerId),
-          centerId: thread.centerId,
-        })) ||
-      (await isModuleCoordinator(caller.id, thread.moduleId));
+    const canManage = await canModerateForumModule(
+      caller,
+      thread.moduleId,
+      thread.centerId,
+    );
     if (!canManage) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -704,7 +765,7 @@ router.put(
       .set({ pinnedAt: body.data.pinned ? new Date() : null })
       .where(eq(forumThreadsTable.id, thread.id));
 
-    const out = await loadThreadResponse(thread.id, caller.id);
+    const out = await loadThreadResponse(thread.id, caller);
     res.json(out);
   },
 );
@@ -800,7 +861,7 @@ router.patch(
 
 // Build the full ForumThread response shape for a single thread (used after
 // edit/pin mutations so the client gets the recomputed counts and flags).
-async function loadThreadResponse(threadId: number, callerId: number) {
+async function loadThreadResponse(threadId: number, caller: User) {
   const [row] = await db
     .select({
       id: forumThreadsTable.id,
@@ -820,13 +881,22 @@ async function loadThreadResponse(threadId: number, callerId: number) {
         where ${forumPostsTable.threadId} = ${forumThreadsTable.id}
           and ${forumPostsTable.deletedAt} is null
       )`,
-      unreadCount: unreadCountFor(callerId, forumThreadsTable.id),
+      unreadCount: unreadCountFor(caller.id, forumThreadsTable.id),
     })
     .from(forumThreadsTable)
     .leftJoin(modulesTable, eq(modulesTable.id, forumThreadsTable.moduleId))
     .leftJoin(usersTable, eq(usersTable.id, forumThreadsTable.authorId))
     .where(eq(forumThreadsTable.id, threadId));
-  return row ? toForumThread(row) : null;
+  return row
+    ? {
+        ...toForumThread(row),
+        canModerate: await canModerateForumModule(
+          caller,
+          row.moduleId,
+          row.centerId,
+        ),
+      }
+    : null;
 }
 
 // Notify the thread's author and prior repliers (except the current poster)
@@ -913,7 +983,11 @@ router.get("/forum/threads/:id", requireAuth, async (req, res): Promise<void> =>
     res.status(loaded.status).json({ error: loaded.message });
     return;
   }
-  res.json(GetForumThreadResponse.parse(await loadThreadResponse(loaded.thread.id, req.user!.id)));
+  res.json(
+    GetForumThreadResponse.parse(
+      await loadThreadResponse(loaded.thread.id, req.user!),
+    ),
+  );
 });
 
 export default router;

@@ -22,6 +22,7 @@ export interface ForumThread {
   authorName?: string | null;
   postCount: number;
   unreadCount: number;
+  canModerate: boolean;
   /** @nullable */
   pinnedAt?: Date | null;
   /** @nullable */

@@ -452,6 +452,87 @@ describe("forum pinning", () => {
       .send({ pinned: true });
     expect(res.status).toBe(403);
   });
+
+  it("lets appointed module moderators moderate only their assigned forum", async () => {
+    const provinceA = await createProvince("A");
+    const provinceB = await createProvince("B");
+    const centerA = await createCenter(provinceA);
+    const centerB = await createCenter(provinceB);
+    const moduleId = await createModule({ centerId: centerA });
+    const admin = await createUser({ role: "superadmin" });
+    const author = await createUser({ role: "teacher", centerId: centerA });
+    const moderator = await createUser({ role: "teacher", centerId: centerB });
+    const thread = await openThread(author.token, moduleId, "Moderación");
+    expect(thread.status).toBe(201);
+    expect(thread.body.canModerate).toBe(false);
+
+    const memberPath = `/api/modules/${moduleId}/members/${moderator.user.id}`;
+    await request(app)
+      .post(`/api/modules/${moduleId}/members`)
+      .set(authHeader(admin.token))
+      .send({ userId: moderator.user.id })
+      .expect(201);
+
+    await request(app)
+      .patch(memberPath)
+      .set(authHeader(moderator.token))
+      .send({ forumModerator: true })
+      .expect(403);
+
+    const appointed = await request(app)
+      .patch(memberPath)
+      .set(authHeader(admin.token))
+      .send({ forumModerator: true })
+      .expect(200);
+    expect(appointed.body).toMatchObject({
+      role: "member",
+      forumModerator: true,
+    });
+
+    const moduleList = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(moderator.token))
+      .expect(200);
+    expect(moduleList.body.some((item: { id: number }) => item.id === moduleId)).toBe(true);
+
+    const threads = await request(app)
+      .get("/api/forum/threads")
+      .query({ moduleId })
+      .set(authHeader(moderator.token))
+      .expect(200);
+    expect(threads.body.find((item: { id: number }) => item.id === thread.body.id)?.canModerate).toBe(true);
+
+    await request(app)
+      .put(`/api/forum/threads/${thread.body.id}/pinned`)
+      .set(authHeader(moderator.token))
+      .send({ pinned: true })
+      .expect(200);
+
+    const posts = await request(app)
+      .get(`/api/forum/threads/${thread.body.id}/posts`)
+      .set(authHeader(moderator.token))
+      .expect(200);
+    await request(app)
+      .delete(`/api/forum/posts/${posts.body[0].id}`)
+      .set(authHeader(moderator.token))
+      .expect(204);
+
+    await request(app)
+      .patch(memberPath)
+      .set(authHeader(admin.token))
+      .send({ forumModerator: false })
+      .expect(200);
+    const revoked = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(moderator.token))
+      .expect(200);
+    expect(revoked.body.some((item: { id: number }) => item.id === moduleId)).toBe(false);
+    await request(app)
+      .put(`/api/forum/threads/${thread.body.id}/pinned`)
+      .set(authHeader(moderator.token))
+      .send({ pinned: false })
+      .expect(403);
+  });
 });
 
 describe("forum unread counters and mark-read", () => {

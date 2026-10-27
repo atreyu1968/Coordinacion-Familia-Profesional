@@ -78,42 +78,14 @@ function formatDate(value: string): string {
   });
 }
 
-// Mirrors the backend delete rules: the author may always delete; a superadmin
-// may delete anything; province/center managers may delete only scoped
-// (non-global) content they can see (their visibility already guarantees the
-// content is within their scope). Global threads (centerId == null) are
-// author/superadmin-only, matching the server's hasScopeOver check.
 function useCanManage() {
   const { user } = useAuth();
   return (
     authorId: number | null | undefined,
-    centerId: number | null | undefined,
+    canModerate: boolean,
   ) => {
     if (authorId != null && authorId === user?.id) return true;
-    if (user?.role === "superadmin") return true;
-    if (
-      (user?.role === "coordinator" || user?.role === "department_head") &&
-      centerId != null
-    ) {
-      return true;
-    }
-    return false;
-  };
-}
-
-// Pin/unpin is a moderation action: managers only (no author shortcut), and
-// only over scoped content, mirroring the backend hasScopeOver check.
-function useCanModerate() {
-  const { user } = useAuth();
-  return (centerId: number | null | undefined) => {
-    if (user?.role === "superadmin") return true;
-    if (
-      (user?.role === "coordinator" || user?.role === "department_head") &&
-      centerId != null
-    ) {
-      return true;
-    }
-    return false;
+    return canModerate;
   };
 }
 
@@ -276,11 +248,11 @@ function EditThreadDialog({
 // ---------------------------------------------------------------------------
 function PostCard({
   post,
-  centerId,
+  canModerate,
   onChanged,
 }: {
   post: ForumPost;
-  centerId: number | null | undefined;
+  canModerate: boolean;
   onChanged: () => void;
 }) {
   const canManage = useCanManage();
@@ -346,7 +318,7 @@ function PostCard({
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
             )}
-            {canManage(post.authorId, centerId) && (
+            {canManage(post.authorId, canModerate) && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -494,7 +466,7 @@ function ThreadDetail({
             <PostCard
               key={p.id}
               post={p}
-              centerId={thread.centerId}
+              canModerate={thread.canModerate}
               onChanged={refresh}
             />
           ))}
@@ -533,7 +505,6 @@ function ModuleThreads({
 }) {
   const qc = useQueryClient();
   const canManage = useCanManage();
-  const canModerate = useCanModerate();
   const isAuthor = useIsAuthor();
   const [search, setSearch] = useState("");
   const { data: threads = [], isLoading } = useListForumThreads({
@@ -655,7 +626,7 @@ function ModuleThreads({
                 {isAuthor(t.authorId) && (
                   <EditThreadDialog thread={t} onDone={invalidate} />
                 )}
-                {canModerate(t.centerId) && (
+                {t.canModerate && (
                   <Button
                     size="sm"
                     variant="ghost"
@@ -670,7 +641,7 @@ function ModuleThreads({
                     )}
                   </Button>
                 )}
-                {canManage(t.authorId, t.centerId) && (
+                {canManage(t.authorId, t.canModerate) && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button

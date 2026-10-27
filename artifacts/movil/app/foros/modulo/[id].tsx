@@ -37,9 +37,6 @@ export default function ForoModuloScreen() {
   const params = useLocalSearchParams<{ id: string; name?: string; cycle?: string }>();
   const moduleId = Number(params.id);
 
-  const isManager =
-    user?.role === "coordinator" || user?.role === "department_head";
-
   const [search, setSearch] = useState("");
   const { data: threads = [], isLoading } = useListForumThreads({
     moduleId,
@@ -221,10 +218,8 @@ export default function ForoModuloScreen() {
         ) : (
           threads.map((t: ForumThread) => {
             const isAuthor = t.authorId === user?.id;
-            const canDelete =
-              user?.role === "superadmin" || isAuthor || (isManager && t.centerId != null);
-            const canPin =
-              user?.role === "superadmin" || (isManager && t.centerId != null);
+            const canDelete = isAuthor || t.canModerate;
+            const canPin = t.canModerate;
             const isEditing = editId === t.id;
             return (
               <Card key={t.id} style={styles.itemCard}>

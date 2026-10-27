@@ -16,6 +16,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
+  useGetForumThread,
   useListForumPosts,
   useCreateForumPost,
   useDeleteForumPost,
@@ -45,16 +46,10 @@ export default function ForoTemaScreen() {
     center?: string;
   }>();
   const threadId = Number(params.id);
-  const threadCenterId = params.center ? Number(params.center) : null;
-
-  const isManager =
-    user?.role === "coordinator" || user?.role === "department_head";
-  // Mirrors the backend: author/superadmin always; managers only on scoped
-  // (non-global) threads, which their visibility already confines to scope.
+  const { data: thread } = useGetForumThread(threadId);
   const canManagePost = (authorId: number | null | undefined) =>
     (authorId != null && authorId === user?.id) ||
-    user?.role === "superadmin" ||
-    (isManager && threadCenterId != null);
+    thread?.canModerate === true;
 
   const { data: posts = [], isLoading, isError, refetch } = useListForumPosts(threadId);
   const createMut = useCreateForumPost();

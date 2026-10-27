@@ -217,9 +217,12 @@ export function canManageUser(caller: User, target: User): boolean {
 export async function getModuleMembership(
   userId: number,
   moduleId: number,
-): Promise<{ role: string } | undefined> {
+): Promise<{ role: string; forumModerator: boolean } | undefined> {
   const [row] = await db
-    .select({ role: moduleMembershipsTable.role })
+    .select({
+      role: moduleMembershipsTable.role,
+      forumModerator: moduleMembershipsTable.forumModerator,
+    })
     .from(moduleMembershipsTable)
     .where(
       and(
@@ -246,4 +249,13 @@ export async function isModuleCoordinator(
 ): Promise<boolean> {
   const m = await getModuleMembership(userId, moduleId);
   return m?.role === "coordinator";
+}
+
+/** Whether `userId` is an explicitly appointed moderator of this module forum. */
+export async function isModuleForumModerator(
+  userId: number,
+  moduleId: number,
+): Promise<boolean> {
+  const m = await getModuleMembership(userId, moduleId);
+  return m?.forumModerator === true;
 }

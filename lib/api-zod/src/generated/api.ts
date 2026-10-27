@@ -1283,6 +1283,7 @@ export const ListForumThreadsResponseItem = zod.object({
   "authorName": zod.string().nullish(),
   "postCount": zod.number().int(),
   "unreadCount": zod.number().int(),
+  "canModerate": zod.boolean(),
   "pinnedAt": zod.coerce.date().nullish(),
   "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1315,6 +1316,7 @@ export const CreateForumThreadResponse = zod.object({
   "authorName": zod.string().nullish(),
   "postCount": zod.number().int(),
   "unreadCount": zod.number().int(),
+  "canModerate": zod.boolean(),
   "pinnedAt": zod.coerce.date().nullish(),
   "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1340,6 +1342,7 @@ export const GetForumThreadResponse = zod.object({
   "authorName": zod.string().nullish(),
   "postCount": zod.number().int(),
   "unreadCount": zod.number().int(),
+  "canModerate": zod.boolean(),
   "pinnedAt": zod.coerce.date().nullish(),
   "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1372,6 +1375,7 @@ export const UpdateForumThreadResponse = zod.object({
   "authorName": zod.string().nullish(),
   "postCount": zod.number().int(),
   "unreadCount": zod.number().int(),
+  "canModerate": zod.boolean(),
   "pinnedAt": zod.coerce.date().nullish(),
   "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1411,6 +1415,7 @@ export const PinForumThreadResponse = zod.object({
   "authorName": zod.string().nullish(),
   "postCount": zod.number().int(),
   "unreadCount": zod.number().int(),
+  "canModerate": zod.boolean(),
   "pinnedAt": zod.coerce.date().nullish(),
   "editedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -2498,6 +2503,7 @@ export const ListModuleMembersResponseItem = zod.object({
   "userName": zod.string().nullish(),
   "email": zod.string().nullish(),
   "role": zod.string(),
+  "forumModerator": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
 export const ListModuleMembersResponse = zod.array(ListModuleMembersResponseItem)
@@ -2522,6 +2528,7 @@ export const AddModuleMemberResponse = zod.object({
   "userName": zod.string().nullish(),
   "email": zod.string().nullish(),
   "role": zod.string(),
+  "forumModerator": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
 
@@ -2535,7 +2542,8 @@ export const UpdateModuleMemberParams = zod.object({
 })
 
 export const UpdateModuleMemberBody = zod.object({
-  "role": zod.enum(['member', 'coordinator'])
+  "role": zod.enum(['member', 'coordinator']).optional(),
+  "forumModerator": zod.boolean().optional()
 })
 
 export const UpdateModuleMemberResponse = zod.object({
@@ -2545,6 +2553,7 @@ export const UpdateModuleMemberResponse = zod.object({
   "userName": zod.string().nullish(),
   "email": zod.string().nullish(),
   "role": zod.string(),
+  "forumModerator": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
 
@@ -2574,6 +2583,7 @@ export const EnrollInModuleResponse = zod.object({
   "userName": zod.string().nullish(),
   "email": zod.string().nullish(),
   "role": zod.string(),
+  "forumModerator": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
 

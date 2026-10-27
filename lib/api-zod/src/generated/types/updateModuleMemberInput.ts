@@ -8,5 +8,6 @@
 import type { UpdateModuleMemberInputRole } from './updateModuleMemberInputRole';
 
 export interface UpdateModuleMemberInput {
-  role: UpdateModuleMemberInputRole;
+  role?: UpdateModuleMemberInputRole;
+  forumModerator?: boolean;
 }

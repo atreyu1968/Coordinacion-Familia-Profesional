@@ -91,6 +91,7 @@ function ModuleNavRow({
           <ModuleMembersDialog
             module={m}
             canDesignateCoordinator={canManage}
+            canManageForumModerators={canManage}
             trigger={
               <Button size="sm" variant="outline" className="gap-1.5">
                 <Users className="w-3.5 h-3.5" /> Miembros

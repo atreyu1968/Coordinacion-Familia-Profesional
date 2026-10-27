@@ -131,6 +131,7 @@ export function toModuleMember(row: {
   userName?: string | null;
   email?: string | null;
   role: string;
+  forumModerator?: boolean | null;
   createdAt: Date;
 }) {
   return {
@@ -140,6 +141,7 @@ export function toModuleMember(row: {
     userName: row.userName ?? null,
     email: row.email ?? null,
     role: row.role,
+    forumModerator: row.forumModerator ?? false,
     createdAt: row.createdAt,
   };
 }

@@ -32,7 +32,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Crown, Plus, Trash2, UserMinus, UserPlus } from "lucide-react";
+import {
+  Crown,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Self-enrollment toggle: any authenticated user may enroll into / leave a
@@ -90,6 +97,7 @@ export function ModuleMembersDialog({
   module,
   trigger,
   canDesignateCoordinator = true,
+  canManageForumModerators = true,
 }: {
   module: Module;
   trigger: ReactNode;
@@ -99,6 +107,8 @@ export function ModuleMembersDialog({
    * coordinator can manage the roster but not change the coordinator.
    */
   canDesignateCoordinator?: boolean;
+  /** Only managers in scope may appoint or remove forum moderators. */
+  canManageForumModerators?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
@@ -162,6 +172,28 @@ export function ModuleMembersDialog({
     }
   };
 
+  const onToggleForumModerator = async (m: ModuleMember) => {
+    try {
+      await updateMut.mutateAsync({
+        moduleId: module.id,
+        userId: m.userId,
+        data: { forumModerator: !m.forumModerator },
+      });
+      await refresh();
+      toast({
+        title: m.forumModerator
+          ? "Moderador retirado"
+          : "Moderador del foro asignado",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la moderación del foro.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onRemove = async (m: ModuleMember) => {
     try {
       await removeMut.mutateAsync({ moduleId: module.id, userId: m.userId });
@@ -185,8 +217,8 @@ export function ModuleMembersDialog({
         <DialogHeader>
           <DialogTitle>Miembros · {module.name}</DialogTitle>
           <DialogDescription>
-            Inscribe profesorado y designa al coordinador del módulo (uno por
-            módulo). El coordinador modera el foro y crea videoconferencias.
+            Añade profesorado y gestiona los responsables de este módulo. Puede
+            haber varios moderadores del foro.
           </DialogDescription>
         </DialogHeader>
 
@@ -243,6 +275,11 @@ export function ModuleMembersDialog({
                         <Crown className="w-3 h-3" /> Coordinador
                       </Badge>
                     )}
+                    {m.forumModerator && (
+                      <Badge variant="secondary" className="gap-1">
+                        <ShieldCheck className="w-3 h-3" /> Moderador del foro
+                      </Badge>
+                    )}
                   </div>
                   {m.email && (
                     <div className="text-xs text-muted-foreground truncate">
@@ -251,6 +288,28 @@ export function ModuleMembersDialog({
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {canManageForumModerators && (
+                    <Button
+                      size="sm"
+                      variant={m.forumModerator ? "secondary" : "outline"}
+                      onClick={() => onToggleForumModerator(m)}
+                      disabled={busy}
+                      className="gap-1.5 px-2"
+                      title={
+                        m.forumModerator
+                          ? "Retirar moderador del foro"
+                          : "Nombrar moderador del foro"
+                      }
+                      aria-label={
+                        m.forumModerator
+                          ? `Retirar moderador del foro a ${m.userName ?? "usuario"}`
+                          : `Nombrar moderador del foro a ${m.userName ?? "usuario"}`
+                      }
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      {m.forumModerator ? "Retirar" : "Moderar"}
+                    </Button>
+                  )}
                   {canDesignateCoordinator && (
                     <Button
                       size="sm"

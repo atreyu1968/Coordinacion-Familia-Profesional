@@ -172,6 +172,7 @@ export default function ModuloDetallePage() {
             <ModuleMembersDialog
               module={module}
               canDesignateCoordinator={canManage}
+              canManageForumModerators={canManage}
               trigger={
                 <Button variant="outline" className="gap-1.5">
                   <Users className="w-4 h-4" /> Miembros

@@ -483,7 +483,9 @@ for (const column of expected.columns) {
        (column.table === "invitations" &&
          ["max_uses", "used_count"].includes(column.column)) ||
         (column.table === "teacher_year_confirmations" &&
-         column.column === "does_not_teach"))
+          column.column === "does_not_teach") ||
+        (column.table === "module_memberships" &&
+          column.column === "forum_moderator"))
     ) {
       continue;
     }

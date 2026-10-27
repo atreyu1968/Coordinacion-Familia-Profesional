@@ -15,5 +15,6 @@ export interface ModuleMember {
   /** @nullable */
   email?: string | null;
   role: string;
+  forumModerator: boolean;
   createdAt: Date;
 }

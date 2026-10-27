@@ -847,6 +847,7 @@ router.get(
         moduleId: moduleMembershipsTable.moduleId,
         userId: moduleMembershipsTable.userId,
         role: moduleMembershipsTable.role,
+        forumModerator: moduleMembershipsTable.forumModerator,
         createdAt: moduleMembershipsTable.createdAt,
         userName: usersTable.name,
         email: usersTable.email,
@@ -937,6 +938,15 @@ router.patch(
       res.status(400).json({ message: body.error.message });
       return;
     }
+    if (
+      (body.data.role === undefined) ===
+      (body.data.forumModerator === undefined)
+    ) {
+      res.status(400).json({
+        message: "Indica un único cambio de rol o moderación del foro.",
+      });
+      return;
+    }
     const caller = req.user!;
     const module = await loadModule(params.data.moduleId);
     if (!module) {
@@ -961,11 +971,13 @@ router.patch(
       res.status(404).json({ message: "Miembro no encontrado" });
       return;
     }
-    const member = await upsertMembership(
-      module.id,
-      params.data.userId,
-      body.data.role,
-    );
+    const member = body.data.role !== undefined
+      ? await upsertMembership(module.id, params.data.userId, body.data.role)
+      : (await db
+          .update(moduleMembershipsTable)
+          .set({ forumModerator: body.data.forumModerator! })
+          .where(eq(moduleMembershipsTable.id, existing.id))
+          .returning())[0]!;
     const [u] = await db
       .select({ name: usersTable.name, email: usersTable.email })
       .from(usersTable)
@@ -1025,7 +1037,7 @@ router.delete(
     }
     await db
       .update(moduleMembershipsTable)
-      .set({ deletedAt: new Date() })
+      .set({ deletedAt: new Date(), forumModerator: false })
       .where(eq(moduleMembershipsTable.id, existing.id));
     res.sendStatus(204);
   },
@@ -1107,7 +1119,7 @@ router.delete(
     }
     await db
       .update(moduleMembershipsTable)
-      .set({ deletedAt: new Date() })
+      .set({ deletedAt: new Date(), forumModerator: false })
       .where(eq(moduleMembershipsTable.id, existing.id));
     res.sendStatus(204);
   },

@@ -7570,10 +7570,12 @@ components:
           nullable: true
         role:
           type: string
+        forumModerator:
+          type: boolean
         createdAt:
           type: string
           format: date-time
-      required: [id, moduleId, userId, role, createdAt]
+      required: [id, moduleId, userId, role, forumModerator, createdAt]
     AddModuleMemberInput:
       type: object
       properties:
@@ -7589,7 +7591,8 @@ components:
         role:
           type: string
           enum: [member, coordinator]
-      required: [role]
+        forumModerator:
+          type: boolean
     CreateModuleInput:
       type: object
       properties:
@@ -8364,6 +8367,8 @@ components:
           type: integer
         unreadCount:
           type: integer
+        canModerate:
+          type: boolean
         pinnedAt:
           type: string
           format: date-time
@@ -8378,7 +8383,7 @@ components:
         lastPostAt:
           type: string
           format: date-time
-      required: [id, moduleId, title, postCount, unreadCount, createdAt, lastPostAt]
+      required: [id, moduleId, title, postCount, unreadCount, canModerate, createdAt, lastPostAt]
     ForumPost:
       type: object
       properties:
