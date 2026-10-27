@@ -117,7 +117,38 @@ describe("persistent retry policy", () => {
       { missingCount: 3, failureCount: 3 }, now);
     expect(updated).toMatchObject({ checkStatus: "healthy", missingCount: 0, failureCount: 0, redirectUrl: null });
     expect(Object.keys(updated).sort()).toEqual([
-      "checkStatus", "checkedAt", "failureCount", "httpStatus", "missingCount", "nextCheckAt", "redirectUrl",
+      "checkStatus", "checkedAt", "failureCount", "httpStatus", "incidentVersion", "missingCount", "nextCheckAt", "redirectUrl", "resolvedAt",
     ]);
+  });
+});
+
+describe("manual resolution lifecycle", () => {
+  const previous = {
+    missingCount: 0, failureCount: 3, checkStatus: "blocked",
+    httpStatus: 403, redirectUrl: null, incidentVersion: 7,
+  };
+  it("does not reopen a reviewed incident when the same problem persists", () => {
+    const update = linkCheckUpdate({ kind: "blocked", httpStatus: 403, redirectUrl: null }, previous);
+    expect(update).not.toHaveProperty("resolvedAt");
+    expect(update).not.toHaveProperty("incidentVersion");
+    expect(update).not.toHaveProperty("reviewHistory");
+  });
+  it.each([
+    { kind: "blocked", httpStatus: 451, redirectUrl: null },
+    { kind: "temporary", httpStatus: 503, redirectUrl: null },
+    { kind: "redirected", httpStatus: 200, redirectUrl: "https://www.boe.es/new" },
+  ] as const)("reopens for a changed problem: $kind $httpStatus", (result) => {
+    expect(linkCheckUpdate(result, previous)).toMatchObject({ resolvedAt: null, incidentVersion: 8 });
+  });
+  it("reopens when a problem returns after recovery", () => {
+    const recovered = { ...previous, ...linkCheckUpdate({ kind: "healthy", httpStatus: 200, redirectUrl: null }, previous) };
+    expect(recovered.incidentVersion).toBe(8);
+    expect(linkCheckUpdate({ kind: "blocked", httpStatus: 403, redirectUrl: null }, recovered))
+      .toMatchObject({ resolvedAt: null, incidentVersion: 9 });
+  });
+  it("detects a different redirect destination", () => {
+    expect(linkCheckUpdate({ kind: "redirected", httpStatus: 200, redirectUrl: "https://www.boe.es/b" },
+      { ...previous, checkStatus: "redirected", httpStatus: 200, redirectUrl: "https://www.boe.es/a" }))
+      .toMatchObject({ resolvedAt: null, incidentVersion: 8 });
   });
 });

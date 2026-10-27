@@ -528,6 +528,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/chat-attachment-deletions.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/notification-targets.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/wiki-link-checks.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/wiki-link-resolutions.sql"
     verify_catalog
   else
     fail "Could not classify user-defined objects in the public schema."

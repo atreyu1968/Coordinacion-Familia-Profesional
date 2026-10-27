@@ -294,6 +294,7 @@ import type {
   VerifyAttendanceEmailBody,
   WikiAttachmentInput,
   WikiExternalLinkInput,
+  WikiLinkResolutionInput,
   WikiLinkReview,
   WikiPage,
   WikiPageInput,
@@ -20313,6 +20314,89 @@ export function useListWikiLinkReviews<TData = Awaited<ReturnType<typeof listWik
 
 
 
+
+export const getResolveWikiLinkReviewUrl = (externalLinkId: number,) => {
+
+
+
+
+  return `/api/wiki/link-reviews/${externalLinkId}/resolve`
+}
+
+export const resolveWikiLinkReview = async (externalLinkId: number,
+    wikiLinkResolutionInput: WikiLinkResolutionInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getResolveWikiLinkReviewUrl(externalLinkId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(wikiLinkResolutionInput)
+  }
+);}
+
+
+
+
+
+export const getResolveWikiLinkReviewMutationKey = () => ['resolveWikiLinkReview'] as const;
+
+export const getResolveWikiLinkReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveWikiLinkReview>>, TError,ResolveWikiLinkReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveWikiLinkReview>>, TError,ResolveWikiLinkReviewMutationVariables, TContext> => {
+
+const mutationKey = getResolveWikiLinkReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveWikiLinkReview>>, ResolveWikiLinkReviewMutationVariables> = (props) => {
+          const {externalLinkId,data} = props ?? {};
+
+          return  resolveWikiLinkReview(externalLinkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveWikiLinkReviewMutationResult = NonNullable<Awaited<ReturnType<typeof resolveWikiLinkReview>>>
+    export type ResolveWikiLinkReviewMutationBody = BodyType<WikiLinkResolutionInput>
+    export type ResolveWikiLinkReviewMutationError = ErrorType<void>
+    export type ResolveWikiLinkReviewMutationVariables = {externalLinkId: number;data: BodyType<WikiLinkResolutionInput>}
+
+    export const useResolveWikiLinkReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveWikiLinkReview>>, TError,ResolveWikiLinkReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resolveWikiLinkReview>>,
+        TError,
+        ResolveWikiLinkReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResolveWikiLinkReviewMutationOptions(options), queryClient);
+    }
 
 export const getRequestWikiUploadUrlUrl = () => {
 

@@ -16,6 +16,8 @@ import {
   ListWikiPagesQueryParams,
   ListWikiPagesResponse,
   ListWikiLinkReviewsResponse,
+  ResolveWikiLinkReviewBody,
+  ResolveWikiLinkReviewParams,
   RequestWikiUploadUrlBody,
   RequestWikiUploadUrlResponse,
   UpdateModuleWikiEditorsBody,
@@ -295,6 +297,9 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
       nextCheckAt: wikiExternalLinksTable.nextCheckAt,
       httpStatus: wikiExternalLinksTable.httpStatus,
       redirectUrl: wikiExternalLinksTable.redirectUrl,
+      incidentVersion: wikiExternalLinksTable.incidentVersion,
+      resolvedAt: wikiExternalLinksTable.resolvedAt,
+      reviewHistory: wikiExternalLinksTable.reviewHistory,
     })
     .from(wikiExternalLinksTable)
     .where(
@@ -330,14 +335,54 @@ router.get("/wiki/link-reviews", requireAuth, async (req, res): Promise<void> =>
     checkStatus: wikiExternalLinksTable.checkStatus, checkedAt: wikiExternalLinksTable.checkedAt,
     nextCheckAt: wikiExternalLinksTable.nextCheckAt, httpStatus: wikiExternalLinksTable.httpStatus,
     redirectUrl: wikiExternalLinksTable.redirectUrl,
+    incidentVersion: wikiExternalLinksTable.incidentVersion,
+    resolvedAt: wikiExternalLinksTable.resolvedAt,
+    reviewHistory: wikiExternalLinksTable.reviewHistory,
     pageId: wikiPagesTable.id, pageTitle: wikiPagesTable.title,
   }).from(wikiExternalLinksTable)
     .innerJoin(wikiPagesTable, eq(wikiPagesTable.id, wikiExternalLinksTable.pageId))
     .where(and(isNull(wikiExternalLinksTable.deletedAt), isNull(wikiPagesTable.deletedAt),
       isNull(wikiPagesTable.moduleId), sql`${wikiPagesTable.tags} @> ARRAY['normativa']::text[]`,
-      sql`${wikiExternalLinksTable.checkStatus} NOT IN ('healthy', 'unchecked')`))
+      sql`(${wikiExternalLinksTable.checkStatus} NOT IN ('healthy', 'unchecked') OR jsonb_array_length(${wikiExternalLinksTable.reviewHistory}) > 0)`))
     .orderBy(asc(wikiExternalLinksTable.checkStatus), asc(wikiExternalLinksTable.checkedAt));
   res.json(ListWikiLinkReviewsResponse.parse(links));
+});
+
+router.post("/wiki/link-reviews/:externalLinkId/resolve", requireAuth, async (req, res): Promise<void> => {
+  if (!(await getSectionPermissions(req.user!, null)).canEdit) {
+    res.status(403).json({ message: "No tienes permiso para gestionar Documentación" }); return;
+  }
+  const params = ResolveWikiLinkReviewParams.safeParse(req.params);
+  const body = ResolveWikiLinkReviewBody.safeParse(req.body);
+  if (!params.success || !body.success || !body.data.note.trim()) {
+    res.status(400).json({ message: "Indica una nota de revisión válida (máximo 2000 caracteres)" }); return;
+  }
+  // Shares the checker's row lock: never resolve a different diagnosis or lose history.
+  const status = await db.transaction(async (tx) => {
+    const [row] = await tx.select({ link: wikiExternalLinksTable }).from(wikiExternalLinksTable)
+      .innerJoin(wikiPagesTable, eq(wikiPagesTable.id, wikiExternalLinksTable.pageId))
+      .where(and(eq(wikiExternalLinksTable.id, params.data.externalLinkId),
+        isNull(wikiExternalLinksTable.deletedAt), isNull(wikiPagesTable.deletedAt),
+        isNull(wikiPagesTable.moduleId), sql`${wikiPagesTable.tags} @> ARRAY['normativa']::text[]`))
+      .for("update", { of: wikiExternalLinksTable });
+    if (!row) return 404;
+    const link = row.link;
+    if (link.incidentVersion !== body.data.incidentVersion || link.resolvedAt ||
+        ["healthy", "unchecked"].includes(link.checkStatus)) return 409;
+    const now = new Date();
+    await tx.update(wikiExternalLinksTable).set({
+      resolvedAt: now,
+      reviewHistory: [...link.reviewHistory, {
+        note: body.data.note.trim(), reviewedAt: now.toISOString(), reviewedBy: req.user!.id,
+        incidentVersion: link.incidentVersion, checkStatus: link.checkStatus,
+        httpStatus: link.httpStatus, redirectUrl: link.redirectUrl,
+      }],
+    }).where(eq(wikiExternalLinksTable.id, link.id));
+    return 204;
+  });
+  if (status === 204) { res.sendStatus(204); return; }
+  res.status(status).json({ message: status === 404 ? "Enlace no encontrado" :
+    "La incidencia ha cambiado o ya está revisada. Actualiza la lista antes de continuar." });
 });
 
 router.get(

@@ -4835,6 +4835,36 @@ paths:
           description: Authentication required
         "403":
           description: Documentation management permission required
+  /wiki/link-reviews/{externalLinkId}/resolve:
+    post:
+      operationId: resolveWikiLinkReview
+      tags: [wiki]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: externalLinkId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WikiLinkResolutionInput"
+      responses:
+        "204":
+          description: Revisión registrada sin cambiar URL ni contenido
+        "400":
+          description: Invalid note or incident version
+        "401":
+          description: Authentication required
+        "403":
+          description: Documentation management permission required
+        "404":
+          description: Link not found in Normativa
+        "409":
+          description: Incident changed or already reviewed
   /wiki/uploads/request-url:
     post:
       operationId: requestWikiUploadUrl
@@ -9559,6 +9589,23 @@ components:
           type: string
           format: date-time
       required: [id, fileName, contentType, size, indexStatus, createdAt]
+    WikiLinkResolutionInput:
+      type: object
+      required: [note, incidentVersion]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        incidentVersion: { type: integer, minimum: 0 }
+    WikiLinkResolution:
+      type: object
+      required: [note, reviewedAt, reviewedBy, incidentVersion, checkStatus, httpStatus, redirectUrl]
+      properties:
+        note: { type: string }
+        reviewedAt: { type: string, format: date-time }
+        reviewedBy: { type: integer }
+        incidentVersion: { type: integer }
+        checkStatus: { type: string }
+        httpStatus: { type: [integer, "null"] }
+        redirectUrl: { type: [string, "null"] }
     WikiExternalLink:
       type: object
       properties:
@@ -9585,7 +9632,16 @@ components:
           type: [integer, "null"]
         redirectUrl:
           type: [string, "null"]
-      required: [id, title, url, createdAt, checkStatus, checkedAt, nextCheckAt, httpStatus, redirectUrl]
+        incidentVersion:
+          type: integer
+        resolvedAt:
+          type: [string, "null"]
+          format: date-time
+        reviewHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/WikiLinkResolution"
+      required: [id, title, url, createdAt, checkStatus, checkedAt, nextCheckAt, httpStatus, redirectUrl, incidentVersion, resolvedAt, reviewHistory]
     WikiLinkReview:
       allOf:
         - $ref: "#/components/schemas/WikiExternalLink"

@@ -93,7 +93,10 @@ export async function probeWikiLink(rawUrl: string): Promise<LinkProbe> {
 }
 
 export function linkCheckUpdate(
-  result: LinkProbe, previous: { missingCount: number; failureCount: number },
+  result: LinkProbe, previous: {
+    missingCount: number; failureCount: number; checkStatus?: string;
+    httpStatus?: number | null; redirectUrl?: string | null; incidentVersion?: number;
+  },
   now = new Date(),
 ) {
   const missingCount = result.kind === "absent" ? previous.missingCount + 1 : 0;
@@ -102,9 +105,12 @@ export function linkCheckUpdate(
   const checkStatus = result.kind === "absent"
     ? (missingCount >= 3 ? "missing" : "temporary") : result.kind;
   const hours = failed && failureCount === 1 ? 6 : failed && failureCount === 2 ? 24 : 168;
+  const changed = previous.checkStatus !== checkStatus ||
+    previous.httpStatus !== result.httpStatus || previous.redirectUrl !== result.redirectUrl;
   return {
     checkStatus, checkedAt: now, nextCheckAt: new Date(now.getTime() + hours * 3_600_000),
     httpStatus: result.httpStatus, redirectUrl: result.redirectUrl,
     missingCount: Math.min(missingCount, 3), failureCount,
+    ...(changed ? { incidentVersion: (previous.incidentVersion ?? 0) + 1, resolvedAt: null } : {}),
   };
 }

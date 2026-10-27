@@ -14,6 +14,8 @@ export async function checkDueWikiLinks(): Promise<void> {
       const checked = await db.transaction(async (tx) => {
         const [link] = await tx.select({
           id: links.id, url: links.url, missingCount: links.missingCount, failureCount: links.failureCount,
+          checkStatus: links.checkStatus, httpStatus: links.httpStatus,
+          redirectUrl: links.redirectUrl, incidentVersion: links.incidentVersion,
         }).from(links).innerJoin(pages, eq(pages.id, links.pageId))
           .where(and(isNull(links.deletedAt), isNull(pages.deletedAt),
             isNull(pages.moduleId), sql`${pages.tags} @> ARRAY['normativa']::text[]`,

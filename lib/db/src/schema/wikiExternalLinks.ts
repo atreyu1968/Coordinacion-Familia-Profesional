@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import {
   index,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -31,6 +32,12 @@ export const wikiExternalLinksTable = pgTable(
     redirectUrl: text("redirect_url"),
     missingCount: integer("missing_count").notNull().default(0),
     failureCount: integer("failure_count").notNull().default(0),
+    incidentVersion: integer("incident_version").notNull().default(0),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    reviewHistory: jsonb("review_history").$type<Array<{
+      note: string; reviewedAt: string; reviewedBy: number; incidentVersion: number;
+      checkStatus: string; httpStatus: number | null; redirectUrl: string | null;
+    }>>().notNull().default([]),
   },
   (table) => ({
     pageIndex: index("wiki_external_links_page_id_idx").on(table.pageId),

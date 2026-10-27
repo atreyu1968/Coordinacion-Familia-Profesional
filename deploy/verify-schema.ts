@@ -476,7 +476,8 @@ for (const column of expected.columns) {
        (column.table === "notifications" && column.column === "target") ||
        (column.table === "wiki_external_links" &&
          ["check_status", "checked_at", "next_check_at", "http_status",
-          "redirect_url", "missing_count", "failure_count"].includes(column.column)) ||
+          "redirect_url", "missing_count", "failure_count", "incident_version",
+          "resolved_at", "review_history"].includes(column.column)) ||
        (column.table === "invitations" &&
          ["max_uses", "used_count"].includes(column.column)) ||
         (column.table === "teacher_year_confirmations" &&

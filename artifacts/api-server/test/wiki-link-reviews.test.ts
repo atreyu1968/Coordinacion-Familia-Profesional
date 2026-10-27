@@ -24,6 +24,7 @@ const row = {
   createdAt: new Date("2026-01-01Z"), checkedAt: new Date("2026-10-27Z"),
   nextCheckAt: new Date("2026-11-03Z"), checkStatus: "missing", httpStatus: 410,
   redirectUrl: null, pageId: 100, pageTitle: "Contenido editado por el responsable",
+  incidentVersion: 1, resolvedAt: null, reviewHistory: [],
 };
 beforeEach(() => {
   vi.clearAllMocks();

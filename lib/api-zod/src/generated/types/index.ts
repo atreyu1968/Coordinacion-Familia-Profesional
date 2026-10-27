@@ -429,6 +429,8 @@ export * from './wikiEditorUser';
 export * from './wikiExternalLink';
 export * from './wikiExternalLinkCheckStatus';
 export * from './wikiExternalLinkInput';
+export * from './wikiLinkResolution';
+export * from './wikiLinkResolutionInput';
 export * from './wikiLinkReview';
 export * from './wikiModuleEditorCandidate';
 export * from './wikiModuleEditorInput';

@@ -5564,7 +5564,18 @@ export const CreateWikiPageResponse = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }))
 }))
 
@@ -5581,12 +5592,44 @@ export const ListWikiLinkReviewsResponseItem = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }).and(zod.object({
   "pageId": zod.number().int(),
   "pageTitle": zod.string()
 }))
 export const ListWikiLinkReviewsResponse = zod.array(ListWikiLinkReviewsResponseItem)
+
+
+
+
+
+export const ResolveWikiLinkReviewParams = zod.object({
+  "externalLinkId": zod.coerce.number().int().min(1)
+})
+
+export const resolveWikiLinkReviewBodyNoteMax = 2000;
+
+export const resolveWikiLinkReviewBodyIncidentVersionMin = 0;
+
+
+
+export const ResolveWikiLinkReviewBody = zod.object({
+  "note": zod.string().min(1).max(resolveWikiLinkReviewBodyNoteMax),
+  "incidentVersion": zod.number().int().min(resolveWikiLinkReviewBodyIncidentVersionMin)
+})
+
+export const ResolveWikiLinkReviewResponse = zod.void()
 
 
 /**
@@ -5654,7 +5697,18 @@ export const GetWikiPageResponse = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }))
 }))
 
@@ -5714,7 +5768,18 @@ export const UpdateWikiPageResponse = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }))
 }))
 
@@ -5785,7 +5850,18 @@ export const AddWikiAttachmentResponse = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }))
 }))
 
@@ -5840,7 +5916,18 @@ export const AddWikiExternalLinkResponse = zod.object({
   "checkedAt": zod.coerce.date().nullable(),
   "nextCheckAt": zod.coerce.date(),
   "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable(),
+  "incidentVersion": zod.number().int(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "reviewHistory": zod.array(zod.object({
+  "note": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "reviewedBy": zod.number().int(),
+  "incidentVersion": zod.number().int(),
+  "checkStatus": zod.string(),
+  "httpStatus": zod.number().int().nullable(),
   "redirectUrl": zod.string().nullable()
+}))
 }))
 }))
 

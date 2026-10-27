@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { WikiExternalLinkCheckStatus } from './wikiExternalLinkCheckStatus';
+import type { WikiLinkResolution } from './wikiLinkResolution';
 
 export interface WikiExternalLink {
   id: number;
@@ -20,4 +21,8 @@ export interface WikiExternalLink {
   httpStatus: number | null;
   /** @nullable */
   redirectUrl: string | null;
+  incidentVersion: number;
+  /** @nullable */
+  resolvedAt: Date | null;
+  reviewHistory: WikiLinkResolution[];
 }

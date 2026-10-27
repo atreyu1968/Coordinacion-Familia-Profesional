@@ -3249,6 +3249,28 @@ export interface WikiAttachment {
   createdAt: string;
 }
 
+export interface WikiLinkResolutionInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  note: string;
+  /** @minimum 0 */
+  incidentVersion: number;
+}
+
+export interface WikiLinkResolution {
+  note: string;
+  reviewedAt: string;
+  reviewedBy: number;
+  incidentVersion: number;
+  checkStatus: string;
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  redirectUrl: string | null;
+}
+
 export type WikiExternalLinkCheckStatus = typeof WikiExternalLinkCheckStatus[keyof typeof WikiExternalLinkCheckStatus];
 
 
@@ -3274,6 +3296,10 @@ export interface WikiExternalLink {
   httpStatus: number | null;
   /** @nullable */
   redirectUrl: string | null;
+  incidentVersion: number;
+  /** @nullable */
+  resolvedAt: string | null;
+  reviewHistory: WikiLinkResolution[];
 }
 
 export type WikiLinkReview = WikiExternalLink & {
