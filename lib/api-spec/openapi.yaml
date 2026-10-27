@@ -50,6 +50,75 @@ tags:
     description: Private coordinator task follow-up from minutes, messages and email
 
 paths:
+  /wiki/normativa:
+    get:
+      operationId: listNormativa
+      tags: [Wiki]
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, reviewed, dismissed, catalog, all]
+            default: pending
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Seguimiento privado para gestores de documentación general
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NormativaList"
+        "403":
+          description: Sin permiso de gestión
+  /wiki/normativa/check:
+    post:
+      operationId: checkNormativa
+      tags: [Wiki]
+      responses:
+        "202":
+          description: Comprobación en curso o encolada
+        "403":
+          description: Sin permiso
+        "409":
+          description: Familia profesional no compatible con el clasificador ADG
+  /wiki/normativa/{id}/review:
+    patch:
+      operationId: reviewNormativa
+      tags: [Wiki]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NormativaReview"
+      responses:
+        "200":
+          description: Revisión humana guardada sin modificar la wiki
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NormativaPublication"
+        "400":
+          description: Datos no válidos
+        "403":
+          description: Sin permiso
+        "404":
+          description: Publicación no encontrada
+        "409":
+          description: Otro responsable ya revisó la publicación; actualizar
   /coordinator-mail/workspace:
     get:
       operationId: getCoordinatorMailWorkspace
@@ -5962,6 +6031,61 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    NormativaReview:
+      type: object
+      required: [status, reviewNote, expectedStatus]
+      properties:
+        status:
+          type: string
+          enum: [reviewed, dismissed]
+        expectedStatus:
+          type: string
+          enum: [pending, catalog]
+        reviewNote:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    NormativaPublication:
+      type: object
+      required: [id, source, officialId, title, url, publishedAt, detectedAt, checkedAt, relevance, reason, status, reviewNote, reviewedBy, reviewedAt]
+      properties:
+        id: { type: integer }
+        source: { type: string, enum: [BOE, BOC] }
+        officialId: { type: string }
+        title: { type: string }
+        url: { type: string }
+        publishedAt: { type: [string, "null"] }
+        detectedAt: { type: string }
+        checkedAt: { type: string }
+        relevance: { type: string, enum: [adg, general, other, uncertain] }
+        reason: { type: string }
+        status: { type: string, enum: [pending, reviewed, dismissed, catalog] }
+        reviewNote: { type: string }
+        reviewedBy: { type: [integer, "null"] }
+        reviewedAt: { type: [string, "null"] }
+    NormativaSource:
+      type: object
+      required: [source, startedFrom, coveredThrough, attemptedAt, succeededAt, error]
+      properties:
+        source: { type: string }
+        startedFrom: { type: string }
+        coveredThrough: { type: [string, "null"] }
+        attemptedAt: { type: [string, "null"] }
+        succeededAt: { type: [string, "null"] }
+        error: { type: [string, "null"] }
+    NormativaList:
+      type: object
+      required: [items, sources, total, running, enabled]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/NormativaPublication" }
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/NormativaSource" }
+        total: { type: integer }
+        running: { type: boolean }
+        enabled: { type: boolean }
     LmsCourseCoverInput:
       type: object
       properties:
@@ -9201,7 +9325,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [event, calendar, course, chat, survey, form, forum, space, announcement, meeting, company_alert, minutes, certificate_event]
+          enum: [event, calendar, course, chat, survey, form, forum, space, announcement, meeting, company_alert, minutes, certificate_event, normativa]
         id:
           type: integer
           minimum: 1

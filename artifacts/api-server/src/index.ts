@@ -11,6 +11,7 @@ import { seedAcademicYears } from "./routes/academicYears";
 import { startConfirmationScheduler } from "./lib/scheduler";
 import { startWikiIndexing } from "./lib/wikiIndexing";
 import { startWikiLinkChecker } from "./lib/wikiLinkChecker";
+import { startNormativaMonitor } from "./lib/normativaMonitor";
 
 const rawPort = process.env["PORT"];
 
@@ -51,6 +52,7 @@ async function start(): Promise<void> {
   startConfirmationScheduler();
   startWikiIndexing();
   startWikiLinkChecker();
+  startNormativaMonitor();
   startMeetingMinutesWorker();
   startCoordinatorMailWorker();
   startAiKnowledgeWorker();

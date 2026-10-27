@@ -8,6 +8,86 @@
 import * as zod from 'zod';
 
 
+export const listNormativaQueryStatusDefault = `pending`;
+export const listNormativaQueryOffsetDefault = 0;
+export const listNormativaQueryOffsetMin = 0;
+
+
+
+export const ListNormativaQueryParams = zod.object({
+  "status": zod.enum(['pending', 'reviewed', 'dismissed', 'catalog', 'all']).default(listNormativaQueryStatusDefault),
+  "offset": zod.coerce.number().int().min(listNormativaQueryOffsetMin).default(listNormativaQueryOffsetDefault)
+})
+
+export const ListNormativaResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "source": zod.enum(['BOE', 'BOC']),
+  "officialId": zod.string(),
+  "title": zod.string(),
+  "url": zod.string(),
+  "publishedAt": zod.string().nullable(),
+  "detectedAt": zod.string(),
+  "checkedAt": zod.string(),
+  "relevance": zod.enum(['adg', 'general', 'other', 'uncertain']),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'reviewed', 'dismissed', 'catalog']),
+  "reviewNote": zod.string(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.string().nullable()
+})),
+  "sources": zod.array(zod.object({
+  "source": zod.string(),
+  "startedFrom": zod.string(),
+  "coveredThrough": zod.string().nullable(),
+  "attemptedAt": zod.string().nullable(),
+  "succeededAt": zod.string().nullable(),
+  "error": zod.string().nullable()
+})),
+  "total": zod.number().int(),
+  "running": zod.boolean(),
+  "enabled": zod.boolean()
+})
+
+
+export const CheckNormativaResponse = zod.void()
+
+
+
+
+
+export const ReviewNormativaParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const reviewNormativaBodyReviewNoteMax = 4000;
+
+
+
+export const ReviewNormativaBody = zod.object({
+  "status": zod.enum(['reviewed', 'dismissed']),
+  "expectedStatus": zod.enum(['pending', 'catalog']),
+  "reviewNote": zod.string().min(1).max(reviewNormativaBodyReviewNoteMax)
+})
+
+export const ReviewNormativaResponse = zod.object({
+  "id": zod.number().int(),
+  "source": zod.enum(['BOE', 'BOC']),
+  "officialId": zod.string(),
+  "title": zod.string(),
+  "url": zod.string(),
+  "publishedAt": zod.string().nullable(),
+  "detectedAt": zod.string(),
+  "checkedAt": zod.string(),
+  "relevance": zod.enum(['adg', 'general', 'other', 'uncertain']),
+  "reason": zod.string(),
+  "status": zod.enum(['pending', 'reviewed', 'dismissed', 'catalog']),
+  "reviewNote": zod.string(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+
+
 /**
  * @summary Get the authenticated coordinator's private mail workspace and connection status
  */
@@ -4977,7 +5057,7 @@ export const ListNotificationsResponseItem = zod.object({
   "body": zod.string().nullish(),
   "type": zod.string().nullish(),
   "target": zod.union([zod.object({
-  "kind": zod.enum(['event', 'calendar', 'course', 'chat', 'survey', 'form', 'forum', 'space', 'announcement', 'meeting', 'company_alert', 'minutes', 'certificate_event']),
+  "kind": zod.enum(['event', 'calendar', 'course', 'chat', 'survey', 'form', 'forum', 'space', 'announcement', 'meeting', 'company_alert', 'minutes', 'certificate_event', 'normativa']),
   "id": zod.number().int().min(1).max(listNotificationsResponseTargetOneIdMax)
 }).describe('Destino interno; no concede acceso. El recurso se consulta con los permisos actuales del usuario.'),zod.null()]).optional().describe('Ausente o nulo en avisos históricos; abrir la sección según type.'),
   "readAt": zod.coerce.date().nullish(),

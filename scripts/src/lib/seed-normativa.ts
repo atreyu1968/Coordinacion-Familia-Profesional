@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { db, integrationSettingsTable, usersTable, wikiPagesTable, wikiExternalLinksTable } from "@workspace/db";
+import { db, integrationSettingsTable, usersTable, wikiPagesTable, wikiExternalLinksTable, normativaPublicationsTable } from "@workspace/db";
 import { isUneditedNormativaIndex, loadNormativaCatalog, normativaIndexContent, normativaSectionContent } from "./normativa-catalog";
 
 /** Adds references without overwriting human edits or reviving deleted content. */
@@ -15,6 +15,24 @@ export async function seedNormativaCatalog() {
       .where(and(eq(usersTable.role, "superadmin"), eq(usersTable.status, "active"), isNull(usersTable.deletedAt)))
       .orderBy(usersTable.id).limit(1);
     if (!actor) return { pages: 0, links: 0, skipped: "Pendiente de crear el primer administrador" };
+
+    // Known references are a baseline, not new alerts. Never reset an existing review.
+    for (const section of catalog.sections) {
+      for (const reference of section.references) {
+        const url = new URL(reference.url);
+        const boe = reference.url.match(/BOE-A-\d{4}-\d+/i)?.[0]?.toUpperCase();
+        const boc = url.pathname.match(/\/boc\/(?:archivo\/)?(\d{4})\/(\d+)\/(\d+)\.html/i);
+        const bocPdf = url.pathname.match(/boc-a-(\d{4})-(\d+)-(\d+)\.pdf/i);
+        const parts = boc ?? bocPdf;
+        const officialId = boe ?? (parts ? `BOC-A-${parts[1]}-${Number(parts[2])}-${Number(parts[3])}` : null);
+        if (!officialId) continue;
+        await tx.insert(normativaPublicationsTable).values({
+          source: boe ? "BOE" : "BOC", officialId, title: reference.title, url: reference.url,
+          relevance: "uncertain", reason: "Referencia del catálogo inicial; no implica vigencia.",
+          status: "catalog",
+        }).onConflictDoNothing();
+      }
+    }
 
     let pages = 0;
     let links = 0;

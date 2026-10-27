@@ -518,6 +518,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/meeting-minutes.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/coordinator-mail.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/coordinator-tasks.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/normativa.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/lms-course-imports.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/lms-course-positions.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/lms-course-covers.sql"

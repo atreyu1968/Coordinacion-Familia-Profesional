@@ -80,3 +80,5 @@
 - [Borrado de docentes de prueba](test-teacher-cleanup.md) — eliminación definitiva también en producción; conservar la decisión administrativa de no recrearlos.
 - [LMS media retention](lms-media-retention.md) — delayed, reference-aware cleanup avoids breaking concurrent course ZIP exports.
 - [Normativa link monitoring](normativa-link-monitoring.md) — los avisos son orientativos; no sustituir fuentes ni regenerar contenido editado para reparar un fallo de acceso.
+- [Revisión normativa](normativa-review-policy.md) — detectar BOE/BOC no implica vigencia; revisar anexos y preservar las ediciones humanas.
+- [Integraciones simultáneas](merge-validation.md) — revisar también fuera de las marcas de conflicto; validar las migraciones en una base aislada.

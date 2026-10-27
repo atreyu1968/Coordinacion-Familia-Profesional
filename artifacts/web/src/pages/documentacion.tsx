@@ -65,6 +65,9 @@ import {
   Users,
 } from "lucide-react";
 
+import { useSearch } from "wouter";
+import { NormativaMonitor } from "@/components/normativa-monitor";
+
 const TOKEN_KEY = "coordina_adg_token";
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const WIKI_ATTACHMENT_ACCEPT = [
@@ -388,7 +391,17 @@ export default function DocumentacionPage() {
     moduleParam ? String(moduleParam) : "all",
   );
   const [search, setSearch] = useState("");
-  const [tagFilter, setTagFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState(() => new URLSearchParams(window.location.search).has("normativa") ? "normativa" : "");
+  const locationSearch = useSearch();
+  useEffect(() => {
+    if (new URLSearchParams(locationSearch).has("normativa")) {
+      setTagFilter("normativa");
+      setScope("general");
+      setSearch("");
+      setKind("all");
+      setSelectedPageId(null);
+    }
+  }, [locationSearch]);
   const [kind, setKind] = useState<"all" | "files" | "zip">("all");
   const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -674,7 +687,7 @@ export default function DocumentacionPage() {
           setScope("general"); setTagFilter("normativa"); setSearch(""); setKind("all"); setSelectedPageId(id);
         }} />
       )}
-
+      {tagFilter === "normativa" && (user?.role === "superadmin" || user?.role === "coordinator") && <NormativaMonitor />}
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(210px,1fr)_minmax(150px,.7fr)_minmax(150px,.7fr)_auto]">

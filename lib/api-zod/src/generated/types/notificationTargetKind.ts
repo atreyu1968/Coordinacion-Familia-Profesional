@@ -23,4 +23,5 @@ export const NotificationTargetKind = {
   company_alert: 'company_alert',
   minutes: 'minutes',
   certificate_event: 'certificate_event',
+  normativa: 'normativa',
 } as const;

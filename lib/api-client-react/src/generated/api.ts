@@ -181,6 +181,7 @@ import type {
   ListModulesParams,
   ListMunicipalitiesParams,
   ListMyAttendanceCertificates200,
+  ListNormativaParams,
   ListResourcesParams,
   ListSurveysParams,
   ListTeachingAssignmentsParams,
@@ -237,6 +238,9 @@ import type {
   MyTeachingProfile,
   MyTeachingProfileUpdateResult,
   MyYearConfirmation,
+  NormativaList,
+  NormativaPublication,
+  NormativaReview,
   Notification,
   OkResult,
   OpenConfirmationInput,
@@ -332,6 +336,259 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListNormativaUrl = (params?: ListNormativaParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/wiki/normativa?${stringifiedParams}` : `/api/wiki/normativa`
+}
+
+export const listNormativa = async (params?: ListNormativaParams, options?: Parameters<typeof customFetch>[1]): Promise<NormativaList> => {
+
+  return customFetch<NormativaList>(getListNormativaUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNormativaQueryKey = (params?: ListNormativaParams,) => {
+    return [
+    `/api/wiki/normativa`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListNormativaQueryOptions = <TData = Awaited<ReturnType<typeof listNormativa>>, TError = ErrorType<void>>(params?: ListNormativaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNormativaQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNormativa>>> = ({ signal }) => listNormativa(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListNormativaQueryResult = NonNullable<Awaited<ReturnType<typeof listNormativa>>>
+export type ListNormativaQueryError = ErrorType<void>
+
+
+export function useListNormativa<TData = Awaited<ReturnType<typeof listNormativa>>, TError = ErrorType<void>>(
+ params: undefined |  ListNormativaParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listNormativa>>,
+          TError,
+          Awaited<ReturnType<typeof listNormativa>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListNormativa<TData = Awaited<ReturnType<typeof listNormativa>>, TError = ErrorType<void>>(
+ params?: ListNormativaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listNormativa>>,
+          TError,
+          Awaited<ReturnType<typeof listNormativa>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListNormativa<TData = Awaited<ReturnType<typeof listNormativa>>, TError = ErrorType<void>>(
+ params?: ListNormativaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListNormativa<TData = Awaited<ReturnType<typeof listNormativa>>, TError = ErrorType<void>>(
+ params?: ListNormativaParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNormativa>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListNormativaQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckNormativaUrl = () => {
+
+
+
+
+  return `/api/wiki/normativa/check`
+}
+
+export const checkNormativa = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getCheckNormativaUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckNormativaMutationKey = () => ['checkNormativa'] as const;
+
+export const getCheckNormativaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkNormativa>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkNormativa>>, TError,void, TContext> => {
+
+const mutationKey = getCheckNormativaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkNormativa>>, void> = () => {
+
+
+          return  checkNormativa(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckNormativaMutationResult = NonNullable<Awaited<ReturnType<typeof checkNormativa>>>
+
+    export type CheckNormativaMutationError = ErrorType<void>
+
+
+    export const useCheckNormativa = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkNormativa>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof checkNormativa>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckNormativaMutationOptions(options), queryClient);
+    }
+
+export const getReviewNormativaUrl = (id: number,) => {
+
+
+
+
+  return `/api/wiki/normativa/${id}/review`
+}
+
+export const reviewNormativa = async (id: number,
+    normativaReview: NormativaReview, options?: Parameters<typeof customFetch>[1]): Promise<NormativaPublication> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NormativaPublication>(getReviewNormativaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(normativaReview)
+  }
+);}
+
+
+
+
+
+export const getReviewNormativaMutationKey = () => ['reviewNormativa'] as const;
+
+export const getReviewNormativaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewNormativa>>, TError,ReviewNormativaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewNormativa>>, TError,ReviewNormativaMutationVariables, TContext> => {
+
+const mutationKey = getReviewNormativaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewNormativa>>, ReviewNormativaMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewNormativa(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewNormativaMutationResult = NonNullable<Awaited<ReturnType<typeof reviewNormativa>>>
+    export type ReviewNormativaMutationBody = BodyType<NormativaReview>
+    export type ReviewNormativaMutationError = ErrorType<void>
+    export type ReviewNormativaMutationVariables = {id: number;data: BodyType<NormativaReview>}
+
+    export const useReviewNormativa = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewNormativa>>, TError,ReviewNormativaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reviewNormativa>>,
+        TError,
+        ReviewNormativaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewNormativaMutationOptions(options), queryClient);
+    }
 
 export const getGetCoordinatorMailWorkspaceUrl = (params?: GetCoordinatorMailWorkspaceParams,) => {
   const normalizedParams = new URLSearchParams();

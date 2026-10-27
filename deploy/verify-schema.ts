@@ -79,6 +79,8 @@ const additiveTables = [
   "collaborative_space_audit",
   "account_audit",
   "coordinator_tasks",
+  "normativa_publications",
+  "normativa_sources",
   "coordinator_task_source_scans",
   "chat_attachment_deletions",
   "message_user_hides",

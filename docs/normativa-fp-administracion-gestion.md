@@ -62,6 +62,44 @@ referencia y se muestran en Documentación; no se añaden campos al esquema.
 
 ## Mantenimiento de las fuentes
 
+### Seguimiento de publicaciones nuevas
+
+En la **web → Documentación → Normativa**, los coordinadores y el
+superadministrador disponen de una bandeja de seguimiento BOE/BOC. Se consultan
+el API de sumarios del BOE y el archivo diario oficial del BOC al arrancar
+(tras 90 segundos) y cada 24 horas; también se puede solicitar una comprobación.
+El monitor está habilitado únicamente para Administración y Gestión.
+
+El primer examen cubre los últimos siete días, no todo el archivo histórico.
+La cobertura inicial y final, último intento, última comprobación correcta y
+errores se muestran por fuente. Cada pasada recupera hasta siete días;
+una interrupción conserva la fecha pendiente para el siguiente intento.
+La fecha de comprobación técnica **no modifica la fecha de revisión jurídica
+del catálogo**.
+
+Las publicaciones se deduplican por boletín e identificador oficial y se
+clasifican de forma orientativa en ADG, FP común, otra familia o alcance
+incierto. Se consulta el texto para detectar ADG también en anexos de
+modificaciones que abarcan varias familias. Si no se puede leer, se exige
+revisión manual y no se descarta por el título. Las referencias ya incluidas
+en el catálogo o enlazadas en la wiki se registran sin generar avisos nuevos.
+Las novedades ADG, comunes o dudosas generan avisos persistentes para los
+gestores activos de documentación general. Las de otras familias se conservan
+en la bandeja, sin esos avisos.
+
+Para marcar una publicación revisada o descartada se exige una nota. Se
+conservan responsable y fecha, y una revisión concurrente no sobrescribe otra.
+Revisar **no publica**, no declara vigencia y no escribe ninguna página o
+enlace de la wiki: si procede actualizar Documentación, se hace manualmente
+con sus permisos habituales. Los permisos de un módulo no otorgan acceso a
+esta bandeja general.
+
+Los registros técnicos se guardan por separado de las páginas wiki; se crean
+mediante `deploy/migrations/normativa.sql`, integrado en la instalación y
+actualización. Las pruebas aisladas de migración, deduplicación, permisos,
+recuperación y revisión se ejecutan con `bash scripts/test-normativa.sh`;
+no usan la base de datos compartida.
+
 La recopilación revisada se mantiene en
 `scripts/src/data/normativa-fp.json`, con fecha de revisión y notas de
 aplicabilidad. Los contenidos publicados se pueden gestionar con los

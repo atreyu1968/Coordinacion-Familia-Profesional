@@ -7,6 +7,7 @@ export function notificationTargetPath(value: unknown, platform: "web" | "mobile
   if (typeof id !== "number" || !Number.isInteger(id) || id < 1 || id > 2147483647) return null;
   if (platform === "web") {
     switch (kind) {
+      case "normativa": return `/documentacion?normativa=${id}`;
       case "event": return `/eventos?evento=${id}`;
       case "course": return `/autodirigido?curso=${id}`;
       case "chat": return `/chat?grupo=${id}`;

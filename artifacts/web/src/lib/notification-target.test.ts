@@ -2,6 +2,10 @@
 import { describe, expect, it } from "vitest";
 import { notificationTargetPath } from "@workspace/api-client-react";
 import { notificationRoute } from "../../../movil/lib/notification-route";
+it("abre seguimiento normativo en web sin inventar una pantalla móvil", () => {
+  expect(notificationTargetPath({ kind: "normativa", id: 194 }, "web")).toBe("/documentacion?normativa=194");
+  expect(notificationTargetPath({ kind: "normativa", id: 194 }, "mobile")).toBeNull();
+});
 
 describe("persisted internal notification targets", () => {
   it.each([

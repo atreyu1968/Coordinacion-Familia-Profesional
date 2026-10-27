@@ -16,6 +16,7 @@ const sources = {
   company_alert: ["company_alert", "companyAlertId"],
   meeting_minutes: ["minutes", "eventId"],
   certificate: ["certificate_event", "eventId"],
+  normativa: ["normativa", "publicationId"],
 } as const;
 
 export function notificationTarget(type: string | null | undefined, data?: Record<string, unknown>) {

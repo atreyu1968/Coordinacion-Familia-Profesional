@@ -5,6 +5,101 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+export type NormativaReviewStatus = typeof NormativaReviewStatus[keyof typeof NormativaReviewStatus];
+
+
+export const NormativaReviewStatus = {
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+} as const;
+
+export type NormativaReviewExpectedStatus = typeof NormativaReviewExpectedStatus[keyof typeof NormativaReviewExpectedStatus];
+
+
+export const NormativaReviewExpectedStatus = {
+  pending: 'pending',
+  catalog: 'catalog',
+} as const;
+
+export interface NormativaReview {
+  status: NormativaReviewStatus;
+  expectedStatus: NormativaReviewExpectedStatus;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  reviewNote: string;
+}
+
+export type NormativaPublicationSource = typeof NormativaPublicationSource[keyof typeof NormativaPublicationSource];
+
+
+export const NormativaPublicationSource = {
+  BOE: 'BOE',
+  BOC: 'BOC',
+} as const;
+
+export type NormativaPublicationRelevance = typeof NormativaPublicationRelevance[keyof typeof NormativaPublicationRelevance];
+
+
+export const NormativaPublicationRelevance = {
+  adg: 'adg',
+  general: 'general',
+  other: 'other',
+  uncertain: 'uncertain',
+} as const;
+
+export type NormativaPublicationStatus = typeof NormativaPublicationStatus[keyof typeof NormativaPublicationStatus];
+
+
+export const NormativaPublicationStatus = {
+  pending: 'pending',
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+  catalog: 'catalog',
+} as const;
+
+export interface NormativaPublication {
+  id: number;
+  source: NormativaPublicationSource;
+  officialId: string;
+  title: string;
+  url: string;
+  /** @nullable */
+  publishedAt: string | null;
+  detectedAt: string;
+  checkedAt: string;
+  relevance: NormativaPublicationRelevance;
+  reason: string;
+  status: NormativaPublicationStatus;
+  reviewNote: string;
+  /** @nullable */
+  reviewedBy: number | null;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export interface NormativaSource {
+  source: string;
+  startedFrom: string;
+  /** @nullable */
+  coveredThrough: string | null;
+  /** @nullable */
+  attemptedAt: string | null;
+  /** @nullable */
+  succeededAt: string | null;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface NormativaList {
+  items: NormativaPublication[];
+  sources: NormativaSource[];
+  total: number;
+  running: boolean;
+  enabled: boolean;
+}
+
 export interface LmsCourseCoverInput {
   /** @minLength 1 */
   objectPath: string;
@@ -2986,6 +3081,7 @@ export const NotificationTargetKind = {
   company_alert: 'company_alert',
   minutes: 'minutes',
   certificate_event: 'certificate_event',
+  normativa: 'normativa',
 } as const;
 
 /**
@@ -3762,6 +3858,25 @@ export type MunicipalityQueryParameter = number;
 export type CenterQueryParameter = number;
 
 export type SearchQueryParameter = string;
+
+export type ListNormativaParams = {
+status?: ListNormativaStatus;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListNormativaStatus = typeof ListNormativaStatus[keyof typeof ListNormativaStatus];
+
+
+export const ListNormativaStatus = {
+  pending: 'pending',
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+  catalog: 'catalog',
+  all: 'all',
+} as const;
 
 export type GetCoordinatorMailWorkspaceParams = {
 /**

@@ -53,3 +53,4 @@ export * from "./certificateEmailVerifications";
 export * from "./coordinatorMail";
 export * from "./coordinatorTasks";
 export * from "./aiKnowledge";
+export * from "./normativa";

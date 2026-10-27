@@ -234,6 +234,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      fast-xml-parser:
+        specifier: ^5.8.0
+        version: 5.8.0
       google-auth-library:
         specifier: ^10.7.0
         version: 10.7.0
@@ -246,6 +249,9 @@ importers:
       openai:
         specifier: ^7.39.0
         version: 7.39.0(undici@6.28.1)(ws@8.21.3)(zod@3.25.76)
+      parse5:
+        specifier: ^8.0.1
+        version: 8.0.1
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -324,7 +330,7 @@ importers:
         version: 3.1.0
       vitest:
         specifier: ^4.1.11
-        version: 4.1.12(@types/node@25.6.2)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@7.3.7(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1))
+        version: 4.1.12(@types/node@25.6.2)(jiti@2.7.0)(jsdom@30.1.3(@noble/hashes@1.8.0))(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1)
 
   artifacts/mockup-sandbox:
     devDependencies:
@@ -947,7 +953,7 @@ importers:
         version: 7.3.7(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1)
       vitest:
         specifier: ^4.1.12
-        version: 4.1.12(@types/node@25.6.2)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@7.3.7(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1))
+        version: 4.1.12(@types/node@25.6.2)(jiti@2.7.0)(jsdom@30.1.3(@noble/hashes@1.8.0))(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1)
       wouter:
         specifier: ^3.3.5
         version: 3.10.0(react@19.1.0)
@@ -7729,7 +7735,6 @@ packages:
       '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
-      vite: 7.3.7
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -16157,7 +16162,7 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.9.1
 
-  vitest@4.1.12(@types/node@25.6.2)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@7.3.7(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1)):
+  vitest@4.1.12(@types/node@25.6.2)(jiti@2.7.0)(jsdom@30.1.3(@noble/hashes@1.8.0))(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1):
     dependencies:
       '@vitest/expect': 4.1.12
       '@vitest/mocker': 4.1.12(vite@7.3.7(@types/node@25.6.2)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.1))
@@ -16183,7 +16188,17 @@ snapshots:
       '@types/node': 25.6.2
       jsdom: 30.1.3(@noble/hashes@1.8.0)
     transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
       - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
 
   vlq@1.0.1: {}
 

@@ -30,6 +30,7 @@ import oidcRouter from "./oidc";
 import collabRouter from "./collab";
 import collaborativeSpacesRouter from "./collaborativeSpaces";
 import wikiRouter from "./nativeWiki";
+import normativaRouter from "./normativa";
 import lmsRouter from "./lms";
 
 const router: IRouter = Router();
@@ -64,6 +65,7 @@ router.use(forumsRouter);
 router.use(oidcRouter);
 router.use(collabRouter);
 router.use(collaborativeSpacesRouter);
+router.use(normativaRouter);
 router.use(wikiRouter);
 router.use(lmsRouter);
 
