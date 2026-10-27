@@ -251,14 +251,8 @@ export default function RecursosPage() {
   const { data: allResources = [], isLoading: resourcesLoading } =
     useListResources(params);
   const centerIds = new Set((centersQuery.data ?? []).map((center) => center.id));
-  const resources = allResources.filter((resource) => {
+  const periodResources = allResources.filter((resource) => {
     if (!matchesDashboardPeriod(resource.createdAt, searchParams)) return false;
-    if (
-      dashboardOnly &&
-      (resource.centerId == null || !centerIds.has(resource.centerId))
-    ) {
-      return false;
-    }
     if (!month) return true;
     const date = resource.createdAt ? new Date(resource.createdAt) : null;
     return (
@@ -267,6 +261,10 @@ export default function RecursosPage() {
       date.toISOString().slice(0, 7) === month
     );
   });
+  const resources = periodResources.filter((resource) =>
+    !dashboardOnly ||
+    (resource.centerId != null && centerIds.has(resource.centerId)),
+  );
   const isLoading = resourcesLoading || (dashboardOnly && centersQuery.isLoading);
 
   const canDelete = (authorId: number | null | undefined) =>
@@ -357,10 +355,20 @@ export default function RecursosPage() {
       </div>
 
       {(dashboardOnly || month) && (
-        <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-          {dashboardOnly && "Solo recursos contabilizados por el panel"}
-          {dashboardOnly && month && " · "}
-          {month && `Periodo: ${month}`}
+        <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {dashboardOnly && "Desglose de recursos contabilizados por el panel"}
+            {dashboardOnly && month && " · "}
+            {month && `Periodo: ${month}`}
+            {dashboardOnly && searchParams.get("startDate") && searchParams.get("endDate") && (
+              <> · {searchParams.get("startDate")} – {searchParams.get("endDate")}</>
+            )}
+          </span>
+          {dashboardOnly && (
+            <Button asChild variant="link" size="sm" className="h-auto p-0">
+              <Link href="/recursos">Ver todos los recursos</Link>
+            </Button>
+          )}
         </div>
       )}
 
@@ -369,7 +377,20 @@ export default function RecursosPage() {
       ) : resources.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No hay recursos. Sé el primero en compartir material.
+            {dashboardOnly && allResources.length > 0 ? (
+              <div className="space-y-3">
+                <p>
+                  {periodResources.length > 0
+                    ? "Hay recursos en el repositorio, pero ninguno coincide con el ámbito que contabiliza esta tarjeta."
+                    : "Hay recursos, pero no dentro del periodo seleccionado en el panel."}
+                </p>
+                <Button asChild variant="outline">
+                  <Link href="/recursos">Ver todos los recursos</Link>
+                </Button>
+              </div>
+            ) : (
+              "No hay recursos. Sé el primero en compartir material."
+            )}
           </CardContent>
         </Card>
       ) : (
