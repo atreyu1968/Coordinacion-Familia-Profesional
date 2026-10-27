@@ -224,7 +224,7 @@ export default function RecursosPage() {
   const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
   const [moduleId, setModuleId] = useState<number | null>(moduleParam);
-  const dashboardOnly = searchParams.get("dashboard") === "resources";
+  const legacyDashboardFilter = searchParams.get("dashboard") === "resources";
   const requestedProvinceId = Number(searchParams.get("provinceId"));
   const provinceId =
     user?.role === "superadmin" &&
@@ -235,13 +235,19 @@ export default function RecursosPage() {
   const month = searchParams.get("month")?.match(/^\d{4}-\d{2}$/)
     ? searchParams.get("month")!
     : null;
+  const dashboardDrilldown =
+    legacyDashboardFilter ||
+    month != null ||
+    searchParams.has("startDate") ||
+    searchParams.has("endDate") ||
+    provinceId != null;
 
   const { data: modules = [] } = useListModules({});
   const centersQuery = useListCenters(
     provinceId != null
       ? { provinceId, dashboardOnly: true }
       : { dashboardOnly: true },
-    { query: { enabled: dashboardOnly } },
+    { query: { enabled: dashboardDrilldown } },
   );
 
   const params: ListResourcesParams = {};
@@ -262,10 +268,10 @@ export default function RecursosPage() {
     );
   });
   const resources = periodResources.filter((resource) =>
-    !dashboardOnly ||
+    !dashboardDrilldown ||
     (resource.centerId != null && centerIds.has(resource.centerId)),
   );
-  const isLoading = resourcesLoading || (dashboardOnly && centersQuery.isLoading);
+  const isLoading = resourcesLoading || (dashboardDrilldown && centersQuery.isLoading);
 
   const canDelete = (authorId: number | null | undefined) =>
     authorId === user?.id ||
@@ -354,17 +360,17 @@ export default function RecursosPage() {
         </Select>
       </div>
 
-      {(dashboardOnly || month) && (
+      {(dashboardDrilldown || month) && (
         <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground flex flex-wrap items-center justify-between gap-2">
           <span>
-            {dashboardOnly && "Desglose de recursos contabilizados por el panel"}
-            {dashboardOnly && month && " · "}
+            {dashboardDrilldown && "Desglose de recursos contabilizados por el panel"}
+            {dashboardDrilldown && month && " · "}
             {month && `Periodo: ${month}`}
-            {dashboardOnly && searchParams.get("startDate") && searchParams.get("endDate") && (
+            {dashboardDrilldown && searchParams.get("startDate") && searchParams.get("endDate") && (
               <> · {searchParams.get("startDate")} – {searchParams.get("endDate")}</>
             )}
           </span>
-          {dashboardOnly && (
+          {dashboardDrilldown && (
             <Button asChild variant="link" size="sm" className="h-auto p-0">
               <Link href="/recursos">Ver todos los recursos</Link>
             </Button>
@@ -377,7 +383,7 @@ export default function RecursosPage() {
       ) : resources.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            {dashboardOnly && allResources.length > 0 ? (
+            {dashboardDrilldown && allResources.length > 0 ? (
               <div className="space-y-3">
                 <p>
                   {periodResources.length > 0
