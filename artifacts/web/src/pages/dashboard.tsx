@@ -206,6 +206,9 @@ export default function DashboardPage() {
     },
     {
       label: isPeriodFiltered ? "Recursos del periodo" : "Recursos",
+      description: isPeriodFiltered
+        ? "Recuento del periodo; abre el repositorio completo"
+        : "Abrir repositorio completo",
       value: summary?.resources,
       icon: FileText,
       href: RESOURCE_CARD_HREF,
@@ -490,7 +493,7 @@ export default function DashboardPage() {
                         : (c.value ?? 0)}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Abrir registros
+                    {c.description ?? "Abrir registros"}
                   </p>
                 </CardContent>
               </Card>

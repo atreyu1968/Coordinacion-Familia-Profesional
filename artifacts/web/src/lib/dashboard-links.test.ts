@@ -14,9 +14,10 @@ describe("Dashboard drilldown consistency", () => {
   it("uses that canonical route for the resource card", () => {
     const dashboardSource = readFileSync("src/pages/dashboard.tsx", "utf8");
     const resourceCard = dashboardSource.match(
-      /label: isPeriodFiltered \? "Recursos del periodo" : "Recursos"[\s\S]*?href:\s*([^,\n]+)/,
+      /label: isPeriodFiltered \? "Recursos del periodo" : "Recursos"[\s\S]*?description: isPeriodFiltered\s*\? "Recuento del periodo; abre el repositorio completo"\s*: "Abrir repositorio completo"[\s\S]*?href:\s*([^,\n]+)/,
     );
     expect(resourceCard?.[1].trim()).toBe("RESOURCE_CARD_HREF");
+    expect(dashboardSource).toContain("{c.description ?? \"Abrir registros\"}");
   });
 
   it.each(["centers", "users"])("keeps %s totals independent of registration dates without dropping province scope", (kind) => {
