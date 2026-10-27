@@ -8,6 +8,7 @@
 - [Active professional-family lock](active-family-lock.md) — whole app locked to one familia profesional; every center-read/by-id surface must filter centers.families @> [activeFamily]; facets families needs element-level filter.
 - [Videoconferencing (8x8 JaaS, web only)](videoconferencias-jitsi.md) — coordinator-only moderators, public Jitsi fallback; mobile calls removed.
 - [Native wiki; Outline retired](outline-wiki.md) — the app no longer integrates Outline; keep any existing external service/data and legacy settings untouched unless asked.
+- [Forum moderation history](forum-moderation-history.md) — retain actor/action/module/time only; audit moderator actions, not participant self-deletions, and never store deleted text.
 - [JSZip stream compatibility](wiki-jszip-streams.md) — JSZip entry streams may lack async iteration; test event-based extraction and size limits with real archives.
 - [Announcements audience + attachments](announcements-audience.md) — Tablón uses shared audience model (not legacy provinceId) + ACL-bound downloadable attachments; backfill or province rows leak.
 - [LMS publication notices](lms-publication-notices.md) — first course publication creates a Tablón announcement and notifies active users who can access courses.

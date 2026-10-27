@@ -135,6 +135,7 @@ import type {
   Feedback,
   FinishCoordinatorGmailOAuthParams,
   ForgotPasswordInput,
+  ForumModerationEvent,
   ForumModule,
   ForumPost,
   ForumThread,
@@ -3785,6 +3786,107 @@ export function useListForumModules<TData = Awaited<ReturnType<typeof listForumM
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListForumModulesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListForumModerationHistoryUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/moderation-history`
+}
+
+/**
+ * @summary List moderation actions for a module forum
+ */
+export const listForumModerationHistory = async (moduleId: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumModerationEvent[]> => {
+
+  return customFetch<ForumModerationEvent[]>(getListForumModerationHistoryUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListForumModerationHistoryQueryKey = (moduleId: number,) => {
+    return [
+    `/api/forum/modules/${moduleId}/moderation-history`
+    ] as const;
+    }
+
+
+export const getListForumModerationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listForumModerationHistory>>, TError = ErrorType<ErrorResponse>>(moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListForumModerationHistoryQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listForumModerationHistory>>> = ({ signal }) => listForumModerationHistory(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: moduleId !== null && moduleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListForumModerationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listForumModerationHistory>>>
+export type ListForumModerationHistoryQueryError = ErrorType<ErrorResponse>
+
+
+export function useListForumModerationHistory<TData = Awaited<ReturnType<typeof listForumModerationHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listForumModerationHistory>>,
+          TError,
+          Awaited<ReturnType<typeof listForumModerationHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListForumModerationHistory<TData = Awaited<ReturnType<typeof listForumModerationHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listForumModerationHistory>>,
+          TError,
+          Awaited<ReturnType<typeof listForumModerationHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListForumModerationHistory<TData = Awaited<ReturnType<typeof listForumModerationHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List moderation actions for a module forum
+ */
+
+export function useListForumModerationHistory<TData = Awaited<ReturnType<typeof listForumModerationHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listForumModerationHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListForumModerationHistoryQueryOptions(moduleId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -441,6 +441,99 @@ describe("forum pinning", () => {
     expect(unpin.body.pinnedAt).toBeNull();
   });
 
+  it("records pin and unpin actions and restricts history to moderators", async () => {
+    const province = await createProvince("Historial");
+    const center = await createCenter(province);
+    const moduleId = await createModule({ centerId: center });
+    const author = await createUser({
+      role: "teacher",
+      centerId: center,
+      provinceId: province,
+    });
+    const coordinator = await createUser({
+      role: "coordinator",
+      provinceId: province,
+    });
+    const thread = await openThread(author.token, moduleId, "Tema privado");
+
+    await request(app)
+      .put(`/api/forum/threads/${thread.body.id}/pinned`)
+      .set(authHeader(coordinator.token))
+      .send({ pinned: true })
+      .expect(200);
+    await request(app)
+      .put(`/api/forum/threads/${thread.body.id}/pinned`)
+      .set(authHeader(coordinator.token))
+      .send({ pinned: false })
+      .expect(200);
+
+    const history = await request(app)
+      .get(`/api/forum/modules/${moduleId}/moderation-history`)
+      .set(authHeader(coordinator.token))
+      .expect(200);
+    expect(history.body).toHaveLength(2);
+    expect(history.body.map((event: { action: string }) => event.action)).toEqual([
+      "thread_unpinned",
+      "thread_pinned",
+    ]);
+    expect(history.body[0]).toMatchObject({
+      moduleId,
+      actorId: coordinator.user.id,
+      actorName: coordinator.user.name,
+    });
+    expect(history.body[0]).not.toHaveProperty("content");
+    expect(history.body[0]).not.toHaveProperty("title");
+    expect(
+      (await request(app)
+        .get(`/api/forum/modules/${moduleId}/moderation-history`)
+        .set(authHeader(author.token))).status,
+    ).toBe(403);
+  });
+
+  it("records moderator deletions but not ordinary author deletions", async () => {
+    const province = await createProvince("Borrados");
+    const center = await createCenter(province);
+    const moduleId = await createModule({ centerId: center });
+    const author = await createUser({
+      role: "teacher",
+      centerId: center,
+      provinceId: province,
+    });
+    const coordinator = await createUser({
+      role: "coordinator",
+      provinceId: province,
+    });
+    const postThread = await openThread(author.token, moduleId, "Tema");
+    const posts = await request(app)
+      .get(`/api/forum/threads/${postThread.body.id}/posts`)
+      .set(authHeader(author.token))
+      .expect(200);
+    await request(app)
+      .delete(`/api/forum/posts/${posts.body[0].id}`)
+      .set(authHeader(coordinator.token))
+      .expect(204);
+
+    const authorThread = await openThread(author.token, moduleId, "Borrado propio");
+    await request(app)
+      .delete(`/api/forum/threads/${authorThread.body.id}`)
+      .set(authHeader(author.token))
+      .expect(204);
+    const moderatorThread = await openThread(author.token, moduleId, "Borrado moderado");
+    await request(app)
+      .delete(`/api/forum/threads/${moderatorThread.body.id}`)
+      .set(authHeader(coordinator.token))
+      .expect(204);
+
+    const history = await request(app)
+      .get(`/api/forum/modules/${moduleId}/moderation-history`)
+      .set(authHeader(coordinator.token))
+      .expect(200);
+    expect(history.body.map((event: { action: string }) => event.action)).toEqual([
+      "thread_deleted",
+      "post_deleted",
+    ]);
+  });
+
   it("forbids the author (non-manager) from pinning their own thread", async () => {
     const moduleId = await createModule({ centerId: null });
     const author = await createUser({ role: "teacher" });

@@ -188,6 +188,8 @@ export * from './feedbackStatus';
 export * from './feedbackType';
 export * from './finishCoordinatorGmailOAuthParams';
 export * from './forgotPasswordInput';
+export * from './forumModerationEvent';
+export * from './forumModerationEventAction';
 export * from './forumModule';
 export * from './forumPost';
 export * from './forumThread';

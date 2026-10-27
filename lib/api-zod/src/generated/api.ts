@@ -1259,9 +1259,28 @@ export const ListForumModulesResponseItem = zod.object({
   "cycleName": zod.string().nullish(),
   "centerId": zod.number().int().nullish(),
   "threadCount": zod.number().int(),
-  "unreadCount": zod.number().int()
+  "unreadCount": zod.number().int(),
+  "canViewModerationHistory": zod.boolean()
 })
 export const ListForumModulesResponse = zod.array(ListForumModulesResponseItem)
+
+
+/**
+ * @summary List moderation actions for a module forum
+ */
+export const ListForumModerationHistoryParams = zod.object({
+  "moduleId": zod.coerce.number().int()
+})
+
+export const ListForumModerationHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "actorId": zod.number().int(),
+  "actorName": zod.string(),
+  "action": zod.enum(['thread_pinned', 'thread_unpinned', 'thread_deleted', 'post_deleted']),
+  "createdAt": zod.coerce.date()
+})
+export const ListForumModerationHistoryResponse = zod.array(ListForumModerationHistoryResponseItem)
 
 
 /**

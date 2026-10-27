@@ -2157,6 +2157,26 @@ export interface ForumModule {
   centerId?: number | null;
   threadCount: number;
   unreadCount: number;
+  canViewModerationHistory: boolean;
+}
+
+export type ForumModerationEventAction = typeof ForumModerationEventAction[keyof typeof ForumModerationEventAction];
+
+
+export const ForumModerationEventAction = {
+  thread_pinned: 'thread_pinned',
+  thread_unpinned: 'thread_unpinned',
+  thread_deleted: 'thread_deleted',
+  post_deleted: 'post_deleted',
+} as const;
+
+export interface ForumModerationEvent {
+  id: number;
+  moduleId: number;
+  actorId: number;
+  actorName: string;
+  action: ForumModerationEventAction;
+  createdAt: string;
 }
 
 export interface ForumThread {

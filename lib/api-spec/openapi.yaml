@@ -854,6 +854,30 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ForumModule"
+  /forum/modules/{moduleId}/moderation-history:
+    get:
+      operationId: listForumModerationHistory
+      tags: [forum]
+      summary: List moderation actions for a module forum
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ModuleIdPath"
+      responses:
+        "200":
+          description: Moderation history for the module.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForumModerationEvent"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /forum/threads:
     get:
       operationId: listForumThreads
@@ -8338,7 +8362,27 @@ components:
           type: integer
         unreadCount:
           type: integer
-      required: [id, name, threadCount, unreadCount]
+        canViewModerationHistory:
+          type: boolean
+      required: [id, name, threadCount, unreadCount, canViewModerationHistory]
+    ForumModerationEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        moduleId:
+          type: integer
+        actorId:
+          type: integer
+        actorName:
+          type: string
+        action:
+          type: string
+          enum: [thread_pinned, thread_unpinned, thread_deleted, post_deleted]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, moduleId, actorId, actorName, action, createdAt]
     ForumThread:
       type: object
       properties:

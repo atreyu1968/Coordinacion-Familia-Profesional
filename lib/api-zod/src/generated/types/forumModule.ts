@@ -17,4 +17,5 @@ export interface ForumModule {
   centerId?: number | null;
   threadCount: number;
   unreadCount: number;
+  canViewModerationHistory: boolean;
 }

@@ -58,9 +58,30 @@ export const forumThreadReadsTable = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.threadId] })],
 );
 
+// Audit entries for actions taken in a forum in a moderation capacity.
+// Deliberately stores no post/thread text so deleted content cannot be recovered
+// through this history.
+export const forumModerationEventsTable = pgTable(
+  "forum_moderation_events",
+  {
+    id: serial("id").primaryKey(),
+    moduleId: integer("module_id").notNull(),
+    actorId: integer("actor_id").notNull(),
+    actorName: text("actor_name").notNull(),
+    action: text("action").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
 export type ForumThread = typeof forumThreadsTable.$inferSelect;
 export type InsertForumThread = typeof forumThreadsTable.$inferInsert;
 export type ForumPost = typeof forumPostsTable.$inferSelect;
 export type InsertForumPost = typeof forumPostsTable.$inferInsert;
 export type ForumThreadRead = typeof forumThreadReadsTable.$inferSelect;
 export type InsertForumThreadRead = typeof forumThreadReadsTable.$inferInsert;
+export type ForumModerationEvent =
+  typeof forumModerationEventsTable.$inferSelect;
+export type InsertForumModerationEvent =
+  typeof forumModerationEventsTable.$inferInsert;

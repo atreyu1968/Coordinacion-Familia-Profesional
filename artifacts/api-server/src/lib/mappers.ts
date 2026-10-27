@@ -549,6 +549,7 @@ export function toForumModule(row: {
   centerId: number | null;
   threadCount: number;
   unreadCount: number;
+  canViewModerationHistory: boolean;
 }) {
   return {
     id: row.id,
@@ -558,6 +559,7 @@ export function toForumModule(row: {
     centerId: row.centerId,
     threadCount: row.threadCount,
     unreadCount: row.unreadCount,
+    canViewModerationHistory: row.canViewModerationHistory,
   };
 }
 

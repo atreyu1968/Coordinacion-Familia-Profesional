@@ -6,6 +6,7 @@ import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListForumModules,
+  useListForumModerationHistory,
   useListForumThreads,
   useCreateForumThread,
   useDeleteForumThread,
@@ -64,6 +65,7 @@ import {
   Search,
   User as UserIcon,
   Send,
+  History,
 } from "lucide-react";
 
 const SIN_CICLO = "Sin ciclo";
@@ -93,6 +95,78 @@ function useIsAuthor() {
   const { user } = useAuth();
   return (authorId: number | null | undefined) =>
     authorId != null && authorId === user?.id;
+}
+
+const MODERATION_ACTION_LABELS: Record<string, string> = {
+  thread_pinned: "Tema fijado",
+  thread_unpinned: "Tema desfijado",
+  thread_deleted: "Tema eliminado por moderación",
+  post_deleted: "Mensaje eliminado por moderación",
+};
+
+function ModerationHistoryDialog({ module }: { module: ForumModule }) {
+  const [open, setOpen] = useState(false);
+  const { data: events = [], isLoading, isError } =
+    useListForumModerationHistory(module.id, {
+      query: { enabled: open },
+    });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-1.5">
+          <History className="w-4 h-4" /> Historial
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Historial de moderación</DialogTitle>
+          <DialogDescription>
+            Acciones registradas en el foro de {module.name}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[55vh] overflow-y-auto">
+          {isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Cargando historial...
+            </p>
+          ) : isError ? (
+            <p role="alert" className="py-6 text-center text-sm text-destructive">
+              No se pudo cargar el historial. Comprueba tus permisos.
+            </p>
+          ) : events.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Aún no hay acciones de moderación.
+            </p>
+          ) : (
+            <ol className="divide-y">
+              {events.map((event) => (
+                <li
+                  key={event.id}
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {MODERATION_ACTION_LABELS[event.action] ?? "Acción de moderación"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {event.actorName}
+                    </p>
+                  </div>
+                  <time
+                    className="text-xs text-muted-foreground"
+                    dateTime={event.createdAt}
+                  >
+                    {formatDate(event.createdAt)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -566,7 +640,12 @@ function ModuleThreads({
             <p className="text-sm text-muted-foreground">{module.cycleName}</p>
           )}
         </div>
-        <NewThreadDialog module={module} />
+        <div className="flex items-center gap-2">
+          {module.canViewModerationHistory && (
+            <ModerationHistoryDialog module={module} />
+          )}
+          <NewThreadDialog module={module} />
+        </div>
       </div>
 
       <div className="relative">

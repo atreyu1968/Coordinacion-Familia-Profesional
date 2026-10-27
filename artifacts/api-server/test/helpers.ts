@@ -22,6 +22,7 @@ import {
   forumThreadsTable,
   forumPostsTable,
   forumThreadReadsTable,
+  forumModerationEventsTable,
   passwordResetTokensTable,
   academicYearsTable,
   teacherYearConfirmationsTable,
@@ -373,6 +374,9 @@ export async function cleanup(): Promise<void> {
       .where(inArray(meetingsTable.id, created.meetingIds));
   }
   if (created.moduleIds.length > 0) {
+    await db
+      .delete(forumModerationEventsTable)
+      .where(inArray(forumModerationEventsTable.moduleId, created.moduleIds));
     await db
       .delete(moduleMembershipsTable)
       .where(inArray(moduleMembershipsTable.moduleId, created.moduleIds));

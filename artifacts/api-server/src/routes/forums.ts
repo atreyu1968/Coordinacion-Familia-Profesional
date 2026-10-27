@@ -16,6 +16,7 @@ import {
   forumThreadsTable,
   forumPostsTable,
   forumThreadReadsTable,
+  forumModerationEventsTable,
   modulesTable,
   centersTable,
   usersTable,
@@ -25,6 +26,8 @@ import {
 } from "@workspace/db";
 import {
   ListForumModulesResponse,
+  ListForumModerationHistoryParams,
+  ListForumModerationHistoryResponse,
   GetForumThreadParams,
   GetForumThreadResponse,
   ListForumThreadsQueryParams,
@@ -291,7 +294,7 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
 
   res.json(
     ListForumModulesResponse.parse(
-      modules.map((m) =>
+      await Promise.all(modules.map(async (m) =>
         toForumModule({
           id: m.id,
           code: m.code,
@@ -300,11 +303,67 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
           centerId: m.centerId,
           threadCount: countMap.get(m.id) ?? 0,
           unreadCount: unreadMap.get(m.id) ?? 0,
-        }),
-      ),
+          canViewModerationHistory: await canModerateForumModule(
+            caller,
+            m.id,
+            m.centerId,
+          ),
+        })
+      )),
     ),
   );
 });
+
+// ---------------------------------------------------------------------------
+// List moderation actions for a module forum. No post or thread text is stored
+// in or returned from this audit trail.
+// ---------------------------------------------------------------------------
+router.get(
+  "/forum/modules/:moduleId/moderation-history",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = ListForumModerationHistoryParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ message: params.error.message });
+      return;
+    }
+    const caller = req.user!;
+    const [module] = await db
+      .select({ id: modulesTable.id, centerId: modulesTable.centerId })
+      .from(modulesTable)
+      .where(
+        and(
+          eq(modulesTable.id, params.data.moduleId),
+          isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(await getActiveFamily()),
+        ),
+      );
+    if (!module) {
+      res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (
+      !(await moduleVisibleById(caller, module.id)) ||
+      !(await canModerateForumModule(caller, module.id, module.centerId))
+    ) {
+      res.status(403).json({ message: "Permiso denegado" });
+      return;
+    }
+    const events = await db
+      .select({
+        id: forumModerationEventsTable.id,
+        moduleId: forumModerationEventsTable.moduleId,
+        actorId: forumModerationEventsTable.actorId,
+        actorName: forumModerationEventsTable.actorName,
+        action: forumModerationEventsTable.action,
+        createdAt: forumModerationEventsTable.createdAt,
+      })
+      .from(forumModerationEventsTable)
+      .where(eq(forumModerationEventsTable.moduleId, module.id))
+      .orderBy(desc(forumModerationEventsTable.createdAt), desc(forumModerationEventsTable.id));
+    res.json(ListForumModerationHistoryResponse.parse(events));
+  },
+);
 
 // ---------------------------------------------------------------------------
 // List discussion threads for a module
@@ -505,10 +564,22 @@ router.delete(
       return;
     }
 
-    await db
-      .update(forumThreadsTable)
-      .set({ deletedAt: new Date() })
-      .where(eq(forumThreadsTable.id, thread.id));
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(forumThreadsTable)
+        .set({ deletedAt: now })
+        .where(eq(forumThreadsTable.id, thread.id));
+      if (canManage && !isAuthor) {
+        await tx.insert(forumModerationEventsTable).values({
+          moduleId: thread.moduleId,
+          actorId: caller.id,
+          actorName: caller.name,
+          action: "thread_deleted",
+          createdAt: now,
+        });
+      }
+    });
     res.sendStatus(204);
   },
 );
@@ -654,10 +725,22 @@ router.delete(
       return;
     }
 
-    await db
-      .update(forumPostsTable)
-      .set({ deletedAt: new Date() })
-      .where(eq(forumPostsTable.id, post.id));
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(forumPostsTable)
+        .set({ deletedAt: now })
+        .where(eq(forumPostsTable.id, post.id));
+      if (canManage && !isAuthor) {
+        await tx.insert(forumModerationEventsTable).values({
+          moduleId: thread.moduleId,
+          actorId: caller.id,
+          actorName: caller.name,
+          action: "post_deleted",
+          createdAt: now,
+        });
+      }
+    });
     res.sendStatus(204);
   },
 );
@@ -760,10 +843,23 @@ router.put(
       return;
     }
 
-    await db
-      .update(forumThreadsTable)
-      .set({ pinnedAt: body.data.pinned ? new Date() : null })
-      .where(eq(forumThreadsTable.id, thread.id));
+    const wasPinned = thread.pinnedAt != null;
+    if (wasPinned !== body.data.pinned) {
+      const now = new Date();
+      await db.transaction(async (tx) => {
+        await tx
+          .update(forumThreadsTable)
+          .set({ pinnedAt: body.data.pinned ? now : null })
+          .where(eq(forumThreadsTable.id, thread.id));
+        await tx.insert(forumModerationEventsTable).values({
+          moduleId: thread.moduleId,
+          actorId: caller.id,
+          actorName: caller.name,
+          action: body.data.pinned ? "thread_pinned" : "thread_unpinned",
+          createdAt: now,
+        });
+      });
+    }
 
     const out = await loadThreadResponse(thread.id, caller);
     res.json(out);
