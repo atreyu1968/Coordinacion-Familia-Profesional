@@ -5,11 +5,13 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AiKnowledgeLinkCoverage } from './aiKnowledgeLinkCoverage';
 import type { AiKnowledgeSourceCoverage } from './aiKnowledgeSourceCoverage';
 
 export interface AiKnowledgeCoverage {
   checkedAt: Date;
   /** @nullable */
   lastIndexedAt: Date | null;
+  links: AiKnowledgeLinkCoverage;
   sources: AiKnowledgeSourceCoverage[];
 }

@@ -52,6 +52,14 @@ export function KnowledgeCoveragePanel() {
         {source.omissions.length > 0 && <ul>{source.omissions.map(item => <li key={item.reason}>{item.count} material(es): {item.reason}</li>)}</ul>}
         {source.notes.length > 0 && <ul>{source.notes.map((note, index) => <li key={index}>{note}</li>)}</ul>}
       </article>)}
+      <article data-testid="knowledge-source-public-links">
+        <header><strong>Enlaces públicos</strong><span>Contenido de páginas enlazadas</span></header>
+        <dl className="mail-knowledge__counts">
+          {([["indexed", "Indexados"], ["pending", "Pendientes"], ["omitted", "Omitidos"], ["errors", "Errores"]] as const).map(([key, label]) =>
+            <div key={key}><dt>{label}</dt><dd data-testid={`knowledge-links-${key}`}>{query.data.links[key]}</dd></div>)}
+        </dl>
+        <p>Solo se leen páginas públicas HTML o texto, con límites de tamaño y tiempo. No se consultan destinos locales, privados ni redirecciones inseguras.</p>
+      </article>
       <p>Los pendientes son materiales detectados aún no indexados. Los omitidos no se consultan; los errores se pueden reintentar. Una fuente no disponible puede tener cero errores de archivo porque no se ha podido contar su contenido.</p>
       <p>Última actualización del índice: {query.data.lastIndexedAt ? new Date(query.data.lastIndexedAt).toLocaleString("es-ES") : "Todavía no se ha actualizado"}.</p>
     </div>}

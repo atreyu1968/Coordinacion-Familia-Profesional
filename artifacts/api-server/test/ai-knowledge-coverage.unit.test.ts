@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addCoverageOmission, newCoverageObservations, summarizeKnowledgeCoverage } from "../src/lib/aiKnowledgeCoverage";
+import { addCoverageOmission, newCoverageObservations, summarizeKnowledgeCoverage, summarizePublicLinkCoverage } from "../src/lib/aiKnowledgeCoverage";
 
 const entry = (sourceKey: string, status: string, version = "v1", warning: string | null = null) => ({
   sourceKey, status, version, warning,
@@ -28,6 +28,22 @@ describe("private AI coverage summaries", () => {
     expect(result[0]).toMatchObject({ indexed: 0, pending: 2 });
     expect(result[1]).toMatchObject({ indexed: 0, pending: 0 });
     expect(JSON.stringify(result)).not.toContain("private-other-owner");
+  });
+
+  it("reports public link content as indexed, pending, omitted, or retryable error", () => {
+    const result = summarizePublicLinkCoverage([
+      { ...candidate("resource-url:1"), publicLink: true },
+      { ...candidate("resource-url:2"), publicLink: true },
+      { ...candidate("resource-url:3"), publicLink: true },
+      { ...candidate("resource-url:4"), publicLink: true },
+      { ...candidate("resource-url:5"), publicLink: true, omission: "Enlace no válido." },
+    ], [
+      entry("resource-url:1", "ready"),
+      entry("resource-url:2", "processing"),
+      entry("resource-url:3", "unsupported"),
+      entry("resource-url:4", "error"),
+    ]);
+    expect(result).toEqual({ indexed: 1, pending: 1, omitted: 2, errors: 1 });
   });
 
   it("counts unsupported Nextcloud files even before they have an index row", () => {

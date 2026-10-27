@@ -7766,7 +7766,7 @@ components:
           enum: [true]
     AiKnowledgeCoverage:
       type: object
-      required: [checkedAt, lastIndexedAt, sources]
+      required: [checkedAt, lastIndexedAt, sources, links]
       properties:
         checkedAt:
           type: string
@@ -7774,10 +7774,20 @@ components:
         lastIndexedAt:
           type: [string, "null"]
           format: date-time
+        links:
+          $ref: "#/components/schemas/AiKnowledgeLinkCoverage"
         sources:
           type: array
           items:
             $ref: "#/components/schemas/AiKnowledgeSourceCoverage"
+    AiKnowledgeLinkCoverage:
+      type: object
+      required: [indexed, pending, omitted, errors]
+      properties:
+        indexed: { type: integer }
+        pending: { type: integer }
+        omitted: { type: integer }
+        errors: { type: integer }
     AiKnowledgeSourceCoverage:
       type: object
       required: [id, status, indexed, pending, omitted, errors, omissions, notes]

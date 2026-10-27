@@ -2896,6 +2896,12 @@ export const DeleteResourceResponse = zod.void()
 export const GetAiKnowledgeCoverageResponse = zod.object({
   "checkedAt": zod.coerce.date(),
   "lastIndexedAt": zod.coerce.date().nullable(),
+  "links": zod.object({
+  "indexed": zod.number().int(),
+  "pending": zod.number().int(),
+  "omitted": zod.number().int(),
+  "errors": zod.number().int()
+}),
   "sources": zod.array(zod.object({
   "id": zod.enum(['platform', 'gmail', 'nextcloud']),
   "status": zod.enum(['ready', 'pending', 'partial', 'importing', 'disconnected', 'error']),
@@ -2922,6 +2928,12 @@ export const RefreshAiKnowledgeIndexBody = zod.object({
 export const RefreshAiKnowledgeIndexResponse = zod.object({
   "checkedAt": zod.coerce.date(),
   "lastIndexedAt": zod.coerce.date().nullable(),
+  "links": zod.object({
+  "indexed": zod.number().int(),
+  "pending": zod.number().int(),
+  "omitted": zod.number().int(),
+  "errors": zod.number().int()
+}),
   "sources": zod.array(zod.object({
   "id": zod.enum(['platform', 'gmail', 'nextcloud']),
   "status": zod.enum(['ready', 'pending', 'partial', 'importing', 'disconnected', 'error']),

@@ -1695,6 +1695,13 @@ export interface AiKnowledgeRefreshInput {
   consent: true;
 }
 
+export interface AiKnowledgeLinkCoverage {
+  indexed: number;
+  pending: number;
+  omitted: number;
+  errors: number;
+}
+
 export type AiKnowledgeSourceCoverageId = typeof AiKnowledgeSourceCoverageId[keyof typeof AiKnowledgeSourceCoverageId];
 
 
@@ -1736,6 +1743,7 @@ export interface AiKnowledgeCoverage {
   checkedAt: string;
   /** @nullable */
   lastIndexedAt: string | null;
+  links: AiKnowledgeLinkCoverage;
   sources: AiKnowledgeSourceCoverage[];
 }
 

@@ -1,4 +1,4 @@
-import type { AiKnowledgeSourceCoverage } from "@workspace/api-zod";
+import type { AiKnowledgeLinkCoverage, AiKnowledgeSourceCoverage } from "@workspace/api-zod";
 
 export type KnowledgeSource = AiKnowledgeSourceCoverage["id"];
 export type CoverageObservations = Record<KnowledgeSource, {
@@ -19,6 +19,24 @@ export function addCoverageOmission(observations: CoverageObservations, source: 
   const existing = observations[source].omissions.find(item => item.reason === reason);
   if (existing) existing.count += 1;
   else observations[source].omissions.push({ reason, count: 1 });
+}
+
+export function summarizePublicLinkCoverage(
+  candidates: Array<{ key: string; version: string; publicLink?: boolean; omission?: string }>,
+  entries: Array<{ sourceKey: string; version: string; status: string }>,
+): AiKnowledgeLinkCoverage {
+  const result: AiKnowledgeLinkCoverage = { indexed: 0, pending: 0, omitted: 0, errors: 0 };
+  const byKey = new Map(entries.map(entry => [entry.sourceKey, entry]));
+  for (const candidate of candidates.filter(item => item.publicLink)) {
+    if (candidate.omission) { result.omitted += 1; continue; }
+    const entry = byKey.get(candidate.key);
+    if (!entry || entry.version !== candidate.version || entry.status === "pending" || entry.status === "processing") result.pending += 1;
+    else if (entry.status === "ready") result.indexed += 1;
+    else if (entry.status === "unsupported") result.omitted += 1;
+    else if (entry.status === "error") result.errors += 1;
+    else result.pending += 1;
+  }
+  return result;
 }
 
 // Deliberately accepts no private labels, body text or raw extraction errors.
@@ -50,7 +68,11 @@ export function summarizeKnowledgeCoverage(
         if (entry.warning && !result.notes.includes("Hay textos recortados al límite de seguridad; no se consulta su contenido completo.")) {
           result.notes.push("Hay textos recortados al límite de seguridad; no se consulta su contenido completo.");
         }
-      } else if (entry.status === "unsupported") omit("Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar.");
+      } else if (entry.status === "unsupported") omit(
+        candidate.key.startsWith("resource-url:")
+          ? "El contenido de esta página pública no pudo indexarse por las restricciones de seguridad o formato."
+          : "Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar.",
+      );
       else if (entry.status === "error") result.errors += 1;
       else result.pending += 1;
     }

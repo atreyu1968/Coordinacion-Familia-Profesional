@@ -21,11 +21,14 @@ import { ObjectStorageService } from "./objectStorage";
 import { processMaterialBytes } from "./meetingMinutesMedia";
 import { sha256 } from "./coordinatorMailSecurity";
 import { moduleFolderName, moduleGroupId, independentSpaceFolderName, independentSpaceGroupId, resolveNextcloudConfig, resolveNextcloudUrl } from "./nextcloud";
-import { addCoverageOmission, knowledgeSource, newCoverageObservations, summarizeKnowledgeCoverage, type CoverageObservations } from "./aiKnowledgeCoverage";
+import { addCoverageOmission, knowledgeSource, newCoverageObservations, summarizeKnowledgeCoverage, summarizePublicLinkCoverage, type CoverageObservations } from "./aiKnowledgeCoverage";
+import { PublicPageOmittedError, readPublicPage } from "./aiPublicPage";
 
 type Candidate = {
   key: string; title: string; url: string; version: string; text?: string; fileName?: string;
   read?: () => Promise<Buffer>;
+  readText?: () => Promise<string>;
+  publicLink?: boolean;
   omission?: string;
 };
 const storage = new ObjectStorageService();
@@ -195,6 +198,26 @@ async function collect(user: User) {
         fileName: /\.[a-z0-9]{2,8}$/i.test(objectFileName) ? objectFileName : r.title,
         read: () => objectBytes(r.fileUrl!),
       } : {}) });
+    if (r.type.trim().toLocaleLowerCase("es") === "enlace") {
+      const remoteUrl = r.fileUrl?.trim();
+      const validPublicUrl = (() => {
+        if (!remoteUrl) return false;
+        try {
+          const url = new URL(remoteUrl);
+          return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+        } catch { return false; }
+      })();
+      add({
+        key: key("resource-url", r.id),
+        title: `Página enlazada: ${r.title}`,
+        url: `/recursos?resourceId=${r.id}`,
+        version: sha256(`public-page-v1|${remoteUrl ?? ""}|${r.title}|${r.description ?? ""}`),
+        publicLink: true,
+        ...(validPublicUrl
+          ? { readText: () => readPublicPage(remoteUrl!) }
+          : { omission: "El enlace no contiene una dirección pública HTTP o HTTPS válida." }),
+      });
+    }
   }
   // GDCAN manuals and references are published platform material, not private
   // administrator data; include them for every user who can use the assistant.
@@ -352,7 +375,7 @@ async function recordCandidate(userId: number, item: Candidate, retryFailures = 
   const warning = item.omission ?? (item.text && item.text.length > MAX_TEXT ? "El texto indexado se ha recortado al límite de seguridad." : null);
   const status = item.omission
     ? "unsupported"
-    : item.read && item.fileName
+    : item.readText || item.read && item.fileName
       ? "pending"
       : item.text
         ? "ready"
@@ -360,7 +383,9 @@ async function recordCandidate(userId: number, item: Candidate, retryFailures = 
   if (!existing) {
     await db.insert(aiKnowledgeEntriesTable).values({ userId, sourceKey: item.key, title: item.title, url: appUrl(item.url),
       version: item.version, text, status, warning });
-  } else if (existing.version !== item.version || retryFailures && existing.status === "error") {
+  } else if (existing.version !== item.version || retryFailures && (
+    existing.status === "error" || item.publicLink && (existing.status === "unsupported" || existing.status === "ready")
+  )) {
     await db.update(aiKnowledgeEntriesTable).set({ title: item.title, url: appUrl(item.url), version: item.version,
       text, status, warning, leaseToken: null, leaseUntil: null, updatedAt: new Date() })
       .where(and(eq(aiKnowledgeEntriesTable.id, existing.id), eq(aiKnowledgeEntriesTable.version, existing.version)));
@@ -413,12 +438,13 @@ export async function getAiKnowledgeCoverage(userId: number) {
     sourceKey: aiKnowledgeEntriesTable.sourceKey, version: aiKnowledgeEntriesTable.version,
     status: aiKnowledgeEntriesTable.status, warning: aiKnowledgeEntriesTable.warning,
   }).from(aiKnowledgeEntriesTable).where(eq(aiKnowledgeEntriesTable.userId, userId));
+  const links = summarizePublicLinkCoverage(collected.items, entries);
   const [account] = await db.select({ scannedAt: aiKnowledgeAccountsTable.scannedAt, scanError: aiKnowledgeAccountsTable.scanError })
     .from(aiKnowledgeAccountsTable).where(eq(aiKnowledgeAccountsTable.userId, userId));
   if (account?.scanError) collected.coverage.platform.notes.push("La última actualización del índice falló. Vuelve a actualizar antes de generar un borrador.");
   return {
     checkedAt: new Date().toISOString(), lastIndexedAt: account?.scannedAt?.toISOString() ?? null,
-    sources: summarizeKnowledgeCoverage(collected.items, entries, collected.coverage),
+    sources: summarizeKnowledgeCoverage(collected.items, entries, collected.coverage), links,
   };
 }
 
@@ -453,7 +479,18 @@ export async function processOneAiKnowledgeJob() {
     if (!snapshot || snapshot.expiresAt <= Date.now()) return false;
     if (!item) throw new Error("El material se eliminó, cambió o ya no es accesible.");
     let text = item.text ?? "";
-    if (item.read && item.fileName) {
+    if (item.readText) {
+      try {
+        text = [text, await item.readText()].filter(Boolean).join("\n\n");
+      } catch (error) {
+        if (error instanceof PublicPageOmittedError) {
+          await db.update(aiKnowledgeEntriesTable).set({ status: "unsupported", warning: error.message, leaseToken: null, leaseUntil: null, updatedAt: new Date() })
+            .where(and(eq(aiKnowledgeEntriesTable.id, claimed.row.id), eq(aiKnowledgeEntriesTable.leaseToken, claimed.token)));
+          return true;
+        }
+        throw error;
+      }
+    } else if (item.read && item.fileName) {
       const bytes = await item.read();
       const ext = item.fileName.split(".").pop()?.toLowerCase() ?? "";
       if (!SUPPORTED.test(item.fileName) || !mediaTypes.has(ext) && !/\.(txt|md|markdown|csv|tsv|json|xml|html?|yml|yaml|log|rst|ini|conf|docx|pptx|xlsx|odt|zip)$/i.test(item.fileName)) {

@@ -14,6 +14,7 @@ import type { User } from "@workspace/db";
 const draftCompletion = vi.hoisted(() => vi.fn(async (_request: unknown) => ({
   choices: [{ finish_reason: "stop", message: { content: "Borrador seguro de prueba" } }],
 })));
+const publicPageRead = vi.hoisted(() => vi.fn(async (_url: string) => "aislamiento paginaenlazada"));
 vi.mock("openai", () => ({
   default: class {
     chat = { completions: { create: draftCompletion } };
@@ -40,6 +41,10 @@ vi.mock("../src/lib/objectStorage", () => ({
 }));
 vi.mock("../src/lib/meetingMinutesMedia", () => ({
   processMaterialBytes: async (_name: string, bytes: Buffer) => bytes.toString("utf8"),
+}));
+vi.mock("../src/lib/aiPublicPage", () => ({
+  PublicPageOmittedError: class PublicPageOmittedError extends Error {},
+  readPublicPage: publicPageRead,
 }));
 
 let t: typeof import("@workspace/db");
@@ -87,6 +92,7 @@ beforeEach(async () => {
   await t.db.execute(sql.raw(`TRUNCATE ${names.join(",")} RESTART IDENTITY CASCADE`));
   folders = []; requests = []; remoteDown = false;
   draftCompletion.mockClear();
+  publicPageRead.mockClear();
   vi.stubEnv("NEXTCLOUD_ADMIN_URL", "");
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = String(input);
@@ -182,6 +188,29 @@ describe("AI source isolation on disposable PostgreSQL", () => {
     expect(sharedReference.context).toContain(reference.content);
   });
 
+  it("indexes public link content only for the users allowed to see the resource", async () => {
+    const [resource] = await t.db.insert(t.resourcesTable).values({
+      title: "Página compartida", type: "Enlace", centerId: ca, fileUrl: "https://public.example.test/guia",
+    }).returning();
+    await ai.synchronizeAiKnowledge(a.id);
+    expect(await keys(a.id)).toEqual([`resource:${resource.id}`, `resource-url:${resource.id}`].sort());
+    expect(publicPageRead).not.toHaveBeenCalled();
+    expect((await ai.getAiKnowledgeCoverage(a.id)).links).toEqual({ indexed: 0, pending: 1, omitted: 0, errors: 0 });
+
+    await drain();
+    expect(publicPageRead).toHaveBeenCalledWith("https://public.example.test/guia");
+    expect(await context(a.id)).toContain("aislamiento paginaenlazada");
+    expect((await ai.getAiKnowledgeCoverage(a.id)).links).toEqual({ indexed: 1, pending: 0, omitted: 0, errors: 0 });
+    expect(await context(b.id)).not.toContain("aislamiento paginaenlazada");
+    expect((await ai.getAiKnowledgeCoverage(b.id)).links).toEqual({ indexed: 0, pending: 0, omitted: 0, errors: 0 });
+
+    publicPageRead.mockResolvedValueOnce("aislamiento página actualizada");
+    await ai.synchronizeAiKnowledge(a.id, true);
+    expect((await ai.getAiKnowledgeCoverage(a.id)).links).toEqual({ indexed: 0, pending: 1, omitted: 0, errors: 0 });
+    await drain();
+    expect(await context(a.id)).toContain("aislamiento página actualizada");
+    expect(publicPageRead).toHaveBeenCalledTimes(2);
+  });
   it("isolates both users across wiki, attachments, submissions, resources, chats, minutes and Nextcloud", async () => {
     const expected: string[][] = [[], []];
     for (const [i, user, moduleId, centerId, provinceId] of [

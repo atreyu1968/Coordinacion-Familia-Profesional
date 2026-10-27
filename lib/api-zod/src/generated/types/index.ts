@@ -19,6 +19,7 @@ export * from './aiChatInput';
 export * from './aiChatInputContext';
 export * from './aiChatReply';
 export * from './aiKnowledgeCoverage';
+export * from './aiKnowledgeLinkCoverage';
 export * from './aiKnowledgeOmission';
 export * from './aiKnowledgeRefreshInput';
 export * from './aiKnowledgeSourceCoverage';

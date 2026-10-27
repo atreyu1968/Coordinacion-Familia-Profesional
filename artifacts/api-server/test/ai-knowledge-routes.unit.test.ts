@@ -31,7 +31,7 @@ vi.mock("../src/middlewares/auth", () => ({
 import aiRouter from "../src/routes/ai";
 
 const app = express().use(express.json()).use("/api", aiRouter);
-const coverage = { checkedAt: new Date().toISOString(), lastIndexedAt: null, sources: [] };
+const coverage = { checkedAt: new Date().toISOString(), lastIndexedAt: null, sources: [], links: { indexed: 0, pending: 0, omitted: 0, errors: 0 } };
 beforeEach(() => {
   vi.clearAllMocks();
   knowledge.getAiKnowledgeCoverage.mockResolvedValue(coverage);
