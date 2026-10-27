@@ -39,6 +39,7 @@ import { EventMinutesSection } from "@/components/events/event-minutes";
 import { useSearch, useLocation } from "wouter";
 import { useNoticeItems, useNoticeId } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
+import { matchesDashboardMonth } from "@/lib/dashboard-drilldown-filters";
 import { AttendanceManager } from "@/components/events/attendance-manager";
 import { useBranding } from "@/lib/branding";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1697,7 +1698,7 @@ export default function EventosPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [view, setView] = useState<"cards" | "calendar">("cards");
   const canManage = canManageEvents(user?.role);
-  const dashboardMonth = params.get("month")?.match(/^\d{4}-\d{2}$/)
+  const dashboardMonth = params.get("month")?.match(/^\d{4}-(0[1-9]|1[0-2])$/)
     ? params.get("month")
     : null;
   const upcomingOnly = params.get("period") === "upcoming";
@@ -1722,10 +1723,7 @@ export default function EventosPage() {
       if (!Number.isFinite(start) || start < now) return false;
     }
     if (dashboardMonth) {
-      const date = event.startAt ?? event.createdAt;
-      if (!date || new Date(date).toISOString().slice(0, 7) !== dashboardMonth) {
-        return false;
-      }
+      if (!matchesDashboardMonth(event.startAt ?? event.createdAt, dashboardMonth)) return false;
     }
     return true;
   });

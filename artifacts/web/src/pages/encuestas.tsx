@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useSearch } from "wouter";
 import { useNoticeItems } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
+import { dashboardSurveyStatusFromSearch } from "@/lib/dashboard-drilldown-filters";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AutoLinkText,
@@ -1025,16 +1026,10 @@ export default function EncuestasPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const now = useAvailabilityNow();
-  const requestedStatus = searchParams.get("status");
+  const requestedStatus = dashboardSurveyStatusFromSearch(searchParams.get("status"));
   const requestedProvinceId = Number(searchParams.get("provinceId"));
   const surveyParams: ListSurveysParams = {};
-  if (
-    requestedStatus === "draft" ||
-    requestedStatus === "open" ||
-    requestedStatus === "closed"
-  ) {
-    surveyParams.status = requestedStatus;
-  }
+  if (requestedStatus) surveyParams.status = requestedStatus;
   if (
     user?.role === "superadmin" &&
     Number.isInteger(requestedProvinceId) &&

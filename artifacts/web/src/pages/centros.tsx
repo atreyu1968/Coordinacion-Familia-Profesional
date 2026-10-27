@@ -34,6 +34,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { exportSheetsXlsx } from "@/lib/export";
+import { matchesDashboardIsland } from "@/lib/dashboard-drilldown-filters";
 
 const ALL = "all";
 
@@ -97,10 +98,7 @@ export default function CentrosPage() {
   const { data: fetchedCenters = [], isLoading } = useListCenters(params);
   const centers = dashboardIsland
     ? fetchedCenters.filter((center) =>
-        dashboardIsland === "Sin isla"
-          ? center.islandId == null
-          : center.islandId != null &&
-            islandName.get(center.islandId) === dashboardIsland,
+        matchesDashboardIsland(center.islandId, islandName, dashboardIsland),
       )
     : fetchedCenters;
   const exportCenters = () => {

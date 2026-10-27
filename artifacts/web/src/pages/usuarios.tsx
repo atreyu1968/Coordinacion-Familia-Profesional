@@ -63,6 +63,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { dashboardRoleFromSearch } from "@/lib/dashboard-drilldown-filters";
 import {
   AlertCircle,
   ChevronLeft,
@@ -106,7 +107,7 @@ export default function UsuariosPage() {
   const requestedRole = searchParams.get("role");
   const dashboardOnly = searchParams.get("dashboard") === "users";
   const [role, setRole] = useState<Role | null>(
-    () => ALL_ROLES.includes(requestedRole as Role) ? requestedRole as Role : null,
+    () => dashboardRoleFromSearch(requestedRole, ALL_ROLES),
   );
   const [provinceId, setProvinceId] = useState<number | null>(() => {
     const value = Number(searchParams.get("provinceId"));

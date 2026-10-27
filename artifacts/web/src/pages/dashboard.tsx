@@ -26,6 +26,10 @@ import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import { buildDashboardHref, RESOURCE_CARD_HREF } from "@/lib/dashboard-links";
 import {
+  dashboardRoleForLabel,
+  dashboardSurveyStatusForLabel,
+} from "@/lib/dashboard-drilldown-filters";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -614,7 +618,7 @@ export default function DashboardPage() {
           <ChartLinks
             points={canViewUserDirectory ? usersByRole : []}
             onSelect={(point) => {
-              const role = roleForLabel(point.label);
+              const role = dashboardRoleForLabel(point.label);
               if (role) {
                 navigate(
                   dashboardHref("/usuarios", {
@@ -690,7 +694,7 @@ export default function DashboardPage() {
           <ChartLinks
             points={isSuperadmin ? surveysByStatus : []}
             onSelect={(point) => {
-              const status = surveyStatusForLabel(point.label);
+              const status = dashboardSurveyStatusForLabel(point.label);
               if (status) {
                 navigate(dashboardHref("/encuestas", { status }));
               }
@@ -733,26 +737,6 @@ function ChartMessage({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
-
-function roleForLabel(label: string): string | null {
-  const roles: Record<string, string> = {
-    Superadministración: "superadmin",
-    Coordinación: "coordinator",
-    Prospección: "prospector",
-    "Jefatura de departamento": "department_head",
-    Profesorado: "teacher",
-  };
-  return roles[label] ?? null;
-}
-
-function surveyStatusForLabel(label: string): string | null {
-  const statuses: Record<string, string> = {
-    Borrador: "draft",
-    Abierta: "open",
-    Cerrada: "closed",
-  };
-  return statuses[label] ?? null;
 }
 
 function ChartLinks({
