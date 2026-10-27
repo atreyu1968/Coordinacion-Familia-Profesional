@@ -528,6 +528,7 @@ apply_schema() {
     run_psql --file="${SCRIPT_DIR}/migrations/chat-user-visibility.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/chat-attachment-deletions.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/module-forum-moderators.sql"
+    run_psql --file="${SCRIPT_DIR}/migrations/forum-moderation-events.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/notification-targets.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/wiki-link-checks.sql"
     run_psql --file="${SCRIPT_DIR}/migrations/wiki-link-resolutions.sql"

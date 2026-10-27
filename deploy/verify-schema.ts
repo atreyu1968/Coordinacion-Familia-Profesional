@@ -84,6 +84,7 @@ const additiveTables = [
   "coordinator_task_source_scans",
   "chat_attachment_deletions",
   "message_user_hides",
+  "forum_moderation_events",
 ];
 const coordinatorTaskTables = new Set([
   "coordinator_tasks",
