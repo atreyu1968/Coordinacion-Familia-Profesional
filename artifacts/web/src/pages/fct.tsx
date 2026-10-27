@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { useNoticeItems } from "@/lib/notification-selection";
 import { matchesDashboardPeriod } from "@/lib/dashboard-record-filters";
+import { refreshDashboardAfterMutation } from "@/lib/resource-dashboard-cache";
 import {
   useListCompanyAlerts,
   useCreateCompanyAlert,
@@ -152,7 +153,9 @@ function CreateAlertDialog() {
         : null,
     };
     try {
-      const result = await createMut.mutateAsync({ data: payload });
+      const result = await refreshDashboardAfterMutation(qc, () =>
+        createMut.mutateAsync({ data: payload }),
+      );
       await qc.invalidateQueries({
         queryKey: getListCompanyAlertsQueryKey(),
       });
@@ -327,7 +330,9 @@ function AlertsTab() {
 
   const onDelete = async (id: number) => {
     try {
-      await deleteMut.mutateAsync({ id });
+      await refreshDashboardAfterMutation(qc, () =>
+        deleteMut.mutateAsync({ id }),
+      );
       await qc.invalidateQueries({ queryKey: getListCompanyAlertsQueryKey() });
       toast({ title: "Alerta eliminada" });
     } catch {

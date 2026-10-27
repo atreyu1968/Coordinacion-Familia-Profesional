@@ -99,6 +99,8 @@ import {
   CalendarRange,
 } from "lucide-react";
 
+import { refreshDashboardAfterMutation } from "@/lib/resource-dashboard-cache";
+
 const GLOBAL = "global";
 
 const EVENT_TYPE_LABELS: Record<CreateEventInputType, string> = {
@@ -313,10 +315,14 @@ function EventFormDialog({
     };
     try {
       if (isEdit && event) {
-        await updateMut.mutateAsync({ id: event.id, data: payload });
+        await refreshDashboardAfterMutation(qc, () =>
+          updateMut.mutateAsync({ id: event.id, data: payload }),
+        );
         await qc.invalidateQueries({ queryKey: getGetEventQueryKey(event.id) });
       } else {
-        await createMut.mutateAsync({ data: payload });
+        await refreshDashboardAfterMutation(qc, () =>
+          createMut.mutateAsync({ data: payload }),
+        );
       }
       await qc.invalidateQueries({ queryKey: getListEventsQueryKey() });
       await qc.invalidateQueries({ queryKey: getListCalendarEventsQueryKey() });
@@ -1095,8 +1101,11 @@ function EventDetailView({
 
   const onDelete = async () => {
     try {
-      await deleteMut.mutateAsync({ id: event.id });
+      await refreshDashboardAfterMutation(qc, () =>
+        deleteMut.mutateAsync({ id: event.id }),
+      );
       await qc.invalidateQueries({ queryKey: getListEventsQueryKey() });
+      await qc.invalidateQueries({ queryKey: getListCalendarEventsQueryKey() });
       toast({ title: "Evento eliminado" });
       onBack();
     } catch {

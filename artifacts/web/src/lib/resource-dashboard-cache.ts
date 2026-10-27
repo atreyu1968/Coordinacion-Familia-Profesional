@@ -12,3 +12,12 @@ export function invalidateResourceDashboardQueries(
     queryClient.invalidateQueries({ queryKey: getGetDashboardStatisticsQueryKey() }),
   ]);
 }
+
+export async function refreshDashboardAfterMutation<T>(
+  queryClient: Pick<QueryClient, "invalidateQueries">,
+  mutate: () => Promise<T>,
+): Promise<T> {
+  const result = await mutate();
+  await invalidateResourceDashboardQueries(queryClient);
+  return result;
+}

@@ -84,6 +84,9 @@ import {
 } from "lucide-react";
 
 
+import { refreshDashboardAfterMutation } from "@/lib/resource-dashboard-cache";
+
+
 const QUESTION_TYPE_LABELS: Record<CreateSurveyQuestionInputType, string> = {
   single: "Opción única",
   multiple: "Opción múltiple",
@@ -318,7 +321,9 @@ function CreateSurveyDialog() {
     };
 
     try {
-      await createMut.mutateAsync({ data: payload });
+      await refreshDashboardAfterMutation(qc, () =>
+        createMut.mutateAsync({ data: payload }),
+      );
       await qc.invalidateQueries({ queryKey: getListSurveysQueryKey() });
       toast({ title: "Publicada", description: title.trim() });
       setOpen(false);
@@ -1064,7 +1069,9 @@ export default function EncuestasPage() {
 
   const onDelete = async (id: number) => {
     try {
-      await deleteMut.mutateAsync({ id });
+      await refreshDashboardAfterMutation(qc, () =>
+        deleteMut.mutateAsync({ id }),
+      );
       await qc.invalidateQueries({ queryKey: getListSurveysQueryKey() });
       toast({ title: "Encuesta eliminada" });
     } catch {
