@@ -38,6 +38,9 @@ reads, selected people edit.
   candidate set before returning. Otherwise an editor later removed from the module seeds the
   dialog with a checkbox the manager can't uncheck → every PUT fails the subset check. The
   PUT reconciliation still soft-deletes those stale grants once a sanitized save runs.
+- The `/wiki/pages` `canCreate` flag must match `getSectionPermissions` for the selected section. In the unfiltered view, authorized users create a general page; the UI switches to that section before opening the editor.
+  **Why:** the API previously allowed general-page creation but reported `canCreate=false` in the all-sections view, hiding the create button.
+  **How to apply:** keep the list capability response, create endpoint, and editor's `moduleId` in agreement; test both superadmin and coordinator on general and all-sections views.
 
 ## Navigation (UI entry points)
 - Reachable from Recursos (a "Documentación" card in recursos.tsx → /documentacion) AND from

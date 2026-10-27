@@ -1,5 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db, normativaPublicationsTable as publications, normativaSourcesTable as sources } from "@workspace/db";
 import { ListNormativaQueryParams, ListNormativaResponse, ReviewNormativaBody, ReviewNormativaParams, ReviewNormativaResponse } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -15,13 +15,23 @@ const manage: RequestHandler = (req, res, next) => {
   }
   next();
 };
+const superadminOnly: RequestHandler = (req, res, next) => {
+  if (req.user!.role !== "superadmin") {
+    res.status(403).json({ error: "Solo el superadministrador puede revisar publicaciones normativas pendientes" });
+    return;
+  }
+  next();
+};
 const serialize = (value: unknown) => JSON.parse(JSON.stringify(value));
 
 router.get("/wiki/normativa", requireAuth, manage, async (req, res): Promise<void> => {
   const parsed = ListNormativaQueryParams.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: "Filtros no válidos" }); return; }
   const { status, offset } = parsed.data;
-  const where = status === "all" ? undefined : eq(publications.status, status);
+  const relevantOnly = ne(publications.relevance, "other");
+  const hiddenPending = req.user!.role === "superadmin" ? undefined : ne(publications.status, "pending");
+  const selectedStatus = status === "all" ? undefined : eq(publications.status, status);
+  const where = and(relevantOnly, hiddenPending, selectedStatus);
   const [items, count, sourceRows, family] = await Promise.all([
     db.select().from(publications).where(where).orderBy(desc(publications.detectedAt), desc(publications.id)).limit(25).offset(offset),
     db.select({ total: sql<number>`count(*)::integer` }).from(publications).where(where),
@@ -31,14 +41,14 @@ router.get("/wiki/normativa", requireAuth, manage, async (req, res): Promise<voi
   res.json(ListNormativaResponse.parse(serialize({ items, total: count[0]!.total, sources: sourceRows,
     running: normativaIsRunning(), enabled: family === "Administración y Gestión" })));
 });
-router.post("/wiki/normativa/check", requireAuth, manage, async (_req, res): Promise<void> => {
+router.post("/wiki/normativa/check", requireAuth, manage, superadminOnly, async (_req, res): Promise<void> => {
   if (await getActiveFamily() !== "Administración y Gestión") {
     res.status(409).json({ error: "El seguimiento está preparado para Administración y Gestión; no se aplica automáticamente a otras familias" }); return;
   }
   queueNormativaCheck();
   res.sendStatus(202);
 });
-router.patch("/wiki/normativa/:id/review", requireAuth, manage, async (req, res): Promise<void> => {
+router.patch("/wiki/normativa/:id/review", requireAuth, manage, superadminOnly, async (req, res): Promise<void> => {
   const params = ReviewNormativaParams.safeParse(req.params);
   const body = ReviewNormativaBody.safeParse(req.body);
   if (!params.success || !body.success || !body.data.reviewNote.trim()) { res.status(400).json({ error: "Indica el resultado y una nota de revisión" }); return; }

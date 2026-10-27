@@ -196,11 +196,14 @@ async function collect(user: User) {
         read: () => objectBytes(r.fileUrl!),
       } : {}) });
   }
-  if (user.role === "superadmin") {
-    const docs = await db.select().from(gdcanResourcesTable).where(isNull(gdcanResourcesTable.deletedAt));
-    for (const d of docs) if (d.content) add({ key: key("gdcan", d.id), title: `GDCAN: ${d.title}`, url: d.url ?? "/panel-control",
-      version: sha256(`${d.createdAt.toISOString()}|${d.content}`), text: d.content });
-  }
+  // GDCAN manuals and references are published platform material, not private
+  // administrator data; include them for every user who can use the assistant.
+  const gdcanDocs = await db.select().from(gdcanResourcesTable)
+    .where(and(isNull(gdcanResourcesTable.deletedAt), inArray(gdcanResourcesTable.type, ["manual", "faq"])));
+  for (const doc of gdcanDocs) if (doc.content) add({
+    key: key("gdcan", doc.id), title: `GDCAN: ${doc.title}`, url: doc.url ?? "/panel-control",
+    version: sha256(`${doc.createdAt.toISOString()}|${doc.content}`), text: doc.content,
+  });
   const viewer = await getViewerContext(user);
   const announcements = await db.select().from(announcementsTable).where(isNull(announcementsTable.deletedAt));
   const visibleAnnouncementIds = new Set<number>();
@@ -495,12 +498,18 @@ export async function getAiKnowledgeContext(userId: number, prompt: string) {
   const scored: Array<{ score: number; title: string; url: string; excerpt: string; warning: string | null }> = [];
   for (const row of rows) {
     const body = row.text.slice(0, MAX_TEXT);
+    const titleWords = terms(row.title);
     const chunks: string[] = [];
     for (let start = 0; start < body.length; start += 1800) chunks.push(body.slice(start, start + 2200));
+    if (chunks.length === 0) chunks.push("");
     for (const chunk of chunks) {
       const words = terms(chunk);
-      const score = queryTerms.reduce((n, q) => n + (words.includes(q) ? 1 + Math.min(3, words.filter(w => w === q).length) : 0), 0);
-      if (score) scored.push({ score, title: row.title, url: row.url, excerpt: chunk, warning: row.warning });
+      const score = queryTerms.reduce((n, q) =>
+        n +
+        (titleWords.includes(q) ? 5 : 0) +
+        (words.includes(q) ? 1 + Math.min(3, words.filter(w => w === q).length) : 0),
+      0);
+      if (score) scored.push({ score, title: row.title, url: row.url, excerpt: chunk || row.title, warning: row.warning });
     }
   }
   const selected = scored.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title)).slice(0, 28);

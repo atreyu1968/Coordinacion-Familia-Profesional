@@ -29,6 +29,7 @@ it("expone cobertura, errores y fuente oficial sin afirmar vigencia", () => {
   render(<NormativaMonitor />);
   expect(screen.getByRole("alert").textContent).toContain("Fuente temporalmente no disponible");
   expect(screen.getByText(/No acredita vigencia/)).toBeTruthy();
+  expect(screen.getByText(/Las claramente ajenas se excluyen/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "Consultar publicación oficial" }).getAttribute("href")).toContain("www.boe.es");
 });
 it("exige una nota, envía el estado esperado e invalida la bandeja", async () => {

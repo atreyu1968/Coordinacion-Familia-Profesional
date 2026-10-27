@@ -37,6 +37,14 @@ describe("sumarios oficiales y clasificación conservadora", () => {
     expect(classify(title, null).relevance).toBe("uncertain");
     expect(classify("Se modifican varios títulos de Formación Profesional", "Anexos no concluyentes").relevance).toBe("uncertain");
   });
+  it("conserva normas indirectas de materias ADG y descarta publicaciones ajenas", () => {
+    const taxTitle = "Modificación del régimen del IGIC";
+    expect(isCandidate(taxTitle)).toBe(true);
+    expect(classify(taxTitle, "Cambios en la liquidación y obligaciones del IGIC").relevance).toBe("adg");
+    expect(isCandidate("Actualización de cotizaciones a la Seguridad Social")).toBe(true);
+    expect(classify("Actualización de cotizaciones a la Seguridad Social", "Cambios en cotizaciones y nóminas").relevance).toBe("adg");
+    expect(classify("Regulación de una ayuda sanitaria", "Requisitos de atención sanitaria").relevance).toBe("other");
+  });
   it("extrae texto XML sin resolver entidades externas y rechaza destinos no oficiales", async () => {
     expect(boeText("<documento><texto><p>Administración y Gestión</p></texto></documento>")).toContain("Gestión");
     expect(() => boeText("<error/>")).toThrow();

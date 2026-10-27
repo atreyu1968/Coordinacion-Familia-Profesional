@@ -156,6 +156,32 @@ async function makeWiki(moduleId: number, owner: number, label: string) {
 }
 
 describe("AI source isolation on disposable PostgreSQL", () => {
+  it("includes shared published references for teachers and retrieves wiki pages by title", async () => {
+    const [page] = await t.db.insert(t.wikiPagesTable).values({
+      moduleId: null,
+      title: "Procedimiento singular de adaptación",
+      content: "La guía explica los pasos administrativos aplicables.",
+      createdBy: a.id,
+      updatedBy: a.id,
+    }).returning();
+    const [reference] = await t.db.insert(t.gdcanResourcesTable).values({
+      title: "Manual público de referencia",
+      type: "manual",
+      content: "Una disposición extraordinaria fija el procedimiento aplicable.",
+    }).returning();
+
+    await ai.synchronizeAiKnowledge(a.id);
+    await drain();
+
+    expect(await keys(a.id)).toContain(`gdcan:${reference.id}`);
+    const byTitle = await ai.getAiKnowledgeContext(a.id, "Procedimiento singular adaptación");
+    expect(byTitle.context).toContain(`Procedimiento singular de adaptación`);
+    expect(byTitle.context).toContain(page.content);
+
+    const sharedReference = await ai.getAiKnowledgeContext(a.id, "disposición extraordinaria");
+    expect(sharedReference.context).toContain(reference.content);
+  });
+
   it("isolates both users across wiki, attachments, submissions, resources, chats, minutes and Nextcloud", async () => {
     const expected: string[][] = [[], []];
     for (const [i, user, moduleId, centerId, provinceId] of [

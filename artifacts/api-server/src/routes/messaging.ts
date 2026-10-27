@@ -2196,7 +2196,10 @@ router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(notificationsTable)
-    .where(eq(notificationsTable.userId, caller.id))
+    .where(and(
+      eq(notificationsTable.userId, caller.id),
+      caller.role === "superadmin" ? undefined : or(isNull(notificationsTable.type), ne(notificationsTable.type, "normativa")),
+    ))
     .orderBy(desc(notificationsTable.createdAt))
     .limit(100);
   res.json(ListNotificationsResponse.parse(rows.map(toNotification)));

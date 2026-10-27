@@ -535,10 +535,9 @@ router.get(
           : NO_WIKI_PERMISSIONS
         : (modulePermissions.get(row.moduleId) ?? NO_WIKI_PERMISSIONS)),
     }));
-    const canCreate =
-      moduleId !== undefined
-        ? (await getSectionPermissions(caller, moduleId)).canEdit
-        : globalOnly && caller.role === "superadmin";
+    const canCreate = (
+      await getSectionPermissions(caller, moduleId ?? null)
+    ).canEdit;
 
     res.json(ListWikiPagesResponse.parse({ items, canCreate }));
   },

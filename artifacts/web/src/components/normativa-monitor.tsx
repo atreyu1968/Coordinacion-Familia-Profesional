@@ -71,7 +71,7 @@ export function NormativaMonitor() {
   return <Card><CardContent className="space-y-4 p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h2 className="text-lg font-semibold">Seguimiento normativo · BOE y BOC</h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Comprobación diaria de publicaciones nuevas sobre FP y Administración y Gestión. Clasificación orientativa, siempre sujeta a revisión humana. No acredita vigencia ni cambia la documentación existente.</p>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Busca publicaciones con posible efecto directo o indirecto en Administración y Gestión en Canarias. Las claramente ajenas se excluyen; las que no se pueden comprobar quedan pendientes de revisión. No acredita vigencia ni cambia la documentación existente.</p>
       </div>
       <Button variant="outline" onClick={() => void run()} disabled={!query.data?.enabled || query.data.running || check.isPending}>
         {query.data?.running ? "Comprobando…" : "Comprobar ahora"}
@@ -93,7 +93,7 @@ export function NormativaMonitor() {
           </div>;
         })}
       </div>
-      <p className="text-xs text-muted-foreground">No es una revisión histórica completa: cada comprobación recupera hasta siete días y conserva los días pendientes tras un fallo. Las referencias ya presentes no generan avisos. Las posibles novedades ADG, FP común y las dudosas avisan a coordinadores y superadministradores; las de otra familia quedan aquí para comprobarlas.</p>
+      <p className="text-xs text-muted-foreground">No es una revisión histórica completa: cada comprobación recupera hasta siete días y conserva los días pendientes tras un fallo. Las referencias ya presentes no generan avisos. Las novedades relacionadas y las dudosas por falta de texto avisan al superadministrador; las claramente ajenas no se guardan ni se muestran.</p>
       <div className="flex flex-wrap gap-2" aria-label="Estado de revisión">
         {Object.entries(statuses).map(([value, title]) => <Button key={value} size="sm" variant={status === value ? "secondary" : "outline"} aria-pressed={status === value}
           onClick={() => { setStatus(value as ListNormativaStatus); setOffset(0); }}>{title}</Button>)}

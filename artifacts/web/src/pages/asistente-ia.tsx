@@ -116,8 +116,8 @@ export default function AsistenteIaPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Asistente IA</h1>
           <p className="text-sm text-muted-foreground">
-            Consultas sobre el currículo de FP y la normativa del Gobierno de
-            Canarias.
+            Consulta el currículo, la normativa, la documentación y los recursos
+            publicados de la plataforma.
           </p>
         </div>
       </div>

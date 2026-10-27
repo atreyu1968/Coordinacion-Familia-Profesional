@@ -22,6 +22,7 @@ let admin: string;
 let coordinator: string;
 let reader: string;
 let adminId: number;
+let coordinatorId: number;
 let pageId: number;
 const now = new Date("2026-10-27T12:00:00Z");
 const boe = (items: { id: number; title: string }[]) => JSON.stringify({ status: { code: "200" }, data: { sumario: { diario: { seccion: items.map((i) => ({ item: { identificador: `BOE-A-2026-${i.id}`, titulo: i.title } })) } } } });
@@ -33,8 +34,8 @@ function network(items = [{ id: 9001, title: "Ordenación del sistema de Formaci
     if (url.includes("/boc/archivo/")) return { status: 200, body: archive };
     if (url.includes("215/index.html")) return { status: 200, body: 'BOC-S-2026-215 <li class="justificado_boc"><a href="https://sede.gobiernodecanarias.org/boc/boc-a-2026-215-9002.pdf">Resolución de Formación Profesional en Administración y Gestión</a><a href="/boc/2026/215/9002.html">HTML</a></li>' };
     if (url.includes("/boc/2026/215/9002.html")) return { status: 200, body: "<p>Administración y Gestión</p>" };
-    if (url.includes("9004")) return { status: 200, body: "<documento><texto>Solo Informática y Comunicaciones</texto></documento>" };
-    return { status: 200, body: "<documento><texto>Disposiciones de Formación Profesional</texto></documento>" };
+    if (url.includes("9004")) return { status: 200, body: "<documento><texto>Solo Informática y Comunicaciones; se modifica su currículo.</texto></documento>" };
+    return { status: 200, body: "<documento><texto>Disposiciones de Formación Profesional con incidencia en el sistema educativo común.</texto></documento>" };
   });
 }
 
@@ -48,6 +49,7 @@ beforeAll(async () => {
   for (const role of ["superadmin", "coordinator", "prospector"] as const) {
     const [user] = await db.insert(usersTable).values({ name: role, email: `${role}@normativa.invalid`, passwordHash: "not-a-login-password", role, status: "active" }).returning();
     if (role === "superadmin") adminId = user!.id;
+    if (role === "coordinator") coordinatorId = user!.id;
     tokens.push(signToken({ sub: user!.id, role, tokenVersion: user!.tokenVersion, sessionNonce: user!.sessionNonce }));
   }
   [admin, coordinator, reader] = tokens;
@@ -72,8 +74,8 @@ describe("seguimiento, avisos y revisión humana", () => {
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.status === "pending" && r.reviewedAt === null)).toBe(true);
     const notices = await db.select().from(notificationsTable);
-    expect(notices).toHaveLength(4); // two publications × two general wiki managers
-    expect(new Set(notices.map((r) => r.userId)).size).toBe(2);
+    expect(notices).toHaveLength(2); // only superadmin receives pending normative notices
+    expect(new Set(notices.map((r) => r.userId))).toEqual(new Set([adminId]));
     expect(notices.every((r) => r.target?.kind === "normativa")).toBe(true);
     const [page] = await db.select().from(wikiPagesTable).where(eq(wikiPagesTable.id, pageId));
     expect(page!.content).toBe("Contenido humano que no se debe alterar");
@@ -89,8 +91,8 @@ describe("seguimiento, avisos y revisión humana", () => {
     await checkNormativa(now);
     const rows = await db.select().from(publications);
     expect(rows.find((r) => r.officialId.endsWith("9001"))!.status).toBe("catalog");
-    expect(rows.find((r) => r.officialId.endsWith("9004"))!.relevance).toBe("other");
-    expect(await db.select().from(notificationsTable)).toHaveLength(2); // only BOC ADG
+    expect(rows.find((r) => r.officialId.endsWith("9004"))).toBeUndefined();
+    expect(await db.select().from(notificationsTable)).toHaveLength(1); // only superadmin, and only BOC ADG
   });
   it("no adelanta el cursor cuando BOE falla y recupera los días pendientes", async () => {
     const fetch = network();
@@ -118,7 +120,7 @@ describe("seguimiento, avisos y revisión humana", () => {
     await checkNormativa(now);
     const [uncertain] = await db.select().from(publications).where(eq(publications.officialId, "BOE-A-2026-9004"));
     expect(uncertain!.relevance).toBe("uncertain");
-    expect(await db.select().from(notificationsTable)).toHaveLength(4);
+    expect(await db.select().from(notificationsTable)).toHaveLength(2);
   });
   it("rechaza otra familia activa sin consultar fuentes", async () => {
     const fetch = network();
@@ -127,20 +129,39 @@ describe("seguimiento, avisos y revisión humana", () => {
     expect(fetch).not.toHaveBeenCalled();
     await request(app).post("/api/wiki/normativa/check").set("Authorization", `Bearer ${admin}`).expect(409);
   });
-  it("limita la bandeja a gestores de wiki y conserva la primera revisión concurrente", async () => {
+  it("reserva las pendientes y su revisión al superadministrador", async () => {
     await request(app).get("/api/wiki/normativa").expect(401);
     for (const path of ["/api/wiki/normativa", "/api/wiki/normativa/check"]) {
       await request(app)[path.endsWith("check") ? "post" : "get"](path).set("Authorization", `Bearer ${reader}`).expect(403);
     }
     const [publication] = await db.insert(publications).values({ source: "BOE", officialId: "BOE-A-2026-55", title: "FP", url: "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-55", relevance: "uncertain", reason: "Revisar" }).returning();
+    await db.insert(publications).values({ source: "BOE", officialId: "BOE-A-2026-56", title: "Ayuda sanitaria ajena", url: "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-56", relevance: "other", reason: "Sin relación" });
+    const allRelevant = await request(app).get("/api/wiki/normativa?status=all").set("Authorization", `Bearer ${admin}`).expect(200);
+    expect(allRelevant.body.total).toBe(1);
+    expect(allRelevant.body.items.map((item: { id: number }) => item.id)).toEqual([publication!.id]);
     const path = `/api/wiki/normativa/${publication!.id}/review`;
     await request(app).patch(path).set("Authorization", `Bearer ${reader}`).send({ status: "reviewed", reviewNote: "no", expectedStatus: "pending" }).expect(403);
+    const hiddenPending = await request(app).get("/api/wiki/normativa?status=pending").set("Authorization", `Bearer ${coordinator}`).expect(200);
+    expect(hiddenPending.body.total).toBe(0);
+    expect(hiddenPending.body.items).toHaveLength(0);
+    const adminPending = await request(app).get("/api/wiki/normativa?status=pending").set("Authorization", `Bearer ${admin}`).expect(200);
+    expect(adminPending.body.total).toBe(1);
+    await request(app).post("/api/wiki/normativa/check").set("Authorization", `Bearer ${coordinator}`).expect(403);
+    await request(app).patch(path).set("Authorization", `Bearer ${coordinator}`).send({ status: "reviewed", reviewNote: "no", expectedStatus: "pending" }).expect(403);
     await request(app).patch(path).set("Authorization", `Bearer ${admin}`).send({ status: "reviewed", reviewNote: " ", expectedStatus: "pending" }).expect(400);
-    const results = await Promise.all([admin, coordinator].map((token) => request(app).patch(path).set("Authorization", `Bearer ${token}`).send({ status: "reviewed", reviewNote: "Alcance comprobado; actualizar manualmente si procede", expectedStatus: "pending" })));
-    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    await request(app).patch(path).set("Authorization", `Bearer ${admin}`).send({ status: "reviewed", reviewNote: "Alcance comprobado; actualizar manualmente si procede", expectedStatus: "pending" }).expect(200);
     const response = await request(app).get("/api/wiki/normativa?status=reviewed").set("Authorization", `Bearer ${coordinator}`).expect(200);
     expect(response.body.total).toBe(1);
     expect(response.body.items[0].reviewedAt).toBeTruthy();
     await request(app).get("/api/wiki/normativa?offset=-1").set("Authorization", `Bearer ${admin}`).expect(400);
+  });
+  it("oculta avisos normativos antiguos a coordinadores sin borrar el historial", async () => {
+    await db.insert(notificationsTable).values([
+      { userId: coordinatorId, title: "Aviso normativo pendiente antiguo", type: "normativa", target: { kind: "normativa", id: 123 } },
+      { userId: coordinatorId, title: "Aviso ordinario", type: "general" },
+    ]);
+    const visible = await request(app).get("/api/notifications").set("Authorization", `Bearer ${coordinator}`).expect(200);
+    expect(visible.body.map((notice: { title: string }) => notice.title)).toEqual(["Aviso ordinario"]);
+    expect(await db.select().from(notificationsTable)).toHaveLength(2);
   });
 });

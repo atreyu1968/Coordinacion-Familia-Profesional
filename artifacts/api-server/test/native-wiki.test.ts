@@ -228,6 +228,31 @@ describe("native wiki authenticated reads and search", () => {
 });
 
 describe("native wiki edit grants", () => {
+  it("reports general-page creation permission consistently in all and general views", async () => {
+    const teacher = await makeUser();
+    const coordinator = await makeUser({ role: "coordinator" });
+    const admin = await makeUser({ role: "superadmin" });
+
+    for (const account of [coordinator, admin]) {
+      const allSections = await request(app)
+        .get("/api/wiki/pages")
+        .set(authHeader(account.token));
+      const generalSection = await request(app)
+        .get("/api/wiki/pages?globalOnly=true")
+        .set(authHeader(account.token));
+      expect(allSections.status).toBe(200);
+      expect(generalSection.status).toBe(200);
+      expect(allSections.body.canCreate).toBe(true);
+      expect(generalSection.body.canCreate).toBe(true);
+    }
+
+    const teacherList = await request(app)
+      .get("/api/wiki/pages")
+      .set(authHeader(teacher.token));
+    expect(teacherList.status).toBe(200);
+    expect(teacherList.body.canCreate).toBe(false);
+  });
+
   it("lets coordinators and superadmins manage general documentation, but not teachers", async () => {
     const teacher = await makeUser();
     const coordinator = await makeUser({ role: "coordinator" });
@@ -252,6 +277,13 @@ describe("native wiki edit grants", () => {
       .send(body);
     expect(created.status).toBe(201);
     fixture.pageIds.push(created.body.id);
+
+    const adminCreated = await request(app)
+      .post("/api/wiki/pages")
+      .set(authHeader(admin.token))
+      .send({ ...body, title: `${UNIQUE} admin-created` });
+    expect(adminCreated.status).toBe(201);
+    fixture.pageIds.push(adminCreated.body.id);
 
     const deniedEdit = await request(app)
       .patch(`/api/wiki/pages/${created.body.id}`)

@@ -13,13 +13,17 @@ export const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u03
 const adg = /administracion y gestion|gestion administrativa|administracion y finanzas|asistencia a la direccion|servicios administrativos|informatica de oficina/;
 const fp = /formacion profesional|sistema de fp|fp adaptada|titulos? de tecnico|ciclos? formativos?/;
 const otherFamily = /familia(?:s)? profesional(?:es)? (?:de )?(?:informatica|sanidad|electricidad|electronica|hosteleria|turismo|comercio|marketing|agraria|maritimo|imagen|sonido|quimica|seguridad|transporte|mantenimiento|fabricacion|energia|agua|textil|madera|edificacion|actividades fisicas|servicios socioculturales|artes graficas|industrias alimentarias)/;
+// Fields taught in Administración y Gestión that can be changed by rules
+// whose title does not mention FP: tax/accounting, employment, business,
+// commercial activity, administrative procedure, and digital records.
+const adgIndirect = /\b(?:contabilidad|contable|fiscalidad|tributari[oa]s?|impuesto (?:sobre|de) sociedades|iva|igic|factura(?:cion|s)? electronica|verifactu|nominas?|cotizacion(?:es)?|seguridad social|relaciones laborales|contratos? de trabajo|registro mercantil|sociedades? mercantiles|contratacion publica|procedimiento administrativo|administracion electronica|firma electronica|proteccion de datos|gestion documental|recursos humanos|marketing|actividad comercial|operaciones comerciales|gestion empresarial|emprendimiento|prevencion de riesgos laborales)\b/;
 
 export function isCandidate(title: string, knownTitles: string[] = []): boolean {
   const t = normalize(title);
   // A directorate's name can mention FP in a personnel appointment: it is not
   // a change to FP rules. Do not confuse these routine notices with legislation.
   if (/por la que se (?:resuelve|convoca|dispone|anuncia).*(?:libre designacion|nombramiento|provision.*puestos? de trabajo)/.test(t)) return false;
-  return adg.test(t) || fp.test(t) || knownTitles.some((known) => {
+  return adg.test(t) || adgIndirect.test(t) || fp.test(t) || knownTitles.some((known) => {
     const reference = normalize(known).match(/(?:real decreto|decreto|ley organica|orden)\s+(?:[a-z]+\/)?\d+\/\d{4}/)?.[0];
     return reference != null && t.includes(reference);
   });
@@ -27,15 +31,19 @@ export function isCandidate(title: string, knownTitles: string[] = []): boolean 
 export function classify(title: string, fullText: string | null) {
   const titleText = normalize(title);
   const t = normalize(`${title} ${fullText ?? ""}`);
-  if (adg.test(t)) return { relevance: "adg", reason: "Menciona Administración y Gestión o sus títulos. Revisar los artículos y anexos afectados; no acredita vigencia." };
+  if (adg.test(t)) return { relevance: "adg", reason: "Contiene referencias a Administración y Gestión o sus títulos. Revisar artículos y anexos; no acredita vigencia." };
   if (fullText === null) return { relevance: "uncertain", reason: "No se pudo consultar el texto completo. La aplicabilidad requiere comprobación manual." };
+  if (adgIndirect.test(t)) return { relevance: "adg", reason: "Posible impacto indirecto en materias profesionales de Administración y Gestión (fiscalidad, contabilidad, empleo, empresa o gestión digital). Revisa el alcance en Canarias; no acredita vigencia." };
+  if (/varios? titulos|varias familias|diversas familias|anexos no concluyentes/.test(`${titleText} ${normalize(fullText)}`) && fp.test(titleText)) {
+    return { relevance: "uncertain", reason: "La publicación abarca varios títulos o familias de FP y no se ha podido confirmar si incluye Administración y Gestión. Revisión humana necesaria." };
+  }
   if (otherFamily.test(titleText) && !/anexo|varias familias|diversas familias/.test(titleText)) {
-    return { relevance: "other", reason: "El título identifica otra familia y no se ha localizado ADG en el texto. Clasificación orientativa: comprobar antes de descartar." };
+    return { relevance: "other", reason: "El texto identifica otra familia y no contiene referencias a materias comunes o profesionales de Administración y Gestión. Se excluye del seguimiento." };
   }
   if (fp.test(titleText) && !/titulo de|titulos de|ciclo formativo|ciclos formativos|familia profesional/.test(titleText)) {
     return { relevance: "general", reason: "Posible normativa común de Formación Profesional. Revisar su alcance para ADG; no acredita vigencia." };
   }
-  return { relevance: "uncertain", reason: "No hay evidencia suficiente para decidir su alcance sobre ADG. Requiere revisión humana." };
+  return { relevance: "other", reason: "No se encuentra relación directa ni indirecta con la familia profesional. Se excluye del seguimiento." };
 }
 
 // Only fixed official hosts, no user URLs, redirects, entities, or unbounded bodies.

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, normativaPublicationsTable as publications, normativaSourcesTable as sources, notificationsTable, usersTable, wikiExternalLinksTable } from "@workspace/db";
 import { boeText, classify, isCandidate, officialFetch, parseBoc, parseBocArchive, parseBoe, plainText, type Publication } from "./normativaFeeds";
 import { getActiveFamily } from "./settings";
@@ -44,7 +44,7 @@ export async function checkNormativa(now = new Date()): Promise<void> {
         const start = state!.coveredThrough ?? state!.startedFrom;
         const end = dayString(Math.min(Date.parse(today), Date.parse(start) + 6 * DAY));
         const recipients = await tx.select({ id: usersTable.id }).from(usersTable).where(and(
-          inArray(usersTable.role, ["superadmin", "coordinator"]), eq(usersTable.status, "active"), isNull(usersTable.deletedAt),
+          eq(usersTable.role, "superadmin"), eq(usersTable.status, "active"), isNull(usersTable.deletedAt),
         ));
         const createdNotices: (typeof notificationsTable.$inferSelect)[] = [];
         let covered = state!.coveredThrough;
@@ -86,11 +86,24 @@ export async function checkNormativa(now = new Date()): Promise<void> {
             if (item.textUrl) {
               try {
                 const detail = await officialFetch(item.textUrl, source === "BOE" ? "application/xml" : "text/html");
-                if (detail.status === 200) fullText = source === "BOE" ? boeText(detail.body) : plainText(detail.body);
+                if (detail.status === 200) {
+                  const extracted = source === "BOE" ? boeText(detail.body) : plainText(detail.body);
+                  // A successful HTTP status with only a wrapper/error page is
+                  // not enough evidence to discard a potentially relevant act.
+                  if (
+                    source === "BOE" ||
+                    extracted.trim().length >= 80
+                  ) {
+                    if (extracted.trim()) fullText = extracted;
+                  }
+                }
               } catch (err) { logger.warn({ source, officialId: item.officialId, err }, "Normativa text unavailable; manual review required"); }
             }
             const classification = classify(item.title, fullText);
             const isBaseline = baseline.has(item.officialId);
+            // Keep pre-existing, manually curated references, but do not add
+            // unrelated publications to the review queue.
+            if (classification.relevance === "other" && !isBaseline) continue;
             const [created] = await tx.insert(publications).values({
               source, officialId: item.officialId, title: item.title, url: item.url, publishedAt: item.publishedAt,
               checkedAt: now, ...classification, status: isBaseline ? "catalog" : "pending",

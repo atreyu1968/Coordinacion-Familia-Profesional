@@ -687,7 +687,7 @@ export default function DocumentacionPage() {
           setScope("general"); setTagFilter("normativa"); setSearch(""); setKind("all"); setSelectedPageId(id);
         }} />
       )}
-      {tagFilter === "normativa" && (user?.role === "superadmin" || user?.role === "coordinator") && <NormativaMonitor />}
+      {tagFilter === "normativa" && user?.role === "superadmin" && <NormativaMonitor />}
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(210px,1fr)_minmax(150px,.7fr)_minmax(150px,.7fr)_auto]">
@@ -764,6 +764,7 @@ export default function DocumentacionPage() {
                   data-testid="button-create-wiki-page"
                   className="w-full md:w-auto"
                   onClick={() => {
+                    if (scope === "all") setScope("general");
                     setEditorPage(null);
                     setEditorOpen(true);
                   }}
@@ -774,7 +775,7 @@ export default function DocumentacionPage() {
               )}
             </div>
           </div>
-          {scope === "all" && (
+          {scope === "all" && !canCreate && (
             <p className="text-xs text-muted-foreground">
               Para crear una página, selecciona «Documentación general» o un módulo.
             </p>
