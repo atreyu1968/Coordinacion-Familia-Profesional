@@ -24,7 +24,7 @@ import {
 } from "recharts";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
-import { buildDashboardHref } from "@/lib/dashboard-links";
+import { buildDashboardHref, RESOURCE_CARD_HREF } from "@/lib/dashboard-links";
 import {
   Card,
   CardContent,
@@ -208,7 +208,7 @@ export default function DashboardPage() {
       label: isPeriodFiltered ? "Recursos del periodo" : "Recursos",
       value: summary?.resources,
       icon: FileText,
-      href: "/recursos",
+      href: RESOURCE_CARD_HREF,
     },
     {
       label: isPeriodFiltered ? "Encuestas abiertas del periodo" : "Encuestas abiertas",

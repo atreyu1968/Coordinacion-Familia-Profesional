@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { buildDashboardHref } from "./dashboard-links";
+import { readFileSync } from "node:fs";
+import { buildDashboardHref, RESOURCE_CARD_HREF } from "./dashboard-links";
 
 const period = { startDate: "2026-09-01", endDate: "2027-08-31" };
 
 describe("Dashboard drilldown consistency", () => {
+  it("opens the resource card at the normal unfiltered repository route", () => {
+    const url = new URL(RESOURCE_CARD_HREF, "https://example.test");
+    expect(url.pathname).toBe("/recursos");
+    expect(url.search).toBe("");
+  });
+  it("uses that canonical route for the resource card", () => {
+    const dashboardSource = readFileSync("src/pages/dashboard.tsx", "utf8");
+    const resourceCard = dashboardSource.match(
+      /label: isPeriodFiltered \? "Recursos del periodo" : "Recursos"[\s\S]*?href:\s*([^,\n]+)/,
+    );
+    expect(resourceCard?.[1].trim()).toBe("RESOURCE_CARD_HREF");
+  });
+
   it.each(["centers", "users"])("keeps %s totals independent of registration dates without dropping province scope", (kind) => {
     const url = new URL(buildDashboardHref("/directory", { dashboard: kind, role: "teacher" }, 7, period), "https://example.test");
     expect(url.searchParams.get("provinceId")).toBe("7");
