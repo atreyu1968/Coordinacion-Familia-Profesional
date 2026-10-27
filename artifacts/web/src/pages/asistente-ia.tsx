@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/lib/auth";
+import { AiDocumentTools, type AiDocumentSeed } from "@/components/ai-document-tools";
 import {
   Sparkles,
   Send,
@@ -36,6 +37,8 @@ export default function AsistenteIaPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [documentSeed, setDocumentSeed] = useState<AiDocumentSeed | null>(null);
+  const [seedSequence, setSeedSequence] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const configured = status?.configured === true;
@@ -47,10 +50,12 @@ export default function AsistenteIaPage() {
     });
   }, [messages, chatMut.isPending]);
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || chatMut.isPending) return;
+  const sendMessage = async (
+    rawText: string,
+    selectedContext: Ctx = context,
+  ): Promise<string | null> => {
+    const text = rawText.trim();
+    if (!text || chatMut.isPending || !configured) return null;
     setError(null);
 
     const history = messages;
@@ -60,16 +65,32 @@ export default function AsistenteIaPage() {
 
     try {
       const res = await chatMut.mutateAsync({
-        data: { message: text, context, history },
+        data: { message: text, context: selectedContext, history },
       });
       setMessages([...next, { role: "assistant", content: res.reply }]);
+      return res.reply;
     } catch {
       setError(
         "El asistente no está disponible en este momento. Inténtalo más tarde.",
       );
       setMessages(history);
       setInput(text);
+      return null;
     }
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    await sendMessage(input);
+  };
+
+  const saveAnswerAsDraft = (content: string, previousPrompt?: string) => {
+    const title = (previousPrompt?.trim() || "Recurso redactado con IA")
+      .replace(/\s+/g, " ")
+      .slice(0, 180);
+    const nextSequence = seedSequence + 1;
+    setSeedSequence(nextSequence);
+    setDocumentSeed({ id: nextSequence, title, content });
   };
 
   if (!isSuperadmin) {
@@ -175,6 +196,25 @@ export default function AsistenteIaPage() {
                     }`}
                   >
                     <AutoLinkText text={m.content} />
+                    {m.role === "assistant" && (
+                      <div className="mt-3 border-t border-border/70 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            saveAnswerAsDraft(
+                              m.content,
+                              messages[i - 1]?.role === "user"
+                                ? messages[i - 1].content
+                                : undefined,
+                            )
+                          }
+                        >
+                          Crear recurso con esta respuesta
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -218,6 +258,12 @@ export default function AsistenteIaPage() {
           </form>
         </CardContent>
       </Card>
+
+      <AiDocumentTools
+        seed={documentSeed}
+        onSeedConsumed={() => setDocumentSeed(null)}
+        askAssistant={sendMessage}
+      />
     </div>
   );
 }
