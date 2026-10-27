@@ -218,6 +218,21 @@ apuntar a una base configurada o compartida:
 bash deploy/test-db.sh
 ```
 
+Para comprobar únicamente la concurrencia del comprobador de enlaces de
+Normativa:
+
+```bash
+bash deploy/test-db.sh --wiki-link-checker-only
+```
+
+Esta variante ejecuta cuatro pruebas con PostgreSQL real: dos instancias
+independientes que respetan `SKIP LOCKED`, fechas de comprobación y reintento
+persistidas tras reiniciar, y conservación de ediciones, borrados lógicos y
+borrados definitivos concurrentes. Solo se simula la consulta HTTP externa.
+La suite está excluida de los tests generales y verifica tanto la conexión como
+la identidad del servidor temporal antes de escribir datos; nunca utiliza la
+base habitual de la aplicación.
+
 Ejecuta el comando como usuario **sin privilegios de root**. Requiere disponibles
 `initdb`, `pg_ctl`, `createdb`, `psql`, `pg_restore`, `pnpm` y `node`; crea un clúster
 PostgreSQL temporal privado bajo el directorio temporal del sistema, usa el puerto

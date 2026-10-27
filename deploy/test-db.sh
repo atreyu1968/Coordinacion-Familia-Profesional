@@ -103,6 +103,15 @@ if [[ "${1:-}" == "--ai-knowledge-only" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--wiki-link-checker-only" ]]; then
+  create_test_database coordina_wiki_link_checker
+  migrate_database coordina_wiki_link_checker
+  COORDINA_WIKI_CHECKER_TEST_ROOT="${TEST_ROOT}" \
+    DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_wiki_link_checker?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run --config vitest.wiki-link-checker.config.ts
+  exit 0
+fi
+
 if [[ "${1:-}" == "--invitations-only" ]]; then
   create_test_database coordina_invitation_registration
   migrate_database coordina_invitation_registration

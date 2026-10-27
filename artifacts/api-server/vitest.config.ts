@@ -12,6 +12,7 @@ export default defineConfig({
       "test/test-teacher-cleanup.isolation.test.ts",
       "test/academic-year-chat-cleanup.isolation.test.ts",
       "test/lms-course-import.integration.test.ts",
+      "test/wiki-link-checker.integration.test.ts",
       "**/node_modules/**",
     ],
     // The realtime layer keeps a module-level Socket.io singleton and all tests
