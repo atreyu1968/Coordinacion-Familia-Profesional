@@ -1,12 +1,14 @@
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { db, cyclesTable, modulesTable } from "@workspace/db";
-import { loadFpaCatalog } from "./fp-adapted-catalog";
+import { loadFpaCatalog, type FpaCatalog } from "./fp-adapted-catalog";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** Stable catalog IDs preserve teaching assignments, module groups and forums. */
-export async function seedFpaCatalog(tx: Transaction) {
-  const catalog = loadFpaCatalog();
+export async function seedFpaCatalog(
+  tx: Transaction,
+  catalog: FpaCatalog = loadFpaCatalog(),
+) {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext('coordina:fpa-adg-catalog'))`);
   const stats = { inserted: 0, updated: 0, skipped: 0 };
   for (const itinerary of catalog.itineraries) {
