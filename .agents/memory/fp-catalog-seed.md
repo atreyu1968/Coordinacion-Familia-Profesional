@@ -37,7 +37,17 @@ prefixed `NNNN. Name` (official code); most center-specific ones have no code.
 Drop stray non-cycle pages whose name isn't `Técnico…` / `Título Profesional
 Básico…` (e.g. "Currículos de las Comunidades Autónomas").
 
-Dev DB may contain old manual/test cycle rows (e.g. "…(Test <ts>)", level
-null) with 0 modules — those are pre-existing pollution, not from this seed; a
-fresh install gets exactly the scraped set (181 cycles / 2704 modules as of
-2026-06).
+## Canary Islands adapted FP
+
+Keep the adapted ADG itineraries distinct from Grado Básico: they are
+Grado C level 1 offers, absent from the national TodoFP Grados D indexes.
+Regenerating the national classification must retain the regional classification.
+
+**Why:** the official Canary annexes supplied by the user describe a different
+qualification and curriculum; relying only on the national scraper hides FPA
+from the active-family selector.
+
+**How to apply:** use the Canary instructions and annexes for adapted offers.
+Keep each itinerary's module associations, including a shared MF code, separate
+so teaching assignments and module collaboration retain their itinerary context.
+The three general domains and tutoring are not additional professional MF modules.

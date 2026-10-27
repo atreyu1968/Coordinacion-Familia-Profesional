@@ -470,6 +470,7 @@ function AddTrainingOfferDialog({ centerId }: { centerId: number }) {
                   <SelectItem value="Grado Básico">Grado Básico</SelectItem>
                   <SelectItem value="Grado Medio">Grado Medio</SelectItem>
                   <SelectItem value="Grado Superior">Grado Superior</SelectItem>
+                  <SelectItem value="FP Adaptada">FP Adaptada</SelectItem>
                 </SelectContent>
               </Select>
             </div>

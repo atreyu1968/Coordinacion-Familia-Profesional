@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
 import { syncAdgCenters } from "./lib/sync-adg-centers";
+import { seedNormativaCatalog } from "./lib/seed-normativa";
+import { seedFpaCatalog } from "./lib/seed-fpa";
 import {
   db,
   pool,
@@ -342,6 +344,10 @@ async function main(): Promise<void> {
         stats.inserted++;
       }
     }
+    const fpa = await seedFpaCatalog(tx);
+    stats.inserted += fpa.inserted;
+    stats.updated += fpa.updated;
+    stats.skipped += fpa.skipped;
   });
 
   console.log(
@@ -350,6 +356,7 @@ async function main(): Promise<void> {
 }
 
 main()
+  .then(async () => console.log("Normativa FP:", await seedNormativaCatalog()))
   .catch((err) => {
     console.error("Failed to seed reference data:", err);
     process.exitCode = 1;

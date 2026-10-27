@@ -53,7 +53,11 @@ function WikiListSkeleton() {
 export default function WikiIndexScreen() {
   const colors = useColors();
   const [search, setSearch] = useState("");
-  const params = { q: search.trim() || undefined };
+  const [normativaOnly, setNormativaOnly] = useState(false);
+  const params = {
+    q: search.trim() || undefined,
+    ...(normativaOnly ? { tag: "normativa", globalOnly: true } : {}),
+  };
   const {
     data,
     isLoading,
@@ -120,6 +124,23 @@ export default function WikiIndexScreen() {
               <Feather name="x-circle" size={18} color={colors.mutedForeground} />
             </Pressable>
           ) : null}
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 20, paddingBottom: 12 }}>
+          {[{ label: "Todo", active: false }, { label: "Normativa", active: true }].map((item) => (
+            <Pressable key={item.label} accessibilityRole="button"
+              accessibilityState={{ selected: normativaOnly === item.active }}
+              onPress={() => { setNormativaOnly(item.active); setSearch(""); }}
+              style={{
+                paddingHorizontal: 16, paddingVertical: 10, borderRadius: colors.radius, borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: normativaOnly === item.active ? colors.primary : colors.card,
+              }}>
+              <Text style={{ fontFamily: "Inter_600SemiBold", color: normativaOnly === item.active ? colors.primaryForeground : colors.foreground }}>
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {isLoading && !data ? (

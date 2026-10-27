@@ -1,0 +1,38 @@
+{
+  "family": "Administración y Gestión",
+  "level": "FP Adaptada",
+  "reviewedAt": "2026-10-27",
+  "resolution": "https://www.gobiernodecanarias.org/boc/2025/046/918.html",
+  "totalHours": 905,
+  "weeklyHours": 25,
+  "commonModules": [
+    { "code": null, "name": "Ámbito de Comunicación y competencia social", "kind": "general", "hours": 145, "weeklyHours": 4 },
+    { "code": null, "name": "Ámbito de Ciencias aplicadas y competencia lógica", "kind": "general", "hours": 110, "weeklyHours": 3 },
+    { "code": null, "name": "Ámbito de Prevención y orientación profesional", "kind": "general", "hours": 145, "weeklyHours": 4 },
+    { "code": null, "name": "Tutoría", "kind": "tutoring", "hours": 35, "weeklyHours": 1 }
+  ],
+  "itineraries": [
+    {
+      "name": "FPA · Operaciones auxiliares de servicios administrativos y generales",
+      "qualificationCode": "ADG305_1",
+      "certificateCode": "ADGG0408",
+      "source": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-3-instrucciones-implantacion-iffpa-24-25.pdf",
+      "modules": [
+        { "code": "MF0969_1", "name": "Técnicas administrativas básicas de oficina", "kind": "professional", "hours": 180, "weeklyHours": 5 },
+        { "code": "MF0970_1", "name": "Operaciones básicas de comunicación", "kind": "professional", "hours": 145, "weeklyHours": 4 },
+        { "code": "MF0971_1", "name": "Reproducción y archivo", "kind": "professional", "hours": 145, "weeklyHours": 4 }
+      ]
+    },
+    {
+      "name": "FPA · Operaciones de grabación y tratamiento de datos y documentos",
+      "qualificationCode": "ADG306_1",
+      "certificateCode": "ADGG0508",
+      "source": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-4-instrucciones-implantacion-iffpa-24-25.pdf",
+      "modules": [
+        { "code": "MF0971_1", "name": "Reproducción y archivo", "kind": "professional", "hours": 145, "weeklyHours": 4 },
+        { "code": "MF0973_1", "name": "Grabación de datos", "kind": "professional", "hours": 145, "weeklyHours": 4 },
+        { "code": "MF0974_1", "name": "Tratamiento de datos, textos y documentación", "kind": "professional", "hours": 180, "weeklyHours": 5 }
+      ]
+    }
+  ]
+}

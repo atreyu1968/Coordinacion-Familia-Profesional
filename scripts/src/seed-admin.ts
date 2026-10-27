@@ -63,6 +63,12 @@ async function main(): Promise<void> {
 }
 
 main()
+  .then(async () => {
+    if (!process.exitCode) {
+      const { seedNormativaCatalog } = await import("./lib/seed-normativa");
+      console.log("Normativa FP:", await seedNormativaCatalog());
+    }
+  })
   .catch((err) => {
     console.error("Failed to seed admin user:", err);
     process.exitCode = 1;

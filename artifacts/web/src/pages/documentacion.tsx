@@ -654,6 +654,18 @@ export default function DocumentacionPage() {
         </Badge>
       </header>
 
+      <nav aria-label="Apartados de documentación" className="flex flex-wrap gap-2">
+        <Button type="button" variant={tagFilter === "normativa" ? "outline" : "secondary"}
+          onClick={() => { setScope("all"); setTagFilter(""); setSearch(""); setKind("all"); setSelectedPageId(null); }}>
+          Toda la documentación
+        </Button>
+        <Button type="button" variant={tagFilter === "normativa" ? "default" : "outline"}
+          aria-pressed={tagFilter === "normativa"} data-testid="button-wiki-normativa"
+          onClick={() => { setScope("general"); setTagFilter("normativa"); setSearch(""); setKind("all"); setSelectedPageId(null); }}>
+          Normativa
+        </Button>
+      </nav>
+
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_minmax(210px,1fr)_minmax(150px,.7fr)_minmax(150px,.7fr)_auto]">

@@ -1,0 +1,526 @@
+{
+  "reviewedAt": "2026-10-27",
+  "family": "Administración y Gestión",
+  "scope": "Formación Profesional en España y aplicación en Canarias, con especial atención a Administración y Gestión.",
+  "notice": "Recopilación de referencia revisada en fuentes oficiales, no inventario exhaustivo ni dictamen de vigencia. Antes de aplicar una disposición, comprueba sus modificaciones, correcciones, entrada en vigor, modalidad, curso y régimen transitorio. El texto consolidado del BOE es informativo; la publicación oficial es la referencia jurídica. Las páginas de seguimiento no son normas. Esta recopilación no se actualiza automáticamente.",
+  "sections": [
+    {
+      "key": "marco-estatal",
+      "title": "01. Marco estatal de Formación Profesional",
+      "description": "Ordenación del sistema, calendario de implantación, competencias y convalidaciones.",
+      "references": [
+        {
+          "title": "Ley Orgánica 3/2022, de 31 de marzo — Ordenación e integración de la Formación Profesional",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2022-5139",
+          "kind": "Norma · texto consolidado",
+          "note": "Marco de los grados A, B, C, D y E, carácter dual, orientación y acreditación de competencias. El BOE consultado muestra actualización de 8 de junio de 2024."
+        },
+        {
+          "title": "Real Decreto 659/2023, de 18 de julio — Ordenación del Sistema de Formación Profesional",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+          "kind": "Norma · texto consolidado",
+          "note": "Referencia principal de acceso, organización, evaluación, formación en empresa y ofertas de FP. Consultar la versión vigente y las disposiciones transitorias; el BOE muestra actualización de 6 de mayo de 2025."
+        },
+        {
+          "title": "Real Decreto 658/2024, de 9 de julio — Modificación de la ordenación de FP",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-14079",
+          "kind": "Norma modificadora",
+          "note": "Modifica los reales decretos 132/2010 y 659/2023. Leer junto al texto consolidado de la ordenación, no como un sistema independiente."
+        },
+        {
+          "title": "Corrección de errores del Real Decreto 659/2023, publicada el 23 de mayo de 2025",
+          "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-10203",
+          "kind": "Corrección de errores",
+          "note": "Complementa la lectura de la ordenación del sistema; enlazada por el índice oficial de normativa de TodoFP."
+        },
+        {
+          "title": "Real Decreto 278/2023, de 11 de abril — Calendario de implantación",
+          "url": "https://www.boe.es/eli/es/rd/2023/04/11/278/con",
+          "kind": "Norma · texto consolidado",
+          "note": "Permite situar la transición de las antiguas enseñanzas al sistema de la Ley Orgánica 3/2022. No confundir el calendario de implantación con el calendario escolar anual."
+        },
+        {
+          "title": "Ley Orgánica 2/2006, de 3 de mayo — Ley de Educación (LOE)",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-7899",
+          "kind": "Norma · texto consolidado",
+          "note": "Marco educativo general, incluido su capítulo de Formación Profesional. Consultar la redacción consolidada, que incorpora las modificaciones de la LOMLOE."
+        },
+        {
+          "title": "Ley Orgánica 3/2020, de 29 de diciembre — LOMLOE",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2020-17264",
+          "kind": "Norma modificadora",
+          "note": "Modifica la LOE. Para aplicar los artículos de la ley educativa, acudir también a la LOE consolidada."
+        },
+        {
+          "title": "Real Decreto 69/2025, de 4 de febrero — Elementos e instrumentos del Sistema Nacional de FP",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-2039",
+          "kind": "Norma",
+          "note": "Regula catálogos de estándares de competencias, módulos y ofertas, e instrumentos de gestión. Importante para interpretar referencias antiguas a cualificaciones y unidades de competencia."
+        },
+        {
+          "title": "Real Decreto 86/2025, de 11 de febrero — Competencias básicas",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-2575",
+          "kind": "Norma",
+          "note": "Evaluación y acreditación de competencias básicas adquiridas por experiencia laboral o aprendizajes no formales e informales. No sustituye el procedimiento de acreditación de competencias profesionales."
+        },
+        {
+          "title": "Real Decreto 1085/2020, de 9 de diciembre — Convalidaciones de módulos",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2020-17274",
+          "kind": "Norma · texto consolidado",
+          "note": "Convalidaciones y procedimiento de aplicación. El texto consultado incorpora actualización publicada el 7 de abril de 2026, en vigor desde el 27 de abril de 2026: no utilizar únicamente el texto original de 2020."
+        }
+      ]
+    },
+    {
+      "key": "titulos-adg",
+      "title": "02. Títulos y ofertas de Administración y Gestión",
+      "description": "Normas estatales de los títulos de la familia, adaptación al nuevo sistema y grados A, B y C. Los horarios de Canarias se consultan en el apartado de implantación autonómica.",
+      "references": [
+        {
+          "title": "Real Decreto 1631/2009, de 30 de octubre — Técnico en Gestión Administrativa",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2009-19148",
+          "kind": "Norma del título · publicación original",
+          "note": "Grado medio: perfil, competencias, resultados de aprendizaje y criterios de evaluación. Leer con el Real Decreto 1126/2010 y la adaptación del Real Decreto 499/2024; el texto original no basta para programar el nuevo plan."
+        },
+        {
+          "title": "Real Decreto 1126/2010, de 10 de septiembre — Modificación de Gestión Administrativa",
+          "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2010-13995",
+          "kind": "Norma modificadora",
+          "note": "Modifica el Real Decreto 1631/2009. Mantener la lectura conjunta con las adaptaciones posteriores."
+        },
+        {
+          "title": "Real Decreto 1584/2011, de 4 de noviembre — Técnico Superior en Administración y Finanzas",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2011-19533",
+          "kind": "Norma del título · publicación original",
+          "note": "Grado superior. Leer junto al Real Decreto 500/2024 y sus correcciones, y con la distribución modular y horaria canaria aplicable."
+        },
+        {
+          "title": "Real Decreto 1582/2011, de 4 de noviembre — Técnico Superior en Asistencia a la Dirección",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2011-19531",
+          "kind": "Norma del título · publicación original",
+          "note": "Grado superior. Leer junto al Real Decreto 500/2024 y sus correcciones, y con las instrucciones autonómicas, también para ofertas de doble titulación."
+        },
+        {
+          "title": "Real Decreto 127/2014, de 28 de febrero — Servicios Administrativos, anexo I",
+          "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-2360",
+          "kind": "Norma del título · texto consolidado con régimen transitorio",
+          "note": "Consultar específicamente el anexo I del título de Técnico Básico en Servicios Administrativos y su adaptación por el Real Decreto 498/2024. La antigua ordenación general de FP Básica no debe aplicarse sin revisar el régimen derogatorio y transitorio del Real Decreto 659/2023."
+        },
+        {
+          "title": "Real Decreto 356/2014, de 16 de mayo — Informática de Oficina, anexo VII",
+          "url": "https://www.boe.es/eli/es/rd/2014/05/16/356/con",
+          "kind": "Norma del título · texto consolidado",
+          "note": "Título básico con vinculación a Administración y Gestión e Informática y Comunicaciones, incluido entre los títulos del Real Decreto 207/2025. Revisar el anexo VII y la adaptación del Real Decreto 498/2024."
+        },
+        {
+          "title": "Real Decreto 498/2024, de 21 de mayo — Adaptación de títulos de grado básico",
+          "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-10683",
+          "kind": "Norma modificadora",
+          "note": "Adaptación de los títulos básicos a la nueva ordenación. Complementa los anexos de Servicios Administrativos e Informática de Oficina."
+        },
+        {
+          "title": "Real Decreto 499/2024, de 21 de mayo — Adaptación de títulos de grado medio",
+          "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-10684",
+          "kind": "Norma modificadora",
+          "note": "Adaptación al nuevo sistema, incluidos los módulos transversales y aspectos de atribución docente de los títulos afectados. Aplicable a Gestión Administrativa."
+        },
+        {
+          "title": "Real Decreto 500/2024, de 21 de mayo — Adaptación de títulos de grado superior",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-10685",
+          "kind": "Norma modificadora",
+          "note": "Aplicable a Administración y Finanzas y Asistencia a la Dirección. Leer con su corrección de errores de 23 de mayo de 2025."
+        },
+        {
+          "title": "Corrección de errores del Real Decreto 500/2024, de 23 de mayo de 2025",
+          "url": "https://www.boe.es/eli/es/rd/2024/05/21/500/corrigendum/20250523",
+          "kind": "Corrección de errores",
+          "note": "Corrección identificada en el índice de normativa estatal de TodoFP. Consultar cuando se utilicen los anexos de la adaptación de grado superior."
+        },
+        {
+          "title": "Real Decreto 207/2025, de 18 de marzo — Grados A, B y C de Administración y Gestión",
+          "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-6797",
+          "kind": "Norma de ofertas de la familia",
+          "note": "Regula ofertas vinculadas a títulos de Administración y Gestión, entre otras familias. La disposición final primera del Real Decreto 184/2026 modifica una acreditación del anexo III de Informática y Comunicaciones, no los títulos ADG: distinguir el ámbito de cada modificación."
+        },
+        {
+          "title": "TodoFP — Ordenación estatal y enlaces a modificaciones de las ofertas",
+          "url": "https://www.todofp.es/comunidad-docente/normativa/normativa-estatal/ordenacion.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Índice ministerial para localizar normas, correcciones y nuevas ofertas. Es un punto de seguimiento, no una disposición jurídica ni garantía de que la oferta esté implantada en cada centro canario."
+        }
+      ]
+    },
+    {
+      "key": "implantacion-canarias",
+      "title": "03. Canarias: currículos, implantación y horarios",
+      "description": "Aplicación autonómica de los grados D y E, estructura modular y horarios. En los anexos de familias debe seleccionarse Administración y Gestión y el ciclo y modalidad correspondientes.",
+      "references": [
+        {
+          "title": "Ley 6/2014, de 25 de julio — Canaria de Educación no Universitaria",
+          "url": "https://www.boe.es/eli/es-cn/l/2014/07/25/6/con",
+          "kind": "Norma autonómica · texto consolidado",
+          "note": "Marco educativo canario. El artículo 33.3 contempla el uso subsidiario del real decreto del título mientras no se complete el currículo autonómico."
+        },
+        {
+          "title": "Resolución de 30 de octubre de 2024 — Implantación y desarrollo de grados D y E",
+          "url": "https://www.gobiernodecanarias.org/boc/2024/226/3747.html",
+          "kind": "Instrucciones autonómicas · publicación original",
+          "note": "Base de implantación a partir de 2024/2025, con instrucciones y anexos de estructura modular y distribución horaria. Leer con las modificaciones y ampliaciones posteriores, no aisladamente."
+        },
+        {
+          "title": "Resolución de 29 de noviembre de 2024 — Modificación de la implantación",
+          "url": "https://www.gobiernodecanarias.org/boc/2024/254/4300.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Modifica la resolución de 30 de octubre de 2024. Comprobar los apartados afectados para la programación del ciclo."
+        },
+        {
+          "title": "Resolución de 27 de enero de 2026 — Ampliación y modificación de grados D y E",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/029/471.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Amplía y modifica la resolución de implantación. No todos sus anexos corresponden a ADG: verificar el ciclo antes de aplicar un cuadro horario."
+        },
+        {
+          "title": "Resolución de 26 de marzo de 2026 — Ampliación de grados D y E y FP Adaptada",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/070/1143.html",
+          "kind": "Instrucciones de ampliación",
+          "note": "Ampliación de las resoluciones de 30 de octubre de 2024 y de 21 de febrero de 2025. Revisar los anexos de cada familia y las correcciones enlazadas en el portal de implantación."
+        },
+        {
+          "title": "Resolución de 22 de septiembre de 2026 — Ampliación de grados D y E",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/205/3539.html",
+          "kind": "Instrucciones de ampliación · publicación de octubre de 2026",
+          "note": "Publicada el 14 de octubre de 2026. Incluida para completar la cadena de ampliaciones de la resolución base; comprobar qué previsiones y anexos afectan realmente al ciclo ADG."
+        },
+        {
+          "title": "Anexo V de la resolución de implantación — Horarios de grado básico",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-5-resolucion-instrucciones-implantacion-distribucion-horaria-curriculos-24.pdf",
+          "kind": "Anexo oficial · PDF",
+          "note": "Distribución horaria y estructura modular de grado básico, incluida la búsqueda por familia y título. Contrastar con las ampliaciones posteriores antes de elaborar horarios."
+        },
+        {
+          "title": "Anexo VI de la resolución de implantación — Horarios de grados medio y superior",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-6-resolucion-instrucciones-implantacion-distribucion-horaria-curriculos-24.pdf",
+          "kind": "Anexo oficial · PDF",
+          "note": "Localizar Gestión Administrativa, Administración y Finanzas y Asistencia a la Dirección. Los horarios no se deben tomar de órdenes del ámbito de gestión del Ministerio como si fueran horarios de Canarias."
+        },
+        {
+          "title": "Gobierno de Canarias — Implantación y distribuciones LOMLOE-LOOIFP",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/implantacion_curriculos/imolantacion-curriculos-lomloe-looifp/index.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Reúne las resoluciones y sus anexos, incluidas correcciones de 2025 y 2026. Usar este índice para comprobar si se ha sustituido o corregido un anexo concreto."
+        },
+        {
+          "title": "Gobierno de Canarias — FP Adaptada e itinerarios formativos",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/implantacion_curriculos/instrucciones-implantacion-itinerarios-formativos-fpa/index.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Consultar solo si el centro imparte una oferta adaptada autorizada. Contiene la resolución de 21 de febrero de 2025 y ampliaciones: no equiparar automáticamente un itinerario FPA a un ciclo ordinario."
+        }
+      ]
+    },
+    {
+      "key": "evaluacion-dual",
+      "title": "04. Canarias: evaluación y formación en empresa",
+      "description": "Evaluación, modalidades, FEOE general e intensiva y exenciones. Distinguir el alumnado del nuevo sistema de los planes a extinguir.",
+      "references": [
+        {
+          "title": "Resolución de 9 de junio de 2025 — Evaluación de grados C, D y E",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/118/2219.html",
+          "kind": "Instrucciones autonómicas de evaluación",
+          "note": "Aplicación a partir de 2024/2025. Seleccionar el anexo de grado básico, medio/superior, especialización o modalidad semipresencial/virtual; incluye valoración de PRL para acceso a FEOE."
+        },
+        {
+          "title": "Resolución de 3 de diciembre de 2025 — Modificación de las instrucciones de evaluación",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/249/4298.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Modifica la resolución de 9 de junio de 2025. Leer ambas antes de fijar criterios, convocatorias y decisiones de promoción o titulación."
+        },
+        {
+          "title": "Gobierno de Canarias — Evaluación del Sistema de FP",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/evaluacion/index.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Acceso a los anexos de evaluación y referencias anteriores. Las órdenes de 2000 y 2003 se citan en el portal, pero no deben utilizarse como única regulación para alumnado del nuevo sistema."
+        },
+        {
+          "title": "Resolución de 5 de noviembre de 2024 — Formación dual en empresa u organismo equiparado",
+          "url": "https://www.gobiernodecanarias.org/boc/2024/230/3794.html",
+          "kind": "Instrucciones autonómicas de FEOE",
+          "note": "Plan de formación, tutorías y organización de la fase en empresa para grados C, D y E. Leer con la ampliación de 9 de junio de 2025 y las instrucciones específicas del régimen intensivo."
+        },
+        {
+          "title": "Resolución de 9 de junio de 2025 — Exención del periodo de formación en empresa",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/118/2218.html",
+          "kind": "Instrucciones de ampliación",
+          "note": "Amplía las instrucciones de 5 de noviembre de 2024 en lo relativo al procedimiento de exención de la FEOE, a partir de 2024/2025."
+        },
+        {
+          "title": "Resolución de 19 de noviembre de 2025 — FEOE en régimen intensivo",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/239/4130.html",
+          "kind": "Instrucciones autonómicas específicas",
+          "note": "Organización de FEOE intensiva en los grados y niveles indicados a partir de 2025/2026. No confundir sus condiciones con las del régimen general."
+        },
+        {
+          "title": "Gobierno de Canarias — Instrucciones y anexos de formación dual",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/implantacion_curriculos/formacion-dual-empresas/index.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Documentación oficial de FEOE y formularios anexos. Comprobar la modalidad, curso, régimen y responsabilidades del centro y la empresa."
+        },
+        {
+          "title": "Gobierno de Canarias — Formación en Centros de Trabajo (FCT)",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/formacion_centros_trabajo/index.html",
+          "kind": "Portal oficial · planes anteriores",
+          "note": "Referencia para ofertas y alumnado a los que aún resulte aplicable FCT. No sustituye las instrucciones de FEOE del nuevo sistema; verificar el régimen transitorio de la matrícula."
+        }
+      ]
+    },
+    {
+      "key": "organizacion-canarias",
+      "title": "05. Canarias: optativas, modalidades y dobles titulaciones",
+      "description": "Instrucciones organizativas relevantes para la familia, especialmente la combinación de Administración y Finanzas con Asistencia a la Dirección.",
+      "references": [
+        {
+          "title": "Resolución de 25 de febrero de 2026 — Módulo profesional optativo desde 2026/2027",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/043/703.html",
+          "kind": "Instrucciones autonómicas",
+          "note": "Catálogo y currículo de optativas, atribución docente, procedimiento y propuestas de diseño propio. Consultar en el anexo II los módulos de Administración y Gestión y la autorización concreta de cada centro."
+        },
+        {
+          "title": "Resolución de 10 de diciembre de 2024 — Modalidades semipresencial y virtual",
+          "url": "https://www.gobiernodecanarias.org/boc/2024/251/4224.html",
+          "kind": "Instrucciones autonómicas",
+          "note": "Implantación y organización de grados C, D y E en estas modalidades desde 2024/2025. Complementar con el anexo de evaluación específico de la modalidad."
+        },
+        {
+          "title": "Resolución de 2 de mayo de 2025 — Dobles titulaciones con primer curso común",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/093/1761.html",
+          "kind": "Instrucciones autonómicas · curso 2025/2026",
+          "note": "Consultar para las cohortes y ofertas correspondientes, con las modificaciones posteriores. No mezclar su calendario de implantación con el de 2026/2027."
+        },
+        {
+          "title": "Resolución de 26 de noviembre de 2025 — Dobles titulaciones desde 2026/2027",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/250/4323.html",
+          "kind": "Instrucciones autonómicas",
+          "note": "Base de organización de dobles titulaciones a partir de 2026/2027. Comprobar la oferta autorizada y los anexos para Administración y Finanzas y Asistencia a la Dirección."
+        },
+        {
+          "title": "Resolución de 27 de enero de 2026 — Modificación de dobles titulaciones",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/029/472.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Modifica las resoluciones de 26 de noviembre y 2 de mayo de 2025. Leer las previsiones aplicables al curso y cohorte del alumnado."
+        },
+        {
+          "title": "Resolución de 25 de junio de 2026 — Modificación de dobles titulaciones",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/133/2328.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Modifica la resolución de 26 de noviembre de 2025 para la implantación desde 2026/2027."
+        },
+        {
+          "title": "Resolución de 2 de julio de 2026 — Cuadros horarios de dobles titulaciones",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/141/2508.html",
+          "kind": "Instrucciones modificadoras",
+          "note": "Modifica cuadros horarios de las resoluciones de 26 de noviembre de 2025 y 27 de enero de 2026. Verificar el anexo concreto antes de distribuir módulos y horas."
+        },
+        {
+          "title": "Gobierno de Canarias — Dobles titulaciones: normativa y anexos",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/dobles-titulaciones-fp/index.html",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Reúne instrucciones, modificaciones, cuadros y procedimiento de admisión de dobles titulaciones. No implica que todos los centros oferten ambas titulaciones."
+        }
+      ]
+    },
+    {
+      "key": "convalidaciones",
+      "title": "07. Convalidaciones",
+      "description": "Guía específica para convalidar módulos de Formación Profesional, con especial atención a Administración y Gestión en Canarias. Incluye normativa, orientaciones 2026/2027, solicitud y reconocimiento de estudios universitarios.",
+      "guide": [
+        "## Normativa de partida",
+        "La referencia principal es el Real Decreto 1085/2020, en su texto consolidado actualizado el 7 de abril de 2026 y con efectos desde el 27 de abril: https://www.boe.es/buscar/act.php?id=BOE-A-2020-17274",
+        "Debe leerse junto al Real Decreto 659/2023, las adaptaciones de títulos de 2024 y las instrucciones y orientaciones vigentes de Canarias. La modificación de 2026 del Real Decreto 1085/2020 incorpora un supuesto referido a lengua de signos; no implica que hayan cambiado todas las tablas de Administración y Gestión.",
+        "## Procedimiento y documentación",
+        "- Formaliza la matrícula en el ciclo y en los módulos concretos que deseas convalidar.",
+        "- Presenta la solicitud a la dirección del centro, a través de su secretaría, utilizando el modelo oficial y las denominaciones y códigos exactos de los módulos.",
+        "- Aporta la certificación académica oficial con los módulos superados y sus calificaciones. Según el supuesto, se necesitarán programas oficiales de asignaturas, acreditaciones de competencias, certificados de idioma u otra documentación justificativa.",
+        "- La secretaría debe comprobar qué órgano es competente: la dirección del centro, la administración autonómica o el Ministerio. No todos los casos los resuelve el propio centro.",
+        "- Confirma con la secretaría los plazos y el canal de presentación del curso correspondiente. Solicitarlo no equivale a obtenerlo: no dejes de asistir o realizar actividades sin la resolución o indicación formal que proceda.",
+        "- Conserva la resolución y comprueba su incorporación al expediente académico. Esta sección no tramita ni concede convalidaciones.",
+        "## Casos habituales en Administración y Gestión",
+        "- Entre Gestión Administrativa, Administración y Finanzas y Asistencia a la Dirección: contrasta las tablas oficiales y los códigos de los módulos. La pertenencia a la misma familia o una denominación parecida no concede por sí sola la convalidación.",
+        "- Módulos idénticos: cuando coincidan código, denominación y demás características normativas, corresponde solicitar el traslado de calificación; no confundirlo con una convalidación de módulos distintos.",
+        "- IPE I e IPE II, FOL y Empresa e Iniciativa Emprendedora: revisa el origen LOGSE, LOE o nuevo sistema y las correspondencias oficiales. Para FOL LOGSE, comprueba también la acreditación de prevención de riesgos laborales exigida.",
+        "- Inglés Profesional: revisa el grado, la lengua y los certificados oficialmente admitidos. La guía estatal distingue B1 para grado medio y B2 para superior; no debe darse por convalidado un módulo de superior solo por haber superado Inglés Profesional en grado medio.",
+        "- Digitalización y Sostenibilidad: comprueba las condiciones de grado y familia profesional en las orientaciones canarias. No presupongas una convalidación automática entre grado medio y superior.",
+        "- Estudios universitarios y ciclos de grado superior: comprueba las tablas oficiales aplicables al título y a la universidad, y las instrucciones canarias de 8 de abril de 2026. No inventes correspondencias generales para ADE, Economía o Derecho; los estudios universitarios no se aportan por esta vía para convalidar ciclos de grado medio.",
+        "- Experiencia laboral: no basta por sí sola para convalidar módulos. Una acreditación oficial de estándares o unidades de competencia puede dar lugar al reconocimiento previsto en la normativa y en el título.",
+        "## Trámites que no deben confundirse",
+        "- Convalidación: reconocimiento de módulos por formación o acreditaciones oficiales en los supuestos admitidos.",
+        "- Exención de FEOE o de la antigua FCT: procedimiento distinto, por experiencia y condiciones específicas. Consulta las instrucciones del apartado de formación en empresa; no se resuelve como convalidación de un módulo teórico.",
+        "- Equivalencia: reconocimiento de efectos de títulos o estudios; no supone por sí misma una tabla de convalidación módulo a módulo.",
+        "- Homologación de estudios extranjeros: procedimiento específico de reconocimiento del título extranjero. No confundirlo con una solicitud ordinaria entre módulos de títulos españoles.",
+        "- Reconocimiento universitario de créditos: si el destino es un grado universitario, la universidad competente resuelve conforme a su normativa y tablas.",
+        "## Fuentes y modelos oficiales",
+        "Las orientaciones de 2026/2027 son la guía práctica preferente. Algunos modelos que enlaza actualmente la Consejería conservan 24-25 en su nombre de archivo: comprueba con el centro qué formulario debe utilizarse, sin interpretar el nombre del archivo como una prórroga automática de plazos."
+      ],
+      "references": [
+        {
+          "title": "Real Decreto 262/2026, de 1 de abril — Disposición final tercera: modificación de convalidaciones",
+          "url": "https://www.boe.es/eli/es/rd/2026/04/01/262",
+          "kind": "Norma modificadora · supuesto específico",
+          "note": "Establece los Diplomas de Lengua de Signos Española y modifica, entre otras normas, el Real Decreto 1085/2020. La novedad de convalidaciones se refiere a determinados módulos y DLSE B2 o superior: no es una reforma general de las correspondencias de ADG."
+        },
+        {
+          "title": "Real Decreto 1618/2011, de 14 de noviembre — Reconocimiento de estudios de Educación Superior",
+          "url": "https://www.boe.es/eli/es/rd/2011/11/14/1618/con",
+          "kind": "Norma · texto consolidado",
+          "note": "Marco del reconocimiento entre enseñanzas superiores. Distingue la competencia de la administración educativa cuando el destino es FP y de la universidad cuando el destino es un grado universitario."
+        },
+        {
+          "title": "Resolución de 8 de abril de 2026 — Convalidación por tablas oficiales y reconocimiento ECTS en Canarias",
+          "url": "https://www.gobiernodecanarias.org/boc/2026/080/1341.html",
+          "kind": "Instrucciones autonómicas",
+          "note": "Regula la aplicación de tablas oficiales entre grados universitarios y enseñanzas superiores no universitarias. Para Administración y Finanzas o Asistencia a la Dirección, comprobar título, convenio y tabla concreta; no extender sus efectos a grado medio."
+        },
+        {
+          "title": "Gobierno de Canarias — Convalidaciones y exenciones: trámite y documentos",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/servicios/tramites/estudiantes-familias/convalidaciones-excenciones-acreditaciones/convalidaciones-fp/convalidaciones_exenciones/",
+          "kind": "Portal oficial del procedimiento",
+          "note": "Requisitos, normativa, orientaciones, solicitud y modelos. La parte relativa a antigua FCT debe distinguirse de la FEOE del nuevo sistema."
+        },
+        {
+          "title": "Orientaciones canarias de convalidaciones para centros — Curso 2026/2027",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/20260901-orientaciones-convalidaciones.centros-educativos-curso-26-27.pdf",
+          "kind": "Guía oficial vigente para el curso · PDF",
+          "note": "Incluye supuestos, órganos de resolución, traslado de calificaciones, módulos comunes, IPE, Inglés Profesional, Digitalización, Sostenibilidad, acreditaciones y anotación en Pincel Ekade. Ante una diferencia de interpretación, consultar la norma y la administración competente."
+        },
+        {
+          "title": "Anexo V — Solicitud de convalidación de módulos de Formación Profesional",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-5-solicitud-convalidacion-24-25.pdf",
+          "kind": "Modelo oficial enlazado por la Consejería · PDF",
+          "note": "Formulario del portal oficial consultado. El nombre conserva 24-25; confirmar con la secretaría el modelo aplicable al curso actual. No constituye por sí mismo una convocatoria ni fija sus plazos."
+        },
+        {
+          "title": "TodoFP — Convalidaciones de estudios españoles por módulos de Formación Profesional",
+          "url": "https://www.todofp.es/convalidaciones-equivalencias-homologaciones/convalidaciones.html",
+          "kind": "Guía y preguntas frecuentes oficiales",
+          "note": "Explica qué se puede aportar, qué no se convalida, documentación, órgano competente, calificaciones y finalización del trámite. Incluye enlaces a normativa y tablas de apoyo."
+        },
+        {
+          "title": "TodoFP — Convalidaciones desde estudios universitarios a Formación Profesional",
+          "url": "https://www.todofp.es/convalidaciones-equivalencias-homologaciones/convalidaciones/convalidaciones-uni-fp.html",
+          "kind": "Orientación oficial específica",
+          "note": "Vía para estudios universitarios y módulos de grado superior. Contrastar con las tablas e instrucciones canarias cuando resulten aplicables."
+        },
+        {
+          "title": "Gobierno de Canarias — Equivalencia de títulos y estudios de FP",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/servicios/tramites/estudiantes-familias/convalidaciones-excenciones-acreditaciones/convalidaciones-fp/equivalencias-titulos-estudios-fp/",
+          "kind": "Portal oficial · trámite diferente",
+          "note": "Permite distinguir los efectos de una equivalencia de títulos del reconocimiento concreto de módulos mediante convalidación."
+        }
+      ]
+    },
+    {
+      "key": "fp-adaptada",
+      "title": "08. FP Adaptada · Administración y Gestión",
+      "description": "Itinerarios formativos IFE+16 e IFC+21 de la familia Administración y Gestión en Canarias. Módulos, códigos, horarios y normativa contrastados con la resolución de 21 de febrero de 2025 y sus anexos oficiales.",
+      "guide": [
+        "## Naturaleza y organización",
+        "La Formación Profesional Adaptada de estos itinerarios se vincula a ofertas de Grado C de nivel 1. No es el ciclo de Grado Básico en Servicios Administrativos, ni debe mezclarse su catálogo con el de ese título.",
+        "La resolución prevé dos modalidades: Itinerario Formativo Específico +16 (IFE+16) e Itinerario Formativo de Capacitación +21 (IFC+21), con requisitos de acceso específicos. Las dos ofertas de ADG comparten los ámbitos de carácter general y tutoría.",
+        "La duración ordinaria es un curso escolar. La norma contempla tránsito durante dos cursos consecutivos y excepcionalmente una tercera matrícula en las condiciones que establece; no se debe presentar esta posibilidad como una estructura ordinaria de dos cursos.",
+        "La formación dual en empresa u organismo equiparado tiene una duración de 80 a 120 horas y requiere la superación de la competencia específica de prevención indicada por la norma. No se añade aquí un módulo MF ficticio de prácticas al catálogo.",
+        "La superación y acreditación oficial corresponde a la Administración competente. Estas referencias describen enseñanzas oficiales del alumnado y no habilitan a la plataforma para expedir certificaciones de formación del profesorado.",
+        "## Ampliaciones y oferta autorizada",
+        "La ampliación de 25 de abril de 2025 y la de 26 de marzo de 2026 deben leerse junto a la resolución base. La ampliación de 2026 incorpora Actividades auxiliares en agricultura, no un tercer itinerario de Administración y Gestión: https://www.gobiernodecanarias.org/boc/2026/070/1143.html",
+        "Índice autonómico actualizado de instrucciones y anexos: https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/implantacion_curriculos/instrucciones-implantacion-itinerarios-formativos-fpa/index.html",
+        "La existencia de un itinerario en el catálogo no significa que todos los centros lo impartan. La oferta y las plazas se comprueban en la convocatoria y la relación de centros del curso correspondiente.",
+        "## Módulos y distribución horaria oficial",
+        "Las denominaciones de los itinerarios se identifican con el prefijo FPA en el catálogo de la aplicación para evitar confusiones con otros grados. Los códigos ADG identifican la cualificación; los códigos ADGG identifican el certificado profesional de referencia; los códigos MF identifican los módulos profesionales."
+      ],
+      "references": [
+        {
+          "title": "Resolución de 21 de febrero de 2025 — Implantación de itinerarios de FP Adaptada en Canarias",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/046/918.html",
+          "kind": "Instrucciones autonómicas",
+          "note": "BOC 46 de 6 de marzo de 2025. Regula IFE+16 e IFC+21, organización, acceso, duración, currículo general, evaluación y formación dual a partir de 2024/2025. Consultar junto a sus ampliaciones."
+        },
+        {
+          "title": "FPA — Anexo I: instrucciones de implantación y desarrollo",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-1-instrucciones-implantacion-iffpa-24-25.pdf",
+          "kind": "Anexo oficial · PDF",
+          "note": "Instrucciones de los itinerarios adaptados y su organización. Es el anexo de la resolución de 21 de febrero de 2025, aunque el nombre del archivo contenga 24-25."
+        },
+        {
+          "title": "FPA — Anexo II: currículo de los ámbitos de carácter general",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-2-instrucciones-implantacion-iffpa-24-25.pdf",
+          "kind": "Anexo curricular oficial · PDF",
+          "note": "Comunicación y competencia social, Ciencias aplicadas y competencia lógica, y Prevención y orientación profesional. No confundir estos ámbitos con los módulos profesionales MF."
+        },
+        {
+          "title": "FPA — Anexo III: Operaciones auxiliares de servicios administrativos y generales",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-3-instrucciones-implantacion-iffpa-24-25.pdf",
+          "kind": "Anexo oficial · módulos y horarios · PDF",
+          "note": "Cualificación ADG305_1 y certificado ADGG0408. MF0969_1, MF0970_1 y MF0971_1, más ámbitos generales y tutoría: 905 horas en total y 25 horas semanales."
+        },
+        {
+          "title": "FPA — Anexo IV: Operaciones de grabación y tratamiento de datos y documentos",
+          "url": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-4-instrucciones-implantacion-iffpa-24-25.pdf",
+          "kind": "Anexo oficial · módulos y horarios · PDF",
+          "note": "Cualificación ADG306_1 y certificado ADGG0508. MF0971_1, MF0973_1 y MF0974_1, más ámbitos generales y tutoría: 905 horas en total y 25 horas semanales."
+        },
+        {
+          "title": "Resolución de 25 de abril de 2025 — Ampliación de FP Adaptada y grados D y E",
+          "url": "https://www.gobiernodecanarias.org/boc/2025/091/1728.html",
+          "kind": "Instrucciones de ampliación",
+          "note": "Amplía la resolución de 21 de febrero de 2025 y la de implantación de grados D y E. Las nuevas ofertas deben identificarse por familia y anexo; no incorpora otro itinerario de ADG en los anexos consultados."
+        },
+        {
+          "title": "Gobierno de Canarias — Admisión de FP Adaptada: convocatoria y oferta",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/alumnado-familias/admision_alumnado/pfpa/convocatoria/index.html",
+          "kind": "Portal oficial · procedimiento anual",
+          "note": "Comprobar la convocatoria, requisitos, plazos y relación de itinerarios y centros autorizados para el curso correspondiente. El catálogo de módulos no sustituye la autorización de una oferta concreta."
+        }
+      ]
+    },
+    {
+      "key": "seguimiento",
+      "title": "06. Fuentes oficiales, admisión y atención al alumnado",
+      "description": "Fuentes para completar la búsqueda, comprobar publicaciones posteriores y consultar procedimientos anuales. Su contenido puede cambiar después de la fecha de esta revisión.",
+      "references": [
+        {
+          "title": "Gobierno de Canarias — Admisión y matrícula en Formación Profesional",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/admision_matricula/index.html",
+          "kind": "Portal oficial · procedimiento anual",
+          "note": "Consultar los requisitos, reservas, plazos y resoluciones del curso correspondiente; no reutilizar un calendario cerrado de cursos anteriores."
+        },
+        {
+          "title": "Gobierno de Canarias — Medidas de atención a las diferencias individuales en FP",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/ensenanzas/atencion-a-la-diversidad/medidas-formacion-profesional/index.html",
+          "kind": "Portal oficial de instrucciones",
+          "note": "Medidas y procedimientos de apoyo. Revisar las instrucciones anuales, la resolución de evaluación actual y las autorizaciones necesarias, no solo las normas históricas enlazadas."
+        },
+        {
+          "title": "Gobierno de Canarias — Implantación y currículos de FP",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/ensenanzas/implantacion_curriculos/",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Índice general de instrucciones de los diferentes grados y modalidades. Incluye los accesos a las instrucciones y currículos actualmente publicados."
+        },
+        {
+          "title": "Gobierno de Canarias — Portal de Formación Profesional",
+          "url": "https://www.gobiernodecanarias.org/educacion/web/formacion_profesional/",
+          "kind": "Portal oficial de seguimiento",
+          "note": "Novedades, oferta, orientación, evaluación, pruebas y procedimientos. Utilizarlo para detectar publicaciones posteriores a esta recopilación."
+        },
+        {
+          "title": "Boletín Oficial de Canarias — Buscador y archivo",
+          "url": "https://www.gobiernodecanarias.org/boc/",
+          "kind": "Boletín oficial",
+          "note": "Buscar por fecha, órgano, número de disposición, título y términos como Administración y Gestión, evaluación, formación en empresa, optativas y dobles titulaciones."
+        },
+        {
+          "title": "Boletín Oficial del Estado — Legislación",
+          "url": "https://www.boe.es/buscar/",
+          "kind": "Boletín oficial",
+          "note": "Comprobar versiones consolidadas y pestaña de análisis jurídico: normas modificadoras, derogaciones, correcciones y fechas de efectos. Una fecha antigua de publicación no implica por sí sola derogación."
+        }
+      ]
+    }
+  ]
+}
