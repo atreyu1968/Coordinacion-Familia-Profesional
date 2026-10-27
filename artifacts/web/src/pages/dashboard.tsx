@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation, useSearchParams } from "wouter";
 import {
   useGetDashboardSummary,
   useGetDashboardStatistics,
@@ -24,7 +24,12 @@ import {
 } from "recharts";
 import { useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
-import { buildDashboardHref, RESOURCE_CARD_HREF } from "@/lib/dashboard-links";
+import {
+  buildDashboardHref,
+  isKnownDashboardPeriod,
+  resolveDashboardPeriod,
+  RESOURCE_CARD_HREF,
+} from "@/lib/dashboard-links";
 import {
   dashboardRoleForLabel,
   dashboardSurveyStatusForLabel,
@@ -81,24 +86,35 @@ type Point = { label: string; value: number };
 
 export default function DashboardPage() {
   const [, navigate] = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
-  const { data: provinces = [] } = useListProvinces();
+  const {
+    data: provinces = [],
+    isLoading: provincesLoading,
+  } = useListProvinces();
   const {
     years,
     activeYear,
     isLoading: academicYearsLoading,
   } = useAcademicYears();
-  const [provinceFilter, setProvinceFilter] = useState<string>(GLOBAL);
-  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
-  const [customStartDate, setCustomStartDate] = useState("");
-  const [customEndDate, setCustomEndDate] = useState("");
-
-  const activeYearRange = activeYear ? academicYearDateRange(activeYear) : null;
-  const periodSelection =
-    selectedPeriod ??
-    (activeYearRange ? `year:${activeYear}` : ALL_PERIODS);
+  const requestedProvince = searchParams.get("provinceId");
+  const provinceExists =
+    requestedProvince != null &&
+    /^\d+$/.test(requestedProvince) &&
+    provinces.some((province) => String(province.id) === requestedProvince);
+  const scopeReady = !isSuperadmin || !provincesLoading;
+  const provinceFilter =
+    isSuperadmin && scopeReady && provinceExists
+      ? requestedProvince!
+      : GLOBAL;
+  const requestedPeriod = searchParams.get("period");
+  const periodSelection = resolveDashboardPeriod(
+    requestedPeriod,
+    years.map((year) => year.name),
+    activeYear,
+  );
   const selectedYear =
     periodSelection.startsWith("year:")
       ? periodSelection.slice("year:".length)
@@ -107,14 +123,84 @@ export default function DashboardPage() {
     selectedYear != null
       ? academicYearDateRange(selectedYear)
       : periodSelection === CUSTOM_PERIOD
-        ? { startDate: customStartDate, endDate: customEndDate }
+        ? {
+            startDate: searchParams.get("startDate") ?? "",
+            endDate: searchParams.get("endDate") ?? "",
+          }
         : null;
   const hasValidPeriod =
     selectedRange == null ||
     (isValidDateInput(selectedRange.startDate) &&
       isValidDateInput(selectedRange.endDate) &&
       selectedRange.startDate <= selectedRange.endDate);
-  const periodReady = !academicYearsLoading && hasValidPeriod;
+  const periodReady =
+    !academicYearsLoading &&
+    scopeReady &&
+    isKnownDashboardPeriod(
+      requestedPeriod,
+      years.map((year) => year.name),
+    ) &&
+    hasValidPeriod;
+
+  useEffect(() => {
+    if (!user || academicYearsLoading || !scopeReady) return;
+    const nextParams = new URLSearchParams(searchParams);
+    let changed = false;
+
+    if (isSuperadmin) {
+      if (requestedProvince && !provinceExists) {
+        nextParams.delete("provinceId");
+        changed = true;
+      }
+    } else if (requestedProvince) {
+      nextParams.delete("provinceId");
+      changed = true;
+    }
+
+    if (requestedPeriod !== periodSelection) {
+      nextParams.set("period", periodSelection);
+      changed = true;
+    }
+    if (periodSelection !== CUSTOM_PERIOD) {
+      if (nextParams.has("startDate") || nextParams.has("endDate")) {
+        nextParams.delete("startDate");
+        nextParams.delete("endDate");
+        changed = true;
+      }
+    } else {
+      for (const key of ["startDate", "endDate"]) {
+        const value = nextParams.get(key);
+        if (value && !isValidDateInput(value)) {
+          nextParams.delete(key);
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) setSearchParams(nextParams, { replace: true });
+  }, [
+    academicYearsLoading,
+    isSuperadmin,
+    periodSelection,
+    provinceExists,
+    requestedPeriod,
+    requestedProvince,
+    scopeReady,
+    searchParams,
+    setSearchParams,
+    user,
+  ]);
+
+  function updateDashboardSearch(
+    updates: Record<string, string | null>,
+  ) {
+    const nextParams = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value == null || value === "") nextParams.delete(key);
+      else nextParams.set(key, value);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
 
   const params = {
     ...(isSuperadmin && provinceFilter !== GLOBAL
@@ -342,7 +428,14 @@ export default function DashboardPage() {
             Actualizar datos
           </Button>
           {isSuperadmin && (
-            <Select value={provinceFilter} onValueChange={setProvinceFilter}>
+            <Select
+              value={provinceFilter}
+              onValueChange={(value) =>
+                updateDashboardSearch({
+                  provinceId: value === GLOBAL ? null : value,
+                })
+              }
+            >
               <SelectTrigger className="w-[230px]" aria-label="Filtrar por ámbito">
                 <SelectValue />
               </SelectTrigger>
@@ -360,15 +453,18 @@ export default function DashboardPage() {
             value={periodSelection}
             onValueChange={(value) => {
               if (value === CUSTOM_PERIOD) {
-                if (selectedRange) {
-                  setCustomStartDate(selectedRange.startDate);
-                  setCustomEndDate(selectedRange.endDate);
-                } else {
-                  setCustomStartDate("");
-                  setCustomEndDate("");
-                }
+                updateDashboardSearch({
+                  period: value,
+                  startDate: selectedRange?.startDate ?? null,
+                  endDate: selectedRange?.endDate ?? null,
+                });
+                return;
               }
-              setSelectedPeriod(value);
+              updateDashboardSearch({
+                period: value,
+                startDate: null,
+                endDate: null,
+              });
             }}
           >
             <SelectTrigger
@@ -397,8 +493,10 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Input
                 type="date"
-                value={customStartDate}
-                onChange={(event) => setCustomStartDate(event.target.value)}
+                value={searchParams.get("startDate") ?? ""}
+                onChange={(event) =>
+                  updateDashboardSearch({ startDate: event.target.value })
+                }
                 aria-label="Fecha inicial del periodo"
                 data-testid="input-dashboard-period-start"
                 className="w-[160px]"
@@ -406,8 +504,10 @@ export default function DashboardPage() {
               <span className="text-sm text-muted-foreground">a</span>
               <Input
                 type="date"
-                value={customEndDate}
-                onChange={(event) => setCustomEndDate(event.target.value)}
+                value={searchParams.get("endDate") ?? ""}
+                onChange={(event) =>
+                  updateDashboardSearch({ endDate: event.target.value })
+                }
                 aria-label="Fecha final del periodo"
                 data-testid="input-dashboard-period-end"
                 className="w-[160px]"

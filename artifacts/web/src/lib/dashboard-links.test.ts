@@ -1,11 +1,40 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildDashboardHref, RESOURCE_CARD_HREF } from "./dashboard-links";
+import {
+  buildDashboardHref,
+  isKnownDashboardPeriod,
+  resolveDashboardPeriod,
+  RESOURCE_CARD_HREF,
+} from "./dashboard-links";
 
 const period = { startDate: "2026-09-01", endDate: "2027-08-31" };
 const readSource = (path: string) => readFileSync(path, "utf8");
 
 describe("Dashboard drilldown consistency", () => {
+  it("restores only available academic years and falls back to the active year", () => {
+    const years = ["2025/2026", "2026/2027"];
+    expect(isKnownDashboardPeriod("year:2025/2026", years)).toBe(true);
+    expect(isKnownDashboardPeriod("year:2025/2027", years)).toBe(false);
+    expect(resolveDashboardPeriod("year:2022/2023", years, "2026/2027")).toBe(
+      "year:2026/2027",
+    );
+    expect(resolveDashboardPeriod(null, [], undefined)).toBe("all");
+  });
+
+  it("retains valid all-period and custom-range selections", () => {
+    expect(isKnownDashboardPeriod("all", [])).toBe(true);
+    expect(isKnownDashboardPeriod("custom", [])).toBe(true);
+    expect(resolveDashboardPeriod("custom", [], undefined)).toBe("custom");
+  });
+
+  it("stores dashboard scope and period filters in the URL", () => {
+    const dashboard = readSource("src/pages/dashboard.tsx");
+    expect(dashboard).toContain("useSearchParams()");
+    expect(dashboard).toContain('searchParams.get("provinceId")');
+    expect(dashboard).toContain('searchParams.get("period")');
+    expect(dashboard).toContain("setSearchParams(nextParams, { replace: true })");
+  });
+
   it("opens the resource card at the normal unfiltered repository route", () => {
     const url = new URL(RESOURCE_CARD_HREF, "https://example.test");
     expect(url.pathname).toBe("/recursos");
