@@ -165,6 +165,7 @@ describe("AI source isolation on disposable PostgreSQL", () => {
       expected[i].push(...await makeWiki(moduleId, user.id, label));
       const [resource] = await t.db.insert(t.resourcesTable).values({
         title: label, description: `aislamiento ${label}`, type: "document", centerId,
+        fileUrl: `/objects/uploads/${label}.txt`,
       }).returning();
       const [form] = await t.db.insert(t.documentFormsTable).values({
         title: label, audienceType: "center", audienceIds: [centerId],
@@ -195,6 +196,7 @@ describe("AI source isolation on disposable PostgreSQL", () => {
       expect(indexed.filter(k => k.startsWith("nextcloud:"))).toHaveLength(1);
       const text = await context(user.id);
       expect(text).toContain(i ? "privadobeta" : "privadoalfa");
+      expect(text).toContain(`/objects/uploads/${i ? "privadobeta" : "privadoalfa"}.txt`);
       expect(text).toContain(`remotefolder${101 + i}`);
       expect(text).not.toContain(i ? "privadoalfa" : "privadobeta");
       expect(text).not.toContain(`remotefolder${102 - i}`);

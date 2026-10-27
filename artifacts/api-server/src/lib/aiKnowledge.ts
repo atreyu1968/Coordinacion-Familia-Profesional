@@ -147,13 +147,13 @@ async function collect(user: User) {
   const moduleIds = await userModules(user);
   const add = (item: Candidate) => {
     if (items.length < MAX_FILES) {
-      if (item.read && item.text) {
-        const note = "Algunos materiales solo tienen texto descriptivo indexado; su archivo asociado no se ha extraído. «Indexado» no significa que se haya leído ese archivo.";
-        const notes = coverage[knowledgeSource(item.key)].notes;
-        if (!notes.includes(note)) notes.push(note);
+      const candidate = item.read && item.fileName
+        ? { ...item, version: sha256(`${item.version}|attachment-text-v2`) }
+        : item;
+      if (!candidate.text && candidate.fileName && !SUPPORTED.test(candidate.fileName)) {
+        candidate.omission = "Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar.";
       }
-      if (!item.text && item.fileName && !SUPPORTED.test(item.fileName)) item.omission = "Formato de archivo no compatible. Convierte el original a un formato admitido y vuelve a actualizar.";
-      items.push(item);
+      items.push(candidate);
     } else {
       addCoverageOmission(coverage, knowledgeSource(item.key), "Límite de 10.000 materiales alcanzado; este material no se ha incorporado al índice.");
       warnings.push("Se alcanzó el límite de 10.000 fuentes; la cobertura no es completa.");
@@ -186,9 +186,15 @@ async function collect(user: User) {
       scope.kind === "center" && scope.centerId === r.centerId ||
       scope.kind === "province" && (await db.select({ id: centersTable.id }).from(centersTable).where(and(eq(centersTable.id, r.centerId), eq(centersTable.provinceId, scope.provinceId), sql`${centersTable.families} @> ${JSON.stringify([await getActiveFamily()])}::jsonb`))).length > 0;
     if (!visible) continue;
+    const objectFileName = r.fileUrl?.startsWith("/objects/uploads/")
+      ? r.fileUrl.split(/[?#]/, 1)[0].split("/").pop()
+      : undefined;
     add({ key: key("resource", r.id), title: `Material: ${r.title}`, url: `/recursos?resourceId=${r.id}`,
       version: sha256(`${r.title}|${r.description}|${r.fileUrl}`), text: [r.title, r.description].filter(Boolean).join("\n"),
-      ...(r.fileUrl?.startsWith("/objects/uploads/") ? { fileName: r.title, read: () => objectBytes(r.fileUrl!) } : {}) });
+      ...(objectFileName ? {
+        fileName: /\.[a-z0-9]{2,8}$/i.test(objectFileName) ? objectFileName : r.title,
+        read: () => objectBytes(r.fileUrl!),
+      } : {}) });
   }
   if (user.role === "superadmin") {
     const docs = await db.select().from(gdcanResourcesTable).where(isNull(gdcanResourcesTable.deletedAt));
@@ -341,7 +347,13 @@ async function recordCandidate(userId: number, item: Candidate, retryFailures = 
   const [existing] = await db.select().from(aiKnowledgeEntriesTable).where(and(eq(aiKnowledgeEntriesTable.userId, userId), eq(aiKnowledgeEntriesTable.sourceKey, item.key))).limit(1);
   const text = item.text?.slice(0, MAX_TEXT) ?? "";
   const warning = item.omission ?? (item.text && item.text.length > MAX_TEXT ? "El texto indexado se ha recortado al límite de seguridad." : null);
-  const status = item.omission ? "unsupported" : item.text ? "ready" : "pending";
+  const status = item.omission
+    ? "unsupported"
+    : item.read && item.fileName
+      ? "pending"
+      : item.text
+        ? "ready"
+        : "pending";
   if (!existing) {
     await db.insert(aiKnowledgeEntriesTable).values({ userId, sourceKey: item.key, title: item.title, url: appUrl(item.url),
       version: item.version, text, status, warning });
@@ -438,7 +450,7 @@ export async function processOneAiKnowledgeJob() {
     if (!snapshot || snapshot.expiresAt <= Date.now()) return false;
     if (!item) throw new Error("El material se eliminó, cambió o ya no es accesible.");
     let text = item.text ?? "";
-    if (!text && item.read && item.fileName) {
+    if (item.read && item.fileName) {
       const bytes = await item.read();
       const ext = item.fileName.split(".").pop()?.toLowerCase() ?? "";
       if (!SUPPORTED.test(item.fileName) || !mediaTypes.has(ext) && !/\.(txt|md|markdown|csv|tsv|json|xml|html?|yml|yaml|log|rst|ini|conf|docx|pptx|xlsx|odt|zip)$/i.test(item.fileName)) {
@@ -446,7 +458,8 @@ export async function processOneAiKnowledgeJob() {
           .where(and(eq(aiKnowledgeEntriesTable.id, claimed.row.id), eq(aiKnowledgeEntriesTable.leaseToken, claimed.token)));
         return true;
       }
-      text = await processMaterialBytes(item.fileName, bytes);
+      const extracted = await processMaterialBytes(item.fileName, bytes);
+      text = [text, extracted].filter(Boolean).join("\n\n");
     }
     if (!text.trim()) throw new Error("No se extrajo texto legible; se conserva el original sin enviarlo a la IA.");
     const truncated = text.length > MAX_TEXT;

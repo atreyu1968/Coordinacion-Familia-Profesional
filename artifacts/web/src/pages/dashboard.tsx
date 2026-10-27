@@ -208,7 +208,7 @@ export default function DashboardPage() {
       label: isPeriodFiltered ? "Recursos del periodo" : "Recursos",
       value: summary?.resources,
       icon: FileText,
-      href: dashboardHref("/recursos", { dashboard: "resources" }),
+      href: "/recursos",
     },
     {
       label: isPeriodFiltered ? "Encuestas abiertas del periodo" : "Encuestas abiertas",
@@ -547,7 +547,6 @@ export default function DashboardPage() {
             onSelect={(point) =>
               navigate(
                 dashboardHref("/recursos", {
-                  dashboard: "resources",
                   month: point.label,
                 }),
               )
