@@ -18,6 +18,7 @@ const pools: Database["pool"][] = [];
 let database: Database;
 let first: Checker;
 let second: Checker;
+let expectedLoggedErrors = 0;
 
 async function newInstance() {
   // Each module graph has its own `running` flag AND its own connection pool.
@@ -53,6 +54,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  expectedLoggedErrors = 0;
   // The identity assertion above is required before this destructive cleanup.
   await database.pool.query("DELETE FROM wiki_pages");
   mocks.probe.mockResolvedValue({ kind: "healthy", httpStatus: 200, redirectUrl: null });
@@ -60,7 +62,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   // checkDueWikiLinks catches errors; do not let SQL failures look like success.
-  expect(mocks.error).not.toHaveBeenCalled();
+  expect(mocks.error).toHaveBeenCalledTimes(expectedLoggedErrors);
 });
 
 afterAll(async () => {
@@ -143,6 +145,62 @@ it("skips a locked link across independent instances and persists deadlines acro
   expect(mocks.probe).toHaveBeenCalledTimes(2);
   expect(await readLink(a.id)).toEqual(savedA);
   expect(await readLink(b.id)).toEqual(savedB);
+});
+
+it("rolls back a failed metadata update and lets another instance retry exactly once", async () => {
+  const link = await seedLink("transaction-failure");
+  await database.pool.query(
+    "UPDATE wiki_external_links SET check_status = 'healthy', http_status = 200, checked_at = '2025-01-01T00:00:00Z', missing_count = 0, failure_count = 0 WHERE id = $1",
+    [link.id],
+  );
+  const beforeFailure = await readLink(link.id);
+  mocks.probe.mockResolvedValue({ kind: "absent", httpStatus: 410, redirectUrl: null });
+  expectedLoggedErrors = 1;
+
+  await database.pool.query(`
+    CREATE FUNCTION fail_wiki_checker_metadata_update() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+    BEGIN
+      RAISE EXCEPTION 'intentional wiki checker transaction failure';
+    END;
+    $$;
+    CREATE TRIGGER fail_wiki_checker_metadata_update
+      BEFORE UPDATE ON wiki_external_links
+      FOR EACH ROW EXECUTE FUNCTION fail_wiki_checker_metadata_update();
+  `);
+  try {
+    await first.checkDueWikiLinks();
+    expect(mocks.probe).toHaveBeenCalledExactlyOnceWith(link.url);
+    expect(mocks.error).toHaveBeenCalledTimes(1);
+    // The diagnostic result and row lock are part of the same transaction:
+    // a failed UPDATE must leave every persisted field exactly as it was.
+    expect(await readLink(link.id)).toEqual(beforeFailure);
+  } finally {
+    await database.pool.query(`
+      DROP TRIGGER IF EXISTS fail_wiki_checker_metadata_update ON wiki_external_links;
+      DROP FUNCTION IF EXISTS fail_wiki_checker_metadata_update();
+    `);
+  }
+
+  // This is a separate module graph and pool. It can claim the row only if the
+  // failed transaction rolled back and released its FOR UPDATE lock.
+  await second.checkDueWikiLinks();
+  expect(mocks.probe).toHaveBeenCalledTimes(2);
+  const recovered = await readLink(link.id);
+  expect(recovered).toMatchObject({
+    check_status: "temporary",
+    http_status: 410,
+    missing_count: 1,
+    failure_count: 1,
+  });
+  expect(recovered.checked_at).toBeInstanceOf(Date);
+  expect(recovered.next_check_at.getTime() - recovered.checked_at.getTime()).toBe(6 * 3_600_000);
+
+  // A second pass by either instance must not count the same failure again.
+  await first.checkDueWikiLinks();
+  await second.checkDueWikiLinks();
+  expect(mocks.probe).toHaveBeenCalledTimes(2);
+  expect(await readLink(link.id)).toEqual(recovered);
 });
 
 it.each(["edit", "soft delete", "hard delete"] as const)(
