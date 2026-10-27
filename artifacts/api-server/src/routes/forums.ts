@@ -212,6 +212,17 @@ async function canModerateForumModule(
   );
 }
 
+function callerCanManageForumModerators(
+  caller: User,
+  centerId: number | null,
+  centerProvinceId: number | null,
+): boolean {
+  if (!MANAGER_ROLES.includes(caller.role)) return false;
+  if (caller.role === "superadmin") return true;
+  if (centerId == null) return caller.role === "coordinator";
+  return hasScopeOver(caller, { provinceId: centerProvinceId, centerId });
+}
+
 // ---------------------------------------------------------------------------
 // List modules with their forum thread counts (UI groups them by cycle)
 // ---------------------------------------------------------------------------
@@ -266,6 +277,26 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
     .from(modulesTable)
     .where(and(...filters))
     .orderBy(modulesTable.name);
+  const moduleCenterIds = [
+    ...new Set(
+      modules.flatMap((module) =>
+        module.centerId == null ? [] : [module.centerId],
+      ),
+    ),
+  ];
+  const moduleCenters =
+    moduleCenterIds.length > 0
+      ? await db
+          .select({
+            id: centersTable.id,
+            provinceId: centersTable.provinceId,
+          })
+          .from(centersTable)
+          .where(inArray(centersTable.id, moduleCenterIds))
+      : [];
+  const centerProvinceById = new Map(
+    moduleCenters.map((center) => [center.id, center.provinceId]),
+  );
 
   const counts = await db
     .select({
@@ -294,8 +325,9 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
 
   res.json(
     ListForumModulesResponse.parse(
-      await Promise.all(modules.map(async (m) =>
-        toForumModule({
+      await Promise.all(
+        modules.map(async (m) =>
+          toForumModule({
           id: m.id,
           code: m.code,
           name: m.name,
@@ -308,8 +340,16 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
             m.id,
             m.centerId,
           ),
-        })
-      )),
+          canManageForumModerators: callerCanManageForumModerators(
+            caller,
+            m.centerId,
+            m.centerId == null
+              ? null
+              : centerProvinceById.get(m.centerId) ?? null,
+          ),
+          }),
+        ),
+      ),
     ),
   );
 });

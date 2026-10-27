@@ -8364,7 +8364,15 @@ components:
           type: integer
         canViewModerationHistory:
           type: boolean
-      required: [id, name, threadCount, unreadCount, canViewModerationHistory]
+        canManageForumModerators:
+          type: boolean
+      required:
+        - id
+        - name
+        - threadCount
+        - unreadCount
+        - canViewModerationHistory
+        - canManageForumModerators
     ForumModerationEvent:
       type: object
       properties:

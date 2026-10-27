@@ -18,4 +18,5 @@ export interface ForumModule {
   threadCount: number;
   unreadCount: number;
   canViewModerationHistory: boolean;
+  canManageForumModerators: boolean;
 }

@@ -2158,6 +2158,7 @@ export interface ForumModule {
   threadCount: number;
   unreadCount: number;
   canViewModerationHistory: boolean;
+  canManageForumModerators: boolean;
 }
 
 export type ForumModerationEventAction = typeof ForumModerationEventAction[keyof typeof ForumModerationEventAction];

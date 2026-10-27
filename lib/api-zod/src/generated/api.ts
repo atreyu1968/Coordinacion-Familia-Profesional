@@ -1260,7 +1260,8 @@ export const ListForumModulesResponseItem = zod.object({
   "centerId": zod.number().int().nullish(),
   "threadCount": zod.number().int(),
   "unreadCount": zod.number().int(),
-  "canViewModerationHistory": zod.boolean()
+  "canViewModerationHistory": zod.boolean(),
+  "canManageForumModerators": zod.boolean()
 })
 export const ListForumModulesResponse = zod.array(ListForumModulesResponseItem)
 

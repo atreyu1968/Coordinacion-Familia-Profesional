@@ -18,9 +18,14 @@ import {
   useDeleteForumThread,
   useUpdateForumThread,
   usePinForumThread,
+  useListForumModules,
+  useListModuleMembers,
+  useUpdateModuleMember,
   getListForumThreadsQueryKey,
   getListForumModulesQueryKey,
+  getListModuleMembersQueryKey,
   type ForumThread,
+  type ModuleMember,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
@@ -38,6 +43,23 @@ export default function ForoModuloScreen() {
   const moduleId = Number(params.id);
 
   const [search, setSearch] = useState("");
+  const [showMembers, setShowMembers] = useState(false);
+  const [memberError, setMemberError] = useState<string | null>(null);
+  const { data: forumModules = [] } = useListForumModules();
+  const canManageForumModerators =
+    forumModules.find((module) => module.id === moduleId)
+      ?.canManageForumModerators === true;
+  const {
+    data: members = [],
+    isLoading: membersLoading,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useListModuleMembers(moduleId, {
+    query: {
+      enabled: canManageForumModerators && showMembers,
+      queryKey: getListModuleMembersQueryKey(moduleId),
+    },
+  });
   const { data: threads = [], isLoading } = useListForumThreads({
     moduleId,
     ...(search.trim() ? { q: search.trim() } : {}),
@@ -46,6 +68,7 @@ export default function ForoModuloScreen() {
   const deleteMut = useDeleteForumThread();
   const updateMut = useUpdateForumThread();
   const pinMut = usePinForumThread();
+  const updateMemberMut = useUpdateModuleMember();
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -105,6 +128,30 @@ export default function ForoModuloScreen() {
       await refresh();
     } catch {
       setError("No se pudo cambiar el estado del tema.");
+    }
+  };
+
+  const onToggleForumModerator = async (member: ModuleMember) => {
+    setMemberError(null);
+    try {
+      await updateMemberMut.mutateAsync({
+        moduleId,
+        userId: member.userId,
+        data: { forumModerator: !member.forumModerator },
+      });
+      await Promise.all([
+        qc.invalidateQueries({
+          queryKey: getListModuleMembersQueryKey(moduleId),
+        }),
+        qc.invalidateQueries({
+          queryKey: getListForumModulesQueryKey(),
+        }),
+        qc.invalidateQueries({
+          queryKey: getListForumThreadsQueryKey({ moduleId }),
+        }),
+      ]);
+    } catch {
+      setMemberError("No se pudo actualizar la moderación del foro.");
     }
   };
 
@@ -179,6 +226,124 @@ export default function ForoModuloScreen() {
               style={{ marginTop: 18 }}
             />
           </Card>
+        ) : null}
+
+        {canManageForumModerators ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showMembers }}
+              onPress={() => {
+                setMemberError(null);
+                setShowMembers((value) => !value);
+              }}
+              style={({ pressed }) => [
+                styles.membersToggle,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: colors.radius,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Feather name="users" size={17} color={colors.primary} />
+              <Text style={[styles.membersToggleText, { color: colors.foreground }]}>
+                Gestionar moderadores
+              </Text>
+              <Feather
+                name={showMembers ? "chevron-up" : "chevron-down"}
+                size={17}
+                color={colors.mutedForeground}
+              />
+            </Pressable>
+
+            {showMembers ? (
+              <Card style={styles.memberCard}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+                  Miembros del módulo
+                </Text>
+                {memberError ? (
+                  <Text style={[styles.error, { color: colors.destructive }]}>
+                    {memberError}
+                  </Text>
+                ) : null}
+                {membersLoading ? (
+                  <Text style={[styles.memberHint, { color: colors.mutedForeground }]}>
+                    Cargando miembros…
+                  </Text>
+                ) : membersError ? (
+                  <Pressable onPress={() => void refetchMembers()}>
+                    <Text style={[styles.memberHint, { color: colors.destructive }]}>
+                      No se pudo cargar la lista. Pulsa para reintentar.
+                    </Text>
+                  </Pressable>
+                ) : members.length === 0 ? (
+                  <Text style={[styles.memberHint, { color: colors.mutedForeground }]}>
+                    Aún no hay miembros en este módulo.
+                  </Text>
+                ) : (
+                  members.map((member) => (
+                    <View
+                      key={member.id}
+                      style={[styles.memberRow, { borderTopColor: colors.border }]}
+                    >
+                      <View style={styles.memberIdentity}>
+                        <Text
+                          style={[styles.memberName, { color: colors.foreground }]}
+                          numberOfLines={1}
+                        >
+                          {member.userName ?? `Usuario #${member.userId}`}
+                        </Text>
+                        {member.forumModerator ? (
+                          <Text style={[styles.memberBadge, { color: colors.primary }]}>
+                            Moderador
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          member.forumModerator
+                            ? `Retirar moderador del foro a ${member.userName ?? "usuario"}`
+                            : `Nombrar moderador del foro a ${member.userName ?? "usuario"}`
+                        }
+                        onPress={() => void onToggleForumModerator(member)}
+                        disabled={updateMemberMut.isPending}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                          styles.memberAction,
+                          {
+                            backgroundColor: member.forumModerator
+                              ? colors.secondary
+                              : colors.background,
+                            borderColor: colors.border,
+                            borderRadius: colors.radius,
+                            opacity:
+                              updateMemberMut.isPending ? 0.5 : pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="shield"
+                          size={15}
+                          color={member.forumModerator ? colors.primary : colors.mutedForeground}
+                        />
+                        <Text
+                          style={[
+                            styles.memberActionText,
+                            { color: member.forumModerator ? colors.primary : colors.foreground },
+                          ]}
+                        >
+                          {member.forumModerator ? "Retirar" : "Nombrar"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))
+                )}
+              </Card>
+            ) : null}
+          </>
         ) : null}
 
         {!showForm ? (
@@ -362,6 +527,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  membersToggle: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+  },
+  membersToggleText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  memberCard: { gap: 4 },
+  memberHint: { fontSize: 13, fontFamily: "Inter_400Regular", paddingVertical: 8 },
+  memberRow: {
+    minHeight: 52,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 8,
+  },
+  memberIdentity: { flex: 1, gap: 3 },
+  memberName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  memberBadge: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  memberAction: {
+    minHeight: 36,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+  },
+  memberActionText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   formCard: { gap: 6 },
   cardTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold", marginBottom: 6 },

@@ -553,6 +553,14 @@ describe("forum pinning", () => {
     const centerB = await createCenter(provinceB);
     const moduleId = await createModule({ centerId: centerA });
     const admin = await createUser({ role: "superadmin" });
+    const inScopeManager = await createUser({
+      role: "coordinator",
+      provinceId: provinceA,
+    });
+    const outOfScopeManager = await createUser({
+      role: "coordinator",
+      provinceId: provinceB,
+    });
     const author = await createUser({ role: "teacher", centerId: centerA });
     const moderator = await createUser({ role: "teacher", centerId: centerB });
     const thread = await openThread(author.token, moduleId, "Moderación");
@@ -572,9 +580,15 @@ describe("forum pinning", () => {
       .send({ forumModerator: true })
       .expect(403);
 
+    await request(app)
+      .patch(memberPath)
+      .set(authHeader(outOfScopeManager.token))
+      .send({ forumModerator: true })
+      .expect(403);
+
     const appointed = await request(app)
       .patch(memberPath)
-      .set(authHeader(admin.token))
+      .set(authHeader(inScopeManager.token))
       .send({ forumModerator: true })
       .expect(200);
     expect(appointed.body).toMatchObject({
@@ -584,9 +598,32 @@ describe("forum pinning", () => {
 
     const moduleList = await request(app)
       .get("/api/forum/modules")
+      .set(authHeader(inScopeManager.token))
+      .expect(200);
+    expect(
+      moduleList.body.find((item: { id: number }) => item.id === moduleId)
+        ?.canManageForumModerators,
+    ).toBe(true);
+    await request(app)
+      .get(`/api/modules/${moduleId}/members`)
+      .set(authHeader(inScopeManager.token))
+      .expect(200);
+
+    const moderatorModuleList = await request(app)
+      .get("/api/forum/modules")
       .set(authHeader(moderator.token))
       .expect(200);
-    expect(moduleList.body.some((item: { id: number }) => item.id === moduleId)).toBe(true);
+    expect(
+      moderatorModuleList.body.some((item: { id: number }) => item.id === moduleId),
+    ).toBe(true);
+    expect(
+      moderatorModuleList.body.find((item: { id: number }) => item.id === moduleId)
+        ?.canManageForumModerators,
+    ).toBe(false);
+    await request(app)
+      .get(`/api/modules/${moduleId}/members`)
+      .set(authHeader(outOfScopeManager.token))
+      .expect(403);
 
     const threads = await request(app)
       .get("/api/forum/threads")
@@ -612,7 +649,7 @@ describe("forum pinning", () => {
 
     await request(app)
       .patch(memberPath)
-      .set(authHeader(admin.token))
+      .set(authHeader(inScopeManager.token))
       .send({ forumModerator: false })
       .expect(200);
     const revoked = await request(app)
