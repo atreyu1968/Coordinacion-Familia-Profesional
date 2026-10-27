@@ -23,6 +23,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { Card, ErrorState } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { WikiLinkHealth } from "@/components/WikiLinkHealth";
 import { getAuthToken } from "@/contexts/AuthContext";
 import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { openBrowserLink } from "@/lib/browser-link";
@@ -274,6 +275,7 @@ export default function WikiPageScreen() {
                         >
                           {link.url}
                         </Text>
+                        {page.moduleId === null && page.tags.includes("normativa") && <WikiLinkHealth link={link} />}
                       </View>
                       <Feather
                         name="arrow-up-right"

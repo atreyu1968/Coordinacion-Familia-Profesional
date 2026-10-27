@@ -474,6 +474,9 @@ for (const column of expected.columns) {
        (column.table === "coordinator_mail_cases" && column.column === "group_id") ||
        (column.table === "lms_courses" && column.column === "cover_object_path") ||
        (column.table === "notifications" && column.column === "target") ||
+       (column.table === "wiki_external_links" &&
+         ["check_status", "checked_at", "next_check_at", "http_status",
+          "redirect_url", "missing_count", "failure_count"].includes(column.column)) ||
        (column.table === "invitations" &&
          ["max_uses", "used_count"].includes(column.column)) ||
         (column.table === "teacher_year_confirmations" &&

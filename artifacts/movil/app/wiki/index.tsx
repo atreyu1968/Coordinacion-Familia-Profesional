@@ -18,6 +18,7 @@ import {
 import { AppHeader } from "@/components/AppHeader";
 import { Card, EmptyState, ErrorState } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { WikiLinkReviews } from "@/components/WikiLinkHealth";
 
 function formatUpdatedAt(value: string) {
   const date = new Date(value);
@@ -142,6 +143,8 @@ export default function WikiIndexScreen() {
             </Pressable>
           ))}
         </View>
+
+        {normativaOnly && <WikiLinkReviews />}
 
         {isLoading && !data ? (
           <WikiListSkeleton />

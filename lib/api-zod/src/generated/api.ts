@@ -5559,9 +5559,34 @@ export const CreateWikiPageResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "url": zod.string().url(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
 }))
 }))
+
+
+/**
+ * @summary Enlaces de Normativa que necesitan revisión por responsables de Documentación
+ */
+export const ListWikiLinkReviewsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "url": zod.string().url(),
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
+}).and(zod.object({
+  "pageId": zod.number().int(),
+  "pageTitle": zod.string()
+}))
+export const ListWikiLinkReviewsResponse = zod.array(ListWikiLinkReviewsResponseItem)
 
 
 /**
@@ -5624,7 +5649,12 @@ export const GetWikiPageResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "url": zod.string().url(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
 }))
 }))
 
@@ -5679,7 +5709,12 @@ export const UpdateWikiPageResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "url": zod.string().url(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
 }))
 }))
 
@@ -5745,7 +5780,12 @@ export const AddWikiAttachmentResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "url": zod.string().url(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
 }))
 }))
 
@@ -5795,7 +5835,12 @@ export const AddWikiExternalLinkResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "url": zod.string().url(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "checkStatus": zod.enum(['unchecked', 'healthy', 'temporary', 'blocked', 'redirected', 'missing']),
+  "checkedAt": zod.coerce.date().nullable(),
+  "nextCheckAt": zod.coerce.date(),
+  "httpStatus": zod.number().int().nullable(),
+  "redirectUrl": zod.string().nullable()
 }))
 }))
 

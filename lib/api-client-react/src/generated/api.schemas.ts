@@ -3249,12 +3249,37 @@ export interface WikiAttachment {
   createdAt: string;
 }
 
+export type WikiExternalLinkCheckStatus = typeof WikiExternalLinkCheckStatus[keyof typeof WikiExternalLinkCheckStatus];
+
+
+export const WikiExternalLinkCheckStatus = {
+  unchecked: 'unchecked',
+  healthy: 'healthy',
+  temporary: 'temporary',
+  blocked: 'blocked',
+  redirected: 'redirected',
+  missing: 'missing',
+} as const;
+
 export interface WikiExternalLink {
   id: number;
   title: string;
   url: string;
   createdAt: string;
+  checkStatus: WikiExternalLinkCheckStatus;
+  /** @nullable */
+  checkedAt: string | null;
+  nextCheckAt: string;
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  redirectUrl: string | null;
 }
+
+export type WikiLinkReview = WikiExternalLink & {
+  pageId: number;
+  pageTitle: string;
+};
 
 export interface WikiPageSummary {
   id: number;

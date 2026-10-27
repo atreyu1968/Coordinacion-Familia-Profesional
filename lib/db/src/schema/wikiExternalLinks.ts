@@ -24,6 +24,13 @@ export const wikiExternalLinksTable = pgTable(
       .notNull()
       .defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    checkStatus: text("check_status").notNull().default("unchecked"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull().defaultNow(),
+    httpStatus: integer("http_status"),
+    redirectUrl: text("redirect_url"),
+    missingCount: integer("missing_count").notNull().default(0),
+    failureCount: integer("failure_count").notNull().default(0),
   },
   (table) => ({
     pageIndex: index("wiki_external_links_page_id_idx").on(table.pageId),

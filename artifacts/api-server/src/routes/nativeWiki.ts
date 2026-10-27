@@ -15,6 +15,7 @@ import {
   GetWikiPageResponse,
   ListWikiPagesQueryParams,
   ListWikiPagesResponse,
+  ListWikiLinkReviewsResponse,
   RequestWikiUploadUrlBody,
   RequestWikiUploadUrlResponse,
   UpdateModuleWikiEditorsBody,
@@ -289,6 +290,11 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
       title: wikiExternalLinksTable.title,
       url: wikiExternalLinksTable.url,
       createdAt: wikiExternalLinksTable.createdAt,
+      checkStatus: wikiExternalLinksTable.checkStatus,
+      checkedAt: wikiExternalLinksTable.checkedAt,
+      nextCheckAt: wikiExternalLinksTable.nextCheckAt,
+      httpStatus: wikiExternalLinksTable.httpStatus,
+      redirectUrl: wikiExternalLinksTable.redirectUrl,
     })
     .from(wikiExternalLinksTable)
     .where(
@@ -313,6 +319,27 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
 // All search and read routes require authentication. The full-text query covers
 // page text, exact tags, attachment names, external-link names/URLs, and text
 // extracted from supported ZIP/Office files by the asynchronous indexer.
+router.get("/wiki/link-reviews", requireAuth, async (req, res): Promise<void> => {
+  if (!(await getSectionPermissions(req.user!, null)).canEdit) {
+    res.status(403).json({ message: "No tienes permiso para gestionar Documentación" });
+    return;
+  }
+  const links = await db.select({
+    id: wikiExternalLinksTable.id, title: wikiExternalLinksTable.title,
+    url: wikiExternalLinksTable.url, createdAt: wikiExternalLinksTable.createdAt,
+    checkStatus: wikiExternalLinksTable.checkStatus, checkedAt: wikiExternalLinksTable.checkedAt,
+    nextCheckAt: wikiExternalLinksTable.nextCheckAt, httpStatus: wikiExternalLinksTable.httpStatus,
+    redirectUrl: wikiExternalLinksTable.redirectUrl,
+    pageId: wikiPagesTable.id, pageTitle: wikiPagesTable.title,
+  }).from(wikiExternalLinksTable)
+    .innerJoin(wikiPagesTable, eq(wikiPagesTable.id, wikiExternalLinksTable.pageId))
+    .where(and(isNull(wikiExternalLinksTable.deletedAt), isNull(wikiPagesTable.deletedAt),
+      isNull(wikiPagesTable.moduleId), sql`${wikiPagesTable.tags} @> ARRAY['normativa']::text[]`,
+      sql`${wikiExternalLinksTable.checkStatus} NOT IN ('healthy', 'unchecked')`))
+    .orderBy(asc(wikiExternalLinksTable.checkStatus), asc(wikiExternalLinksTable.checkedAt));
+  res.json(ListWikiLinkReviewsResponse.parse(links));
+});
+
 router.get(
   "/wiki/pages",
   requireAuth,

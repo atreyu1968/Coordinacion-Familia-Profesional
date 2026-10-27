@@ -294,6 +294,7 @@ import type {
   VerifyAttendanceEmailBody,
   WikiAttachmentInput,
   WikiExternalLinkInput,
+  WikiLinkReview,
   WikiPage,
   WikiPageInput,
   WikiPageList,
@@ -20211,6 +20212,107 @@ export const useCreateWikiPage = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreateWikiPageMutationOptions(options), queryClient);
     }
+
+export const getListWikiLinkReviewsUrl = () => {
+
+
+
+
+  return `/api/wiki/link-reviews`
+}
+
+/**
+ * @summary Enlaces de Normativa que necesitan revisión por responsables de Documentación
+ */
+export const listWikiLinkReviews = async ( options?: Parameters<typeof customFetch>[1]): Promise<WikiLinkReview[]> => {
+
+  return customFetch<WikiLinkReview[]>(getListWikiLinkReviewsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWikiLinkReviewsQueryKey = () => {
+    return [
+    `/api/wiki/link-reviews`
+    ] as const;
+    }
+
+
+export const getListWikiLinkReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listWikiLinkReviews>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWikiLinkReviewsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWikiLinkReviews>>> = ({ signal }) => listWikiLinkReviews({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListWikiLinkReviewsQueryResult = NonNullable<Awaited<ReturnType<typeof listWikiLinkReviews>>>
+export type ListWikiLinkReviewsQueryError = ErrorType<void>
+
+
+export function useListWikiLinkReviews<TData = Awaited<ReturnType<typeof listWikiLinkReviews>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listWikiLinkReviews>>,
+          TError,
+          Awaited<ReturnType<typeof listWikiLinkReviews>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListWikiLinkReviews<TData = Awaited<ReturnType<typeof listWikiLinkReviews>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listWikiLinkReviews>>,
+          TError,
+          Awaited<ReturnType<typeof listWikiLinkReviews>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListWikiLinkReviews<TData = Awaited<ReturnType<typeof listWikiLinkReviews>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Enlaces de Normativa que necesitan revisión por responsables de Documentación
+ */
+
+export function useListWikiLinkReviews<TData = Awaited<ReturnType<typeof listWikiLinkReviews>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listWikiLinkReviews>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListWikiLinkReviewsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getRequestWikiUploadUrlUrl = () => {
 

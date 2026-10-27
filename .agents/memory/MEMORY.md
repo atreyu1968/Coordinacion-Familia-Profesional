@@ -79,3 +79,4 @@
 - [Tareas pendientes de coordinación](coordinator-pending-tasks.md) — tareas privadas por coordinador; la IA propone, el coordinador confirma y añade manualmente.
 - [Borrado de docentes de prueba](test-teacher-cleanup.md) — eliminación definitiva también en producción; conservar la decisión administrativa de no recrearlos.
 - [LMS media retention](lms-media-retention.md) — delayed, reference-aware cleanup avoids breaking concurrent course ZIP exports.
+- [Normativa link monitoring](normativa-link-monitoring.md) — los avisos son orientativos; no sustituir fuentes ni regenerar contenido editado para reparar un fallo de acceso.

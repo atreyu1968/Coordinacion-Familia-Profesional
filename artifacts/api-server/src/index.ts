@@ -10,6 +10,7 @@ import { seedIntegrationSettingsFromEnv } from "./lib/settings";
 import { seedAcademicYears } from "./routes/academicYears";
 import { startConfirmationScheduler } from "./lib/scheduler";
 import { startWikiIndexing } from "./lib/wikiIndexing";
+import { startWikiLinkChecker } from "./lib/wikiLinkChecker";
 
 const rawPort = process.env["PORT"];
 
@@ -49,6 +50,7 @@ async function start(): Promise<void> {
   }
   startConfirmationScheduler();
   startWikiIndexing();
+  startWikiLinkChecker();
   startMeetingMinutesWorker();
   startCoordinatorMailWorker();
   startAiKnowledgeWorker();

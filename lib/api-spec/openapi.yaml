@@ -4815,6 +4815,26 @@ paths:
           description: Invalid page
         "403":
           description: Not allowed to create pages in this section
+  /wiki/link-reviews:
+    get:
+      operationId: listWikiLinkReviews
+      tags: [wiki]
+      summary: Enlaces de Normativa que necesitan revisión por responsables de Documentación
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Diagnósticos automáticos, sin modificar enlaces ni contenidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WikiLinkReview"
+        "401":
+          description: Authentication required
+        "403":
+          description: Documentation management permission required
   /wiki/uploads/request-url:
     post:
       operationId: requestWikiUploadUrl
@@ -9552,7 +9572,30 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, title, url, createdAt]
+        checkStatus:
+          type: string
+          enum: [unchecked, healthy, temporary, blocked, redirected, missing]
+        checkedAt:
+          type: [string, "null"]
+          format: date-time
+        nextCheckAt:
+          type: string
+          format: date-time
+        httpStatus:
+          type: [integer, "null"]
+        redirectUrl:
+          type: [string, "null"]
+      required: [id, title, url, createdAt, checkStatus, checkedAt, nextCheckAt, httpStatus, redirectUrl]
+    WikiLinkReview:
+      allOf:
+        - $ref: "#/components/schemas/WikiExternalLink"
+        - type: object
+          properties:
+            pageId:
+              type: integer
+            pageTitle:
+              type: string
+          required: [pageId, pageTitle]
     WikiPageSummary:
       type: object
       properties:

@@ -5,10 +5,19 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { WikiExternalLinkCheckStatus } from './wikiExternalLinkCheckStatus';
 
 export interface WikiExternalLink {
   id: number;
   title: string;
   url: string;
   createdAt: Date;
+  checkStatus: WikiExternalLinkCheckStatus;
+  /** @nullable */
+  checkedAt: Date | null;
+  nextCheckAt: Date;
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  redirectUrl: string | null;
 }

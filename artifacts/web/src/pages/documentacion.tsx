@@ -1,8 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
+import { WikiLinkHealth, WikiLinkReviews } from "@/components/wiki-link-health";
 import {
   getGetWikiPageQueryKey,
   getListWikiPagesQueryKey,
+  getListWikiLinkReviewsQueryKey,
   useAddWikiAttachment,
   useAddWikiExternalLink,
   useCreateWikiPage,
@@ -455,6 +457,7 @@ export default function DocumentacionPage() {
 
   const invalidateWiki = async (pageId?: number) => {
     await queryClient.invalidateQueries({ queryKey: getListWikiPagesQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getListWikiLinkReviewsQueryKey() });
     if (pageId) {
       await queryClient.invalidateQueries({
         queryKey: getGetWikiPageQueryKey(pageId),
@@ -665,6 +668,12 @@ export default function DocumentacionPage() {
           Normativa
         </Button>
       </nav>
+
+      {(user?.role === "superadmin" || user?.role === "coordinator") && (
+        <WikiLinkReviews onSelect={(id) => {
+          setScope("general"); setTagFilter("normativa"); setSearch(""); setKind("all"); setSelectedPageId(id);
+        }} />
+      )}
 
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
@@ -972,6 +981,7 @@ export default function DocumentacionPage() {
                               <div className="truncate text-xs text-muted-foreground">
                                 {externalLinkHost(externalLink.url)}
                               </div>
+                              {page.moduleId === null && page.tags.includes("normativa") && <WikiLinkHealth link={externalLink} />}
                             </div>
                             {page.canDelete && (
                               <Button
