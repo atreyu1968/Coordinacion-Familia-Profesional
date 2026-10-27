@@ -352,3 +352,13 @@ export async function emitToUser(
     logger.error({ err, userId }, "Could not authorize realtime delivery");
   }
 }
+
+export async function emitToUsers(
+  userIds: number[],
+  event: string,
+  payload: unknown,
+): Promise<void> {
+  await Promise.all(
+    [...new Set(userIds)].map((userId) => emitToUser(userId, event, payload)),
+  );
+}

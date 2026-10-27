@@ -41,6 +41,7 @@ import {
 import { toSurvey } from "../lib/mappers";
 import { filterVisibleSurveys } from "../lib/survey-visibility";
 import { notifyUsers } from "../lib/notify";
+import { emitToUsers } from "../lib/realtime";
 
 const router: IRouter = Router();
 
@@ -197,10 +198,16 @@ router.post(
       return survey!;
     });
 
-    const recipientIds = (await resolveAudienceUserIds(
+    const audienceUserIds = await resolveAudienceUserIds(
       audience.audienceType,
       audience.audienceIds,
-    )).filter((id) => id !== caller.id);
+    );
+    await emitToUsers(
+      [...audienceUserIds, caller.id],
+      "dashboard:activity",
+      { source: "survey" },
+    );
+    const recipientIds = audienceUserIds.filter((id) => id !== caller.id);
     if (recipientIds.length > 0) {
       await notifyUsers(recipientIds, {
         title: `Nueva encuesta: ${created.title}`,
@@ -307,6 +314,21 @@ router.delete(
       .update(surveysTable)
       .set({ deletedAt: new Date() })
       .where(eq(surveysTable.id, survey.id));
+
+    const audienceUserIds =
+      survey.status === "draft"
+        ? []
+        : await resolveAudienceUserIds(
+            survey.audienceType,
+            survey.audienceIds,
+          );
+    await emitToUsers(
+      [...audienceUserIds, survey.createdById, caller.id].filter(
+        (id): id is number => id != null,
+      ),
+      "dashboard:activity",
+      { source: "survey" },
+    );
 
     res.status(204).end();
   },

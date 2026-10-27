@@ -7,6 +7,7 @@ import {
 import {
   invalidateResourceDashboardQueries,
   refreshDashboardAfterMutation,
+  subscribeToDashboardActivity,
 } from "./resource-dashboard-cache";
 
 describe("dashboard refresh after resource changes", () => {
@@ -109,6 +110,51 @@ describe("dashboard refresh after resource changes", () => {
 
     unsubscribeSummary();
     unsubscribeStatistics();
+    queryClient.clear();
+  });
+
+  it("actualiza el panel al recibir cambios y al reconectar el socket", async () => {
+    const queryClient = new QueryClient();
+    const summaryKey = getGetDashboardSummaryQueryKey({
+      provinceId: 2,
+      startDate: "2026-09-01",
+      endDate: "2027-08-31",
+    });
+    const statisticsKey = getGetDashboardStatisticsQueryKey({
+      provinceId: 2,
+      startDate: "2026-09-01",
+      endDate: "2027-08-31",
+    });
+    queryClient.setQueryData(summaryKey, { activeSurveys: 2 });
+    queryClient.setQueryData(statisticsKey, { surveysByStatus: [] });
+
+    const listeners = new Map<string, () => void>();
+    const socket = {
+      on: vi.fn((event: string, listener: () => void) => {
+        listeners.set(event, listener);
+        return socket;
+      }),
+      off: vi.fn((event: string) => {
+        listeners.delete(event);
+        return socket;
+      }),
+    };
+    const unsubscribe = subscribeToDashboardActivity(
+      socket as never,
+      queryClient,
+    );
+
+    listeners.get("dashboard:activity")?.();
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(statisticsKey)?.isInvalidated).toBe(true);
+
+    await queryClient.resetQueries();
+    listeners.get("connect")?.();
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(statisticsKey)?.isInvalidated).toBe(true);
+
+    unsubscribe();
+    expect(listeners.size).toBe(0);
     queryClient.clear();
   });
 });

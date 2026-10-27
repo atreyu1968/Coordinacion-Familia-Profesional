@@ -74,6 +74,7 @@ import { escapeEmailHtml } from "../lib/email-layout";
 import { generateQrDataUrl, generateCertificatePdfBase64 } from "../lib/documents";
 import { getSettings, professionalFamilyOf } from "../lib/settings";
 import { notifyUsers, resolveProvinceAudience } from "../lib/notify";
+import { emitToUsers } from "../lib/realtime";
 import { callerCanSeeMeeting } from "./meetings";
 
 const router: IRouter = Router();
@@ -247,6 +248,11 @@ router.post(
       event!.provinceId,
       caller.id,
     );
+    await emitToUsers(
+      await resolveProvinceAudience(event!.provinceId),
+      "dashboard:activity",
+      { source: "event" },
+    );
     if (recipientIds.length > 0) {
       await notifyUsers(recipientIds, {
         title: `Nuevo evento: ${event!.name}`,
@@ -381,21 +387,29 @@ router.patch(
       });
     }
 
-    await notifyUsers(await resolveProvinceAudience(event!.provinceId, caller.id), {
+    const currentAudience = await resolveProvinceAudience(event!.provinceId);
+    await notifyUsers(currentAudience.filter((id) => id !== caller.id), {
       title: `Evento actualizado: ${event!.name}`,
       body: "Consulta los cambios de fecha, lugar o información del evento.",
       type: "event", data: { eventId: event!.id },
     });
+    const affectedAudience = new Set(currentAudience);
     if (loaded.event.provinceId !== event!.provinceId) {
-      const currentAudience = new Set(await resolveProvinceAudience(event!.provinceId, caller.id));
-      const previousAudience = (await resolveProvinceAudience(loaded.event.provinceId, caller.id))
-        .filter((id) => !currentAudience.has(id));
-      await notifyUsers(previousAudience, {
-        title: "Un evento ha cambiado de ámbito",
-        body: "Revisa tu calendario para consultar los eventos disponibles.",
-        type: "event",
-      });
+      const previousAudience = (await resolveProvinceAudience(loaded.event.provinceId))
+        .filter((id) => !affectedAudience.has(id));
+      previousAudience.forEach((id) => affectedAudience.add(id));
+      await notifyUsers(
+        previousAudience.filter((id) => id !== caller.id),
+        {
+          title: "Un evento ha cambiado de ámbito",
+          body: "Revisa tu calendario para consultar los eventos disponibles.",
+          type: "event",
+        },
+      );
     }
+    await emitToUsers([...affectedAudience], "dashboard:activity", {
+      source: "event",
+    });
     res.json(toEvent(event!));
   },
 );
@@ -436,6 +450,11 @@ router.delete(
     await db
       .delete(calendarEntriesTable)
       .where(eq(calendarEntriesTable.eventId, loaded.event.id));
+    await emitToUsers(
+      await resolveProvinceAudience(loaded.event.provinceId),
+      "dashboard:activity",
+      { source: "event" },
+    );
     await notifyUsers(await resolveProvinceAudience(loaded.event.provinceId, caller.id), {
       title: `Evento cancelado: ${loaded.event.name}`,
       body: "El evento ya no está disponible en el calendario.",

@@ -23,8 +23,13 @@ import {
 } from "../middlewares/auth";
 import { toCompanyAlert, toGdcanResource } from "../lib/mappers";
 import { sendEmail, buildCompanyAlertEmail } from "../lib/email";
-import { notifyUsers, resolveRoleAudienceInProvince } from "../lib/notify";
+import {
+  notifyUsers,
+  resolveProvinceAudience,
+  resolveRoleAudienceInProvince,
+} from "../lib/notify";
 import { logger } from "../lib/logger";
+import { emitToUsers } from "../lib/realtime";
 
 const router: IRouter = Router();
 
@@ -177,6 +182,11 @@ router.post(
       type: "company_alert",
       data: { companyAlertId: created.id },
     });
+    await emitToUsers(
+      await resolveProvinceAudience(provinceId),
+      "dashboard:activity",
+      { source: "company_alert" },
+    );
 
     res.status(201).json({
       alert: toCompanyAlert({ ...created, createdByName: caller.name }),
@@ -227,6 +237,11 @@ router.delete(
       .update(companyAlertsTable)
       .set({ deletedAt: new Date() })
       .where(eq(companyAlertsTable.id, params.data.id));
+    await emitToUsers(
+      await resolveProvinceAudience(alert.provinceId),
+      "dashboard:activity",
+      { source: "company_alert" },
+    );
     res.status(204).end();
   },
 );

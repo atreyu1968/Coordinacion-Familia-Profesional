@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetDashboardSummary,
   useGetDashboardStatistics,
@@ -69,6 +70,8 @@ import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { useAcademicYears } from "@/components/year-selector";
+import { connectSocket } from "@/lib/socket";
+import { subscribeToDashboardActivity } from "@/lib/resource-dashboard-cache";
 
 const GLOBAL = "global";
 const ALL_PERIODS = "all";
@@ -87,6 +90,7 @@ type Point = { label: string; value: number };
 export default function DashboardPage() {
   const [, navigate] = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
@@ -115,6 +119,12 @@ export default function DashboardPage() {
     years.map((year) => year.name),
     activeYear,
   );
+
+  useEffect(() => {
+    const token = localStorage.getItem("coordina_adg_token");
+    if (!token) return;
+    return subscribeToDashboardActivity(connectSocket(token), queryClient);
+  }, [queryClient]);
   const selectedYear =
     periodSelection.startsWith("year:")
       ? periodSelection.slice("year:".length)
