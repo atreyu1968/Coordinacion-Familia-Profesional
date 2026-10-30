@@ -271,7 +271,8 @@ describe("managed teacher profile integrity", () => {
     const all = await management(head.token);
     expect(all.body.users.find((u: { id: number }) => u.id === head.user.id).teachingProfile).toBeNull();
     expect(all.body.users.find((u: { id: number }) => u.id === complete.user.id).teachingProfile.complete).toBe(true);
-    expect(all.body.users.map((u: { id: number }) => u.id)).not.toContain(other.user.id);
+    expect(all.body.users.map((u: { id: number }) => u.id)).toContain(other.user.id);
+    expect(all.body.users.find((u: { id: number }) => u.id === other.user.id).teachingProfile).toBeNull();
     const provinceResult = await management(coordinator.token, { teachingProfile: "incomplete" });
     expect(provinceResult.body.total).toBe(3);
     expect(provinceResult.body.incompleteTeacherProfiles).toBe(3);
