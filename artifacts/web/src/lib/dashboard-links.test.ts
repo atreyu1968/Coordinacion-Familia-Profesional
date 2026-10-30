@@ -43,9 +43,10 @@ describe("Dashboard drilldown consistency", () => {
   it("uses that canonical route for the resource card", () => {
     const dashboardSource = readFileSync("src/pages/dashboard.tsx", "utf8");
     const resourceCard = dashboardSource.match(
-      /label: isPeriodFiltered \? "Recursos del periodo" : "Recursos"[\s\S]*?description: isPeriodFiltered\s*\? "Recuento del periodo; abre el repositorio completo"\s*: "Abrir repositorio completo"[\s\S]*?href:\s*([^,\n]+)/,
+      /label: isPeriodFiltered \? "Recursos del periodo" : "Recursos"[\s\S]*?href:\s*([^,\n]+)/,
     );
     expect(resourceCard?.[1].trim()).toBe("RESOURCE_CARD_HREF");
+    expect(dashboardSource).toContain("Total de la familia; abre los recursos accesibles para ti");
     expect(dashboardSource).toContain("{c.description ?? \"Abrir registros\"}");
   });
 
@@ -131,7 +132,7 @@ describe("Dashboard drilldown consistency", () => {
     expect(users).toMatch(/if\s*\(status\s*!==\s*"all"\)\s*list\s*=\s*list\.filter/);
     expect(users).toMatch(/useListManagedUsers\(managedParams/);
     expect(users).toMatch(/const managedParams:\s*ListManagedUsersParams\s*=\s*\{\s*status,/);
-    expect(users).toMatch(/if\s*\(dashboardOnly\s*&&\s*!isTeacher\)\s*\{/);
+    expect(users).toMatch(/if\s*\(dashboardOnly\s*&&\s*!isFamilyDirectory\)\s*\{/);
     expect(users).toContain("userDirectoryCenterParams(user?.role, dashboardOnly)");
     expect(users).toMatch(/u\.teachingCenterId\s*===\s*centerId/);
 
@@ -193,7 +194,8 @@ describe("Dashboard drilldown consistency", () => {
     expect(dashboardApi).toMatch(/isNull\(usersTable\.deletedAt\)[\s\S]*?eq\(usersTable\.status,\s*"active"\)/);
     expect(dashboardApi).toMatch(/surveysTable\.status,\s*"open"/);
     expect(dashboardApi).toMatch(/filterVisibleSurveys\(req\.user!,/);
-    expect(dashboardApi).toMatch(/activityProvinceFilter\(eventsTable\.provinceId,\s*scope\)/);
-    expect(dashboardApi).toMatch(/activityProvinceFilter\(companyAlertsTable\.provinceId,\s*scope\)/);
+    expect(dashboardApi).toMatch(/resolvePopulationScope\(req\.user!,\s*query\.data\.provinceId\)/);
+    expect(dashboardApi).toMatch(/activityProvinceFilter\(eventsTable\.provinceId,\s*activityScope\)/);
+    expect(dashboardApi).toMatch(/activityProvinceFilter\(companyAlertsTable\.provinceId,\s*activityScope\)/);
   });
 });

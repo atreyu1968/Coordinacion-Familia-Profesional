@@ -59,7 +59,7 @@ async function moduleCenterIds(moduleId: number): Promise<number[]> {
 // its group chat (and can therefore see and moderate it):
 //   - superadmin: every module
 //   - coordinator: modules taught in their province
-//   - department_head: modules taught in their center
+// Department heads join through their teaching assignments, not management scope.
 // Scope is keyed off the module's teaching centers (see moduleCenterIds), and
 // recomputed on every sync so role/scope changes are reflected without orphans.
 async function scopedManagerIds(centerIds: number[]): Promise<number[]> {
@@ -85,12 +85,6 @@ async function scopedManagerIds(centerIds: number[]): Promise<number[]> {
         )!,
       );
     }
-    scopeConds.push(
-      and(
-        eq(usersTable.role, "department_head"),
-        inArray(usersTable.centerId, centerIds),
-      )!,
-    );
   }
 
   const rows = await db

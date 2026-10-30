@@ -47,7 +47,10 @@ router.get("/centers", optionalAuth, async (req, res): Promise<void> => {
       res.status(401).json({ message: "Autenticación necesaria para consultar el ámbito del panel" });
       return;
     }
-    const scope = resolveReadScope(req.user);
+    // Teaching roles' dashboard population cards cover the entire active family.
+    const scope = (req.user.role === "teacher" || req.user.role === "department_head")
+      ? { kind: "global" as const }
+      : resolveReadScope(req.user);
     if (scope.kind === "province") {
       filters.push(eq(centersTable.provinceId, scope.provinceId));
     } else if (scope.kind === "center") {

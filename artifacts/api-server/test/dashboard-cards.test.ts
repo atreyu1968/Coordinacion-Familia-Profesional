@@ -71,7 +71,7 @@ it("matches every card to its accessible records for administrators, coordinator
     }).returning({ id: surveysTable.id });
     ids.surveys.push(row!.id);
   }
-  for (const actor of [admin, coordinator, head]) {
+  for (const actor of [admin, coordinator]) {
     const headers = authHeader(actor.token);
     const summary = await request(app).get("/api/dashboard/summary").query(period).set(headers);
     expect(summary.status).toBe(200);

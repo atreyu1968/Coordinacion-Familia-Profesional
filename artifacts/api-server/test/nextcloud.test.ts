@@ -253,7 +253,7 @@ describe("decideModuleAccess", () => {
     ).toBe(true);
   });
 
-  it("department_head accesses same-center or assigned modules", () => {
+  it("department_head accesses only assigned modules, even within their own center", () => {
     expect(
       decideModuleAccess({
         ...base,
@@ -261,7 +261,7 @@ describe("decideModuleAccess", () => {
         userCenterId: 4,
         moduleCenterId: 4,
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       decideModuleAccess({
         ...base,

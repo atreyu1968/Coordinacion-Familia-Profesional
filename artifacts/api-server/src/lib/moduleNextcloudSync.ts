@@ -39,21 +39,6 @@ export async function getModuleNextcloudMembers(
     .where(and(...assignmentFilters));
   for (const assignment of assignments) memberIds.add(assignment.teacherId);
 
-  if (module.centerId != null) {
-    const heads = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.role, "department_head"),
-          eq(usersTable.centerId, module.centerId),
-          eq(usersTable.status, "active"),
-          isNull(usersTable.deletedAt),
-        ),
-      );
-    for (const head of heads) memberIds.add(head.id);
-  }
-
   if (provinceId != null) {
     const coordinators = await db
       .select({ id: usersTable.id })

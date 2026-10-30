@@ -19,7 +19,7 @@ family?: string;
 nature?: string;
 centerType?: string;
 /**
- * Restrict the directory to the authenticated caller's dashboard read scope.
+ * Match dashboard population scope. Teachers and department heads see all active-family centers; coordinators retain their administrative scope.
  */
 dashboardOnly?: boolean;
 };

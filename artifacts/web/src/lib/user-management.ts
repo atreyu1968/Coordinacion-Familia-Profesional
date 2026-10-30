@@ -30,12 +30,12 @@ export function isManagerRole(role: string | undefined | null): boolean {
   return MANAGER_ROLES.includes(role ?? "");
 }
 
-/** The teacher directory is family-wide even when entered from a scoped dashboard. */
+/** Teaching roles use the family directory; management scope is applied separately. */
 export function userDirectoryCenterParams(
   role: string | undefined | null,
   dashboardOnly: boolean,
 ): ListCentersParams {
-  return dashboardOnly && role !== "teacher" ? { dashboardOnly: true } : {};
+  return dashboardOnly && role !== "teacher" && role !== "department_head" ? { dashboardOnly: true } : {};
 }
 
 /** Roles the caller may assign: superadmin all; others strictly below own rank. */

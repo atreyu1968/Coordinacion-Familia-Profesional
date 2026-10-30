@@ -113,8 +113,11 @@ export default function UsuariosPage() {
   const { user } = useAuth();
   const { appName } = useBranding();
   const qc = useQueryClient();
-  const isManager = isManagerRole(user?.role);
-  const isTeacher = user?.role === "teacher";
+  const [headManagement, setHeadManagement] = useState(false);
+  const isManager = isManagerRole(user?.role) &&
+    (user?.role !== "department_head" || headManagement);
+  const isFamilyDirectory = user?.role === "teacher" ||
+    (user?.role === "department_head" && !headManagement);
   const isSuperadmin = user?.role === "superadmin";
   const [invalidateSessionsOpen, setInvalidateSessionsOpen] = useState(false);
   const invalidateSessions = useInvalidateAdminSessions({
@@ -178,7 +181,7 @@ export default function UsuariosPage() {
   );
   const filterOptionsQ = useGetFamilyUserFilterOptions({
     query: {
-      enabled: isManager || isTeacher,
+      enabled: isManager || isFamilyDirectory,
       queryKey: getGetFamilyUserFilterOptionsQueryKey(),
       staleTime: 5 * 60_000,
       refetchOnWindowFocus: true,
@@ -193,7 +196,7 @@ export default function UsuariosPage() {
   if (moduleId != null) familyDirectoryParams.moduleId = moduleId;
   const familyDirectoryQ = useListFamilyUserDirectory(familyDirectoryParams, {
     query: {
-      enabled: isTeacher,
+      enabled: isFamilyDirectory,
       queryKey: getListFamilyUserDirectoryQueryKey(familyDirectoryParams),
       staleTime: 0,
       refetchOnMount: "always",
@@ -253,19 +256,19 @@ export default function UsuariosPage() {
   if (role) readParams.role = role;
   if (search) readParams.search = search;
   const readQ = useListUsers(readParams, {
-    query: { enabled: !isManager && !isTeacher, queryKey: getListUsersQueryKey(readParams) },
+    query: { enabled: !isManager && !isFamilyDirectory, queryKey: getListUsersQueryKey(readParams) },
   });
 
-  const activeQ = isManager ? managedQ : isTeacher ? familyDirectoryQ : readQ;
+  const activeQ = isManager ? managedQ : isFamilyDirectory ? familyDirectoryQ : readQ;
   const { rows, total } = useMemo(() => {
     if (isManager) {
       return { rows: managedQ.data?.users ?? [], total: managedQ.data?.total ?? 0 };
     }
-    let list = (isTeacher ? familyDirectoryQ.data ?? [] : readQ.data ?? [])
+    let list = (isFamilyDirectory ? familyDirectoryQ.data ?? [] : readQ.data ?? [])
       .map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
-    if (isTeacher && role) list = list.filter((u) => u.role === role);
+    if (isFamilyDirectory && role) list = list.filter((u) => u.role === role);
     if (status !== "all") list = list.filter((u) => u.status === status);
-    if (dashboardOnly && !isTeacher) {
+    if (dashboardOnly && !isFamilyDirectory) {
       const activeFamilyCenterIds = new Set(centers.map((center) => center.id));
       list = list.filter(
         (u) =>
@@ -275,11 +278,11 @@ export default function UsuariosPage() {
     }
     if (centerId != null) {
       list = list.filter((u) =>
-        u.centerId === centerId || (isTeacher && u.teachingCenterId === centerId),
+        u.centerId === centerId || (isFamilyDirectory && u.teachingCenterId === centerId),
       );
     }
     return { rows: list.slice((page - 1) * pageSize, page * pageSize), total: list.length };
-  }, [isManager, isTeacher, managedQ.data, familyDirectoryQ.data, readQ.data, role, centerId, status, dashboardOnly, centers, page, pageSize]);
+  }, [isManager, isFamilyDirectory, managedQ.data, familyDirectoryQ.data, readQ.data, role, centerId, status, dashboardOnly, centers, page, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   useEffect(() => {
@@ -318,6 +321,7 @@ export default function UsuariosPage() {
       qc.invalidateQueries({ queryKey: ["/api/users", id, "audit"] }),
       qc.invalidateQueries({ queryKey: getListManagedUsersQueryKey() }),
       qc.invalidateQueries({ queryKey: getListUsersQueryKey() }),
+      qc.invalidateQueries({ queryKey: ["/api/users/family-directory"] }),
       qc.invalidateQueries({ queryKey: getGetUserQueryKey(id) }),
       qc.invalidateQueries({
         predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/dashboard"),
@@ -388,11 +392,21 @@ export default function UsuariosPage() {
         <h1 className="text-2xl font-bold tracking-tight">Usuarios</h1>
         <p className="text-muted-foreground">
           Personas con acceso a la plataforma {appName}.
-          {(isTeacher || user?.role === "department_head") &&
+          {isFamilyDirectory &&
             " Se muestran usuarios de toda la familia activa; las acciones de gestión siguen limitadas a tu ámbito."}
+          {user?.role === "department_head" && headManagement &&
+            " Gestión de las cuentas de tu centro."}
         </p>
         </div>
         <div className="flex flex-wrap gap-2">
+        {user?.role === "department_head" && (
+          <Button variant="outline" onClick={() => {
+            clearFilters();
+            setHeadManagement((value) => !value);
+          }} data-testid="button-toggle-head-management">
+            {headManagement ? "Ver directorio de la familia" : "Gestionar mi centro"}
+          </Button>
+        )}
         {isSuperadmin && <TestTeacherCleanupDialog />}
         {isSuperadmin && (
           <AlertDialog open={invalidateSessionsOpen} onOpenChange={(open) => {
@@ -464,7 +478,7 @@ export default function UsuariosPage() {
           </SelectContent>
         </Select>
 
-        {(isManager || isTeacher) && (
+        {(isManager || isFamilyDirectory) && (
           <Select
             value={provinceId != null ? String(provinceId) : ALL}
             onValueChange={(v) => {
@@ -495,7 +509,7 @@ export default function UsuariosPage() {
           </Select>
         )}
 
-        {(isManager || isTeacher) && (
+        {(isManager || isFamilyDirectory) && (
           <Select
             value={islandId != null ? String(islandId) : ALL}
             onValueChange={(v) => {
@@ -517,7 +531,7 @@ export default function UsuariosPage() {
           </Select>
         )}
 
-        {(isManager || isTeacher) && (
+        {(isManager || isFamilyDirectory) && (
           <Select
             value={moduleId != null ? String(moduleId) : ALL}
             onValueChange={(v) => { setModuleId(v === ALL ? null : Number(v)); setPage(1); }}
@@ -545,7 +559,7 @@ export default function UsuariosPage() {
           </Select>
         )}
 
-        {user?.role !== "department_head" && (
+        {(user?.role !== "department_head" || isFamilyDirectory) && (
           <Select
             value={centerId != null ? String(centerId) : ALL}
             onValueChange={(v) => { setCenterId(v === ALL ? null : Number(v)); setPage(1); }}

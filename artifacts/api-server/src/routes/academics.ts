@@ -91,9 +91,11 @@ import {
 import { syncModuleChatGroup } from "@workspace/db";
 import { syncModuleNextcloudMembership } from "../lib/moduleNextcloudSync";
 import { getActiveAcademicYear, getActiveFamily } from "../lib/settings";
+import { assignmentLimitedModules, assignedTeachingModuleIds, hasTeachingModuleAccess, requireHeadTeachingModule } from "../lib/teachingModuleAccess";
 import { cycleFamilyFilter, moduleFamilyFilter } from "../lib/familyCatalog";
 
 const router: IRouter = Router();
+router.use("/modules/:moduleId", requireAuth, requireHeadTeachingModule);
 
 // Resolves the academic-year filter for list endpoints. When the client passes
 // no year we default to the active course; passing the literal "all" lists every
@@ -139,32 +141,9 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
     moduleFamilyFilter(activeFamily),
   ];
   const caller = req.user!;
-  if (caller.role === "teacher") {
+  if (assignmentLimitedModules(caller.role)) {
     const activeYear = await getActiveAcademicYear();
-    if (caller.centerId == null) {
-      filters.push(eq(modulesTable.id, -1));
-    } else {
-      const activeFamilyCenterIds = db
-        .select({ id: centersTable.id })
-        .from(centersTable)
-        .where(and(
-          isNull(centersTable.deletedAt),
-          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
-        ));
-      const assignedModuleIds = db
-        .select({ moduleId: teachingAssignmentsTable.moduleId })
-        .from(teachingAssignmentsTable)
-        .where(and(
-          eq(teachingAssignmentsTable.teacherId, caller.id),
-          eq(teachingAssignmentsTable.centerId, caller.centerId),
-          inArray(teachingAssignmentsTable.centerId, activeFamilyCenterIds),
-          isNull(teachingAssignmentsTable.deletedAt),
-          activeYear
-            ? eq(teachingAssignmentsTable.schoolYear, activeYear)
-            : undefined,
-        ));
-      filters.push(inArray(modulesTable.id, assignedModuleIds));
-    }
+    filters.push(inArray(modulesTable.id, assignedTeachingModuleIds(caller, activeFamily, activeYear)));
   }
   if (query.data.centerId != null) {
     filters.push(eq(modulesTable.centerId, query.data.centerId));
@@ -184,19 +163,19 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
   // Global modules (centerId IS NULL) are visible to everyone; scoped modules
   // are visible only within the caller's province/center. The family filter
   // above applies to both kinds.
-  if (scope.kind === "province") {
+  if (!assignmentLimitedModules(caller.role) && scope.kind === "province") {
     const scopeMatch = or(
       isNull(modulesTable.centerId),
       inArray(modulesTable.centerId, centerIdsInProvince(scope.provinceId)),
     );
     if (scopeMatch) filters.push(scopeMatch);
-  } else if (scope.kind === "center") {
+  } else if (!assignmentLimitedModules(caller.role) && scope.kind === "center") {
     const scopeMatch = or(
       isNull(modulesTable.centerId),
       eq(modulesTable.centerId, scope.centerId),
     );
     if (scopeMatch) filters.push(scopeMatch);
-  } else if (scope.kind === "none") {
+  } else if (!assignmentLimitedModules(caller.role) && scope.kind === "none") {
     filters.push(isNull(modulesTable.centerId));
   }
 
@@ -769,8 +748,9 @@ async function loadModule(moduleId: number) {
 // province; department heads for modules in their own center.
 async function canManageModule(
   caller: User,
-  module: { centerId: number | null },
+  module: { id: number; centerId: number | null },
 ): Promise<boolean> {
+  if (caller.role === "department_head" && !(await hasTeachingModuleAccess(caller, module.id))) return false;
   if (caller.role === "superadmin") return true;
   if (module.centerId == null) return caller.role === "coordinator";
   const [center] = await db
@@ -790,6 +770,7 @@ async function canManageMembers(
   caller: User,
   module: { id: number; centerId: number | null },
 ): Promise<boolean> {
+  if (caller.role === "department_head" && !(await hasTeachingModuleAccess(caller, module.id))) return false;
   if (await canManageModule(caller, module)) return true;
   return isModuleCoordinator(caller.id, module.id);
 }
@@ -798,8 +779,9 @@ async function canManageMembers(
 // the same visibility rules as the module listing.
 async function moduleVisibleToCaller(
   caller: User,
-  module: { centerId: number | null },
+  module: { id: number; centerId: number | null },
 ): Promise<boolean> {
+  if (caller.role === "department_head") return hasTeachingModuleAccess(caller, module.id);
   if (module.centerId == null) return true;
   const scope = resolveReadScope(caller);
   if (scope.kind === "global") return true;
@@ -860,9 +842,9 @@ router.get(
       res.status(404).json({ message: "Módulo no encontrado" });
       return;
     }
-    const allowed =
-      (await canManageModule(caller, module)) ||
-      (await isModuleMember(caller.id, module.id));
+    const allowed = caller.role === "department_head"
+      ? await hasTeachingModuleAccess(caller, module.id)
+      : (await canManageModule(caller, module)) || (await isModuleMember(caller.id, module.id));
     if (!allowed) {
       res.status(403).json({ message: "Permiso denegado" });
       return;
@@ -1163,6 +1145,7 @@ async function canEditOutcomes(
   caller: User,
   module: { id: number },
 ): Promise<boolean> {
+  if (caller.role === "department_head" && !(await hasTeachingModuleAccess(caller, module.id))) return false;
   if (caller.role === "superadmin") return true;
   return isModuleCoordinator(caller.id, module.id);
 }
@@ -1216,9 +1199,9 @@ router.get(
       res.status(404).json({ message: "Módulo no encontrado" });
       return;
     }
-    const allowed =
-      (await moduleVisibleToCaller(caller, module)) ||
-      (await isModuleMember(caller.id, module.id));
+    const allowed = caller.role === "department_head"
+      ? await hasTeachingModuleAccess(caller, module.id)
+      : (await moduleVisibleToCaller(caller, module)) || (await isModuleMember(caller.id, module.id));
     if (!allowed) {
       res.status(403).json({ message: "Permiso denegado" });
       return;

@@ -1488,7 +1488,7 @@ paths:
     get:
       operationId: listFamilyUserDirectory
       tags: [users]
-      summary: Read-only active-family directory for teachers
+      summary: Read-only active-family directory for teachers and department heads
       security:
         - bearerAuth: []
       parameters:
@@ -1799,7 +1799,7 @@ paths:
             type: string
         - in: query
           name: dashboardOnly
-          description: Restrict the directory to the authenticated caller's dashboard read scope.
+          description: Match dashboard population scope. Teachers and department heads see all active-family centers; coordinators retain their administrative scope.
           schema:
             type: boolean
       responses:
@@ -4515,7 +4515,7 @@ paths:
       operationId: getDashboardSummary
       tags: [dashboard]
       summary: Headline counts for the dashboard
-      description: Centers and active teachers are current population totals regardless of creation date. Date bounds filter resources, surveys and alerts by creation date and events by event date. All figures respect the caller's scope and active professional family.
+      description: Centers and active users are current population totals regardless of creation date. Teachers and department heads see active-family-wide center, user and resource totals. This does not extend management permissions. Date bounds filter resources, surveys and alerts by creation date and events by event date. Activities retain their geographic, audience and private-content access rules.
       security:
         - bearerAuth: []
       parameters:
@@ -4546,7 +4546,7 @@ paths:
       operationId: getDashboardStatistics
       tags: [dashboard]
       summary: Time series and grouped stats for charts
-      description: Users by role and centers by island show current population regardless of creation date. Date bounds apply to resources, events and surveys only. All figures respect the caller's scope and active professional family.
+      description: Users by role and centers by island show current population regardless of creation date. Teachers and department heads see active-family-wide population and resource statistics. This does not extend management permissions. Date bounds apply to resources, events and surveys only. Event and survey statistics retain their geographic, audience and private-content access rules.
       security:
         - bearerAuth: []
       parameters:

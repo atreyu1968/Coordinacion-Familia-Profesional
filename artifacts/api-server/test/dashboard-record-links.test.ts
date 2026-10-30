@@ -47,7 +47,8 @@ describe("dashboard record list scopes", () => {
     expect(coordinatorList.body.map((center: { id: number }) => center.id)).toContain(centerId);
     expect(coordinatorList.body.map((center: { id: number }) => center.id)).not.toContain(otherCenterId);
     expect(headList.status).toBe(200);
-    expect(headList.body.map((center: { id: number }) => center.id)).toEqual([centerId]);
+    expect(headList.body.map((center: { id: number }) => center.id)).toContain(centerId);
+    expect(headList.body.map((center: { id: number }) => center.id)).toContain(otherCenterId);
     expect(adminList.status).toBe(200);
     expect(adminList.body.map((center: { id: number }) => center.id)).toEqual([otherCenterId]);
   });

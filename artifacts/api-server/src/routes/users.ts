@@ -329,7 +329,7 @@ router.get("/users/management", requireAuth,
 router.get("/users", requireAuth, async (req, res): Promise<void> => {
   // Older web/PWA clients still use this URL for their read-only directory.
   // Teacher visibility must match the dedicated active-family route.
-  if (req.user!.role === "teacher") {
+  if (req.user!.role === "teacher" || req.user!.role === "department_head") {
     await listTeacherFamilyDirectory(req, res);
     return;
   }
@@ -435,7 +435,7 @@ async function listTeacherFamilyDirectory(req: Request, res: Response): Promise<
     res.json(ListUsersResponse.parse(rows));
 }
 
-router.get("/users/family-directory", requireAuth, requireRole("teacher"), listTeacherFamilyDirectory);
+router.get("/users/family-directory", requireAuth, requireRole("teacher", "department_head"), listTeacherFamilyDirectory);
 
 router.get(
   "/users/family-filter-options",

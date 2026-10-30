@@ -7,7 +7,7 @@ describe("teacher family-wide user directory", () => {
     expect(userDirectoryCenterParams("teacher", true)).toEqual({});
     expect(userDirectoryCenterParams("teacher", false)).toEqual({});
     expect(userDirectoryCenterParams("coordinator", true)).toEqual({ dashboardOnly: true });
-    expect(userDirectoryCenterParams("department_head", true)).toEqual({ dashboardOnly: true });
+    expect(userDirectoryCenterParams("department_head", true)).toEqual({});
     expect(userDirectoryCenterParams("superadmin", false)).toEqual({});
   });
 

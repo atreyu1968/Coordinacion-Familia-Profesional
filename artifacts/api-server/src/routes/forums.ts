@@ -60,8 +60,10 @@ import { notifyUsers } from "../lib/notify";
 import { resolveAudienceUserIds } from "../lib/audience";
 import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { assignedTeachingModuleIds, hasTeachingModuleAccess, requireHeadTeachingModule } from "../lib/teachingModuleAccess";
 
 const router: IRouter = Router();
+router.use("/forum/modules/:moduleId", requireAuth, requireHeadTeachingModule);
 
 const MANAGER_ROLES = ["superadmin", "coordinator", "department_head"];
 
@@ -136,6 +138,7 @@ async function moduleVisibleTo(
   module: { id: number; centerId: number | null },
 ): Promise<boolean> {
   if (!(await moduleBelongsToActiveFamily(module.id))) return false;
+  if (caller.role === "department_head") return hasTeachingModuleAccess(caller, module.id);
   if (
     (await isModuleCoordinator(caller.id, module.id)) ||
     (await isModuleForumModerator(caller.id, module.id))
@@ -201,6 +204,7 @@ async function canModerateForumModule(
   moduleId: number,
   centerId: number | null,
 ): Promise<boolean> {
+  if (caller.role === "department_head" && !(await hasTeachingModuleAccess(caller, moduleId))) return false;
   const managerWithinScope =
     MANAGER_ROLES.includes(caller.role) &&
     hasScopeOver(caller, {
@@ -238,7 +242,11 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
     moduleFamilyFilter(await getActiveFamily()),
   ];
   const hasGlobalManagerScope = isManager && scope.kind === "global";
-  if (!hasGlobalManagerScope) {
+  if (caller.role === "department_head") {
+    filters.push(inArray(modulesTable.id, assignedTeachingModuleIds(
+      caller, await getActiveFamily(), await getActiveAcademicYear(),
+    )));
+  } else if (!hasGlobalManagerScope) {
     const year = await getActiveAcademicYear();
     const visibleModuleClauses: SQL[] = [];
     const scopeMatch = isManager ? moduleScopeFilter(scope) : undefined;

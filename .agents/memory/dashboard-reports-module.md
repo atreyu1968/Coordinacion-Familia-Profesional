@@ -10,6 +10,15 @@ Aggregation endpoints live in one router (`dashboard.ts`, mounted at root, so
 `resolveReadScope` → a local `DashboardScope {provinceId, centerId, empty}`.
 
 ## Scoping rules (non-obvious)
+- **Teacher and department-head dashboard totals are family-wide:** centers, active users and
+  aggregate resource figures cover the entire active family, not just the
+  teacher's or department head's center. Management scopes and private activity audiences stay
+  unchanged; resource aggregates do not grant access to other centers' files.
+  **Why:** the user explicitly wants the teacher's main panel to represent the
+  whole professional family, matching the family-wide user directory, and explicitly extended this to department heads.
+  **How to apply:** keep cards, population charts and center/user drilldowns
+  consistent across provinces; label activity permissions and resource-list
+  access separately from aggregate family totals.
 - **Resources have no provinceId** — the dashboard derives scope from their
   centers in the active family. Center-less resources are excluded from these
   family-attributed figures; do not infer a province directly on resources.

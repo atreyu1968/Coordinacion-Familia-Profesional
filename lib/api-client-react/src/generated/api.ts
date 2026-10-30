@@ -6367,7 +6367,7 @@ export const getListFamilyUserDirectoryUrl = (params?: ListFamilyUserDirectoryPa
 }
 
 /**
- * @summary Read-only active-family directory for teachers
+ * @summary Read-only active-family directory for teachers and department heads
  */
 export const listFamilyUserDirectory = async (params?: ListFamilyUserDirectoryParams, options?: Parameters<typeof customFetch>[1]): Promise<User[]> => {
 
@@ -6438,7 +6438,7 @@ export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof lis
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Read-only active-family directory for teachers
+ * @summary Read-only active-family directory for teachers and department heads
  */
 
 export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(
@@ -18891,7 +18891,7 @@ export const getGetDashboardSummaryUrl = (params?: GetDashboardSummaryParams,) =
 }
 
 /**
- * Centers and active teachers are current population totals regardless of creation date. Date bounds filter resources, surveys and alerts by creation date and events by event date. All figures respect the caller's scope and active professional family.
+ * Centers and active users are current population totals regardless of creation date. Teachers and department heads see active-family-wide center, user and resource totals. This does not extend management permissions. Date bounds filter resources, surveys and alerts by creation date and events by event date. Activities retain their geographic, audience and private-content access rules.
  * @summary Headline counts for the dashboard
  */
 export const getDashboardSummary = async (params?: GetDashboardSummaryParams, options?: Parameters<typeof customFetch>[1]): Promise<DashboardSummary> => {
@@ -19000,7 +19000,7 @@ export const getGetDashboardStatisticsUrl = (params?: GetDashboardStatisticsPara
 }
 
 /**
- * Users by role and centers by island show current population regardless of creation date. Date bounds apply to resources, events and surveys only. All figures respect the caller's scope and active professional family.
+ * Users by role and centers by island show current population regardless of creation date. Teachers and department heads see active-family-wide population and resource statistics. This does not extend management permissions. Date bounds apply to resources, events and surveys only. Event and survey statistics retain their geographic, audience and private-content access rules.
  * @summary Time series and grouped stats for charts
  */
 export const getDashboardStatistics = async (params?: GetDashboardStatisticsParams, options?: Parameters<typeof customFetch>[1]): Promise<DashboardStatistics> => {

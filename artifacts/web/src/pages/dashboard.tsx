@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { professionalFamily } = useBranding();
   const isSuperadmin = user?.role === "superadmin";
+  const isFamilyDashboard = user?.role === "teacher" || user?.role === "department_head";
   const {
     data: provinces = [],
     isLoading: provincesLoading,
@@ -266,7 +267,9 @@ export default function DashboardPage() {
   };
 
   const scopeLabel = !isSuperadmin
-    ? "Ámbito de tu coordinación"
+    ? isFamilyDashboard
+      ? "Toda la familia profesional activa"
+      : "Ámbito de tu coordinación"
     : provinceFilter === GLOBAL
       ? "Ámbito autonómico (toda Canarias)"
       : provinces.find((p) => String(p.id) === provinceFilter)?.name ??
@@ -289,12 +292,14 @@ export default function DashboardPage() {
   const cards = [
     {
       label: "Centros de la red",
+      description: isFamilyDashboard ? "Toda la familia activa" : undefined,
       value: summary?.centers,
       icon: Building2,
       href: dashboardHref("/centros", { dashboard: "centers" }),
     },
     {
       label: "Usuarios activos",
+      description: isFamilyDashboard ? "Toda la familia activa" : undefined,
       value: summary?.users,
       icon: Users,
       href: canViewUserDirectory
@@ -306,7 +311,9 @@ export default function DashboardPage() {
     },
     {
       label: isPeriodFiltered ? "Recursos del periodo" : "Recursos",
-      description: isPeriodFiltered
+      description: isFamilyDashboard
+        ? "Total de la familia; abre los recursos accesibles para ti"
+        : isPeriodFiltered
         ? "Recuento del periodo; abre el repositorio completo"
         : "Abrir repositorio completo",
       value: summary?.resources,
@@ -315,12 +322,14 @@ export default function DashboardPage() {
     },
     {
       label: isPeriodFiltered ? "Encuestas abiertas del periodo" : "Encuestas abiertas",
+      description: "Encuestas a las que tienes acceso",
       value: summary?.activeSurveys,
       icon: BarChartIcon,
       href: dashboardHref("/encuestas", { status: "open" }),
     },
     {
       label: isPeriodFiltered ? "Eventos del periodo" : "Próximos eventos",
+      description: "Eventos a los que tienes acceso",
       value: summary?.upcomingEvents,
       icon: Calendar,
       href: dashboardHref(
@@ -332,6 +341,7 @@ export default function DashboardPage() {
     },
     {
       label: isPeriodFiltered ? "Avisos de empresas del periodo" : "Avisos de empresas",
+      description: "Avisos a los que tienes acceso",
       value: summary?.companyAlerts,
       icon: Bell,
       href: dashboardHref("/fct", { dashboard: "alerts" }),
@@ -423,6 +433,11 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold tracking-tight">Panel Principal</h1>
           <p className="text-muted-foreground">
             Bienvenido/a, {user?.name}. {scopeLabel}.
+            {isFamilyDashboard && (
+              <span className="block text-sm">
+                Centros, usuarios y recursos de toda la familia. Las actividades respetan tus permisos de acceso.
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

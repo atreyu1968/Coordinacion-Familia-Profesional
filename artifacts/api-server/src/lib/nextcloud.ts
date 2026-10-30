@@ -168,7 +168,7 @@ export interface ModuleAccessInput {
  * Whether a user may access a module's collaborative space.
  * - superadmin: always
  * - coordinator: global modules, modules in their province, or assigned ones
- * - department_head: modules in their center, or assigned ones
+ * - department_head: assigned modules only, just like teachers
  * - teacher: only modules they are assigned to
  * - everyone else: no access
  */
@@ -184,11 +184,6 @@ export function decideModuleAccess(input: ModuleAccessInput): boolean {
         input.isAssigned
       );
     case "department_head":
-      return (
-        (input.userCenterId != null &&
-          input.moduleCenterId === input.userCenterId) ||
-        input.isAssigned
-      );
     case "teacher":
       return input.isAssigned;
     default:

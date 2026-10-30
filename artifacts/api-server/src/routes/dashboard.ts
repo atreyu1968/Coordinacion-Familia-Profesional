@@ -91,6 +91,14 @@ function resolveScope(
   }
 }
 
+// Population/resource totals are family-wide for teachers and department heads.
+// Keep activity and report authorization on the original read scope.
+function resolvePopulationScope(caller: User, requestedProvinceId?: number | null): DashboardScope {
+  return (caller.role === "teacher" || caller.role === "department_head")
+    ? { provinceId: null, centerId: null, empty: false }
+    : resolveScope(caller, requestedProvinceId);
+}
+
 // Province-scoped tables (surveys, events, company alerts, annual reports) keep
 // a nullable provinceId where null means "regional/autonómica" (visible to
 // everyone). A province caller sees their province plus regional rows; a center
@@ -99,6 +107,7 @@ function provinceColFilter(
   provinceCol: AnyPgColumn,
   scope: DashboardScope,
 ): SQL | undefined {
+  if (scope.empty) return sql`false`;
   if (scope.centerId != null) return isNull(provinceCol);
   if (scope.provinceId != null) {
     return or(eq(provinceCol, scope.provinceId), isNull(provinceCol));
@@ -108,6 +117,7 @@ function provinceColFilter(
 
 // Events and company alerts are visible in the center's province as well as globally.
 function activityProvinceFilter(column: AnyPgColumn, scope: DashboardScope): SQL | undefined {
+  if (scope.empty) return sql`false`;
   if (scope.centerId == null) return provinceColFilter(column, scope);
   return or(isNull(column), inArray(column, db.select({ id: centersTable.provinceId })
     .from(centersTable).where(eq(centersTable.id, scope.centerId))));
@@ -194,7 +204,8 @@ function activeUserScopeFilters(
           usersTable.centerId,
           activeFamilyCenterIds(scope, activeFamily),
         ),
-        isNull(usersTable.centerId),
+        inArray(usersTable.teachingCenterId, activeFamilyCenterIds(scope, activeFamily)),
+        and(isNull(usersTable.centerId), isNull(usersTable.teachingCenterId)),
       )!,
     );
   }
@@ -219,7 +230,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     return;
   }
   const period = parsedPeriod.period;
-  const scope = resolveScope(req.user!, query.data.provinceId);
+  const scope = resolvePopulationScope(req.user!, query.data.provinceId);
+  const activityScope = resolveScope(req.user!, query.data.provinceId);
   if (scope.empty) {
     res.json(
       GetDashboardSummaryResponse.parse({
@@ -273,7 +285,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     eq(surveysTable.status, "open"),
     ...periodFilters(surveysTable.createdAt, period),
   ];
-  const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
+  const surveyScope = provinceColFilter(surveysTable.provinceId, activityScope);
   if (surveyScope) surveyFilters.push(surveyScope);
   const visibleSurveys = await filterVisibleSurveys(req.user!, await db
     .select()
@@ -286,7 +298,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     ...periodFilters(eventDate, period),
   ];
   if (!period) eventFilters.push(gte(eventsTable.startAt, new Date()));
-  const eventScope = activityProvinceFilter(eventsTable.provinceId, scope);
+  const eventScope = activityProvinceFilter(eventsTable.provinceId, activityScope);
   if (eventScope) eventFilters.push(eventScope);
   const [upcomingEventsCount] = await db
     .select({ value: count() })
@@ -297,7 +309,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     isNull(companyAlertsTable.deletedAt),
     ...periodFilters(companyAlertsTable.createdAt, period),
   ];
-  const alertScope = activityProvinceFilter(companyAlertsTable.provinceId, scope);
+  const alertScope = activityProvinceFilter(companyAlertsTable.provinceId, activityScope);
   if (alertScope) alertFilters.push(alertScope);
   const [companyAlertsCount] = await db
     .select({ value: count() })
@@ -334,7 +346,8 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     return;
   }
   const period = parsedPeriod.period;
-  const scope = resolveScope(req.user!, query.data.provinceId);
+  const scope = resolvePopulationScope(req.user!, query.data.provinceId);
+  const activityScope = resolveScope(req.user!, query.data.provinceId);
   if (scope.empty) {
     res.json(
       GetDashboardStatisticsResponse.parse({
@@ -393,7 +406,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
       period,
     ),
   ];
-  const eventScope = activityProvinceFilter(eventsTable.provinceId, scope);
+  const eventScope = activityProvinceFilter(eventsTable.provinceId, activityScope);
   if (eventScope) eventFilters.push(eventScope);
   const eventsByMonthRows = await db
     .select({ label: eventMonth, value: count() })
@@ -406,7 +419,7 @@ router.get("/dashboard/statistics", requireAuth, async (req, res): Promise<void>
     isNull(surveysTable.deletedAt),
     ...periodFilters(surveysTable.createdAt, period),
   ];
-  const surveyScope = provinceColFilter(surveysTable.provinceId, scope);
+  const surveyScope = provinceColFilter(surveysTable.provinceId, activityScope);
   if (surveyScope) surveyFilters.push(surveyScope);
   const visibleSurveys = await filterVisibleSurveys(req.user!, await db
     .select()

@@ -1936,7 +1936,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
 
 /**
- * @summary Read-only active-family directory for teachers
+ * @summary Read-only active-family directory for teachers and department heads
  */
 
 
@@ -2233,7 +2233,7 @@ export const ListCentersQueryParams = zod.object({
   "family": zod.coerce.string().optional(),
   "nature": zod.coerce.string().optional(),
   "centerType": zod.coerce.string().optional(),
-  "dashboardOnly": zod.coerce.boolean().optional().describe('Restrict the directory to the authenticated caller\'s dashboard read scope.')
+  "dashboardOnly": zod.coerce.boolean().optional().describe('Match dashboard population scope. Teachers and department heads see all active-family centers; coordinators retain their administrative scope.')
 })
 
 export const ListCentersResponseItem = zod.object({
@@ -5242,7 +5242,7 @@ export const RegisterPushTokenResponse = zod.object({
 
 
 /**
- * Centers and active teachers are current population totals regardless of creation date. Date bounds filter resources, surveys and alerts by creation date and events by event date. All figures respect the caller's scope and active professional family.
+ * Centers and active users are current population totals regardless of creation date. Teachers and department heads see active-family-wide center, user and resource totals. This does not extend management permissions. Date bounds filter resources, surveys and alerts by creation date and events by event date. Activities retain their geographic, audience and private-content access rules.
  * @summary Headline counts for the dashboard
  */
 export const getDashboardSummaryQueryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
@@ -5267,7 +5267,7 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
- * Users by role and centers by island show current population regardless of creation date. Date bounds apply to resources, events and surveys only. All figures respect the caller's scope and active professional family.
+ * Users by role and centers by island show current population regardless of creation date. Teachers and department heads see active-family-wide population and resource statistics. This does not extend management permissions. Date bounds apply to resources, events and surveys only. Event and survey statistics retain their geographic, audience and private-content access rules.
  * @summary Time series and grouped stats for charts
  */
 export const getDashboardStatisticsQueryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');

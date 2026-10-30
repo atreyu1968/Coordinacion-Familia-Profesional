@@ -133,7 +133,7 @@ describe("dashboard data", () => {
     expect(teachersAfter - teachersBefore).toBe(2);
   });
 
-  it("applies inclusive date boundaries and keeps the caller's center scope", async () => {
+  it("applies inclusive dates with family-wide teacher population totals and scoped manager totals", async () => {
     const provinceId = await createProvince();
     const centerId = await createCenter(provinceId);
     const otherCenterId = await createCenter(provinceId);
@@ -254,9 +254,104 @@ describe("dashboard data", () => {
       .query(period)
       .set(authHeader(teacher.token));
     expect(scopedSummary.status).toBe(200);
-    expect(scopedSummary.body.centers).toBe(1);
-    expect(scopedSummary.body.teachers).toBe(1);
-    expect(scopedSummary.body.resources).toBe(2);
+    const familySummary = await request(app).get("/api/dashboard/summary")
+      .query({ startDate: period.startDate, endDate: period.endDate })
+      .set(authHeader(admin.token));
+    for (const field of ["centers", "users", "teachers", "resources"]) {
+      expect(scopedSummary.body[field]).toBe(familySummary.body[field]);
+    }
+    const head = await createUser({ role: "department_head", centerId, provinceId });
+    const headSummary = await request(app).get("/api/dashboard/summary")
+      .query(period).set(authHeader(head.token));
+    expect(headSummary.status).toBe(200);
+    expect(headSummary.body).toMatchObject({
+      centers: familySummary.body.centers,
+      users: familySummary.body.users + 1,
+      teachers: familySummary.body.teachers,
+      resources: familySummary.body.resources,
+    });
+  });
+
+  it.each(["teacher", "department_head"] as const)("aligns %s cards, charts and directory links across family centers and provinces", async (role) => {
+    const province = await createProvince();
+    const center = await createCenter(province);
+    const teacher = await createUser({ role, centerId: center, provinceId: province });
+    const headers = authHeader(teacher.token);
+    const period = { startDate: "2097-02-01", endDate: "2097-02-28" };
+    const before = await request(app).get("/api/dashboard/summary").query(period).set(headers);
+    const otherProvince = await createProvince();
+    const otherCenter = await createCenter(otherProvince);
+    const outsideCenter = await createCenter(otherProvince);
+    await db.update(centersTable).set({ families: ["excluded-dashboard-test-family"] })
+      .where(inArray(centersTable.id, [outsideCenter]));
+    const colleague = await createUser({ centerId: otherCenter, provinceId: otherProvince });
+    const teachingOnly = await createUser({ centerId: null });
+    await db.update(usersTable).set({ teachingCenterId: otherCenter })
+      .where(inArray(usersTable.id, [teachingOnly.user.id]));
+    const outside = await createUser({ centerId: outsideCenter });
+    const outsideTeachingOnly = await createUser({ centerId: null });
+    await db.update(usersTable).set({ teachingCenterId: outsideCenter })
+      .where(inArray(usersTable.id, [outsideTeachingOnly.user.id]));
+    const resources = await db.insert(resourcesTable).values(
+      [otherCenter, outsideCenter].map((centerId) => ({
+        title: "Family dashboard resource",
+        type: "document" as const,
+        centerId,
+        createdAt: new Date("2097-02-15T12:00:00Z"),
+      })),
+    ).returning({ id: resourcesTable.id });
+    resourceIds.push(...resources.map((row) => row.id));
+    for (const provinceId of [province, otherProvince]) {
+      const [event] = await db.insert(eventsTable).values({
+        name: "Dashboard activity access fixture",
+        type: "jornada",
+        provinceId,
+        startAt: new Date("2097-02-15T12:00:00Z"),
+      }).returning({ id: eventsTable.id });
+      eventIds.push(event!.id);
+      const [alert] = await db.insert(companyAlertsTable).values({
+        companyName: "Dashboard activity access fixture",
+        provinceId,
+        createdAt: new Date("2097-02-15T12:00:00Z"),
+      }).returning({ id: companyAlertsTable.id });
+      alertIds.push(alert!.id);
+    }
+    for (const restricted of [false, true]) {
+      const [survey] = await db.insert(surveysTable).values({
+        title: "Dashboard audience fixture",
+        type: "survey",
+        status: "open",
+        ...(restricted ? { audienceType: "users", audienceIds: [outside.user.id] } : {}),
+        createdAt: new Date("2097-02-15T12:00:00Z"),
+      }).returning({ id: surveysTable.id });
+      surveyIds.push(survey!.id);
+    }
+
+    const summary = await request(app).get("/api/dashboard/summary").query(period).set(headers);
+    const statistics = await request(app).get("/api/dashboard/statistics").query(period).set(headers);
+    const centers = await request(app).get("/api/centers").query({ dashboardOnly: true }).set(headers);
+    const directory = await request(app).get("/api/users/family-directory").set(headers);
+    for (const response of [before, summary, statistics, centers, directory]) expect(response.status).toBe(200);
+    expect(summary.body.centers - before.body.centers).toBe(1);
+    expect(summary.body.users - before.body.users).toBe(2);
+    expect(summary.body.resources - before.body.resources).toBe(1);
+    // Family-wide totals must not widen access to activities or private audiences.
+    expect(summary.body.upcomingEvents - before.body.upcomingEvents).toBe(1);
+    expect(summary.body.companyAlerts - before.body.companyAlerts).toBe(1);
+    expect(summary.body.activeSurveys - before.body.activeSurveys).toBe(1);
+    expect(centers.body.map((row: { id: number }) => row.id)).toContain(otherCenter);
+    expect(centers.body.map((row: { id: number }) => row.id)).not.toContain(outsideCenter);
+    const visibleIds = directory.body.map((row: { id: number }) => row.id);
+    expect(visibleIds).toContain(colleague.user.id);
+    expect(visibleIds).toContain(teachingOnly.user.id);
+    expect(visibleIds).not.toContain(outside.user.id);
+    expect(visibleIds).not.toContain(outsideTeachingOnly.user.id);
+    expect(summary.body.centers).toBe(centers.body.length);
+    expect(summary.body.users).toBe(directory.body.length);
+    const total = (rows: { value: number }[]) => rows.reduce((sum, row) => sum + row.value, 0);
+    expect(total(statistics.body.usersByRole)).toBe(summary.body.users);
+    expect(total(statistics.body.centersByIsland)).toBe(summary.body.centers);
+    expect(total(statistics.body.resourcesByMonth)).toBe(summary.body.resources);
   });
 
   it("rejects incomplete, impossible, and reversed date ranges", async () => {

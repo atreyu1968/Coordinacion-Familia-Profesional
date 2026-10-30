@@ -24,6 +24,7 @@ import { getModuleNextcloudMembers } from "../lib/moduleNextcloudSync";
 import { createTicket } from "../lib/oidc";
 import { getAppBaseUrl } from "../lib/appUrl";
 import { logger } from "../lib/logger";
+import { hasTeachingModuleAccess } from "../lib/teachingModuleAccess";
 
 const router: IRouter = Router();
 
@@ -62,6 +63,10 @@ router.post(
       .where(and(eq(modulesTable.id, moduleId), isNull(modulesTable.deletedAt)));
     if (!module) {
       res.status(404).json({ message: "Módulo no encontrado" });
+      return;
+    }
+    if (caller.role === "department_head" && !(await hasTeachingModuleAccess(caller, moduleId))) {
+      res.status(403).json({ message: "Este módulo no está entre tus asignaciones docentes" });
       return;
     }
 
