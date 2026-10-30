@@ -384,6 +384,8 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
         AND cm.hidden_at = '2026-01-01T00:00:00Z' AND h.created_at IS NOT NULL
     );
   " | grep -qx t
+echo "==> Running normativa monitor tests on their dedicated isolated database"
+bash "${APP_DIR}/scripts/test-normativa.sh"
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   pnpm --filter @workspace/api-server exec vitest run
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
