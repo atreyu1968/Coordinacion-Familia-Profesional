@@ -94,9 +94,8 @@ function centerIdsInProvince(provinceId: number) {
     );
 }
 
-// Scope filter mirroring the academics module visibility rules: global modules
-// (centerId IS NULL) are visible to everyone; scoped modules only within the
-// caller's province/center.
+// Management-scope filter: global modules are included for managers, plus
+// center- or province-scoped modules within that manager's remit.
 function moduleScopeFilter(scope: ReadScope): SQL | undefined {
   if (scope.kind === "province") {
     return or(
@@ -143,19 +142,22 @@ async function moduleVisibleTo(
   ) {
     return true;
   }
-  if (module.centerId == null) return true; // global module
   const scope = resolveReadScope(caller);
-  if (scope.kind === "global") return true;
-  if (scope.kind === "center" && module.centerId === scope.centerId) return true;
-  if (scope.kind === "province") {
-    const [center] = await db
-      .select({ provinceId: centersTable.provinceId })
-      .from(centersTable)
-      .where(eq(centersTable.id, module.centerId));
-    if (center?.provinceId === scope.provinceId) return true;
+  if (MANAGER_ROLES.includes(caller.role)) {
+    if (scope.kind === "global" || module.centerId == null) return true;
+    if (scope.kind === "center" && module.centerId === scope.centerId) return true;
+    if (scope.kind === "province") {
+      const [center] = await db
+        .select({ provinceId: centersTable.provinceId })
+        .from(centersTable)
+        .where(eq(centersTable.id, module.centerId));
+      if (center?.provinceId === scope.provinceId) return true;
+    }
   }
-  // Management scope and personal teaching center can differ. Teaching a module
-  // grants forum participation without an additional manual enrollment.
+
+  // Regular users only see modules they teach in the active academic year.
+  // Module coordinators and appointed moderators were handled above. Managers
+  // retain their existing management-scope exception.
   const year = await getActiveAcademicYear();
   if (!year) return false;
   const [assignment] = await db.select({ id: teachingAssignmentsTable.id })
@@ -229,16 +231,19 @@ function callerCanManageForumModerators(
 router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
   const caller = req.user!;
   const scope = resolveReadScope(caller);
+  const isManager = MANAGER_ROLES.includes(caller.role);
 
   const filters: SQL[] = [
     isNull(modulesTable.deletedAt),
     moduleFamilyFilter(await getActiveFamily()),
   ];
-  const scopeMatch = moduleScopeFilter(scope);
-  if (scopeMatch) {
+  const hasGlobalManagerScope = isManager && scope.kind === "global";
+  if (!hasGlobalManagerScope) {
     const year = await getActiveAcademicYear();
-    const visibleModuleClauses: SQL[] = [
-      scopeMatch,
+    const visibleModuleClauses: SQL[] = [];
+    const scopeMatch = isManager ? moduleScopeFilter(scope) : undefined;
+    if (scopeMatch) visibleModuleClauses.push(scopeMatch);
+    visibleModuleClauses.push(
       inArray(
         modulesTable.id,
         db
@@ -253,7 +258,7 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
             isNull(moduleMembershipsTable.deletedAt),
           )),
       ),
-    ];
+    );
     if (year) {
       visibleModuleClauses.push(
         inArray(
@@ -269,7 +274,7 @@ router.get("/forum/modules", requireAuth, async (req, res): Promise<void> => {
         ),
       );
     }
-    filters.push(or(...visibleModuleClauses)!);
+    if (visibleModuleClauses.length > 0) filters.push(or(...visibleModuleClauses)!);
   }
 
   const modules = await db
@@ -531,8 +536,25 @@ router.post("/forum/threads", requireAuth, async (req, res): Promise<void> => {
     return created!;
   });
 
-  const recipientIds = (await resolveAudienceUserIds("module", [module.id]))
+  const audienceUserIds = (await resolveAudienceUserIds("module", [module.id]))
     .filter((id) => id !== caller.id);
+  const audienceUsers = audienceUserIds.length > 0
+    ? await db
+        .select()
+        .from(usersTable)
+        .where(and(
+          inArray(usersTable.id, audienceUserIds),
+          eq(usersTable.status, "active"),
+          isNull(usersTable.deletedAt),
+        ))
+    : [];
+  const recipientIds = (
+    await Promise.all(
+      audienceUsers.map(async (user) =>
+        (await moduleVisibleTo(user, module)) ? user.id : null,
+      ),
+    )
+  ).filter((id): id is number => id != null);
   if (recipientIds.length > 0) {
     await notifyUsers(recipientIds, {
       title: `Nuevo tema en el foro: ${thread.title}`,

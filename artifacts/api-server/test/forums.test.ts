@@ -1,18 +1,25 @@
 import { describe, it, expect, afterAll } from "vitest";
 import request from "supertest";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   db,
   centersTable,
   integrationSettingsTable,
   trainingOfferTable,
+  modulesTable,
+  moduleMembershipsTable,
+  teachingAssignmentsTable,
+  usersTable,
 } from "@workspace/db";
 import app from "../src/app";
+import { verifyToken } from "../src/lib/auth";
+import { getActiveAcademicYear } from "../src/lib/settings";
 import {
   createUser,
   createProvince,
   createCenter,
   createModule as createBaseModule,
+  createTeachingAssignment,
   cleanup,
   authHeader,
   trackThread,
@@ -83,6 +90,51 @@ async function createModule(opts: {
   return moduleId;
 }
 
+async function assignTeacherToModule(
+  teacher: { user: { id: number; centerId: number | null } },
+  moduleId: number,
+): Promise<void> {
+  const schoolYear = await getActiveAcademicYear();
+  if (!schoolYear) throw new Error("Forum tests require an active academic year");
+  const [module] = await db
+    .select({ centerId: modulesTable.centerId })
+    .from(modulesTable)
+    .where(eq(modulesTable.id, moduleId));
+  const centerId = module?.centerId ?? teacher.user.centerId;
+  if (centerId == null) throw new Error("Teaching assignment requires a center");
+  const [existing] = await db
+    .select({ id: teachingAssignmentsTable.id })
+    .from(teachingAssignmentsTable)
+    .where(and(
+      eq(teachingAssignmentsTable.teacherId, teacher.user.id),
+      eq(teachingAssignmentsTable.moduleId, moduleId),
+      eq(teachingAssignmentsTable.schoolYear, schoolYear),
+      isNull(teachingAssignmentsTable.deletedAt),
+    ))
+    .limit(1);
+  if (!existing) {
+    await createTeachingAssignment({
+      teacherId: teacher.user.id,
+      moduleId,
+      centerId,
+      schoolYear,
+    });
+  }
+}
+
+async function ensureTokenTeacherTeachesModule(
+  token: string,
+  moduleId: number,
+): Promise<void> {
+  const payload = verifyToken(token);
+  if (!payload || payload.role !== "teacher") return;
+  const [teacher] = await db
+    .select({ id: usersTable.id, centerId: usersTable.centerId })
+    .from(usersTable)
+    .where(eq(usersTable.id, payload.sub));
+  if (teacher) await assignTeacherToModule({ user: teacher }, moduleId);
+}
+
 // Open a thread via the API and track it for cleanup.
 async function openThread(
   token: string,
@@ -90,6 +142,9 @@ async function openThread(
   title = "Tema de prueba",
   content = "Mensaje inicial",
 ) {
+  // A successful teacher-authored fixture represents a teacher assigned to
+  // that module; tests for denied access use direct requests instead.
+  await ensureTokenTeacherTeachesModule(token, moduleId);
   const res = await request(app)
     .post("/api/forum/threads")
     .set(authHeader(token))
@@ -193,14 +248,64 @@ describe("forum module scope", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lets global modules be read by anyone", async () => {
+  it("does not expose every module merely because a teacher shares its center", async () => {
+    const province = await createProvince("Misma provincia");
+    const centerId = await createCenter(province);
+    const moduleId = await createModule({ centerId });
+    const author = await createUser({ role: "teacher", centerId, provinceId: province });
+    const colleague = await createUser({ role: "teacher", centerId, provinceId: province });
+    await db.insert(moduleMembershipsTable).values({
+      userId: colleague.user.id,
+      moduleId,
+      role: "member",
+    });
+    const thread = await openThread(author.token, moduleId);
+    expect(thread.status).toBe(201);
+
+    const denied = await request(app)
+      .get("/api/forum/threads")
+      .query({ moduleId })
+      .set(authHeader(colleague.token));
+    expect(denied.status).toBe(403);
+
+    const modules = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(colleague.token));
+    expect(modules.body.some((module: { id: number }) => module.id === moduleId)).toBe(false);
+
+    const notifications = await request(app)
+      .get("/api/notifications")
+      .set(authHeader(colleague.token));
+    expect(
+      notifications.body.some((notification: { type?: string }) => notification.type === "forum_thread"),
+    ).toBe(false);
+  });
+
+  it("limits ordinary users to modules they teach, including global modules", async () => {
     const moduleId = await createModule({ centerId: null });
     const someone = await createUser({ role: "teacher" });
-    const res = await request(app)
+    const denied = await request(app)
       .get("/api/forum/threads")
       .query({ moduleId })
       .set(authHeader(someone.token));
-    expect(res.status).toBe(200);
+    expect(denied.status).toBe(403);
+
+    const listBefore = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(someone.token));
+    expect(listBefore.body.some((module: { id: number }) => module.id === moduleId)).toBe(false);
+
+    await assignTeacherToModule(someone, moduleId);
+    const allowed = await request(app)
+      .get("/api/forum/threads")
+      .query({ moduleId })
+      .set(authHeader(someone.token));
+    expect(allowed.status).toBe(200);
+
+    const listAfter = await request(app)
+      .get("/api/forum/modules")
+      .set(authHeader(someone.token));
+    expect(listAfter.body.some((module: { id: number }) => module.id === moduleId)).toBe(true);
   });
 
   it("returns 404 listing threads for a non-existent module", async () => {
@@ -221,6 +326,7 @@ describe("forum replies", () => {
     const threadId = created.body.id;
 
     const replier = await createUser({ role: "teacher" });
+    await assignTeacherToModule(replier, moduleId);
     const reply = await request(app)
       .post(`/api/forum/threads/${threadId}/posts`)
       .set(authHeader(replier.token))
@@ -252,6 +358,7 @@ describe("forum deletion permissions", () => {
     const created = await openThread(author.token, moduleId);
 
     const other = await createUser({ role: "teacher" });
+    await assignTeacherToModule(other, moduleId);
     const del = await request(app)
       .delete(`/api/forum/threads/${created.body.id}`)
       .set(authHeader(other.token));
@@ -319,6 +426,7 @@ describe("forum deletion permissions", () => {
     const threadId = created.body.id;
 
     const replier = await createUser({ role: "teacher" });
+    await assignTeacherToModule(replier, moduleId);
     const reply = await request(app)
       .post(`/api/forum/threads/${threadId}/posts`)
       .set(authHeader(replier.token))
@@ -373,6 +481,7 @@ describe("forum editing", () => {
     const threadId = created.body.id;
 
     const replier = await createUser({ role: "teacher" });
+    await assignTeacherToModule(replier, moduleId);
     const reply = await request(app)
       .post(`/api/forum/threads/${threadId}/posts`)
       .set(authHeader(replier.token))
@@ -673,6 +782,7 @@ describe("forum unread counters and mark-read", () => {
     const threadId = created.body.id;
 
     const reader = await createUser({ role: "teacher" });
+    await assignTeacherToModule(reader, moduleId);
 
     // Before reading, the opening post is unread for the reader.
     const before = await request(app)
@@ -715,6 +825,7 @@ describe("forum unread counters and mark-read", () => {
     await openThread(author.token, moduleId, "Tema A");
 
     const reader = await createUser({ role: "teacher" });
+    await assignTeacherToModule(reader, moduleId);
     const modules = await request(app)
       .get("/api/forum/modules")
       .set(authHeader(reader.token));
@@ -749,6 +860,7 @@ describe("forum reply notifications", () => {
     const threadId = created.body.id;
 
     const replier = await createUser({ role: "teacher" });
+    await assignTeacherToModule(replier, moduleId);
     await request(app)
       .post(`/api/forum/threads/${threadId}/posts`)
       .set(authHeader(replier.token))
