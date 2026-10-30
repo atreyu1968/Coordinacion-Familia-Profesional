@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CenterQueryParameter } from './centerQueryParameter';
+import type { IslandQueryParameter } from './islandQueryParameter';
 import type { ListManagedUsersStatus } from './listManagedUsersStatus';
 import type { ListManagedUsersTeachingProfile } from './listManagedUsersTeachingProfile';
 import type { ProvinceQueryParameter } from './provinceQueryParameter';
@@ -16,6 +17,11 @@ export type ListManagedUsersParams = {
 role?: RoleQueryParameter;
 provinceId?: ProvinceQueryParameter;
 centerId?: CenterQueryParameter;
+islandId?: IslandQueryParameter;
+/**
+ * @minimum 1
+ */
+moduleId?: number;
 search?: SearchQueryParameter;
 status?: ListManagedUsersStatus;
 /**

@@ -75,3 +75,14 @@ family filtering would be artificial. usersByRole counts can therefore diverge
 from family-locked teacher/resource counts; that is intentional (org-scope).
 
 The web Centros page has no family selector — the list is implicitly locked.
+
+**How to apply — user-directory geographic and module filters:** derive
+province/island options only from non-deleted centers in the active family.
+Derive module options from non-deleted teaching assignments at the active
+academic year and apply `moduleFamilyFilter`; if no year is configured, use
+all non-deleted assignments. Keep coordinator facets and module-assignment
+matches within the coordinator's province.
+
+**Why:** the generic center and module endpoints have caller-specific scopes
+that can omit valid family-wide dropdown options; the dedicated facets must
+retain active-family rules without widening account-management permissions.

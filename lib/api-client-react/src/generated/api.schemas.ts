@@ -1115,12 +1115,50 @@ export interface User {
      * @nullable
      */
   teachingCenterId?: number | null;
+  /**
+     * Name of the user's administrative center when it belongs to the active family
+     * @nullable
+     */
+  centerName?: string | null;
+  /**
+     * Name of the user's personal teaching center when it belongs to the active family
+     * @nullable
+     */
+  teachingCenterName?: string | null;
   createdAt?: string;
 }
 
 export interface AuthResult {
   token: string;
   user: User;
+}
+
+export interface UserDirectoryProvinceOption {
+  id: number;
+  name: string;
+}
+
+export interface UserDirectoryIslandOption {
+  id: number;
+  provinceId: number;
+  name: string;
+}
+
+export interface UserDirectoryModuleOption {
+  id: number;
+  name: string;
+  /** @nullable */
+  code: string | null;
+  /** @nullable */
+  cycleName: string | null;
+}
+
+export interface UserDirectoryFilterOptions {
+  provinces: UserDirectoryProvinceOption[];
+  islands: UserDirectoryIslandOption[];
+  modules: UserDirectoryModuleOption[];
+  /** @nullable */
+  activeYear: string | null;
 }
 
 export type UserAuditChangeField = typeof UserAuditChangeField[keyof typeof UserAuditChangeField];
@@ -4019,10 +4057,27 @@ centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
 };
 
+export type ListFamilyUserDirectoryParams = {
+role?: RoleQueryParameter;
+provinceId?: ProvinceQueryParameter;
+centerId?: CenterQueryParameter;
+islandId?: IslandQueryParameter;
+/**
+ * @minimum 1
+ */
+moduleId?: number;
+search?: SearchQueryParameter;
+};
+
 export type ListManagedUsersParams = {
 role?: RoleQueryParameter;
 provinceId?: ProvinceQueryParameter;
 centerId?: CenterQueryParameter;
+islandId?: IslandQueryParameter;
+/**
+ * @minimum 1
+ */
+moduleId?: number;
 search?: SearchQueryParameter;
 status?: ListManagedUsersStatus;
 /**

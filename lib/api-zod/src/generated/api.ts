@@ -1560,6 +1560,8 @@ export const LoginResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -1577,6 +1579,8 @@ export const GetCurrentUserResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -1606,6 +1610,8 @@ export const UpdateProfileResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 }).and(zod.object({
   "requiresReauthentication": zod.boolean().optional().describe('True when changing the password has revoked this session.'),
@@ -1634,6 +1640,8 @@ export const GetMyTeachingProfileResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 }),
   "activeYear": zod.string().nullable(),
@@ -1678,6 +1686,8 @@ export const UpdateMyTeachingProfileResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 }),
   "activeYear": zod.string().nullable(),
@@ -1733,6 +1743,8 @@ export const RegisterWithTokenResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 })
@@ -1903,9 +1915,65 @@ export const ListUsersResponseItem = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+
+/**
+ * @summary Read-only active-family directory for teachers
+ */
+
+
+
+export const ListFamilyUserDirectoryQueryParams = zod.object({
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
+  "provinceId": zod.coerce.number().int().optional(),
+  "centerId": zod.coerce.number().int().optional(),
+  "islandId": zod.coerce.number().int().optional(),
+  "moduleId": zod.coerce.number().int().min(1).optional(),
+  "search": zod.coerce.string().optional()
+})
+
+export const ListFamilyUserDirectoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']),
+  "status": zod.string(),
+  "provinceId": zod.number().int().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
+  "createdAt": zod.coerce.date().optional()
+})
+export const ListFamilyUserDirectoryResponse = zod.array(ListFamilyUserDirectoryResponseItem)
+
+
+/**
+ * @summary List geographic and module filters for the active-family user directory
+ */
+export const GetFamilyUserFilterOptionsResponse = zod.object({
+  "provinces": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "islands": zod.array(zod.object({
+  "id": zod.number().int(),
+  "provinceId": zod.number().int(),
+  "name": zod.string()
+})),
+  "modules": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string().nullable(),
+  "cycleName": zod.string().nullable()
+})),
+  "activeYear": zod.string().nullable()
+})
 
 
 /**
@@ -1948,6 +2016,7 @@ export const PurgeTestTeachersResponse = zod.object({
 /**
  * @summary Paginated user administration, including deactivated accounts within the manager's scope
  */
+
 export const listManagedUsersQueryStatusDefault = `all`;
 export const listManagedUsersQueryTeachingProfileDefault = `all`;
 export const listManagedUsersQueryPageDefault = 1;
@@ -1962,6 +2031,8 @@ export const ListManagedUsersQueryParams = zod.object({
   "role": zod.enum(['superadmin', 'coordinator', 'prospector', 'department_head', 'teacher']).optional(),
   "provinceId": zod.coerce.number().int().optional(),
   "centerId": zod.coerce.number().int().optional(),
+  "islandId": zod.coerce.number().int().optional(),
+  "moduleId": zod.coerce.number().int().min(1).optional(),
   "search": zod.coerce.string().optional(),
   "status": zod.enum(['all', 'active', 'inactive']).default(listManagedUsersQueryStatusDefault),
   "teachingProfile": zod.enum(['all', 'incomplete', 'complete']).default(listManagedUsersQueryTeachingProfileDefault).describe('Teacher profile integrity, independent of account status and annual confirmation'),
@@ -1979,6 +2050,8 @@ export const ListManagedUsersResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 }).and(zod.object({
   "canManage": zod.boolean().describe('Whether this caller may edit or change this account\'s access'),
@@ -2039,6 +2112,8 @@ export const GetUserResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -2068,6 +2143,8 @@ export const UpdateUserResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 
@@ -6528,6 +6605,8 @@ export const ReactivateUserResponse = zod.object({
   "provinceId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
   "teachingCenterId": zod.number().int().nullish().describe('Personal teaching center for administrative roles; does not grant management permissions.'),
+  "centerName": zod.string().nullish().describe('Name of the user\'s administrative center when it belongs to the active family'),
+  "teachingCenterName": zod.string().nullish().describe('Name of the user\'s personal teaching center when it belongs to the active family'),
   "createdAt": zod.coerce.date().optional()
 })
 

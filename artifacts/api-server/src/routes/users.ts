@@ -1,15 +1,21 @@
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, ilike, or, desc, count, sql, not, inArray, getTableColumns, type SQL } from "drizzle-orm";
+import { eq, and, isNull, ilike, or, desc, count, sql, not, inArray, getTableColumns, asc, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import {
   db,
   usersTable,
   centersTable,
+  provincesTable,
+  islandsTable,
+  modulesTable,
+  teachingAssignmentsTable,
   teacherYearConfirmationsTable,
   accountAuditTable,
   type User,
 } from "@workspace/db";
 import {
   ListUsersQueryParams,
+  ListFamilyUserDirectoryQueryParams,
   ListUsersResponse,
   GetUserParams,
   GetUserResponse,
@@ -20,6 +26,7 @@ import {
   ReactivateUserParams,
   ListManagedUsersQueryParams,
   ListManagedUsersResponse,
+  GetFamilyUserFilterOptionsResponse,
   ListUserAuditParams,
   ListUserAuditQueryParams,
   ListUserAuditResponse,
@@ -27,6 +34,7 @@ import {
 import { changeAccount } from "../lib/accountAudit";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
 import { teachingProfilePredicates, TEACHING_PROFILE_ROLES, requiresTeachingProfile } from "../lib/teachingProfileAccess";
+import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { testTeacherCleanupRouter } from "./testTeacherCleanup";
 import {
   requireAuth,
@@ -39,6 +47,82 @@ import {
 
 const router: IRouter = Router();
 router.use(testTeacherCleanupRouter);
+const listedCenter = alias(centersTable, "listed_user_center");
+const listedTeachingCenter = alias(centersTable, "listed_user_teaching_center");
+
+function activeFamilyUserPredicate(activeFamily: string): SQL {
+  const familyCenterIds = db.select({ id: centersTable.id }).from(centersTable)
+    .where(and(
+      isNull(centersTable.deletedAt),
+      sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+    ));
+  return or(
+    inArray(usersTable.centerId, familyCenterIds),
+    inArray(usersTable.teachingCenterId, familyCenterIds),
+    and(isNull(usersTable.centerId), isNull(usersTable.teachingCenterId)),
+  )!;
+}
+
+function activeFamilyCenterIds(activeFamily: string, extraFilters: SQL[] = []) {
+  return db.select({ id: centersTable.id }).from(centersTable)
+    .where(and(
+      isNull(centersTable.deletedAt),
+      sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ...extraFilters,
+    ));
+}
+
+function userLocationPredicate(
+  provinceId: number | undefined,
+  islandId: number | undefined,
+  activeFamily: string,
+): SQL | undefined {
+  if (provinceId == null && islandId == null) return undefined;
+  const centerFilters: SQL[] = [];
+  if (provinceId != null) centerFilters.push(eq(centersTable.provinceId, provinceId));
+  if (islandId != null) centerFilters.push(eq(centersTable.islandId, islandId));
+  const matchingCenters = activeFamilyCenterIds(activeFamily, centerFilters);
+  const linkedToMatchingCenter = or(
+    inArray(usersTable.centerId, matchingCenters),
+    inArray(usersTable.teachingCenterId, matchingCenters),
+  )!;
+  if (provinceId != null && islandId == null) {
+    return or(
+      linkedToMatchingCenter,
+      and(
+        isNull(usersTable.centerId),
+        isNull(usersTable.teachingCenterId),
+        eq(usersTable.provinceId, provinceId),
+      ),
+    )!;
+  }
+  return linkedToMatchingCenter;
+}
+
+function userModuleAssignmentPredicate(
+  moduleId: number,
+  activeFamily: string,
+  activeYear: string | null,
+  provinceId?: number,
+  islandId?: number,
+): SQL {
+  const centerFilters: SQL[] = [];
+  if (provinceId != null) centerFilters.push(eq(centersTable.provinceId, provinceId));
+  if (islandId != null) centerFilters.push(eq(centersTable.islandId, islandId));
+  const familyCenterIds = activeFamilyCenterIds(activeFamily, centerFilters);
+  const assignedTeacherIds = db.select({ teacherId: teachingAssignmentsTable.teacherId })
+    .from(teachingAssignmentsTable)
+    .innerJoin(modulesTable, eq(modulesTable.id, teachingAssignmentsTable.moduleId))
+    .where(and(
+      eq(teachingAssignmentsTable.moduleId, moduleId),
+      inArray(teachingAssignmentsTable.centerId, familyCenterIds),
+      isNull(teachingAssignmentsTable.deletedAt),
+      isNull(modulesTable.deletedAt),
+      moduleFamilyFilter(activeFamily),
+      activeYear ? eq(teachingAssignmentsTable.schoolYear, activeYear) : undefined,
+    ));
+  return inArray(usersTable.id, assignedTeacherIds);
+}
 
 function mayManageAccount(caller: User, target: User): boolean {
   return caller.id !== target.id &&
@@ -56,47 +140,44 @@ router.get("/users/management", requireAuth,
       return;
     }
     const caller = req.user!;
-    const { role, provinceId, centerId, search, status = "all", page: requestedPage = 1, pageSize = 25 } = query.data;
+    const {
+      role, provinceId, centerId, islandId, moduleId, search,
+      status = "all", page: requestedPage = 1, pageSize = 25,
+    } = query.data;
     const filters: SQL[] = [];
+    const settings = await getSettings();
+    const activeFamily = professionalFamilyOf(settings);
+    const activeYear = settings.activeAcademicYear?.trim() || null;
     if (status === "active") {
       const scope = resolveReadScope(caller);
-      const activeFamily = await getActiveFamily();
       const centerFilters: SQL[] = [
         isNull(centersTable.deletedAt),
         sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
       ];
       if (scope.kind === "province") {
         centerFilters.push(eq(centersTable.provinceId, scope.provinceId));
-      } else if (scope.kind === "center") {
-        centerFilters.push(eq(centersTable.id, scope.centerId));
-      } else if (scope.kind === "global" && provinceId != null) {
-        centerFilters.push(eq(centersTable.provinceId, provinceId));
       }
-      const familyCenterIds = db
-        .select({ id: centersTable.id })
-        .from(centersTable)
-        .where(and(...centerFilters));
 
-      if (scope.kind === "global" && provinceId == null) {
-        filters.push(
-          or(inArray(usersTable.centerId, familyCenterIds), isNull(usersTable.centerId))!,
-        );
-      } else if (scope.kind === "global" && provinceId != null) {
-        filters.push(
-          or(
-            inArray(usersTable.centerId, familyCenterIds),
-            and(isNull(usersTable.centerId), eq(usersTable.provinceId, provinceId)),
-          )!,
-        );
+      if (scope.kind === "center") {
+        // Center-bound users may see the active-family directory, while
+        // management permissions remain restricted to their own center.
+        filters.push(activeFamilyUserPredicate(activeFamily));
+      } else if (scope.kind === "global") {
+        filters.push(activeFamilyUserPredicate(activeFamily));
       } else if (scope.kind === "province") {
-        filters.push(
-          or(
-            inArray(usersTable.centerId, familyCenterIds),
-            and(isNull(usersTable.centerId), eq(usersTable.provinceId, scope.provinceId)),
-          )!,
-        );
-      } else if (scope.kind === "center") {
-        filters.push(inArray(usersTable.centerId, familyCenterIds));
+        const familyCenterIds = db
+          .select({ id: centersTable.id })
+          .from(centersTable)
+          .where(and(...centerFilters));
+        filters.push(or(
+          inArray(usersTable.centerId, familyCenterIds),
+          inArray(usersTable.teachingCenterId, familyCenterIds),
+          and(
+            isNull(usersTable.centerId),
+            isNull(usersTable.teachingCenterId),
+            eq(usersTable.provinceId, scope.provinceId),
+          ),
+        )!);
       } else {
         filters.push(eq(usersTable.id, -1));
       }
@@ -114,13 +195,33 @@ router.get("/users/management", requireAuth,
           res.status(403).json({ message: "Tu cuenta no tiene un centro asignado" });
           return;
         }
-        filters.push(eq(usersTable.centerId, caller.centerId));
+        const activeFamilyUsers = and(
+          eq(usersTable.status, "active"),
+          activeFamilyUserPredicate(activeFamily),
+        )!;
+        const recoverableOwnCenterUsers = and(
+          eq(usersTable.status, "inactive"),
+          eq(usersTable.centerId, caller.centerId),
+        )!;
+        filters.push(
+          status === "inactive"
+            ? recoverableOwnCenterUsers
+            : or(activeFamilyUsers, recoverableOwnCenterUsers)!,
+        );
       }
     }
     if (role) filters.push(eq(usersTable.role, role));
-    if (provinceId != null && status !== "active")
-      filters.push(eq(usersTable.provinceId, provinceId));
     if (centerId != null) filters.push(eq(usersTable.centerId, centerId));
+    const locationFilter = userLocationPredicate(provinceId, islandId, activeFamily);
+    if (locationFilter) filters.push(locationFilter);
+    const assignmentProvinceId = caller.role === "coordinator"
+      ? caller.provinceId ?? undefined
+      : provinceId;
+    if (moduleId != null) {
+      filters.push(userModuleAssignmentPredicate(
+        moduleId, activeFamily, activeYear, assignmentProvinceId, islandId,
+      ));
+    }
     if (status === "inactive") filters.push(eq(usersTable.status, "inactive"));
     if (status !== "active") {
       // A soft-deactivated record is retained for recovery, never hard-deleted.
@@ -130,15 +231,20 @@ router.get("/users/management", requireAuth,
       const term = `%${search.trim().replace(/[\\%_]/g, "\\$&")}%`;
       filters.push(or(ilike(usersTable.name, term), ilike(usersTable.email, term))!);
     }
-    const settings = await getSettings();
-    const activeYear = settings.activeAcademicYear?.trim() || null;
     const profile = teachingProfilePredicates(professionalFamilyOf(settings), activeYear);
-    // Diagnose only accounts the caller may manage, never peers or their own
-    // profile. Administrative roles can also be teachers.
+    // Profile completeness is visible only for accounts the caller can manage,
+    // never for family-wide read-only peers or the caller's own profile.
+    const managementScope: SQL | undefined =
+      caller.role === "superadmin"
+        ? undefined
+        : caller.role === "coordinator"
+          ? caller.provinceId == null ? eq(usersTable.id, -1) : eq(usersTable.provinceId, caller.provinceId)
+          : caller.centerId == null ? eq(usersTable.id, -1) : eq(usersTable.centerId, caller.centerId);
     const diagnosable = and(
       inArray(usersTable.role, TEACHING_PROFILE_ROLES.filter((role) =>
         caller.role === "superadmin" || roleRank(role) < roleRank(caller.role))),
       sql`${usersTable.id} <> ${caller.id}`,
+      ...(managementScope ? [managementScope] : []),
     )!;
     const incomplete = and(diagnosable, not(profile.complete))!;
     const profileFilter = query.data.teachingProfile;
@@ -152,10 +258,23 @@ router.get("/users/management", requireAuth,
       const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
       const rows = await tx.select({
         ...getTableColumns(usersTable),
+        centerName: listedCenter.name,
+        teachingCenterName: listedTeachingCenter.name,
         profileCenter: profile.center,
         profileProvince: profile.province,
         profileModules: profile.modules,
-      }).from(usersTable).where(and(...filters))
+      }).from(usersTable)
+        .leftJoin(listedCenter, and(
+          eq(listedCenter.id, usersTable.centerId),
+          isNull(listedCenter.deletedAt),
+          sql`${listedCenter.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ))
+        .leftJoin(listedTeachingCenter, and(
+          eq(listedTeachingCenter.id, usersTable.teachingCenterId),
+          isNull(listedTeachingCenter.deletedAt),
+          sql`${listedTeachingCenter.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ))
+        .where(and(...filters))
         .orderBy(desc(usersTable.createdAt), desc(usersTable.id))
         .limit(pageSize).offset((page - 1) * pageSize);
       return {
@@ -224,6 +343,125 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
 
   res.json(ListUsersResponse.parse(rows));
 });
+
+// The regular user-list page has a dedicated read-only family directory.
+// Other existing /users consumers keep their narrower, operation-specific scope.
+router.get("/users/family-directory", requireAuth, requireRole("teacher"),
+  async (req, res): Promise<void> => {
+    const query = ListFamilyUserDirectoryQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ message: query.error.message });
+      return;
+    }
+    const activeFamily = await getActiveFamily();
+    const settings = await getSettings();
+    const activeYear = settings.activeAcademicYear?.trim() || null;
+    const filters: SQL[] = [
+      isNull(usersTable.deletedAt),
+      eq(usersTable.status, "active"),
+      activeFamilyUserPredicate(activeFamily),
+    ];
+    if (query.data.role) filters.push(eq(usersTable.role, query.data.role));
+    if (query.data.centerId != null) filters.push(eq(usersTable.centerId, query.data.centerId));
+    const locationFilter = userLocationPredicate(query.data.provinceId, query.data.islandId, activeFamily);
+    if (locationFilter) filters.push(locationFilter);
+    if (query.data.moduleId != null) {
+      filters.push(userModuleAssignmentPredicate(
+        query.data.moduleId, activeFamily, activeYear, query.data.provinceId, query.data.islandId,
+      ));
+    }
+    if (query.data.search?.trim()) {
+      const term = `%${query.data.search.trim().replace(/[\\%_]/g, "\\$&")}%`;
+      filters.push(or(
+        ilike(usersTable.name, term),
+        ilike(usersTable.email, term),
+        ilike(listedCenter.name, term),
+        ilike(listedTeachingCenter.name, term),
+      )!);
+    }
+    const rows = await db.select({
+      ...getTableColumns(usersTable),
+      centerName: listedCenter.name,
+      teachingCenterName: listedTeachingCenter.name,
+    }).from(usersTable)
+      .leftJoin(listedCenter, and(
+        eq(listedCenter.id, usersTable.centerId),
+        isNull(listedCenter.deletedAt),
+        sql`${listedCenter.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ))
+      .leftJoin(listedTeachingCenter, and(
+        eq(listedTeachingCenter.id, usersTable.teachingCenterId),
+        isNull(listedTeachingCenter.deletedAt),
+        sql`${listedTeachingCenter.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+      ))
+      .where(and(...filters))
+      .orderBy(usersTable.name, usersTable.id);
+    res.json(ListUsersResponse.parse(rows));
+  },
+);
+
+router.get(
+  "/users/family-filter-options",
+  requireAuth,
+  requireRole("superadmin", "coordinator", "department_head", "teacher"),
+  async (req, res): Promise<void> => {
+    const caller = req.user!;
+    if (caller.role === "coordinator" && caller.provinceId == null) {
+      res.status(403).json({ message: "Tu cuenta no tiene una provincia asignada" });
+      return;
+    }
+    const settings = await getSettings();
+    const activeFamily = professionalFamilyOf(settings);
+    const activeYear = settings.activeAcademicYear?.trim() || null;
+    const familyCenterFilters: SQL[] = [
+      isNull(centersTable.deletedAt),
+      sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+    ];
+    if (caller.role === "coordinator") {
+      familyCenterFilters.push(eq(centersTable.provinceId, caller.provinceId!));
+    }
+    const familyCenterIds = db.select({ id: centersTable.id }).from(centersTable)
+      .where(and(...familyCenterFilters));
+    const [provinces, islands, modules] = await Promise.all([
+      db.selectDistinct({
+        id: provincesTable.id,
+        name: provincesTable.name,
+      }).from(centersTable)
+        .innerJoin(provincesTable, eq(provincesTable.id, centersTable.provinceId))
+        .where(and(...familyCenterFilters, isNull(provincesTable.deletedAt)))
+        .orderBy(asc(provincesTable.name)),
+      db.selectDistinct({
+        id: islandsTable.id,
+        provinceId: islandsTable.provinceId,
+        name: islandsTable.name,
+      }).from(centersTable)
+        .innerJoin(islandsTable, eq(islandsTable.id, centersTable.islandId))
+        .where(and(...familyCenterFilters, isNull(islandsTable.deletedAt)))
+        .orderBy(asc(islandsTable.name)),
+      db.selectDistinct({
+        id: modulesTable.id,
+        name: modulesTable.name,
+        code: modulesTable.code,
+        cycleName: modulesTable.cycleName,
+      }).from(teachingAssignmentsTable)
+        .innerJoin(modulesTable, eq(modulesTable.id, teachingAssignmentsTable.moduleId))
+        .where(and(
+          isNull(teachingAssignmentsTable.deletedAt),
+          inArray(teachingAssignmentsTable.centerId, familyCenterIds),
+          isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(activeFamily),
+          activeYear ? eq(teachingAssignmentsTable.schoolYear, activeYear) : undefined,
+        ))
+        .orderBy(asc(modulesTable.name), asc(modulesTable.id)),
+    ]);
+    res.json(GetFamilyUserFilterOptionsResponse.parse({
+      provinces,
+      islands,
+      modules,
+      activeYear,
+    }));
+  },
+);
 
 router.get("/users/:id/audit", requireAuth,
   requireRole("superadmin", "coordinator", "department_head"),

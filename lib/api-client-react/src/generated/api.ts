@@ -171,6 +171,7 @@ import type {
   ListDocumentFormsParams,
   ListEventAttendanceParams,
   ListEventsParams,
+  ListFamilyUserDirectoryParams,
   ListFeedbackParams,
   ListForumThreadsParams,
   ListGdcanResourcesParams,
@@ -295,6 +296,7 @@ import type {
   UploadUrlResponse,
   User,
   UserAuditPage,
+  UserDirectoryFilterOptions,
   VapidPublicKey,
   VerifyAttendanceEmailBody,
   WikiAttachmentInput,
@@ -6261,6 +6263,215 @@ export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFamilyUserDirectoryUrl = (params?: ListFamilyUserDirectoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/family-directory?${stringifiedParams}` : `/api/users/family-directory`
+}
+
+/**
+ * @summary Read-only active-family directory for teachers
+ */
+export const listFamilyUserDirectory = async (params?: ListFamilyUserDirectoryParams, options?: Parameters<typeof customFetch>[1]): Promise<User[]> => {
+
+  return customFetch<User[]>(getListFamilyUserDirectoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFamilyUserDirectoryQueryKey = (params?: ListFamilyUserDirectoryParams,) => {
+    return [
+    `/api/users/family-directory`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFamilyUserDirectoryQueryOptions = <TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(params?: ListFamilyUserDirectoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFamilyUserDirectoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFamilyUserDirectory>>> = ({ signal }) => listFamilyUserDirectory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListFamilyUserDirectoryQueryResult = NonNullable<Awaited<ReturnType<typeof listFamilyUserDirectory>>>
+export type ListFamilyUserDirectoryQueryError = ErrorType<unknown>
+
+
+export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(
+ params: undefined |  ListFamilyUserDirectoryParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listFamilyUserDirectory>>,
+          TError,
+          Awaited<ReturnType<typeof listFamilyUserDirectory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(
+ params?: ListFamilyUserDirectoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listFamilyUserDirectory>>,
+          TError,
+          Awaited<ReturnType<typeof listFamilyUserDirectory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(
+ params?: ListFamilyUserDirectoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read-only active-family directory for teachers
+ */
+
+export function useListFamilyUserDirectory<TData = Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError = ErrorType<unknown>>(
+ params?: ListFamilyUserDirectoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFamilyUserDirectory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListFamilyUserDirectoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFamilyUserFilterOptionsUrl = () => {
+
+
+
+
+  return `/api/users/family-filter-options`
+}
+
+/**
+ * @summary List geographic and module filters for the active-family user directory
+ */
+export const getFamilyUserFilterOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<UserDirectoryFilterOptions> => {
+
+  return customFetch<UserDirectoryFilterOptions>(getGetFamilyUserFilterOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFamilyUserFilterOptionsQueryKey = () => {
+    return [
+    `/api/users/family-filter-options`
+    ] as const;
+    }
+
+
+export const getGetFamilyUserFilterOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError = ErrorType<Error>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFamilyUserFilterOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>> = ({ signal }) => getFamilyUserFilterOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFamilyUserFilterOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>>
+export type GetFamilyUserFilterOptionsQueryError = ErrorType<Error>
+
+
+export function useGetFamilyUserFilterOptions<TData = Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError = ErrorType<Error>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFamilyUserFilterOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getFamilyUserFilterOptions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFamilyUserFilterOptions<TData = Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError = ErrorType<Error>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFamilyUserFilterOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getFamilyUserFilterOptions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFamilyUserFilterOptions<TData = Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError = ErrorType<Error>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List geographic and module filters for the active-family user directory
+ */
+
+export function useGetFamilyUserFilterOptions<TData = Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError = ErrorType<Error>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFamilyUserFilterOptions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFamilyUserFilterOptionsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

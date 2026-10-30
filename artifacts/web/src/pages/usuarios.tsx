@@ -1,20 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListUsers,
+  useListFamilyUserDirectory,
   useListManagedUsers,
+  useGetFamilyUserFilterOptions,
+  useCreateChatGroup,
   useListProvinces,
   useListCenters,
   useUpdateUser,
   useDeactivateUser,
   useReactivateUser,
   getListUsersQueryKey,
+  getListFamilyUserDirectoryQueryKey,
   getListManagedUsersQueryKey,
+  getGetFamilyUserFilterOptionsQueryKey,
+  getListChatGroupsQueryKey,
   getGetUserQueryKey,
   type ListUsersParams,
+  type ListFamilyUserDirectoryParams,
   type ListManagedUsersParams,
   type ManagedUser,
+  type ChatGroup,
   type Role,
   type UpdateUserInput,
 } from "@workspace/api-client-react";
@@ -69,6 +77,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FilterX,
+  Mail,
+  MessageCircle,
   Pencil,
   RotateCw,
   Search,
@@ -96,10 +106,12 @@ type PendingAccess = { kind: "deactivate" | "reactivate"; user: ManagedUser } | 
 
 export default function UsuariosPage() {
   const searchParams = new URLSearchParams(useSearch());
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const { appName } = useBranding();
   const qc = useQueryClient();
   const isManager = isManagerRole(user?.role);
+  const isTeacher = user?.role === "teacher";
   const isSuperadmin = user?.role === "superadmin";
 
   const [searchInput, setSearchInput] = useState("");
@@ -114,6 +126,14 @@ export default function UsuariosPage() {
     return Number.isInteger(value) && value > 0 ? value : null;
   });
   const [centerId, setCenterId] = useState<number | null>(null);
+  const [islandId, setIslandId] = useState<number | null>(() => {
+    const value = Number(searchParams.get("islandId"));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  });
+  const [moduleId, setModuleId] = useState<number | null>(() => {
+    const value = Number(searchParams.get("moduleId"));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  });
   const [status, setStatus] = useState<StatusFilter>(() => {
     const value = searchParams.get("status");
     return value === "active" || value === "inactive" ? value : "all";
@@ -134,27 +154,86 @@ export default function UsuariosPage() {
   const centersQ = useListCenters(
     dashboardOnly ? { dashboardOnly: true } : {},
   );
+  const filterOptionsQ = useGetFamilyUserFilterOptions({
+    query: {
+      enabled: isManager || isTeacher,
+      queryKey: getGetFamilyUserFilterOptionsQueryKey(),
+      staleTime: 5 * 60_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+  const familyDirectoryParams: ListFamilyUserDirectoryParams = {};
+  if (role) familyDirectoryParams.role = role;
+  if (search) familyDirectoryParams.search = search;
+  if (provinceId != null) familyDirectoryParams.provinceId = provinceId;
+  if (centerId != null) familyDirectoryParams.centerId = centerId;
+  if (islandId != null) familyDirectoryParams.islandId = islandId;
+  if (moduleId != null) familyDirectoryParams.moduleId = moduleId;
+  const familyDirectoryQ = useListFamilyUserDirectory(familyDirectoryParams, {
+    query: {
+      enabled: isTeacher,
+      queryKey: getListFamilyUserDirectoryQueryKey(familyDirectoryParams),
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+      refetchInterval: 60_000,
+    },
+  });
   const provinces = useMemo(() => provincesQ.data ?? [], [provincesQ.data]);
+  const directoryProvinces = useMemo(
+    () => filterOptionsQ.data?.provinces ?? [],
+    [filterOptionsQ.data?.provinces],
+  );
+  const islandOptions = useMemo(
+    () => (filterOptionsQ.data?.islands ?? []).filter(
+      (island) => provinceId == null || island.provinceId === provinceId,
+    ),
+    [filterOptionsQ.data?.islands, provinceId],
+  );
+  const moduleOptions = filterOptionsQ.data?.modules ?? [];
   const centers = useMemo(() => centersQ.data ?? [], [centersQ.data]);
-  const catalogsError = provincesQ.isError || centersQ.isError;
-  const catalogsLoading = provincesQ.isLoading || centersQ.isLoading;
+  const catalogsError = provincesQ.isError || centersQ.isError || filterOptionsQ.isError;
+  const catalogsLoading = provincesQ.isLoading || centersQ.isLoading || filterOptionsQ.isLoading;
   const retryCatalogs = () => {
     if (provincesQ.isError) void provincesQ.refetch();
     if (centersQ.isError) void centersQ.refetch();
+    if (filterOptionsQ.isError) void filterOptionsQ.refetch();
   };
 
-  const provinceName = useMemo(() => new Map(provinces.map((p) => [p.id, p.name])), [provinces]);
+  const provinceName = useMemo(
+    () => new Map([...provinces, ...directoryProvinces].map((p) => [p.id, p.name])),
+    [provinces, directoryProvinces],
+  );
   const centerName = useMemo(() => new Map(centers.map((c) => [c.id, c.name])), [centers]);
+  const familyDirectoryCenters = useMemo(() => {
+    const unique = new Map<number, { id: number; name: string; provinceId: number | null }>();
+    for (const listedUser of familyDirectoryQ.data ?? []) {
+      if (listedUser.centerId == null) continue;
+      const knownCenter = centers.find((center) => center.id === listedUser.centerId);
+      unique.set(listedUser.centerId, {
+        id: listedUser.centerId,
+        name: listedUser.centerName ?? knownCenter?.name ?? `Centro #${listedUser.centerId}`,
+        provinceId: listedUser.provinceId ?? knownCenter?.provinceId ?? null,
+      });
+    }
+    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [familyDirectoryQ.data, centers]);
   const centerFilterOptions = useMemo(() => {
-    const scoped = isManager ? scopedCenters(user, centers) : centers;
+    const scoped = isTeacher
+      ? familyDirectoryCenters
+      : isManager
+        ? scopedCenters(user, centers)
+        : centers;
     return provinceId != null ? scoped.filter((c) => c.provinceId === provinceId) : scoped;
-  }, [isManager, user, centers, provinceId]);
+  }, [isManager, isTeacher, user, centers, familyDirectoryCenters, provinceId]);
 
   // Managed (server-paginated) query
   const managedParams: ListManagedUsersParams = { status, teachingProfile, page, pageSize };
   if (role) managedParams.role = role;
-  if (isSuperadmin && provinceId != null) managedParams.provinceId = provinceId;
+  if (isManager && provinceId != null) managedParams.provinceId = provinceId;
   if (centerId != null) managedParams.centerId = centerId;
+  if (islandId != null) managedParams.islandId = islandId;
+  if (moduleId != null) managedParams.moduleId = moduleId;
   if (search) managedParams.search = search;
   const managedQ = useListManagedUsers(managedParams, {
     query: {
@@ -169,15 +248,17 @@ export default function UsuariosPage() {
   if (role) readParams.role = role;
   if (search) readParams.search = search;
   const readQ = useListUsers(readParams, {
-    query: { enabled: !isManager, queryKey: getListUsersQueryKey(readParams) },
+    query: { enabled: !isManager && !isTeacher, queryKey: getListUsersQueryKey(readParams) },
   });
 
-  const activeQ = isManager ? managedQ : readQ;
+  const activeQ = isManager ? managedQ : isTeacher ? familyDirectoryQ : readQ;
   const { rows, total } = useMemo(() => {
     if (isManager) {
       return { rows: managedQ.data?.users ?? [], total: managedQ.data?.total ?? 0 };
     }
-    let list = (readQ.data ?? []).map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
+    let list = (isTeacher ? familyDirectoryQ.data ?? [] : readQ.data ?? [])
+      .map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
+    if (isTeacher && role) list = list.filter((u) => u.role === role);
     if (status !== "all") list = list.filter((u) => u.status === status);
     if (dashboardOnly) {
       const activeFamilyCenterIds = new Set(centers.map((center) => center.id));
@@ -187,7 +268,7 @@ export default function UsuariosPage() {
     }
     if (centerId != null) list = list.filter((u) => u.centerId === centerId);
     return { rows: list.slice((page - 1) * pageSize, page * pageSize), total: list.length };
-  }, [isManager, managedQ.data, readQ.data, centerId, status, dashboardOnly, centers, page, pageSize]);
+  }, [isManager, isTeacher, managedQ.data, familyDirectoryQ.data, readQ.data, role, centerId, status, dashboardOnly, centers, page, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   useEffect(() => {
@@ -195,12 +276,15 @@ export default function UsuariosPage() {
   }, [page, pageCount, activeQ.isFetching]);
 
   const filtersActive =
-    searchInput !== "" || role != null || provinceId != null || centerId != null || status !== "all" || teachingProfile !== "all";
+    searchInput !== "" || role != null || provinceId != null || islandId != null ||
+    moduleId != null || centerId != null || status !== "all" || teachingProfile !== "all";
   const clearFilters = () => {
     setSearchInput("");
     setSearch("");
     setRole(null);
     setProvinceId(null);
+    setIslandId(null);
+    setModuleId(null);
     setCenterId(null);
     setStatus("all");
     setTeachingProfile("all");
@@ -210,6 +294,7 @@ export default function UsuariosPage() {
   const updateMut = useUpdateUser();
   const deactivateMut = useDeactivateUser();
   const reactivateMut = useReactivateUser();
+  const createDirectMut = useCreateChatGroup();
   const anyPending = updateMut.isPending || deactivateMut.isPending || reactivateMut.isPending;
 
   const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -259,9 +344,31 @@ export default function UsuariosPage() {
   };
 
   const showActions = isManager;
-  const colCount = showActions ? 7 : 5;
+  const colCount = showActions ? 7 : 6;
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
+  const startDirectConversation = (target: ManagedUser) => {
+    if (target.id === user?.id || target.status !== "active" || createDirectMut.isPending) return;
+    createDirectMut.mutate(
+      { data: { name: target.name, type: "direct", memberIds: [target.id] } },
+      {
+        onSuccess: (group) => {
+          qc.setQueryData<ChatGroup[]>(getListChatGroupsQueryKey(), (previous = []) =>
+            previous.some((conversation) => conversation.id === group.id)
+              ? previous
+              : [group, ...previous],
+          );
+          void qc.invalidateQueries({ queryKey: getListChatGroupsQueryKey() });
+          navigate(`/chat?grupo=${group.id}`);
+        },
+        onError: () => toast({
+          title: "No se pudo iniciar la conversación",
+          description: "La cuenta puede estar inactiva o no disponible. Vuelve a intentarlo.",
+          variant: "destructive",
+        }),
+      },
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -270,6 +377,8 @@ export default function UsuariosPage() {
         <h1 className="text-2xl font-bold tracking-tight">Usuarios</h1>
         <p className="text-muted-foreground">
           Personas con acceso a la plataforma {appName}.
+          {(isTeacher || user?.role === "department_head") &&
+            " Se muestran usuarios de toda la familia activa; las acciones de gestión siguen limitadas a tu ámbito."}
         </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -308,12 +417,16 @@ export default function UsuariosPage() {
           </SelectContent>
         </Select>
 
-        {isSuperadmin && (
+        {(isManager || isTeacher) && (
           <Select
             value={provinceId != null ? String(provinceId) : ALL}
             onValueChange={(v) => {
               const next = v === ALL ? null : Number(v);
               setProvinceId(next);
+              const selectedIsland = islandOptions.find((island) => island.id === islandId);
+              if (next != null && selectedIsland && selectedIsland.provinceId !== next) {
+                setIslandId(null);
+              }
               // Keep a selected center only if it belongs to the new province.
               if (next != null && centerId != null) {
                 const c = centers.find((x) => x.id === centerId);
@@ -321,35 +434,87 @@ export default function UsuariosPage() {
               }
               setPage(1);
             }}
-            disabled={provincesQ.isError}
+            disabled={filterOptionsQ.isError}
           >
             <SelectTrigger aria-label="Filtrar por provincia" data-testid="select-filter-province">
               <SelectValue placeholder="Provincia" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Todas las provincias</SelectItem>
-              {provinces.map((p) => (
+              {directoryProvinces.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
 
-        <Select
-          value={centerId != null ? String(centerId) : ALL}
-          onValueChange={(v) => { setCenterId(v === ALL ? null : Number(v)); setPage(1); }}
-          disabled={centersQ.isError}
-        >
-          <SelectTrigger aria-label="Filtrar por centro" data-testid="select-filter-center">
-            <SelectValue placeholder="Centro" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos los centros</SelectItem>
-            {centerFilterOptions.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {(isManager || isTeacher) && (
+          <Select
+            value={islandId != null ? String(islandId) : ALL}
+            onValueChange={(v) => {
+              setIslandId(v === ALL ? null : Number(v));
+              setCenterId(null);
+              setPage(1);
+            }}
+            disabled={filterOptionsQ.isError}
+          >
+            <SelectTrigger aria-label="Filtrar por isla" data-testid="select-filter-island">
+              <SelectValue placeholder="Isla" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas las islas</SelectItem>
+              {islandOptions.map((island) => (
+                <SelectItem key={island.id} value={String(island.id)}>{island.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {(isManager || isTeacher) && (
+          <Select
+            value={moduleId != null ? String(moduleId) : ALL}
+            onValueChange={(v) => { setModuleId(v === ALL ? null : Number(v)); setPage(1); }}
+            disabled={filterOptionsQ.isError}
+          >
+            <SelectTrigger
+              aria-label="Filtrar por módulo"
+              title={filterOptionsQ.data?.activeYear
+                ? `Asignaciones del curso ${filterOptionsQ.data.activeYear}`
+                : "Asignaciones registradas en cualquier curso"}
+              data-testid="select-filter-module"
+            >
+              <SelectValue placeholder="Módulo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos los módulos</SelectItem>
+              {moduleOptions.map((module) => (
+                <SelectItem key={module.id} value={String(module.id)}>
+                  {module.code ? `${module.code} · ` : ""}
+                  {module.name}
+                  {module.cycleName ? ` — ${module.cycleName}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {user?.role !== "department_head" && (
+          <Select
+            value={centerId != null ? String(centerId) : ALL}
+            onValueChange={(v) => { setCenterId(v === ALL ? null : Number(v)); setPage(1); }}
+            disabled={centersQ.isError}
+          >
+            <SelectTrigger aria-label="Filtrar por centro" data-testid="select-filter-center">
+              <SelectValue placeholder="Centro" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos los centros</SelectItem>
+              {centerFilterOptions.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {isManager && (
           <Select value={status} onValueChange={(v) => { setStatus(v as StatusFilter); setPage(1); }}>
@@ -431,7 +596,7 @@ export default function UsuariosPage() {
                 <TableHead>Ámbito</TableHead>
                 <TableHead>Estado</TableHead>
                 {isManager && <TableHead>Integridad del perfil docente</TableHead>}
-                {showActions && <TableHead className="text-right">Acciones</TableHead>}
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -474,10 +639,14 @@ export default function UsuariosPage() {
               {!activeQ.isError &&
                 rows.map((u) => {
                   const personalCenter = u.role === "teacher" ? u.centerId : u.teachingCenterId ?? u.centerId;
-                  const personalCenterName = personalCenter ? centerName.get(personalCenter) ?? `Centro #${personalCenter}` : "Sin asignar";
+                  const personalCenterName = personalCenter
+                    ? (u.role === "teacher" ? u.centerName : u.teachingCenterName) ??
+                      centerName.get(personalCenter) ??
+                      `Centro #${personalCenter}`
+                    : "Sin asignar";
                   const scope =
                     [
-                      u.centerId ? centerName.get(u.centerId) ?? `Centro #${u.centerId}` : null,
+                      u.centerId ? u.centerName ?? centerName.get(u.centerId) ?? `Centro #${u.centerId}` : null,
                       u.provinceId ? provinceName.get(u.provinceId) ?? `Provincia #${u.provinceId}` : null,
                     ]
                       .filter(Boolean)
@@ -530,15 +699,44 @@ export default function UsuariosPage() {
                           )}
                         </TableCell>
                       )}
-                      {showActions && (
-                        <TableCell className="text-right">
-                          {(manageable || isSuperadmin) && (
-                            <Button variant="ghost" size="sm" onClick={() => setAuditUser(u)} aria-label={`Historial de ${u.name}`}>
-                              Historial
-                            </Button>
-                          )}
-                          {manageable ? (
-                            <div className="flex flex-wrap justify-end gap-1">
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={!isActive || isSelf || createDirectMut.isPending}
+                            onClick={() => startDirectConversation(u)}
+                            aria-label={`Enviar mensaje a ${u.name}`}
+                            title={
+                              !isActive
+                                ? "No se pueden iniciar conversaciones con cuentas desactivadas"
+                                : isSelf
+                                  ? "No puedes iniciar una conversación contigo"
+                                  : "Enviar mensaje"
+                            }
+                            data-testid={`button-message-user-${u.id}`}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="icon" asChild>
+                            <a
+                              href={`mailto:${u.email}`}
+                              aria-label={`Enviar correo a ${u.name}`}
+                              title={`Enviar correo a ${u.name}`}
+                              data-testid={`button-email-user-${u.id}`}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          {showActions && (
+                            <>
+                              {(manageable || isSuperadmin) && (
+                                <Button variant="ghost" size="sm" onClick={() => setAuditUser(u)} aria-label={`Historial de ${u.name}`}>
+                                  Historial
+                                </Button>
+                              )}
+                              {manageable ? (
+                                <>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -575,12 +773,14 @@ export default function UsuariosPage() {
                                   <UserCheck className="h-4 w-4" /> Reactivar
                                 </Button>
                               )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </>
                           )}
-                        </TableCell>
-                      )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}

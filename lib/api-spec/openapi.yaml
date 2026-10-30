@@ -1457,6 +1457,53 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/User"
+  /users/family-directory:
+    get:
+      operationId: listFamilyUserDirectory
+      tags: [users]
+      summary: Read-only active-family directory for teachers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoleQuery"
+        - $ref: "#/components/parameters/ProvinceQuery"
+        - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/IslandQuery"
+        - name: moduleId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - $ref: "#/components/parameters/SearchQuery"
+      responses:
+        "200":
+          description: Active users associated with the configured professional family
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /users/family-filter-options:
+    get:
+      operationId: getFamilyUserFilterOptions
+      tags: [users]
+      summary: List geographic and module filters for the active-family user directory
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Filter options limited to the active family and caller's province scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDirectoryFilterOptions"
+        "403":
+          description: User directory filters require an authorized directory role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/test-teachers/cleanup:
     get:
       operationId: previewTestTeacherCleanup
@@ -1503,6 +1550,12 @@ paths:
         - $ref: "#/components/parameters/RoleQuery"
         - $ref: "#/components/parameters/ProvinceQuery"
         - $ref: "#/components/parameters/CenterQuery"
+        - $ref: "#/components/parameters/IslandQuery"
+        - name: moduleId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
         - $ref: "#/components/parameters/SearchQuery"
         - name: status
           in: query
@@ -6959,10 +7012,67 @@ components:
           type: integer
           nullable: true
           description: Personal teaching center for administrative roles; does not grant management permissions.
+        centerName:
+          type: ["string", "null"]
+          description: Name of the user's administrative center when it belongs to the active family
+        teachingCenterName:
+          type: ["string", "null"]
+          description: Name of the user's personal teaching center when it belongs to the active family
         createdAt:
           type: string
           format: date-time
       required: [id, name, email, role, status]
+    UserDirectoryFilterOptions:
+      type: object
+      properties:
+        provinces:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDirectoryProvinceOption"
+        islands:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDirectoryIslandOption"
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDirectoryModuleOption"
+        activeYear:
+          type: string
+          nullable: true
+      required: [provinces, islands, modules, activeYear]
+    UserDirectoryProvinceOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+    UserDirectoryIslandOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        provinceId:
+          type: integer
+        name:
+          type: string
+      required: [id, provinceId, name]
+    UserDirectoryModuleOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        cycleName:
+          type: string
+          nullable: true
+      required: [id, name, code, cycleName]
     UserAuditChange:
       type: object
       properties:

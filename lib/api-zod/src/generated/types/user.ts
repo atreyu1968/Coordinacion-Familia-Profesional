@@ -22,5 +22,15 @@ export interface User {
      * @nullable
      */
   teachingCenterId?: number | null;
+  /**
+     * Name of the user's administrative center when it belongs to the active family
+     * @nullable
+     */
+  centerName?: string | null;
+  /**
+     * Name of the user's personal teaching center when it belongs to the active family
+     * @nullable
+     */
+  teachingCenterName?: string | null;
   createdAt?: Date;
 }

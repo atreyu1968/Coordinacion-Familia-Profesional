@@ -9,7 +9,7 @@ Rules every mutating/detail route MUST enforce (not just `requireAuth`):
 - **superadmin**: global, no scope. Must NOT be scoped to a province (seed sets province_id NULL for superadmin).
 - **coordinator**: bound to its `provinceId`.
 - **department_head**: bound to its `centerId`.
-- **teacher/prospector/student**: no admin authority; list endpoints default-deny to self only.
+- **teacher/prospector/student**: no admin authority; generic list endpoints default-deny to self only. Teachers have a separate read-only directory for active users in the active professional family; do not reuse that wider scope for other list consumers.
 
 Patterns:
 - Object-level checks: fetch the target row, then verify `hasScopeOver`/`canManageUser` before mutating. Never trust the `:id` alone.
@@ -34,3 +34,11 @@ For list/aggregate endpoints (e.g. `/departments`, `/dashboard/*`), use `resolve
 **Why:** The user approved fixing accounts disappearing after deactivation while preserving accounts and histories. Directory consumers across web and mobile must not gain inactive-account visibility as a side effect of that repair.
 
 **How to apply:** Preserve the distinction between directory reads and manager-only recovery. Editing and access actions must share server-authoritative scope/hierarchy checks; a manager's own access is handled separately from account administration.
+
+## Active-family user directory
+
+**Rule:** The user-list page may show teachers the active users associated with the configured professional family, including center names. It provides mailto and direct-chat actions; direct chat is only available for active, non-self accounts and uses the existing chat authorization. This is a read-only directory, not an expansion of account-management rights. Department heads may see active-family users, but `canManage`, profile-integrity details, and recovery of inactive accounts remain limited to their own center. Keep generic `/users` calls scoped for their existing consumers.
+
+**Why:** The user explicitly chose visibility across the whole active family after reporting that center users only saw colleagues from their own center, then asked to contact people from that list. Visibility and contact must not grant management or reveal deactivated accounts from other centers.
+
+**How to apply:** Use a dedicated family-directory endpoint for the user-list screen. Keep writes, audit, profile diagnostics, and inactive-account recovery behind the existing role and scope checks. Open emails with `mailto` and direct conversations through the existing chat APIs; never add an alternate path that can contact inactive accounts.

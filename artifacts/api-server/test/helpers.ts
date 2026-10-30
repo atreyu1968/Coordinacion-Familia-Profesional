@@ -6,6 +6,7 @@ import {
   coordinatorTaskSourceScansTable,
   accountAuditTable,
   provincesTable,
+  islandsTable,
   centersTable,
   chatGroupsTable,
   chatGroupMembersTable,
@@ -45,6 +46,7 @@ type Role = User["role"];
 const created = {
   userIds: [] as number[],
   provinceIds: [] as number[],
+  islandIds: [] as number[],
   centerIds: [] as number[],
   groupIds: [] as number[],
   surveyIds: [] as number[],
@@ -65,6 +67,15 @@ export async function createProvince(name = "Provincia"): Promise<number> {
     .values({ name: `${name} ${RUN_TAG}`, code: null })
     .returning();
   created.provinceIds.push(row!.id);
+  return row!.id;
+}
+
+export async function createIsland(provinceId: number, name = "Isla"): Promise<number> {
+  const [row] = await db
+    .insert(islandsTable)
+    .values({ name: `${name} ${RUN_TAG}`, provinceId })
+    .returning();
+  created.islandIds.push(row!.id);
   return row!.id;
 }
 
@@ -431,6 +442,11 @@ export async function cleanup(): Promise<void> {
       .delete(centersTable)
       .where(inArray(centersTable.id, created.centerIds));
   }
+  if (created.islandIds.length > 0) {
+    await db
+      .delete(islandsTable)
+      .where(inArray(islandsTable.id, created.islandIds));
+  }
   if (created.provinceIds.length > 0) {
     await db
       .delete(provincesTable)
@@ -438,6 +454,7 @@ export async function cleanup(): Promise<void> {
   }
   created.userIds.length = 0;
   created.provinceIds.length = 0;
+  created.islandIds.length = 0;
   created.centerIds.length = 0;
   created.groupIds.length = 0;
   created.surveyIds.length = 0;

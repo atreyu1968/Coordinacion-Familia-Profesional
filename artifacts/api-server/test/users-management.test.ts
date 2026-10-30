@@ -1,9 +1,20 @@
 import { afterAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, centersTable } from "@workspace/db";
 import app from "../src/app";
-import { authHeader, cleanup, createCenter, createProvince, createUser } from "./helpers";
+import {
+  authHeader,
+  cleanup,
+  createCenter,
+  createIsland,
+  createModule,
+  createProvince,
+  createTeachingAssignment,
+  createUser,
+} from "./helpers";
+import { getActiveAcademicYear, getActiveFamily } from "../src/lib/settings";
+import { fpCycleFamilies } from "../src/lib/generated/fpCycleFamilies";
 
 afterAll(cleanup);
 
@@ -48,12 +59,18 @@ describe("scoped user administration", () => {
     const center = await createCenter(province);
     const otherCenter = await createCenter(province);
     const foreignCenter = await createCenter(otherProvince);
+    const otherFamilyCenter = await createCenter(otherProvince);
+    const activeFamily = await getActiveFamily();
+    await db.update(centersTable).set({ families: [`${activeFamily} (otra)`] })
+      .where(eq(centersTable.id, otherFamilyCenter));
     const coordinator = await createUser({ role: "coordinator", provinceId: province });
     const peer = await createUser({ role: "coordinator", provinceId: province });
     const head = await createUser({ role: "department_head", provinceId: province, centerId: center });
     const teacher = await createUser({ centerId: center });
     const otherTeacher = await createUser({ centerId: otherCenter });
+    const inactiveOtherTeacher = await createUser({ centerId: otherCenter, status: "inactive" });
     const outsider = await createUser({ centerId: foreignCenter });
+    const otherFamilyTeacher = await createUser({ centerId: otherFamilyCenter });
     await db.update(usersTable).set({ status: "inactive", deletedAt: new Date() }).where(eq(usersTable.id, outsider.user.id));
     const headers = authHeader(coordinator.token);
     const response = await request(app).get("/api/users/management").set(headers);
@@ -72,9 +89,103 @@ describe("scoped user administration", () => {
     expect((await request(app).patch(`/api/users/${teacher.user.id}`).set(headers).send({ centerId: foreignCenter })).status).toBe(403);
     const headHeaders = authHeader(head.token);
     const headList = await request(app).get("/api/users/management").set(headHeaders);
-    expect(headList.body.users.some((u: { id: number }) => u.id === otherTeacher.user.id)).toBe(false);
+    const visibleRemoteTeacher = headList.body.users.find((u: { id: number }) => u.id === otherTeacher.user.id);
+    expect(visibleRemoteTeacher).toMatchObject({ canManage: false, teachingProfile: null, centerName: expect.any(String) });
+    expect(headList.body.users.some((u: { id: number }) => u.id === inactiveOtherTeacher.user.id)).toBe(false);
+    expect(headList.body.users.some((u: { id: number }) => u.id === otherFamilyTeacher.user.id)).toBe(false);
     expect((await request(app).delete(`/api/users/${otherTeacher.user.id}`).set(headHeaders)).status).toBe(403);
+    expect((await request(app).patch(`/api/users/${otherTeacher.user.id}`).set(headHeaders).send({ name: "Prohibido" })).status).toBe(403);
     expect((await request(app).get("/api/users/management").set(authHeader(teacher.token))).status).toBe(403);
+  });
+
+  it("gives teachers a read-only directory for active users in the active family", async () => {
+    const province = await createProvince();
+    const otherProvince = await createProvince();
+    const center = await createCenter(province);
+    const familyCenter = await createCenter(otherProvince);
+    const foreignFamilyCenter = await createCenter(otherProvince);
+    const activeFamily = await getActiveFamily();
+    await db.update(centersTable).set({ families: [`${activeFamily} (otra)`] })
+      .where(eq(centersTable.id, foreignFamilyCenter));
+
+    const caller = await createUser({ centerId: center });
+    const colleague = await createUser({ centerId: familyCenter });
+    const inactive = await createUser({ centerId: familyCenter, status: "inactive" });
+    const foreignFamilyUser = await createUser({ centerId: foreignFamilyCenter });
+    const coordinator = await createUser({ role: "coordinator", provinceId: province });
+
+    const response = await request(app).get("/api/users/family-directory").set(authHeader(caller.token));
+    expect(response.status).toBe(200);
+    const visibleIds = new Set(response.body.map((user: { id: number }) => user.id));
+    expect(visibleIds).toContain(caller.user.id);
+    expect(visibleIds).toContain(colleague.user.id);
+    expect(visibleIds).toContain(coordinator.user.id);
+    expect(visibleIds).not.toContain(inactive.user.id);
+    expect(visibleIds).not.toContain(foreignFamilyUser.user.id);
+    expect(response.body.find((user: { id: number }) => user.id === colleague.user.id))
+      .toMatchObject({ centerName: expect.any(String) });
+    expect(response.body[0]).not.toHaveProperty("passwordHash");
+    expect(response.body[0]).not.toHaveProperty("sessionNonce");
+    expect((await request(app).get("/api/users/family-directory").set(authHeader(coordinator.token))).status).toBe(403);
+  });
+
+  it("filters users by family province, island and current-family module assignment", async () => {
+    const province = await createProvince();
+    const island = await createIsland(province, "Isla seleccionada");
+    const otherIsland = await createIsland(province, "Otra isla");
+    const matchingCenter = await createCenter(province);
+    const otherCenter = await createCenter(province);
+    await db.update(centersTable).set({ islandId: island }).where(eq(centersTable.id, matchingCenter));
+    await db.update(centersTable).set({ islandId: otherIsland }).where(eq(centersTable.id, otherCenter));
+
+    const matchingTeacher = await createUser({ centerId: matchingCenter });
+    const otherTeacher = await createUser({ centerId: otherCenter });
+    const activeFamily = await getActiveFamily();
+    const officialCycle = Object.entries(fpCycleFamilies)
+      .find(([, families]) => families.includes(activeFamily))?.[0];
+    expect(officialCycle).toBeTruthy();
+    const matchingModule = await createModule({
+      name: "Módulo para filtro de usuario",
+      cycleName: officialCycle!,
+    });
+    const otherModule = await createModule({
+      name: "Otro módulo para filtro de usuario",
+      cycleName: officialCycle!,
+    });
+    const schoolYear = await getActiveAcademicYear() ?? "2026/2027";
+    await createTeachingAssignment({
+      teacherId: matchingTeacher.user.id,
+      centerId: matchingCenter,
+      moduleId: matchingModule,
+      schoolYear,
+    });
+    await createTeachingAssignment({
+      teacherId: otherTeacher.user.id,
+      centerId: otherCenter,
+      moduleId: otherModule,
+      schoolYear,
+    });
+
+    const admin = await createUser({ role: "superadmin" });
+    const headers = authHeader(admin.token);
+    const options = await request(app).get("/api/users/family-filter-options").set(headers);
+    expect(options.status).toBe(200);
+    expect(options.body.provinces).toContainEqual(expect.objectContaining({ id: province }));
+    expect(options.body.islands).toContainEqual(expect.objectContaining({ id: island, provinceId: province }));
+    expect(options.body.modules).toContainEqual(expect.objectContaining({ id: matchingModule }));
+    expect(options.body.modules).toContainEqual(expect.objectContaining({ id: otherModule }));
+
+    const query = { status: "active", role: "teacher", provinceId: province, islandId: island, moduleId: matchingModule };
+    const managed = await request(app).get("/api/users/management").query(query).set(headers);
+    expect(managed.status).toBe(200);
+    expect(managed.body.users.map((user: { id: number }) => user.id)).toContain(matchingTeacher.user.id);
+    expect(managed.body.users.map((user: { id: number }) => user.id)).not.toContain(otherTeacher.user.id);
+
+    const directory = await request(app).get("/api/users/family-directory")
+      .query({ provinceId: province, islandId: island, moduleId: matchingModule })
+      .set(authHeader(otherTeacher.token));
+    expect(directory.status).toBe(200);
+    expect(directory.body.map((user: { id: number }) => user.id)).toEqual([matchingTeacher.user.id]);
   });
 
   it("filters, counts, validates and clamps pages without duplicate rows", async () => {
