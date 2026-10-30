@@ -86,3 +86,13 @@ matches within the coordinator's province.
 **Why:** the generic center and module endpoints have caller-specific scopes
 that can omit valid family-wide dropdown options; the dedicated facets must
 retain active-family rules without widening account-management permissions.
+
+**Rule — directory compatibility:** all supported teacher directory URLs must
+apply the same family-wide read policy, including legacy list URLs. Build the
+center selector from the family catalog, not the currently filtered user rows.
+
+**Why:** a corrected new directory does not help clients still using an older
+URL; deriving centers from filtered rows also removes valid center choices.
+
+**How to apply:** test both list URLs across centers and provinces, including
+entry from a scoped dashboard; keep administrative write permissions separate.

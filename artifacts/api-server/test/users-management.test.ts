@@ -114,18 +114,26 @@ describe("scoped user administration", () => {
     const foreignFamilyUser = await createUser({ centerId: foreignFamilyCenter });
     const coordinator = await createUser({ role: "coordinator", provinceId: province });
 
-    const response = await request(app).get("/api/users/family-directory").set(authHeader(caller.token));
-    expect(response.status).toBe(200);
-    const visibleIds = new Set(response.body.map((user: { id: number }) => user.id));
-    expect(visibleIds).toContain(caller.user.id);
-    expect(visibleIds).toContain(colleague.user.id);
-    expect(visibleIds).toContain(coordinator.user.id);
-    expect(visibleIds).not.toContain(inactive.user.id);
-    expect(visibleIds).not.toContain(foreignFamilyUser.user.id);
-    expect(response.body.find((user: { id: number }) => user.id === colleague.user.id))
-      .toMatchObject({ centerName: expect.any(String) });
-    expect(response.body[0]).not.toHaveProperty("passwordHash");
-    expect(response.body[0]).not.toHaveProperty("sessionNonce");
+    for (const endpoint of ["/api/users/family-directory", "/api/users"]) {
+      const response = await request(app).get(endpoint).set(authHeader(caller.token));
+      expect(response.status).toBe(200);
+      const visibleIds = new Set(response.body.map((user: { id: number }) => user.id));
+      expect(visibleIds).toContain(caller.user.id);
+      expect(visibleIds).toContain(colleague.user.id);
+      expect(visibleIds).toContain(coordinator.user.id);
+      expect(visibleIds).not.toContain(inactive.user.id);
+      expect(visibleIds).not.toContain(foreignFamilyUser.user.id);
+      expect(response.body.find((user: { id: number }) => user.id === colleague.user.id))
+        .toMatchObject({ centerName: expect.any(String) });
+      expect(response.body[0]).not.toHaveProperty("passwordHash");
+      expect(response.body[0]).not.toHaveProperty("sessionNonce");
+      const filtered = await request(app).get(endpoint)
+        .query({ centerId: familyCenter, role: "teacher" }).set(authHeader(caller.token));
+      expect(filtered.status).toBe(200);
+      expect(filtered.body.map((user: { id: number }) => user.id)).toEqual([colleague.user.id]);
+    }
+    expect((await request(app).patch(`/api/users/${colleague.user.id}`)
+      .set(authHeader(caller.token)).send({ name: "Not allowed" })).status).toBe(403);
     expect((await request(app).get("/api/users/family-directory").set(authHeader(coordinator.token))).status).toBe(403);
   });
 

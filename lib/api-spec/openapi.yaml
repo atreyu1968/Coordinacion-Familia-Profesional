@@ -1467,6 +1467,7 @@ paths:
       operationId: listUsers
       tags: [users]
       summary: List users within the caller's scope
+      description: Teachers can read the active-family directory across centers and provinces. Management roles retain their administrative scope; listing never grants account-management permissions.
       security:
         - bearerAuth: []
       parameters:

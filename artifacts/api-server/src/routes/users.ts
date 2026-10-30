@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, and, isNull, ilike, or, desc, count, sql, not, inArray, getTableColumns, asc, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
@@ -327,6 +327,12 @@ router.get("/users/management", requireAuth,
 );
 
 router.get("/users", requireAuth, async (req, res): Promise<void> => {
+  // Older web/PWA clients still use this URL for their read-only directory.
+  // Teacher visibility must match the dedicated active-family route.
+  if (req.user!.role === "teacher") {
+    await listTeacherFamilyDirectory(req, res);
+    return;
+  }
   const query = ListUsersQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ message: query.error.message });
@@ -341,7 +347,7 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
   } else if (caller.role === "coordinator" && caller.provinceId != null) {
     filters.push(eq(usersTable.provinceId, caller.provinceId));
   } else if (
-    (caller.role === "department_head" || caller.role === "teacher") &&
+    caller.role === "department_head" &&
     caller.centerId != null
   ) {
     filters.push(eq(usersTable.centerId, caller.centerId));
@@ -371,10 +377,8 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
   res.json(ListUsersResponse.parse(rows));
 });
 
-// The regular user-list page has a dedicated read-only family directory.
-// Other existing /users consumers keep their narrower, operation-specific scope.
-router.get("/users/family-directory", requireAuth, requireRole("teacher"),
-  async (req, res): Promise<void> => {
+// Both teacher list URLs share the same read policy; write scopes are unchanged.
+async function listTeacherFamilyDirectory(req: Request, res: Response): Promise<void> {
     const query = ListFamilyUserDirectoryQueryParams.safeParse(req.query);
     if (!query.success) {
       res.status(400).json({ message: query.error.message });
@@ -389,7 +393,12 @@ router.get("/users/family-directory", requireAuth, requireRole("teacher"),
       activeFamilyUserPredicate(activeFamily),
     ];
     if (query.data.role) filters.push(eq(usersTable.role, query.data.role));
-    if (query.data.centerId != null) filters.push(eq(usersTable.centerId, query.data.centerId));
+    if (query.data.centerId != null) {
+      filters.push(or(
+        eq(usersTable.centerId, query.data.centerId),
+        eq(usersTable.teachingCenterId, query.data.centerId),
+      )!);
+    }
     const locationFilter = userLocationPredicate(query.data.provinceId, query.data.islandId, activeFamily);
     if (locationFilter) filters.push(locationFilter);
     if (query.data.moduleId != null) {
@@ -424,8 +433,9 @@ router.get("/users/family-directory", requireAuth, requireRole("teacher"),
       .where(and(...filters))
       .orderBy(usersTable.name, usersTable.id);
     res.json(ListUsersResponse.parse(rows));
-  },
-);
+}
+
+router.get("/users/family-directory", requireAuth, requireRole("teacher"), listTeacherFamilyDirectory);
 
 router.get(
   "/users/family-filter-options",

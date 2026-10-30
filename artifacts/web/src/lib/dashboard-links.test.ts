@@ -131,9 +131,9 @@ describe("Dashboard drilldown consistency", () => {
     expect(users).toMatch(/if\s*\(status\s*!==\s*"all"\)\s*list\s*=\s*list\.filter/);
     expect(users).toMatch(/useListManagedUsers\(managedParams/);
     expect(users).toMatch(/const managedParams:\s*ListManagedUsersParams\s*=\s*\{\s*status,/);
-    expect(users).toMatch(/if\s*\(dashboardOnly\)\s*\{/);
-    expect(users).toMatch(/isTeacher\s*\?\s*familyDirectoryCenters\s*:\s*centers/);
-    expect(users).toMatch(/listedUser\.teachingCenterId/);
+    expect(users).toMatch(/if\s*\(dashboardOnly\s*&&\s*!isTeacher\)\s*\{/);
+    expect(users).toContain("userDirectoryCenterParams(user?.role, dashboardOnly)");
+    expect(users).toMatch(/u\.teachingCenterId\s*===\s*centerId/);
 
     const surveys = readSource("src/pages/encuestas.tsx");
     expect(surveys).toMatch(/searchParams\.get\("status"\)/);

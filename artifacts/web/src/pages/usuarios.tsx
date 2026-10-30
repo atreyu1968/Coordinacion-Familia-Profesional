@@ -35,6 +35,7 @@ import {
   getApiErrorMessage,
   isManagerRole,
   scopedCenters,
+  userDirectoryCenterParams,
 } from "@/lib/user-management";
 import { UserEditDialog } from "@/components/user-edit-dialog";
 import { UserAuditDialog } from "@/components/user-audit-dialog";
@@ -173,7 +174,7 @@ export default function UsuariosPage() {
 
   const provincesQ = useListProvinces();
   const centersQ = useListCenters(
-    dashboardOnly ? { dashboardOnly: true } : {},
+    userDirectoryCenterParams(user?.role, dashboardOnly),
   );
   const filterOptionsQ = useGetFamilyUserFilterOptions({
     query: {
@@ -226,32 +227,10 @@ export default function UsuariosPage() {
     [provinces, directoryProvinces],
   );
   const centerName = useMemo(() => new Map(centers.map((c) => [c.id, c.name])), [centers]);
-  const familyDirectoryCenters = useMemo(() => {
-    const unique = new Map<number, { id: number; name: string; provinceId: number | null }>();
-    for (const listedUser of familyDirectoryQ.data ?? []) {
-      for (const association of [
-        { id: listedUser.centerId, name: listedUser.centerName },
-        { id: listedUser.teachingCenterId, name: listedUser.teachingCenterName },
-      ]) {
-        if (association.id == null) continue;
-        const knownCenter = centers.find((center) => center.id === association.id);
-        unique.set(association.id, {
-          id: association.id,
-          name: association.name ?? knownCenter?.name ?? `Centro #${association.id}`,
-          provinceId: listedUser.provinceId ?? knownCenter?.provinceId ?? null,
-        });
-      }
-    }
-    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
-  }, [familyDirectoryQ.data, centers]);
   const centerFilterOptions = useMemo(() => {
-    const scoped = isTeacher
-      ? familyDirectoryCenters
-      : isManager
-        ? scopedCenters(user, centers)
-        : centers;
+    const scoped = isManager ? scopedCenters(user, centers) : centers;
     return provinceId != null ? scoped.filter((c) => c.provinceId === provinceId) : scoped;
-  }, [isManager, isTeacher, user, centers, familyDirectoryCenters, provinceId]);
+  }, [isManager, user, centers, provinceId]);
 
   // Managed (server-paginated) query
   const managedParams: ListManagedUsersParams = { status, teachingProfile, page, pageSize };
@@ -286,13 +265,8 @@ export default function UsuariosPage() {
       .map((u) => ({ ...u, canManage: false, teachingProfile: null }) as ManagedUser);
     if (isTeacher && role) list = list.filter((u) => u.role === role);
     if (status !== "all") list = list.filter((u) => u.status === status);
-    if (dashboardOnly) {
-      // The generic centers endpoint is deliberately center-scoped for teachers.
-      // Use the family-directory centers here so the dashboard drill-down doesn't
-      // silently narrow a family-wide directory to the teacher's own center.
-      const activeFamilyCenterIds = new Set(
-        (isTeacher ? familyDirectoryCenters : centers).map((center) => center.id),
-      );
+    if (dashboardOnly && !isTeacher) {
+      const activeFamilyCenterIds = new Set(centers.map((center) => center.id));
       list = list.filter(
         (u) =>
           (u.centerId != null && activeFamilyCenterIds.has(u.centerId)) ||
@@ -305,7 +279,7 @@ export default function UsuariosPage() {
       );
     }
     return { rows: list.slice((page - 1) * pageSize, page * pageSize), total: list.length };
-  }, [isManager, isTeacher, managedQ.data, familyDirectoryQ.data, readQ.data, role, centerId, status, dashboardOnly, centers, familyDirectoryCenters, page, pageSize]);
+  }, [isManager, isTeacher, managedQ.data, familyDirectoryQ.data, readQ.data, role, centerId, status, dashboardOnly, centers, page, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   useEffect(() => {

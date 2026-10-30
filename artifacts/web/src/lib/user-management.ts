@@ -1,4 +1,4 @@
-import type { Center, Role, User } from "@workspace/api-client-react";
+import type { Center, ListCentersParams, Role, User } from "@workspace/api-client-react";
 
 export const ROLE_LABELS: Record<string, string> = {
   superadmin: "Superadmin",
@@ -28,6 +28,14 @@ export const MANAGER_ROLES = ["superadmin", "coordinator", "department_head"];
 
 export function isManagerRole(role: string | undefined | null): boolean {
   return MANAGER_ROLES.includes(role ?? "");
+}
+
+/** The teacher directory is family-wide even when entered from a scoped dashboard. */
+export function userDirectoryCenterParams(
+  role: string | undefined | null,
+  dashboardOnly: boolean,
+): ListCentersParams {
+  return dashboardOnly && role !== "teacher" ? { dashboardOnly: true } : {};
 }
 
 /** Roles the caller may assign: superadmin all; others strictly below own rank. */

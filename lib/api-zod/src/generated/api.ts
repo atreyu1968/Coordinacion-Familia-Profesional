@@ -1909,6 +1909,7 @@ export const InvalidateAdminSessionsResponse = zod.object({
 
 
 /**
+ * Teachers can read the active-family directory across centers and provinces. Management roles retain their administrative scope; listing never grants account-management permissions.
  * @summary List users within the caller's scope
  */
 export const ListUsersQueryParams = zod.object({

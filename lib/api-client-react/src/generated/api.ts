@@ -6258,6 +6258,7 @@ export const getListUsersUrl = (params?: ListUsersParams,) => {
 }
 
 /**
+ * Teachers can read the active-family directory across centers and provinces. Management roles retain their administrative scope; listing never grants account-management permissions.
  * @summary List users within the caller's scope
  */
 export const listUsers = async (params?: ListUsersParams, options?: Parameters<typeof customFetch>[1]): Promise<User[]> => {
