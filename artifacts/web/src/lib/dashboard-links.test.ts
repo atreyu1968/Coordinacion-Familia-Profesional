@@ -132,6 +132,8 @@ describe("Dashboard drilldown consistency", () => {
     expect(users).toMatch(/useListManagedUsers\(managedParams/);
     expect(users).toMatch(/const managedParams:\s*ListManagedUsersParams\s*=\s*\{\s*status,/);
     expect(users).toMatch(/if\s*\(dashboardOnly\)\s*\{/);
+    expect(users).toMatch(/isTeacher\s*\?\s*familyDirectoryCenters\s*:\s*centers/);
+    expect(users).toMatch(/listedUser\.teachingCenterId/);
 
     const surveys = readSource("src/pages/encuestas.tsx");
     expect(surveys).toMatch(/searchParams\.get\("status"\)/);
@@ -164,8 +166,10 @@ describe("Dashboard drilldown consistency", () => {
 
     const usersApi = readSource("../api-server/src/routes/users.ts");
     expect(usersApi).toMatch(/if\s*\(status\s*===\s*"active"\)[\s\S]*?eq\(usersTable\.status,\s*"active"\)/);
-    expect(usersApi).toMatch(/or\(inArray\(usersTable\.centerId,\s*familyCenterIds\),\s*isNull\(usersTable\.centerId\)\)/);
-    expect(usersApi).toMatch(/and\(isNull\(usersTable\.centerId\),\s*eq\(usersTable\.provinceId,\s*provinceId\)\)/);
+    expect(usersApi).toMatch(/inArray\(usersTable\.centerId,\s*familyCenterIds\)/);
+    expect(usersApi).toMatch(/inArray\(usersTable\.teachingCenterId,\s*familyCenterIds\)/);
+    expect(usersApi).toMatch(/and\(isNull\(usersTable\.centerId\),\s*isNull\(usersTable\.teachingCenterId\)\)/);
+    expect(usersApi).toMatch(/eq\(usersTable\.provinceId,\s*provinceId\)/);
 
     const surveysApi = readSource("../api-server/src/routes/surveys.ts");
     expect(surveysApi).toMatch(/if\s*\(query\.data\.status\)[\s\S]*?eq\(surveysTable\.status,\s*query\.data\.status\)/);

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
-import { AUTH_SESSION_NOTICE_KEY, useAuth } from "@/lib/auth";
+import { getStoredAuthSessionNotice, useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionNotice] = useState(() =>
-    localStorage.getItem(AUTH_SESSION_NOTICE_KEY),
-  );
+  const [sessionNotice] = useState(getStoredAuthSessionNotice);
   const loginMutation = useLogin();
 
   const onSubmit = async (e: FormEvent) => {

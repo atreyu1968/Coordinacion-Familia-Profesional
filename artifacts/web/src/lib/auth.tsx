@@ -31,6 +31,36 @@ function noticeForSessionFailure(code?: string): string | null {
   return null;
 }
 
+function normalizeSessionNotice(value: unknown): string | null {
+  if (typeof value === "string") {
+    const message = value.trim();
+    return message && message !== "[object Object]" ? message : null;
+  }
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as { message?: unknown; description?: unknown; code?: unknown };
+  for (const candidate of [record.message, record.description]) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return typeof record.code === "string" ? noticeForSessionFailure(record.code) : null;
+}
+
+export function getStoredAuthSessionNotice(): string | null {
+  const stored = localStorage.getItem(AUTH_SESSION_NOTICE_KEY);
+  if (stored == null) return null;
+
+  let value: unknown = stored;
+  try {
+    value = JSON.parse(stored);
+  } catch {
+    // Ignore malformed legacy values instead of rendering "[object Object]".
+  }
+  const message = normalizeSessionNotice(value);
+  if (message) return message;
+  localStorage.removeItem(AUTH_SESSION_NOTICE_KEY);
+  return null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [, setLocation] = useLocation();
@@ -68,8 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [token, queryClient]);
 
-  const logout = useCallback((notice?: string | null) => {
-    if (notice) localStorage.setItem(AUTH_SESSION_NOTICE_KEY, notice);
+  const logout = useCallback((notice?: unknown) => {
+    const message = normalizeSessionNotice(notice);
+    if (message) localStorage.setItem(AUTH_SESSION_NOTICE_KEY, message);
+    else localStorage.removeItem(AUTH_SESSION_NOTICE_KEY);
     clearSessionData();
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
