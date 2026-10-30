@@ -4,10 +4,10 @@ import {
   useGetMyYearConfirmation,
   useConfirmYear,
   useListCenters,
-  useListModules,
   getGetMyYearConfirmationQueryKey,
+  getGetMyTeachingProfileQueryKey,
   getListCentersQueryKey,
-  getListModulesQueryKey,
+  useGetMyTeachingProfile,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -47,10 +47,18 @@ export function TeacherConfirmationBanner() {
     {},
     { query: { queryKey: getListCentersQueryKey({}), enabled: open } },
   );
-  const { data: modules = [] } = useListModules(
-    {},
-    { query: { queryKey: getListModulesQueryKey({}), enabled: open } },
+  const teachingProfileQuery = useGetMyTeachingProfile(
+    { targetCenterId: user?.centerId ?? undefined },
+    {
+      query: {
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
+        enabled: open && isTeacher,
+      },
+    },
   );
+  const modules = teachingProfileQuery.data?.modules ?? [];
   const assignedCenter = centers.find((center) => center.id === user?.centerId);
 
   useEffect(() => {
@@ -97,6 +105,11 @@ export function TeacherConfirmationBanner() {
       });
       await qc.invalidateQueries({
         queryKey: getGetMyYearConfirmationQueryKey(),
+      });
+      await qc.invalidateQueries({
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
       });
       toast({
         title: "Confirmación registrada",
@@ -178,7 +191,21 @@ export function TeacherConfirmationBanner() {
             <div className="space-y-2">
               <Label>Módulos que impartes</Label>
               <div className={`max-h-56 space-y-1.5 overflow-y-auto rounded-md border p-3 ${doesNotTeach ? "opacity-50" : ""}`}>
-                {modules.length === 0 ? (
+                {teachingProfileQuery.isError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    No se pudieron cargar los módulos.{" "}
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0"
+                      onClick={() => void teachingProfileQuery.refetch()}
+                    >
+                      Reintentar
+                    </Button>
+                  </p>
+                ) : teachingProfileQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Cargando módulos…</p>
+                ) : modules.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No hay módulos disponibles.
                   </p>
@@ -209,7 +236,7 @@ export function TeacherConfirmationBanner() {
           <DialogFooter>
             <Button
               onClick={() => void onConfirm()}
-              disabled={confirmMut.isPending}
+              disabled={confirmMut.isPending || teachingProfileQuery.isLoading || teachingProfileQuery.isError}
             >
               {confirmMut.isPending ? "Confirmando..." : "Confirmar"}
             </Button>

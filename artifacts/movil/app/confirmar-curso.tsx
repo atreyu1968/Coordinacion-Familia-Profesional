@@ -13,16 +13,16 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import {
   getGetMyYearConfirmationQueryKey,
+  getGetMyTeachingProfileQueryKey,
   getListCentersQueryKey,
-  getListModulesQueryKey,
   useConfirmYear,
   useGetMyYearConfirmation,
+  useGetMyTeachingProfile,
   useListCenters,
-  useListModules,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
-import { Button, Card, EmptyState, Loading } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -44,10 +44,19 @@ export default function ConfirmYearScreen() {
     {},
     { query: { queryKey: getListCentersQueryKey({}), enabled: isTeacher } },
   );
-  const { data: modules = [], isLoading: loadingModules } = useListModules(
-    {},
-    { query: { queryKey: getListModulesQueryKey({}), enabled: isTeacher } },
+  const teachingProfileQuery = useGetMyTeachingProfile(
+    { targetCenterId: user?.centerId ?? undefined },
+    {
+      query: {
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
+        enabled: isTeacher,
+      },
+    },
   );
+  const modules = teachingProfileQuery.data?.modules ?? [];
+  const loadingModules = teachingProfileQuery.isLoading;
 
   const confirmMut = useConfirmYear();
 
@@ -59,7 +68,7 @@ export default function ConfirmYearScreen() {
 
   useEffect(() => {
     if (initialized) return;
-    if (loadingConfirmation || loadingModules) return;
+    if (loadingConfirmation || loadingModules || teachingProfileQuery.isError) return;
     setCenterId(user?.centerId ?? null);
     const visibleModuleIds = new Set(
       modules
@@ -77,6 +86,7 @@ export default function ConfirmYearScreen() {
     loadingModules,
     confirmation,
     modules,
+    teachingProfileQuery.isError,
     user,
   ]);
 
@@ -117,6 +127,11 @@ export default function ConfirmYearScreen() {
       await qc.invalidateQueries({
         queryKey: getGetMyYearConfirmationQueryKey(),
       });
+      await qc.invalidateQueries({
+        queryKey: getGetMyTeachingProfileQueryKey({
+          targetCenterId: user?.centerId ?? undefined,
+        }),
+      });
       router.back();
     } catch {
       setError("No se pudo registrar la confirmación. Inténtalo de nuevo.");
@@ -147,6 +162,8 @@ export default function ConfirmYearScreen() {
       <AppHeader title="Confirmar curso" subtitle="Centro y módulos" showBack />
       {loading ? (
         <Loading />
+      ) : teachingProfileQuery.isError ? (
+        <ErrorState onRetry={() => void teachingProfileQuery.refetch()} />
       ) : notEditable ? (
         <EmptyState
           icon="check-circle"

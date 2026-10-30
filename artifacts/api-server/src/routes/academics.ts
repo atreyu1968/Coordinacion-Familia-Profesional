@@ -138,6 +138,34 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
     isNull(modulesTable.deletedAt),
     moduleFamilyFilter(activeFamily),
   ];
+  const caller = req.user!;
+  if (caller.role === "teacher") {
+    const activeYear = await getActiveAcademicYear();
+    if (caller.centerId == null) {
+      filters.push(eq(modulesTable.id, -1));
+    } else {
+      const activeFamilyCenterIds = db
+        .select({ id: centersTable.id })
+        .from(centersTable)
+        .where(and(
+          isNull(centersTable.deletedAt),
+          sql`${centersTable.families} @> ${JSON.stringify([activeFamily])}::jsonb`,
+        ));
+      const assignedModuleIds = db
+        .select({ moduleId: teachingAssignmentsTable.moduleId })
+        .from(teachingAssignmentsTable)
+        .where(and(
+          eq(teachingAssignmentsTable.teacherId, caller.id),
+          eq(teachingAssignmentsTable.centerId, caller.centerId),
+          inArray(teachingAssignmentsTable.centerId, activeFamilyCenterIds),
+          isNull(teachingAssignmentsTable.deletedAt),
+          activeYear
+            ? eq(teachingAssignmentsTable.schoolYear, activeYear)
+            : undefined,
+        ));
+      filters.push(inArray(modulesTable.id, assignedModuleIds));
+    }
+  }
   if (query.data.centerId != null) {
     filters.push(eq(modulesTable.centerId, query.data.centerId));
   }
@@ -180,7 +208,6 @@ router.get("/modules", requireAuth, async (req, res): Promise<void> => {
 
   // Enrich each module with membership info: member count, who its coordinator
   // is, and whether the caller is enrolled (and in what role).
-  const caller = req.user!;
   const moduleIds = rows.map((m) => m.id);
   const membershipRows = moduleIds.length
     ? await db
