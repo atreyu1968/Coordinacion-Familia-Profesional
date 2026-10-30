@@ -18,10 +18,12 @@ La actualización aplica y verifica el esquema, carga datos de referencia y vuel
 a verificar todo antes de construir la API. Si falla la compilación o readiness,
 restaura la distribución API anterior si existía; dependencias y migraciones DB no
 se revierten. Si falla la publicación posterior, restaura web/nginx pero conserva
-la API que ya superó readiness. Los docentes de prueba son opt-in. Las sesiones
-anteriores requieren iniciar sesión una vez con la versión nueva. Las copias ZIP
-usan formato v5, no aceptan versiones anteriores y contienen referencias a objetos,
-no sus bytes.
+la API que ya superó readiness. Los docentes de prueba son opt-in. La primera
+actualización desde versiones cuyos tokens no incluían los campos de sesión puede
+requerir un nuevo inicio de sesión; las actualizaciones rutinarias posteriores
+conservan las sesiones por defecto. El cierre masivo solo se activa expresamente.
+Las copias ZIP usan formato v5, no aceptan versiones anteriores y contienen
+referencias a objetos, no sus bytes.
 Procedimientos, restauración y límites: [`docs/instalacion-actualizacion.md`](docs/instalacion-actualizacion.md).
 `bash deploy/test-db.sh` prueba base vacía, rechazo de tabla/enum público ajeno y
 de `users.email UNIQUE` ausente, conservación de una tabla personalizada y rechazo
@@ -174,27 +176,67 @@ sudo systemctl restart nginx
 
 ### Actualizar a la última versión
 
+Antes de actualizar, confirma que los cambios están publicados en la rama `main`
+del repositorio remoto. El servidor no puede descargar cambios que sigan solo en
+el espacio de trabajo. No añadas `.env` ni otros archivos de configuración con
+credenciales al commit.
+
 ```bash
-cd Coordinacion-Familia-Profesional
+cd /ruta/al/Coordinacion-Familia-Profesional
+git status --short
+git pull --ff-only
 sudo bash deploy/update.sh
 ```
 
-Descarga el último código con `git pull --ff-only` e instala dependencias. Antes de
-construir la API respalda la base cuando corresponde, prepara y migra/verifica el
-esquema, carga datos de referencia y realiza una verificación final. Las bases
-existentes requieren que coincidan columnas, defaults, PK/UNIQUE/FK y etiquetas de
-enums; solo se añaden transaccionalmente las columnas de sesión aprobadas.
-Incompatibilidades abortan para revisión manual. Si falla la compilación de la API
-o readiness, restaura la distribución API anterior si existía; las dependencias
-instaladas y las migraciones DB no se revierten. Si falla la publicación posterior,
-restaura web/nginx, no la API que ya superó readiness. Para volver completamente
-atrás hacen falta el backup y el código/dependencias compatibles con su esquema.
-La copia queda por defecto en `/var/backups/coordina-adg/`. El procedimiento se describe en
-[`docs/instalacion-actualizacion.md`](docs/instalacion-actualizacion.md).
+Descargar el código antes de iniciar el actualizador garantiza que se ejecute la
+lógica nueva del script; este vuelve a ejecutar `git pull --ff-only`. Si `git
+status --short` muestra cambios en archivos versionados o el `pull` falla,
+detente y revisa el servidor. La configuración local `.env` no se debe borrar ni
+subir al repositorio. Si ya estás conectado como `root`, ejecuta
+`bash deploy/update.sh` sin `sudo`.
 
-Outline queda intacto durante una actualización normal; solo se instala o actualiza
-si se solicita expresamente con `INSTALL_WIKI=yes`. Nextcloud + Collabora siguen
-siendo opcionales.
+El actualizador instala dependencias, respalda la base cuando corresponde,
+prepara y migra/verifica el esquema, carga datos de referencia y realiza una
+verificación final. Las bases existentes requieren que coincidan columnas,
+defaults, PK/UNIQUE/FK y etiquetas de enums; solo se aplican las migraciones
+aprobadas. Las incompatibilidades abortan para revisión manual. Si falla la
+compilación de la API o readiness, restaura la distribución API anterior si
+existía; las dependencias instaladas y las migraciones DB no se revierten. Si
+falla la publicación posterior, restaura web/nginx, no la API que ya superó
+readiness. Para volver completamente atrás hacen falta el backup y el código/
+dependencias compatibles con su esquema. La copia queda por defecto en
+`/var/backups/coordina-adg/`. No ejecutes `push-force` ni elimines datos para
+resolver una incompatibilidad.
+
+Las sesiones se conservan en actualizaciones normales. Para forzar que todos los
+usuarios activos vuelvan a iniciar sesión **en esa actualización**, ejecútala
+expresamente así:
+
+```bash
+sudo env FORCE_REAUTH_AFTER_UPDATE=yes bash deploy/update.sh
+```
+
+Esta opción también invalida la sesión del administrador. Como alternativa, un
+superadministrador puede usar **Usuarios → Forzar nuevo inicio de sesión** para
+cerrar las sesiones de los demás usuarios activos sin cerrar la suya. En ambos
+casos, la web y la PWA avisan al usuario al volver a iniciar sesión. En la PWA
+se elimina también la sesión guardada protegida con huella.
+
+Al terminar, comprueba que el servicio sigue activo y revisa sus últimos registros:
+
+```bash
+systemctl is-active coordina-adg.service
+journalctl -u coordina-adg.service -n 60 --no-pager
+```
+
+Si Nextcloud + Collabora funcionan correctamente, la actualización normal los
+deja intactos. Si detecta un fallo o una actualización mayor, pregunta antes de
+modificarlos; la respuesta predeterminada es **No**. Antes de aprobar una
+reparación o actualización, respalda aparte la base de datos y los archivos de
+Nextcloud. Outline queda intacto; solo se instala o actualiza si se solicita
+expresamente con `INSTALL_WIKI=yes`. El procedimiento de restauración y los
+límites del actualizador se describen en
+[`docs/instalacion-actualizacion.md`](docs/instalacion-actualizacion.md).
 
 ### Desinstalar o reinstalar desde cero
 
@@ -298,7 +340,7 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
     así que la app móvil nunca se compiló. Indícaselo y vuelve a actualizar:
 
     ```bash
-    cd /ruta/al/repositorio && git pull
+    cd /ruta/al/repositorio && git pull --ff-only
     sudo DOMAIN=tu-dominio.com bash deploy/update.sh
     ```
 

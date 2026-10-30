@@ -139,9 +139,24 @@ así:
 sudo INSTALL_WIKI=yes bash deploy/update.sh
 ```
 
-Las sesiones/JWT emitidos por versiones anteriores no contienen los campos de
-sesión que valida 4.1.0. Después de actualizar, cada usuario tendrá que iniciar
-sesión una vez de nuevo; no implica cambiar contraseñas ni perder cuentas.
+Los JWT emitidos antes de la versión 4.1.0 no contienen los campos de sesión que
+valida esa versión; la primera actualización desde una de esas versiones requiere
+que cada usuario inicie sesión una vez. Una vez que la cuenta ya usa tokens
+compatibles, las actualizaciones rutinarias conservan las sesiones.
+
+Solo cuando sea necesario, se puede forzar un nuevo inicio de sesión para todos
+los usuarios activos durante una actualización:
+
+```bash
+sudo env FORCE_REAUTH_AFTER_UPDATE=yes bash deploy/update.sh
+```
+
+Esta opción también invalida la sesión del superadministrador que vaya a iniciar
+la actualización. Como alternativa, desde **Usuarios** el superadministrador
+puede cerrar las sesiones de los demás usuarios activos y conservar la suya.
+La web y la PWA muestran el motivo al volver a iniciar sesión; la PWA elimina
+también su sesión guardada protegida con huella. Ninguna de estas acciones borra
+cuentas ni datos.
 
 ## Copia previa a migración y restauración
 
