@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { getApiErrorMessage } from "@/lib/user-management";
 
 export function ProfileDialog({
   user,
@@ -215,7 +216,11 @@ export function ProfileDialog({
       setTeachingError("Selecciona tu centro.");
       return;
     }
-    if (!teachingProfileQuery.data || teachingProfileQuery.isError) {
+    if (
+      !teachingProfileQuery.data ||
+      teachingProfileQuery.isError ||
+      !profileMatchesSelection
+    ) {
       setTeachingError("No se han podido cargar los datos de docencia.");
       return;
     }
@@ -258,8 +263,11 @@ export function ProfileDialog({
           ? "Se ha registrado que no impartes clase este curso."
           : "Tu centro docente y tus módulos ya están actualizados.",
       });
-    } catch {
-      setTeachingError("No se pudo guardar el centro y los módulos.");
+    } catch (cause) {
+      setTeachingError(
+        getApiErrorMessage(cause) ??
+          "No se pudo guardar el centro y los módulos. Inténtalo de nuevo.",
+      );
     }
   };
 
@@ -395,9 +403,11 @@ export function ProfileDialog({
                   </label>
                   <Label>Módulos que impartes</Label>
                   <div className="max-h-64 space-y-4 overflow-y-auto rounded-md border p-3">
-                    {teachingProfileQuery.isLoading ? (
+                    {teachingProfileQuery.isLoading ||
+                    teachingProfileQuery.isFetching ||
+                    !profileMatchesSelection ? (
                       <p className="text-sm text-muted-foreground">
-                        Cargando módulos…
+                        Cargando los módulos del centro seleccionado…
                       </p>
                     ) : Object.entries(modulesByCycle).length === 0 ? (
                       <p className="text-sm text-muted-foreground">
@@ -469,6 +479,8 @@ export function ProfileDialog({
                   disabled={
                     teachingProfileMut.isPending ||
                     teachingProfileQuery.isLoading ||
+                    teachingProfileQuery.isFetching ||
+                    !profileMatchesSelection ||
                     teachingProfileQuery.isError
                   }
                 >
