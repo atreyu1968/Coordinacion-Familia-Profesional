@@ -30,6 +30,7 @@ export default function LoginScreen() {
     : routeParams.message;
   const {
     signIn,
+    sessionNotice,
     loginWithBiometric,
     hasLockedSession,
     biometricEnabled,
@@ -113,6 +114,20 @@ export default function LoginScreen() {
         </Text>
 
         <View style={styles.form}>
+          {sessionNotice ? (
+            <View
+              accessibilityRole="alert"
+              style={[
+                styles.sessionNotice,
+                { backgroundColor: colors.card, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={[styles.info, { color: colors.primary }]}>
+                {sessionNotice}
+              </Text>
+            </View>
+          ) : null}
+
           {showBiometric ? (
             <View style={styles.bioBlock}>
               <Button
@@ -217,6 +232,12 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     marginTop: 40,
+  },
+  sessionNotice: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,

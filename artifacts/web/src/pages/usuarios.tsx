@@ -12,6 +12,7 @@ import {
   useUpdateUser,
   useDeactivateUser,
   useReactivateUser,
+  useInvalidateAdminSessions,
   getListUsersQueryKey,
   getListFamilyUserDirectoryQueryKey,
   getListManagedUsersQueryKey,
@@ -79,6 +80,7 @@ import {
   FilterX,
   Mail,
   MessageCircle,
+  LogOut,
   Pencil,
   RotateCw,
   Search,
@@ -113,6 +115,25 @@ export default function UsuariosPage() {
   const isManager = isManagerRole(user?.role);
   const isTeacher = user?.role === "teacher";
   const isSuperadmin = user?.role === "superadmin";
+  const [invalidateSessionsOpen, setInvalidateSessionsOpen] = useState(false);
+  const invalidateSessions = useInvalidateAdminSessions({
+    mutation: {
+      onSuccess: (result) => {
+        setInvalidateSessionsOpen(false);
+        toast({
+          title: "Sesiones cerradas",
+          description: `Se forzó el inicio de sesión de ${result.invalidatedUsers} usuario(s) activo(s). Tu sesión se mantiene.`,
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "No se pudieron cerrar las sesiones",
+          description: getApiErrorMessage(error) ?? "Vuelve a intentarlo.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -383,6 +404,42 @@ export default function UsuariosPage() {
         </div>
         <div className="flex flex-wrap gap-2">
         {isSuperadmin && <TestTeacherCleanupDialog />}
+        {isSuperadmin && (
+          <AlertDialog open={invalidateSessionsOpen} onOpenChange={(open) => {
+            if (!invalidateSessions.isPending) setInvalidateSessionsOpen(open);
+          }}>
+            <Button
+              variant="outline"
+              className="gap-2"
+              data-testid="button-invalidate-user-sessions"
+              onClick={() => setInvalidateSessionsOpen(true)}
+            >
+              <LogOut className="h-4 w-4" />
+              Forzar nuevo inicio de sesión
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Cerrar las sesiones de los usuarios activos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todos los usuarios activos, excepto tu cuenta de superadministrador, tendrán que iniciar sesión de nuevo.
+                  No se borrará ningún dato y tu sesión se conservará.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={invalidateSessions.isPending}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={invalidateSessions.isPending}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    invalidateSessions.mutate(undefined);
+                  }}
+                >
+                  {invalidateSessions.isPending ? "Cerrando sesiones…" : "Cerrar sesiones"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         {["superadmin", "coordinator", "department_head"].includes(user?.role ?? "") && (
           <Button variant="outline" asChild>
             <Link href="/invitaciones">Gestionar invitaciones</Link>

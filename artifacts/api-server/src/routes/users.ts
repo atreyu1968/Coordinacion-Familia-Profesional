@@ -32,6 +32,7 @@ import {
   ListUserAuditResponse,
 } from "@workspace/api-zod";
 import { changeAccount } from "../lib/accountAudit";
+import { disconnectUserSessions } from "../lib/realtime";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
 import { teachingProfilePredicates, TEACHING_PROFILE_ROLES, requiresTeachingProfile } from "../lib/teachingProfileAccess";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
@@ -47,6 +48,32 @@ import {
 
 const router: IRouter = Router();
 router.use(testTeacherCleanupRouter);
+
+router.post(
+  "/admin/sessions/invalidate",
+  requireAuth,
+  requireRole("superadmin"),
+  async (req, res): Promise<void> => {
+    const callerId = req.user!.id;
+    const invalidated = await db
+      .update(usersTable)
+      .set({ tokenVersion: sql`${usersTable.tokenVersion} + 1` })
+      .where(and(
+        eq(usersTable.status, "active"),
+        isNull(usersTable.deletedAt),
+        sql`${usersTable.id} <> ${callerId}`,
+      ))
+      .returning({ id: usersTable.id });
+
+    for (const user of invalidated) disconnectUserSessions(user.id);
+    req.log?.info(
+      { actorId: callerId, invalidatedUsers: invalidated.length },
+      "Superadministrator invalidated active user sessions",
+    );
+    res.json({ invalidatedUsers: invalidated.length });
+  },
+);
+
 const listedCenter = alias(centersTable, "listed_user_center");
 const listedTeachingCenter = alias(centersTable, "listed_user_teaching_center");
 

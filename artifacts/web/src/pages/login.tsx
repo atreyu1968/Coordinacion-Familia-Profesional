@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
-import { useAuth } from "@/lib/auth";
+import { AUTH_SESSION_NOTICE_KEY, useAuth } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionNotice] = useState(() =>
+    localStorage.getItem(AUTH_SESSION_NOTICE_KEY),
+  );
   const loginMutation = useLogin();
 
   const onSubmit = async (e: FormEvent) => {
@@ -76,6 +79,15 @@ export default function LoginPage() {
               {professionalFamily}.
             </p>
           </div>
+
+          {sessionNotice ? (
+            <div
+              role="status"
+              className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground"
+            >
+              {sessionNotice}
+            </div>
+          ) : null}
 
           <form onSubmit={onSubmit} className="space-y-5">
             <div className="space-y-2">

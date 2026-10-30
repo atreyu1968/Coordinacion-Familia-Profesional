@@ -1243,6 +1243,11 @@ export interface TestTeacherCleanupResult {
   historyDeleted: number;
 }
 
+export interface AdminSessionInvalidationResult {
+  /** @minimum 0 */
+  invalidatedUsers: number;
+}
+
 export type TeacherProfileIntegrityMissingItem = typeof TeacherProfileIntegrityMissingItem[keyof typeof TeacherProfileIntegrityMissingItem];
 
 

@@ -31,6 +31,7 @@ import type {
   AcademicYearsResponse,
   Accreditation,
   AddModuleMemberInput,
+  AdminSessionInvalidationResult,
   AiChatInput,
   AiChatReply,
   AiKnowledgeCoverage,
@@ -6165,6 +6166,80 @@ export const useResendInvitation = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getResendInvitationMutationOptions(options), queryClient);
+    }
+
+export const getInvalidateAdminSessionsUrl = () => {
+
+
+
+
+  return `/api/admin/sessions/invalidate`
+}
+
+/**
+ * @summary Force active users other than the caller to sign in again
+ */
+export const invalidateAdminSessions = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSessionInvalidationResult> => {
+
+  return customFetch<AdminSessionInvalidationResult>(getInvalidateAdminSessionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getInvalidateAdminSessionsMutationKey = () => ['invalidateAdminSessions'] as const;
+
+export const getInvalidateAdminSessionsMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof invalidateAdminSessions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof invalidateAdminSessions>>, TError,void, TContext> => {
+
+const mutationKey = getInvalidateAdminSessionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof invalidateAdminSessions>>, void> = () => {
+
+
+          return  invalidateAdminSessions(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InvalidateAdminSessionsMutationResult = NonNullable<Awaited<ReturnType<typeof invalidateAdminSessions>>>
+
+    export type InvalidateAdminSessionsMutationError = ErrorType<Error>
+
+
+    /**
+ * @summary Force active users other than the caller to sign in again
+ */
+export const useInvalidateAdminSessions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof invalidateAdminSessions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof invalidateAdminSessions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getInvalidateAdminSessionsMutationOptions(options), queryClient);
     }
 
 export const getListUsersUrl = (params?: ListUsersParams,) => {

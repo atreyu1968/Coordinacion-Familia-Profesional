@@ -1897,6 +1897,18 @@ export const ResendInvitationResponse = zod.object({
 
 
 /**
+ * @summary Force active users other than the caller to sign in again
+ */
+export const invalidateAdminSessionsResponseInvalidatedUsersMin = 0;
+
+
+
+export const InvalidateAdminSessionsResponse = zod.object({
+  "invalidatedUsers": zod.number().int().min(invalidateAdminSessionsResponseInvalidatedUsersMin)
+})
+
+
+/**
  * @summary List users within the caller's scope
  */
 export const ListUsersQueryParams = zod.object({

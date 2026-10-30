@@ -411,6 +411,27 @@ fi
 rm -rf -- "${WEB_PREVIOUS}"
 PUBLISH_STARTED=0
 
+if [[ "${FORCE_REAUTH_AFTER_UPDATE:-no}" =~ ^([yY]([eE][sS])?|1)$ ]]; then
+  echo "==> Requiring active users to sign in again for the updated application"
+  if ! INVALIDATED_USERS="$(
+    psql "${DATABASE_URL}" -X -v ON_ERROR_STOP=1 -Atc \
+      "WITH invalidated AS (
+         UPDATE public.users
+         SET session_nonce = gen_random_uuid()::text
+         WHERE status = 'active' AND deleted_at IS NULL
+         RETURNING 1
+       )
+       SELECT count(*) FROM invalidated"
+  )"; then
+    echo "ERROR: The application was published, but existing sessions could not be invalidated." >&2
+    echo "Retry the update with FORCE_REAUTH_AFTER_UPDATE=yes after confirming the service is healthy." >&2
+    exit 1
+  fi
+  echo "==> Required sign-in again for ${INVALIDATED_USERS} active user(s)"
+else
+  echo "==> Keeping existing sessions; set FORCE_REAUTH_AFTER_UPDATE=yes only when reauthentication is needed."
+fi
+
 # Collaborative space (Nextcloud + Collabora).
 #  - Existing installations are inspected without changes; maintenance asks.
 #  - If it was never installed but we now have a real domain, install it (default

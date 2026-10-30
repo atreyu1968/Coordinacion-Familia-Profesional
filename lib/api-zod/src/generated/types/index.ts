@@ -15,6 +15,7 @@ export * from './accreditation';
 export * from './accreditationRole';
 export * from './addModuleMemberInput';
 export * from './addModuleMemberInputRole';
+export * from './adminSessionInvalidationResult';
 export * from './aiChatInput';
 export * from './aiChatInputContext';
 export * from './aiChatReply';

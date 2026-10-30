@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   setAuthTokenGetter,
+  setUnauthorizedHandler,
   useGetCurrentUser,
   getGetCurrentUserQueryKey,
   type User,
@@ -15,9 +16,20 @@ import { connectSocket, disconnectSocket } from "./socket";
 export { useAuth } from "./auth-context";
 
 const TOKEN_KEY = "coordina_adg_token";
+export const AUTH_SESSION_NOTICE_KEY = "coordina_adg_session_notice";
 
 // Set up the getter immediately so the API client has it
 setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
+
+function noticeForSessionFailure(code?: string): string | null {
+  if (code === "APP_UPDATED") {
+    return "La aplicación se ha actualizado. Inicia sesión de nuevo para continuar.";
+  }
+  if (code === "SESSION_REVOKED") {
+    return "Tu sesión se ha cerrado. Inicia sesión de nuevo para continuar.";
+  }
+  return null;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
@@ -36,13 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  const clearSessionData = () => {
+  const clearSessionData = useCallback(() => {
     // cancelQueries starts cancellation synchronously; clear() removes both
     // cached user data and mutation state before a different identity renders.
     void queryClient.cancelQueries();
     queryClient.clear();
     disconnectSocket();
-  };
+  }, [queryClient]);
 
   useEffect(() => {
     if (!token) return;
@@ -56,16 +68,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [token, queryClient]);
 
-  const logout = () => {
+  const logout = useCallback((notice?: string | null) => {
+    if (notice) localStorage.setItem(AUTH_SESSION_NOTICE_KEY, notice);
     clearSessionData();
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setLocation("/login");
-  };
+  }, [clearSessionData, setLocation]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(({ code }) => {
+      const notice = noticeForSessionFailure(code);
+      if (notice) logout(notice);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   useEffect(() => {
     if (error && (error as any)?.status === 401) {
-      logout();
+      const code = (error as any)?.data?.code;
+      logout(noticeForSessionFailure(code));
     }
   }, [error]);
 
@@ -84,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (newToken: string, newUser: User) => {
     clearSessionData();
+    localStorage.removeItem(AUTH_SESSION_NOTICE_KEY);
     localStorage.setItem(TOKEN_KEY, newToken);
     queryClient.setQueryData(currentUserQueryKey, newUser);
     setToken(newToken);

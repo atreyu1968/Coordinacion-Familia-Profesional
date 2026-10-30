@@ -64,13 +64,24 @@ export async function requireAuth(
     .from(usersTable)
     .where(and(eq(usersTable.id, payload.sub), isNull(usersTable.deletedAt)));
 
-  if (
-    !user ||
-    user.status !== "active" ||
-    user.tokenVersion !== payload.tokenVersion ||
-    user.sessionNonce !== payload.sessionNonce
-  ) {
+  if (!user || user.status !== "active") {
     res.status(401).json({ message: "Usuario no válido" });
+    return;
+  }
+
+  if (user.sessionNonce !== payload.sessionNonce) {
+    res.status(401).json({
+      code: "APP_UPDATED",
+      message: "La aplicación se ha actualizado. Inicia sesión de nuevo para continuar.",
+    });
+    return;
+  }
+
+  if (user.tokenVersion !== payload.tokenVersion) {
+    res.status(401).json({
+      code: "SESSION_REVOKED",
+      message: "Tu sesión se ha cerrado. Inicia sesión de nuevo para continuar.",
+    });
     return;
   }
 

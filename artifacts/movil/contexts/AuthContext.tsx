@@ -9,7 +9,12 @@ import React, {
 import { AppState, type AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { login as loginRequest, getCurrentUser, type User } from "@workspace/api-client-react";
+import {
+  login as loginRequest,
+  getCurrentUser,
+  setUnauthorizedHandler,
+  type User,
+} from "@workspace/api-client-react";
 
 import {
   authenticateBiometric,
@@ -49,6 +54,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  sessionNotice: string | null;
   /** A saved session waiting for biometric unlock on the login screen. */
   hasLockedSession: boolean;
   /** True while the app is locked behind the biometric overlay (resume case). */
@@ -83,11 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState<boolean>(false);
   const [biometricEnabled, setBiometricEnabled] = useState<boolean>(false);
   const [biometricAvailable, setBiometricAvailable] = useState<boolean>(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  const handlingUnauthorized = useRef(false);
 
   // Track app foreground/background transitions to re-lock on resume.
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const [storedToken, storedUser, storedBiometric, available] =
@@ -106,7 +115,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setBiometricEnabled(wantsBiometric);
 
         if (storedToken && storedUser) {
-          const parsedUser = JSON.parse(storedUser) as User;
+          let parsedUser = JSON.parse(storedUser) as User;
+          currentToken = storedToken;
+          try {
+            parsedUser = await getCurrentUser();
+            await setStoredItem(USER_KEY, JSON.stringify(parsedUser));
+          } catch (cause) {
+            const failure = cause as {
+              status?: number;
+              data?: { code?: string };
+            };
+            if (failure.status === 401) {
+              if (!handlingUnauthorized.current) {
+                setSessionNotice(
+                  failure.data?.code === "APP_UPDATED"
+                    ? "La aplicación se ha actualizado. Inicia sesión de nuevo para continuar."
+                    : failure.data?.code === "SESSION_REVOKED"
+                      ? "Tu sesión se ha cerrado. Inicia sesión de nuevo para continuar."
+                      : "Tu sesión ha caducado. Inicia sesión de nuevo para continuar.",
+                );
+                await signOut();
+              }
+              return;
+            }
+            // Preserve the cached session when the server cannot be reached.
+          }
+          if (cancelled) return;
           if (wantsBiometric && !returnedFromExternalBrowser && !openedClassroom) {
             // Keep the saved session locked behind biometrics — the login
             // screen will reveal a "Entrar con huella" button.
@@ -123,6 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Re-lock when the app returns to the foreground while signed in with
@@ -158,6 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
+      handlingUnauthorized.current = false;
+      setSessionNotice(null);
       // Never let one account's cached responses survive into another login.
       clearExternalBrowserResumeExemption();
       currentToken = null;
@@ -221,6 +260,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearPromise;
   }, [clearSessionData]);
 
+  const handleUnauthorized = useCallback((details: { status: number; code?: string }) => {
+    if (details.status !== 401 || !currentToken || handlingUnauthorized.current) return;
+    handlingUnauthorized.current = true;
+    setSessionNotice(
+      details.code === "APP_UPDATED"
+        ? "La aplicación se ha actualizado. Inicia sesión de nuevo para continuar."
+        : details.code === "SESSION_REVOKED"
+          ? "Tu sesión se ha cerrado. Inicia sesión de nuevo para continuar."
+          : "Tu sesión ha caducado. Inicia sesión de nuevo para continuar.",
+    );
+    void signOut().finally(() => {
+      handlingUnauthorized.current = false;
+    });
+  }, [signOut]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(handleUnauthorized);
+    return () => setUnauthorizedHandler(null);
+  }, [handleUnauthorized]);
+
   const loginWithBiometric = useCallback(async (): Promise<boolean> => {
     if (!lockedSession) return false;
     const ok = await authenticateBiometric();
@@ -279,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         token,
         isLoading,
+        sessionNotice,
         hasLockedSession: !!lockedSession,
         locked,
         biometricEnabled,

@@ -11,6 +11,10 @@ Tests live in `artifacts/api-server/test/`, run with `pnpm --filter @workspace/a
 
 **Why sequential.** `realtime.ts` holds a module-level Socket.io `io` singleton and all suites share one database, so the config forces single-worker, no file parallelism. Don't reintroduce parallelism without isolating these.
 
+**Global-action tests need isolation.** The shared development database contains active application accounts. Never run a successful test of an endpoint that invalidates every active user's session against it. Test authorization and per-user response codes there; run global success-path integration tests only against a separately verified isolated database.
+
+**Why:** a superadmin session-invalidation test changed every active user's token version before its overly narrow assertion failed; the development rows were restored. **How to apply:** do not exercise global mutation endpoints in the shared test database, even when fixtures are created and cleaned up.
+
 **Workspace deps must be inlined.** `@workspace/db` / `@workspace/api-zod` export raw `.ts`; Vitest config sets `server.deps.inline: [/@workspace\//]` and `resolve.conditions` includes `workspace`. Without these, imports fail as untransformed node_modules.
 
 **Socket e2e.** Wrap `app` in an `http.Server`, call `initRealtime(server)`, listen on port 0, connect `socket.io-client` to `/api/socket.io` with `auth.token`. emitToGroup/emitToUser use the same singleton, so a supertest POST in-process triggers real socket emits.
