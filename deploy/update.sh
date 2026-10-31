@@ -16,6 +16,37 @@ APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${APP_DIR}"
 
 SERVICE_USER="${SERVICE_USER:-${SUDO_USER:-root}}"
+
+# BEGIN production branch guard (also exercised in isolated Git fixtures).
+production_git() {
+  if [[ "${SERVICE_USER}" == "root" ]]; then
+    git -C "${APP_DIR}" "$@"
+  else
+    sudo -u "${SERVICE_USER}" -H git -C "${APP_DIR}" "$@"
+  fi
+}
+
+require_production_main() {
+  local branch
+  if ! branch="$(production_git symbolic-ref --quiet --short HEAD 2>/dev/null)"; then
+    echo "ERROR: No se puede identificar la rama. La actualización requiere un repositorio válido en main, sin HEAD separado." >&2
+    return 1
+  fi
+  if [[ "${branch}" != "main" ]]; then
+    printf 'ERROR: Actualización cancelada: la rama actual es "%s"; producción solo admite main.\n' "${branch}" >&2
+    echo "Revisa los cambios y selecciona main manualmente. No se cambiará de rama ni se descartará ningún archivo." >&2
+    return 1
+  fi
+  if ! production_git remote | grep -Fxq origin; then
+    echo "ERROR: Falta el remoto origin. Comprueba el repositorio de producción antes de actualizar." >&2
+    return 1
+  fi
+}
+
+# This must precede .env reads/writes, database queries and service operations.
+require_production_main
+# END production branch guard.
+
 ENV_FILE="${APP_DIR}/.env"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
@@ -158,7 +189,8 @@ run_db_helper() {
 }
 
 echo "==> Pulling latest code"
-run_as_user "cd '${APP_DIR}' && git pull --ff-only"
+require_production_main
+run_as_user "cd '${APP_DIR}' && git pull --ff-only origin main"
 
 echo "==> Checking meeting audio/video processing tools"
 if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v pdftotext >/dev/null 2>&1; then

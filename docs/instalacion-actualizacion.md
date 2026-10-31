@@ -71,18 +71,28 @@ es opcional y el instalador puede ofrecerlo con dominio real.
 ## Actualización
 
 Con `.env` existente, descarga el código **antes de iniciar un nuevo proceso**
-del actualizador. Si `git status --short` muestra cambios, `git pull` falla o
+del actualizador. Usa exclusivamente `main`, con los cambios ya enviados a
+`origin/main`. Si `git status --short` muestra cambios en archivos versionados, `git pull` falla o
 no aparece la migración esperada, detente y revisa la instalación:
 
 ```bash
 cd /ruta/al/Coordinacion-Familia-Profesional
-git status --short
-git pull --ff-only
-grep -n 'migrate_existing_legal_acceptance_columns' deploy/db.sh
-sudo env SEED_TEST_TEACHERS=no INSTALL_WIKI=no bash deploy/update.sh
+git status --short >&2
+git branch --show-current >&2
+# Si la rama no es main, esta cadena se detiene sin descargar ni actualizar.
+test "$(git branch --show-current)" = main &&
+  git pull --ff-only origin main >&2 &&
+  grep -n 'migrate_existing_legal_acceptance_columns' deploy/db.sh >&2 &&
+  sudo env SEED_TEST_TEACHERS=no INSTALL_WIKI=no bash deploy/update.sh >&2
 ```
 
-El script también hace `git pull --ff-only`, pero descargar previamente evita
+El script rechaza cualquier rama distinta de `main`, un HEAD separado o la
+ausencia del remoto `origin`, antes de leer o cambiar `.env`, consultar la base o
+tocar servicios. No cambia de rama ni descarta archivos. Descarga explícitamente
+`origin/main` con `git pull --ff-only origin main`: no usa otra rama aunque el
+upstream esté mal configurado, ni fuerza una historia divergente.
+
+El script también hace esa descarga, pero descargar previamente evita
 que un proceso Bash ya iniciado siga ejecutando lógica antigua tras el pull.
 Instala dependencias bloqueadas. Antes de
 construir la API, ejecuta este orden: backup cuando corresponde, comprobación de

@@ -183,17 +183,27 @@ credenciales al commit.
 
 ```bash
 cd /ruta/al/Coordinacion-Familia-Profesional
-git status --short
-git pull --ff-only
-sudo bash deploy/update.sh
+git status --short >&2
+git branch --show-current >&2
+# Continúa solo si la rama es main y no hay cambios en archivos versionados.
+test "$(git branch --show-current)" = main &&
+  git pull --ff-only origin main >&2 &&
+  sudo bash deploy/update.sh >&2
 ```
 
 Descargar el código antes de iniciar el actualizador garantiza que se ejecute la
-lógica nueva del script; este vuelve a ejecutar `git pull --ff-only`. Si `git
+lógica nueva del script; este vuelve a ejecutar `git pull --ff-only origin main`. Si `git
 status --short` muestra cambios en archivos versionados o el `pull` falla,
 detente y revisa el servidor. La configuración local `.env` no se debe borrar ni
 subir al repositorio. Si ya estás conectado como `root`, ejecuta
 `bash deploy/update.sh` sin `sudo`.
+
+El actualizador solo admite la rama local `main` y descarga explícitamente
+`origin/main`, aunque el seguimiento local apunte a otra rama. Si estás en otra
+rama, en HEAD separado o no existe `origin`, se detiene antes de leer o cambiar
+`.env`, consultar la base o modificar servicios. No cambia de rama, no borra
+ramas y no descarta cambios. Una historia divergente también bloquea la descarga:
+no se fuerza ni se hace `reset`.
 
 El actualizador instala dependencias, respalda la base cuando corresponde,
 prepara y migra/verifica el esquema, carga datos de referencia y realiza una
@@ -340,8 +350,10 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
     así que la app móvil nunca se compiló. Indícaselo y vuelve a actualizar:
 
     ```bash
-    cd /ruta/al/repositorio && git pull --ff-only
-    sudo DOMAIN=tu-dominio.com bash deploy/update.sh
+    cd /ruta/al/repositorio &&
+      test "$(git branch --show-current)" = main &&
+      git pull --ff-only origin main >&2 &&
+      sudo DOMAIN=tu-dominio.com bash deploy/update.sh >&2
     ```
 
     `update.sh` también intenta leer el dominio que hayas guardado en **Panel de

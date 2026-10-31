@@ -92,3 +92,4 @@
 - [Administración de Nextcloud](nextcloud-administration.md) — el superadministrador de la plataforma debe tener también administración global en Nextcloud.
 - [Fuentes de oferta formativa](training-offer-official-sources.md) — el portal puede adelantar el próximo curso; planificación y autorización no prueban oferta impartida.
 - [Densidad de navegación](navigation-density.md) — el usuario quiere menos apartados visibles; ubicar nuevas funciones en grupos existentes antes de ampliar el primer nivel.
+- [Rama de producción](production-branch-policy.md) — solo main; consolidar y enviar a GitHub antes de actualizar Ubuntu, sin cambiar ramas ni descartar trabajo automáticamente.
