@@ -15,3 +15,9 @@ actualizar en producción y aprobó proteger el actualizador para aceptar solo
 repositorio de GitHub antes de dar por disponibles los cambios para el servidor
 Ubuntu. Las ramas de tareas o de funciones no son fuentes de producción. No
 borrarlas como parte de una actualización.
+
+El seguimiento local de `main` puede apuntar a un remoto interno de tareas, no
+al repositorio de GitHub del usuario. No asumir que un commit local ya se ha
+enviado. Confirmar explícitamente la referencia de GitHub; si no hay remoto
+`origin` en desarrollo, usar la conexión autorizada de GitHub sin manejar tokens.
+Las actualizaciones remotas deben ser fast-forward, nunca forzadas.

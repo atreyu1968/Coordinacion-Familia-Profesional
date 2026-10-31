@@ -21,7 +21,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const imported: ForumCollaboration = {
   moduleId: 7, moduleCode: "001", moduleName: "Módulo de ensayo", cycleName: "Ciclo",
-  academicYear: "2026-2027", enabled: false, canConfigure: true, verificationCurrent: true,
+  academicYear: "2026-2027", enabled: false, canConfigure: true, canReviewCurriculum: true, verificationCurrent: true,
   fingerprint: "fp", diagnostics: [], threads: [],
   sections: Array.from({ length: 16 }, (_, i) => ({
     key: `PD-${String(i + 1).padStart(2, "0")}`, title: `Apartado ${i}`, prompt: "Plantilla", enabled: true, order: i + 1,
