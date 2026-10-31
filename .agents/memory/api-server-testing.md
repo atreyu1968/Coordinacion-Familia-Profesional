@@ -7,6 +7,12 @@ description: How automated tests run for the api-server artifact (Vitest + super
 
 Tests live in `artifacts/api-server/test/`, run with `pnpm --filter @workspace/api-server test` (Vitest).
 
+For a focused run use `pnpm --filter @workspace/api-server exec vitest run test/<file>.test.ts`, not `pnpm --filter @workspace/api-server test -- test/<file>.test.ts`.
+
+**Why:** The latter preserves the extra `--` in the Vitest invocation in this workspace and can run the entire suite instead of the requested files, increasing duration and shared-database side effects.
+
+**How to apply:** Pass file filters directly to `exec vitest run` whenever a narrow verification is intended.
+
 **Real DB, not mocks.** Routes import a module-level `db` (drizzle) that is not injectable, so tests run against the live `DATABASE_URL`. Seed helpers (`test/helpers.ts`) tag every row with a per-run `vitest-<ts>-<rand>` marker and a `cleanup()` deletes them all in `afterAll`. Always route new fixtures through these helpers so cleanup stays complete.
 
 **Why sequential.** `realtime.ts` holds a module-level Socket.io `io` singleton and all suites share one database, so the config forces single-worker, no file parallelism. Don't reintroduce parallelism without isolating these.

@@ -1366,6 +1366,7 @@ export const GetForumCollaborationResponse = zod.object({
   "academicYear": zod.string().nullable(),
   "enabled": zod.boolean(),
   "canConfigure": zod.boolean(),
+  "canReviewCurriculum": zod.boolean(),
   "verificationCurrent": zod.boolean(),
   "fingerprint": zod.string(),
   "diagnostics": zod.array(zod.string()),
@@ -1479,6 +1480,7 @@ export const ConfigureForumCollaborationResponse = zod.object({
   "academicYear": zod.string().nullable(),
   "enabled": zod.boolean(),
   "canConfigure": zod.boolean(),
+  "canReviewCurriculum": zod.boolean(),
   "verificationCurrent": zod.boolean(),
   "fingerprint": zod.string(),
   "diagnostics": zod.array(zod.string()),
@@ -1556,6 +1558,7 @@ export const InitializeForumCollaborationResponse = zod.object({
   "academicYear": zod.string().nullable(),
   "enabled": zod.boolean(),
   "canConfigure": zod.boolean(),
+  "canReviewCurriculum": zod.boolean(),
   "verificationCurrent": zod.boolean(),
   "fingerprint": zod.string(),
   "diagnostics": zod.array(zod.string()),
@@ -1594,6 +1597,199 @@ export const InitializeForumCollaborationResponse = zod.object({
   "verifiedAt": zod.coerce.date()
 }),zod.null()])
 })
+
+
+/**
+ * @summary Compare an incoming ADG worksheet without changing registered curriculum
+ */
+
+
+
+export const PreviewForumCurriculumParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const previewForumCurriculumBodyModuleNameMax = 500;
+
+export const previewForumCurriculumBodyCycleNameMax = 500;
+
+export const previewForumCurriculumBodyWorkbookMax = 250;
+
+export const previewForumCurriculumBodyOfficialCodeMax = 80;
+
+export const previewForumCurriculumBodySourceTitleMax = 500;
+
+export const previewForumCurriculumBodySourceUrlMax = 2000;
+
+export const previewForumCurriculumBodyCurriculumVersionMax = 200;
+
+export const previewForumCurriculumBodyTerritoryMax = 200;
+
+export const previewForumCurriculumBodyOutcomesItemCodeMax = 80;
+
+export const previewForumCurriculumBodyOutcomesItemDescriptionMax = 15000;
+
+export const previewForumCurriculumBodyOutcomesItemOrderMin = 0;
+export const previewForumCurriculumBodyOutcomesItemOrderMax = 999;
+
+export const previewForumCurriculumBodyOutcomesItemCriteriaItemCodeMax = 80;
+
+export const previewForumCurriculumBodyOutcomesItemCriteriaItemDescriptionMax = 15000;
+
+export const previewForumCurriculumBodyOutcomesItemCriteriaItemOrderMin = 0;
+export const previewForumCurriculumBodyOutcomesItemCriteriaItemOrderMax = 999;
+
+export const previewForumCurriculumBodyOutcomesItemCriteriaMax = 100;
+
+export const previewForumCurriculumBodyOutcomesMax = 100;
+
+
+
+export const PreviewForumCurriculumBody = zod.object({
+  "family": zod.enum(['Administración y Gestión']),
+  "moduleName": zod.string().min(1).max(previewForumCurriculumBodyModuleNameMax),
+  "cycleName": zod.string().min(1).max(previewForumCurriculumBodyCycleNameMax),
+  "workbook": zod.string().min(1).max(previewForumCurriculumBodyWorkbookMax),
+  "officialCode": zod.string().min(1).max(previewForumCurriculumBodyOfficialCodeMax),
+  "sourceTitle": zod.string().min(1).max(previewForumCurriculumBodySourceTitleMax),
+  "sourceUrl": zod.string().url().max(previewForumCurriculumBodySourceUrlMax),
+  "curriculumVersion": zod.string().min(1).max(previewForumCurriculumBodyCurriculumVersionMax),
+  "territory": zod.string().min(1).max(previewForumCurriculumBodyTerritoryMax),
+  "outcomes": zod.array(zod.object({
+  "code": zod.string().min(1).max(previewForumCurriculumBodyOutcomesItemCodeMax),
+  "description": zod.string().min(1).max(previewForumCurriculumBodyOutcomesItemDescriptionMax),
+  "order": zod.number().int().min(previewForumCurriculumBodyOutcomesItemOrderMin).max(previewForumCurriculumBodyOutcomesItemOrderMax),
+  "criteria": zod.array(zod.object({
+  "code": zod.string().min(1).max(previewForumCurriculumBodyOutcomesItemCriteriaItemCodeMax),
+  "description": zod.string().min(1).max(previewForumCurriculumBodyOutcomesItemCriteriaItemDescriptionMax),
+  "order": zod.number().int().min(previewForumCurriculumBodyOutcomesItemCriteriaItemOrderMin).max(previewForumCurriculumBodyOutcomesItemCriteriaItemOrderMax)
+})).min(1).max(previewForumCurriculumBodyOutcomesItemCriteriaMax)
+})).min(1).max(previewForumCurriculumBodyOutcomesMax)
+})
+
+export const PreviewForumCurriculumResponse = zod.object({
+  "token": zod.string(),
+  "revision": zod.number().int(),
+  "changes": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "before": zod.string(),
+  "after": zod.string()
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Explicitly apply selected changes and retain before and after history
+ */
+
+
+
+export const ApplyForumCurriculumParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const applyForumCurriculumBodyIncomingModuleNameMax = 500;
+
+export const applyForumCurriculumBodyIncomingCycleNameMax = 500;
+
+export const applyForumCurriculumBodyIncomingWorkbookMax = 250;
+
+export const applyForumCurriculumBodyIncomingOfficialCodeMax = 80;
+
+export const applyForumCurriculumBodyIncomingSourceTitleMax = 500;
+
+export const applyForumCurriculumBodyIncomingSourceUrlMax = 2000;
+
+export const applyForumCurriculumBodyIncomingCurriculumVersionMax = 200;
+
+export const applyForumCurriculumBodyIncomingTerritoryMax = 200;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemCodeMax = 80;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemDescriptionMax = 15000;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemOrderMin = 0;
+export const applyForumCurriculumBodyIncomingOutcomesItemOrderMax = 999;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemCodeMax = 80;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemDescriptionMax = 15000;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemOrderMin = 0;
+export const applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemOrderMax = 999;
+
+export const applyForumCurriculumBodyIncomingOutcomesItemCriteriaMax = 100;
+
+export const applyForumCurriculumBodyIncomingOutcomesMax = 100;
+
+export const applyForumCurriculumBodyTokenMin = 64;
+export const applyForumCurriculumBodyTokenMax = 64;
+
+export const applyForumCurriculumBodySelectedKeysItemMax = 500;
+
+export const applyForumCurriculumBodySelectedKeysMax = 11000;
+
+
+
+export const ApplyForumCurriculumBody = zod.object({
+  "incoming": zod.object({
+  "family": zod.enum(['Administración y Gestión']),
+  "moduleName": zod.string().min(1).max(applyForumCurriculumBodyIncomingModuleNameMax),
+  "cycleName": zod.string().min(1).max(applyForumCurriculumBodyIncomingCycleNameMax),
+  "workbook": zod.string().min(1).max(applyForumCurriculumBodyIncomingWorkbookMax),
+  "officialCode": zod.string().min(1).max(applyForumCurriculumBodyIncomingOfficialCodeMax),
+  "sourceTitle": zod.string().min(1).max(applyForumCurriculumBodyIncomingSourceTitleMax),
+  "sourceUrl": zod.string().url().max(applyForumCurriculumBodyIncomingSourceUrlMax),
+  "curriculumVersion": zod.string().min(1).max(applyForumCurriculumBodyIncomingCurriculumVersionMax),
+  "territory": zod.string().min(1).max(applyForumCurriculumBodyIncomingTerritoryMax),
+  "outcomes": zod.array(zod.object({
+  "code": zod.string().min(1).max(applyForumCurriculumBodyIncomingOutcomesItemCodeMax),
+  "description": zod.string().min(1).max(applyForumCurriculumBodyIncomingOutcomesItemDescriptionMax),
+  "order": zod.number().int().min(applyForumCurriculumBodyIncomingOutcomesItemOrderMin).max(applyForumCurriculumBodyIncomingOutcomesItemOrderMax),
+  "criteria": zod.array(zod.object({
+  "code": zod.string().min(1).max(applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemCodeMax),
+  "description": zod.string().min(1).max(applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemDescriptionMax),
+  "order": zod.number().int().min(applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemOrderMin).max(applyForumCurriculumBodyIncomingOutcomesItemCriteriaItemOrderMax)
+})).min(1).max(applyForumCurriculumBodyIncomingOutcomesItemCriteriaMax)
+})).min(1).max(applyForumCurriculumBodyIncomingOutcomesMax)
+}),
+  "token": zod.string().min(applyForumCurriculumBodyTokenMin).max(applyForumCurriculumBodyTokenMax),
+  "selectedKeys": zod.array(zod.string().min(1).max(applyForumCurriculumBodySelectedKeysItemMax)).min(1).max(applyForumCurriculumBodySelectedKeysMax),
+  "confirmReviewed": zod.boolean()
+})
+
+export const ApplyForumCurriculumResponse = zod.object({
+  "token": zod.string(),
+  "revision": zod.number().int(),
+  "changes": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "before": zod.string(),
+  "after": zod.string()
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Read curriculum revision history
+ */
+
+
+
+export const GetForumCurriculumHistoryParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const GetForumCurriculumHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "configuration": zod.string().describe('JSON snapshot including before/after and selected changes when available')
+})
+export const GetForumCurriculumHistoryResponse = zod.array(GetForumCurriculumHistoryResponseItem)
 
 
 /**

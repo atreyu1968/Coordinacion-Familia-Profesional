@@ -80,6 +80,7 @@ export async function seedVerifiedForumSources(
     await tx.insert(forumCollaborationRevisionsTable).values({
       moduleId: module.id, revision: 1, actorId: null,
       configuration: { ...values, verifiedAt: source.verifiedAt,
+        curriculum: { module, outcomes, criteria },
         provenance: { kind: "user_verified_spreadsheet", workbook: "modulos-administracion-gestion-ra-ce-revisados.xlsx",
           note: "Fuente curricular confirmada por el usuario; importación sin activar el piloto." } },
     });

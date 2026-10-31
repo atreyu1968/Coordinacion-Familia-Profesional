@@ -24,6 +24,9 @@ export const forumCollaborationsTable = pgTable("forum_collaborations", {
 export const forumCollaborationRevisionsTable = pgTable("forum_collaboration_revisions", {
   moduleId: integer("module_id").notNull().references(() => forumCollaborationsTable.moduleId),
   revision: integer("revision").notNull(),
+  // Append-only snapshots. Worksheet reviews include curriculumReview with the
+  // incoming source, selected changes, and full before/after RA/CE snapshots.
+  // Older configurations may have no text snapshot; never fabricate one.
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull(),
   actorId: integer("actor_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

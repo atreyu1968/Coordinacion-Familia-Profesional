@@ -21,6 +21,7 @@ export interface ForumCollaboration {
   academicYear: string | null;
   enabled: boolean;
   canConfigure: boolean;
+  canReviewCurriculum: boolean;
   verificationCurrent: boolean;
   fingerprint: string;
   diagnostics: string[];

@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   db, cyclesTable, modulesTable, moduleLearningOutcomesTable, moduleEvaluationCriteriaTable, forumCurriculumFingerprint,
   forumCollaborationsTable, forumCollaborationRevisionsTable,
-  forumThreadContextsTable, forumThreadsTable, forumPostsTable, type User,
+  forumThreadContextsTable, forumThreadsTable, forumPostsTable, usersTable, type User,
 } from "@workspace/db";
 import {
   ConfigureForumCollaborationBody, InitializeForumCollaborationBody,
   GetForumCollaborationResponse,
+  PreviewForumCurriculumBody, ApplyForumCurriculumBody,
   type ForumCollaborationThread,
 } from "@workspace/api-zod";
 import { requireAuth, isModuleCoordinator, hasScopeOver } from "../middlewares/auth";
@@ -18,6 +19,11 @@ import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { getActiveFamily } from "../lib/settings";
 import { enqueueForumDigest } from "../lib/forumDigestQueue";
 import { currentCurriculumImportReport } from "../lib/curriculumImportReport";
+import { hasTeachingModuleAccess } from "../lib/teachingModuleAccess";
+import {
+  loadCurriculumSnapshot, compareCurriculum, applyCurriculumRows, curriculumKey,
+  snapshotFingerprint, CurriculumReviewError,
+} from "../lib/forumCurriculumReview";
 
 const router = Router();
 const COLLABORATION_FAMILY = "Administración y Gestión";
@@ -35,6 +41,10 @@ async function canConfigure(user: User, module: { id: number; centerId: number |
   const { centersTable } = await import("@workspace/db");
   const [center] = await db.select().from(centersTable).where(eq(centersTable.id, module.centerId));
   return !!center && hasScopeOver(user, { centerId: center.id, provinceId: center.provinceId });
+}
+async function canReviewCurriculum(user: User, moduleId: number) {
+  if (user.role === "department_head" && !(await hasTeachingModuleAccess(user, moduleId))) return false;
+  return user.role === "superadmin" || await isModuleCoordinator(user.id, moduleId);
 }
 
 export async function structure(store: Database, moduleId: number, user: User) {
@@ -133,6 +143,7 @@ export async function structure(store: Database, moduleId: number, user: User) {
     academicYear: await getActiveAcademicYear(), enabled: config?.enabled ?? false,
     canConfigure: configureAllowed, verificationCurrent: !!config && config.fingerprint === fingerprint,
     importReport,
+    canReviewCurriculum: await canReviewCurriculum(user, module.id),
     fingerprint, diagnostics, sections, threads,
     configuration: config ? { revision: config.revision, enabled: config.enabled,
       officialCode: config.officialCode, sourceTitle: config.sourceTitle, sourceUrl: config.sourceUrl,
@@ -153,6 +164,103 @@ router.use("/forum/modules/:moduleId/collaboration", requireAuth, async (req, re
 });
 router.get("/forum/modules/:moduleId/collaboration", async (req, res) => {
   res.json(GetForumCollaborationResponse.parse(await structure(db, Number(req.params.moduleId), req.user!)));
+});
+router.use("/forum/modules/:moduleId/collaboration/curriculum", async (req, res, next) => {
+  const state = await structure(db, Number(req.params.moduleId), req.user!);
+  if (!state.canReviewCurriculum) { res.status(403).json({ message: "Solo la coordinación del módulo o superadministración puede revisar importaciones curriculares." }); return; }
+  next();
+});
+router.get("/forum/modules/:moduleId/collaboration/curriculum/history", async (req, res) => {
+  const entries = await db.select({ entry: forumCollaborationRevisionsTable, actorName: usersTable.name })
+    .from(forumCollaborationRevisionsTable).leftJoin(usersTable, eq(usersTable.id, forumCollaborationRevisionsTable.actorId))
+    .where(eq(forumCollaborationRevisionsTable.moduleId, Number(req.params.moduleId)))
+    .orderBy(desc(forumCollaborationRevisionsTable.revision));
+  res.json(entries.map(({ entry, actorName }) => ({
+    revision: entry.revision, actorName, createdAt: entry.createdAt.toISOString(),
+    configuration: JSON.stringify(entry.configuration, null, 2),
+  })));
+});
+router.post("/forum/modules/:moduleId/collaboration/curriculum/preview", async (req, res) => {
+  const parsed = PreviewForumCurriculumBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ message: "Revisa la identidad, las referencias y los RA/CE de la hoja." }); return; }
+  try {
+    res.json(compareCurriculum(await loadCurriculumSnapshot(db, Number(req.params.moduleId)), parsed.data));
+  } catch (error) {
+    if (!(error instanceof CurriculumReviewError)) throw error;
+    res.status(error.status).json({ message: error.message });
+  }
+});
+router.post("/forum/modules/:moduleId/collaboration/curriculum/apply", async (req, res) => {
+  const parsed = ApplyForumCurriculumBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.confirmReviewed) {
+    res.status(400).json({ message: "Selecciona los cambios y confirma expresamente su revisión." }); return;
+  }
+  const input = parsed.data, moduleId = Number(req.params.moduleId);
+  try {
+    const result = await db.transaction(async tx => {
+      // Same lock as initial imports, followed by the collaboration lock.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('coordina:adg-ra-ce-curriculum'))`);
+      await tx.execute(sql`select pg_advisory_xact_lock(1947, ${moduleId})`);
+      // Ordinary catalog editors don't use advisory locks. Lock their rows too,
+      // including parents so FK insertions cannot race the comparison.
+      await tx.execute(sql`select id from modules where id = ${moduleId} for update`);
+      await tx.execute(sql`select id from module_learning_outcomes where module_id = ${moduleId} order by id for update`);
+      await tx.execute(sql`select c.id from module_evaluation_criteria c join module_learning_outcomes o on o.id = c.outcome_id
+        where o.module_id = ${moduleId} order by c.id for update of c`);
+      await tx.execute(sql`select module_id from forum_collaborations where module_id = ${moduleId} for update`);
+      const before = await loadCurriculumSnapshot(tx, moduleId);
+      if (!(await canReviewCurriculum(req.user!, moduleId))) {
+        throw new CurriculumReviewError(403, "Ya no tienes permiso para revisar este módulo.");
+      }
+      const preview = compareCurriculum(before, input.incoming);
+      if (preview.token !== input.token) throw new CurriculumReviewError(409, "El currículo o su configuración han cambiado. Conserva la hoja y vuelve a comparar antes de confirmar.");
+      const selected = new Set(input.selectedKeys);
+      if (selected.size !== input.selectedKeys.length || [...selected].some(key => !preview.changes.some(c => c.key === key))) {
+        throw new CurriculumReviewError(400, "La selección contiene cambios duplicados o ajenos a esta comparación.");
+      }
+      if (!before.configuration && ["officialCode", "sourceTitle", "sourceUrl", "curriculumVersion", "territory"]
+        .some(key => !selected.has(curriculumKey(key)))) {
+        throw new CurriculumReviewError(400, "Para registrar la primera revisión selecciona también todos los metadatos de la fuente.");
+      }
+      await applyCurriculumRows(tx, before, input.incoming, selected);
+      const afterRows = await loadCurriculumSnapshot(tx, moduleId);
+      const source = input.incoming;
+      const values = {
+        moduleId, enabled: before.configuration?.enabled ?? false,
+        officialCode: before.configuration?.officialCode ?? "",
+        sourceTitle: before.configuration?.sourceTitle ?? "", sourceUrl: before.configuration?.sourceUrl ?? "",
+        curriculumVersion: before.configuration?.curriculumVersion ?? "", territory: before.configuration?.territory ?? "",
+        revision: (before.configuration?.revision ?? 0) + 1,
+        sections: before.configuration?.sections ?? defaultProgrammingSections,
+        fingerprint: "", verifiedBy: req.user!.id, verifiedAt: new Date(),
+      };
+      for (const key of ["officialCode", "sourceTitle", "sourceUrl", "curriculumVersion", "territory"] as const) {
+        if (selected.has(curriculumKey(key))) values[key] = source[key];
+      }
+      // Partial acceptance must not attest to a mixture of old and new text.
+      // Keep the pilot state exactly as it was, but gate initialization on review.
+      const fullyApplied = selected.size === preview.changes.length;
+      values.fingerprint = fullyApplied ? snapshotFingerprint(afterRows) : `pending:${preview.token}`;
+      await tx.insert(forumCollaborationsTable).values(values).onConflictDoUpdate({
+        target: forumCollaborationsTable.moduleId, set: values,
+      });
+      const after = await loadCurriculumSnapshot(tx, moduleId);
+      await tx.insert(forumCollaborationRevisionsTable).values({
+        moduleId, revision: values.revision, actorId: req.user!.id,
+        configuration: {
+          ...values, verifiedAt: values.verifiedAt.toISOString(),
+          curriculumReview: { kind: "selected_worksheet_changes", workbook: source.workbook,
+            incoming: source, selectedKeys: [...selected], changes: preview.changes.filter(c => selected.has(c.key)),
+            before, after, fullyApplied },
+        },
+      });
+      return compareCurriculum(after, input.incoming);
+    });
+    res.json(result);
+  } catch (error) {
+    if (!(error instanceof CurriculumReviewError)) throw error;
+    res.status(error.status).json({ message: error.message });
+  }
 });
 router.put("/forum/modules/:moduleId/collaboration", async (req, res) => {
   const parsed = ConfigureForumCollaborationBody.safeParse(req.body);
@@ -184,7 +292,8 @@ router.put("/forum/modules/:moduleId/collaboration", async (req, res) => {
         verifiedBy: req.user!.id, verifiedAt: new Date() };
       await tx.insert(forumCollaborationsTable).values(values).onConflictDoUpdate({ target: forumCollaborationsTable.moduleId, set: values });
       await tx.insert(forumCollaborationRevisionsTable).values({ moduleId, revision: values.revision,
-        actorId: req.user!.id, configuration: { ...values, verifiedAt: values.verifiedAt.toISOString() } });
+        actorId: req.user!.id, configuration: { ...values, verifiedAt: values.verifiedAt.toISOString(),
+          curriculum: await loadCurriculumSnapshot(tx, moduleId) } });
     });
     res.json(await structure(db, moduleId, req.user!));
   } catch (error) { if (!(error instanceof Conflict)) throw error; res.status(409).json({ message: error.message }); }

@@ -49,6 +49,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { ForumCurriculumReview } from "@/components/forum-curriculum-review";
 import {
   categoryOf,
   classifyThreads,
@@ -316,6 +317,7 @@ export function CollaborationConfigDialog({ collab }: { collab: ForumCollaborati
         <Button variant="outline" className="gap-1.5" onClick={() => onOpenChange(true)} data-testid="button-collab-configure">
           <Settings2 className="w-4 h-4" /> Configurar colaboración
         </Button>
+        <ForumCurriculumReview collab={collab} />
         {pending.length > 0 && (
           <Button
             variant="secondary"

@@ -955,6 +955,74 @@ paths:
         "403": {$ref: "#/components/responses/Error"}
         "404": {$ref: "#/components/responses/Error"}
         "409": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/preview:
+    post:
+      operationId: previewForumCurriculum
+      tags: [forum]
+      summary: Compare an incoming ADG worksheet without changing registered curriculum
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ForumCurriculumInput"}
+      responses:
+        "200":
+          description: Current comparison
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCurriculumPreview"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/apply:
+    post:
+      operationId: applyForumCurriculum
+      tags: [forum]
+      summary: Explicitly apply selected changes and retain before and after history
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ForumCurriculumSelection"}
+      responses:
+        "200":
+          description: Updated comparison
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCurriculumPreview"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/history:
+    get:
+      operationId: getForumCurriculumHistory
+      tags: [forum]
+      summary: Read curriculum revision history
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Immutable revision records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/ForumCurriculumHistoryEntry"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
   /forum/threads:
     get:
       operationId: listForumThreads
@@ -9156,6 +9224,81 @@ components:
         prompt: {type: string, minLength: 1, maxLength: 6000}
         enabled: {type: boolean}
         order: {type: integer, minimum: 0, maximum: 999}
+    ForumCurriculumCriterion:
+      type: object
+      required: [code, description, order]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 80}
+        description: {type: string, minLength: 1, maxLength: 15000}
+        order: {type: integer, minimum: 0, maximum: 999}
+    ForumCurriculumOutcome:
+      type: object
+      required: [code, description, order, criteria]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 80}
+        description: {type: string, minLength: 1, maxLength: 15000}
+        order: {type: integer, minimum: 0, maximum: 999}
+        criteria:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: {$ref: "#/components/schemas/ForumCurriculumCriterion"}
+    ForumCurriculumInput:
+      type: object
+      required: [family, moduleName, cycleName, workbook, officialCode, sourceTitle, sourceUrl, curriculumVersion, territory, outcomes]
+      properties:
+        family: {type: string, enum: ["Administración y Gestión"]}
+        moduleName: {type: string, minLength: 1, maxLength: 500}
+        cycleName: {type: string, minLength: 1, maxLength: 500}
+        workbook: {type: string, minLength: 1, maxLength: 250}
+        officialCode: {type: string, minLength: 1, maxLength: 80}
+        sourceTitle: {type: string, minLength: 1, maxLength: 500}
+        sourceUrl: {type: string, format: uri, maxLength: 2000}
+        curriculumVersion: {type: string, minLength: 1, maxLength: 200}
+        territory: {type: string, minLength: 1, maxLength: 200}
+        outcomes:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: {$ref: "#/components/schemas/ForumCurriculumOutcome"}
+    ForumCurriculumSelection:
+      type: object
+      required: [incoming, token, selectedKeys, confirmReviewed]
+      properties:
+        incoming: {$ref: "#/components/schemas/ForumCurriculumInput"}
+        token: {type: string, minLength: 64, maxLength: 64}
+        selectedKeys:
+          type: array
+          minItems: 1
+          maxItems: 11000
+          items: {type: string, minLength: 1, maxLength: 500}
+        confirmReviewed: {type: boolean}
+    ForumCurriculumChange:
+      type: object
+      required: [key, label, before, after]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        before: {type: string}
+        after: {type: string}
+    ForumCurriculumPreview:
+      type: object
+      required: [token, revision, changes, warnings]
+      properties:
+        token: {type: string}
+        revision: {type: integer}
+        changes:
+          type: array
+          items: {$ref: "#/components/schemas/ForumCurriculumChange"}
+        warnings: {type: array, items: {type: string}}
+    ForumCurriculumHistoryEntry:
+      type: object
+      required: [revision, actorName, createdAt, configuration]
+      properties:
+        revision: {type: integer}
+        actorName: {type: ["string", "null"]}
+        createdAt: {type: string, format: date-time}
+        configuration: {type: string, description: "JSON snapshot including before/after and selected changes when available"}
     ForumCollaborationInput:
       type: object
       required: [revision, fingerprint, enabled, officialCode, sourceTitle, sourceUrl, curriculumVersion, territory, confirmReviewed, sections]
@@ -9201,7 +9344,7 @@ components:
         curriculumVersion: {type: string, nullable: true}
     ForumCollaboration:
       type: object
-      required: [moduleId, moduleCode, moduleName, cycleName, academicYear, enabled, canConfigure, verificationCurrent, fingerprint, diagnostics, sections, threads, configuration]
+      required: [moduleId, moduleCode, moduleName, cycleName, academicYear, enabled, canConfigure, canReviewCurriculum, verificationCurrent, fingerprint, diagnostics, sections, threads, configuration]
       properties:
         moduleId: {type: integer}
         moduleCode: {type: string, nullable: true}
@@ -9210,6 +9353,7 @@ components:
         academicYear: {type: string, nullable: true}
         enabled: {type: boolean}
         canConfigure: {type: boolean}
+        canReviewCurriculum: {type: boolean}
         verificationCurrent: {type: boolean}
         fingerprint: {type: string}
         diagnostics: {type: array, items: {type: string}}

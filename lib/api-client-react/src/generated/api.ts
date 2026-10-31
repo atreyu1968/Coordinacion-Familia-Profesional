@@ -144,6 +144,10 @@ import type {
   ForumCollaboration,
   ForumCollaborationInput,
   ForumCollaborationTracking,
+  ForumCurriculumHistoryEntry,
+  ForumCurriculumInput,
+  ForumCurriculumPreview,
+  ForumCurriculumSelection,
   ForumModerationEvent,
   ForumModule,
   ForumPost,
@@ -4297,6 +4301,285 @@ export const useInitializeForumCollaboration = <TError = ErrorType<ErrorResponse
       > => {
       return useMutation(getInitializeForumCollaborationMutationOptions(options), queryClient);
     }
+
+export const getPreviewForumCurriculumUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration/curriculum/preview`
+}
+
+/**
+ * @summary Compare an incoming ADG worksheet without changing registered curriculum
+ */
+export const previewForumCurriculum = async (moduleId: number,
+    forumCurriculumInput: ForumCurriculumInput, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ForumCurriculumPreview>(getPreviewForumCurriculumUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(forumCurriculumInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewForumCurriculumMutationKey = () => ['previewForumCurriculum'] as const;
+
+export const getPreviewForumCurriculumMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewForumCurriculum>>, TError,PreviewForumCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewForumCurriculum>>, TError,PreviewForumCurriculumMutationVariables, TContext> => {
+
+const mutationKey = getPreviewForumCurriculumMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewForumCurriculum>>, PreviewForumCurriculumMutationVariables> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  previewForumCurriculum(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewForumCurriculumMutationResult = NonNullable<Awaited<ReturnType<typeof previewForumCurriculum>>>
+    export type PreviewForumCurriculumMutationBody = BodyType<ForumCurriculumInput>
+    export type PreviewForumCurriculumMutationError = ErrorType<ErrorResponse>
+    export type PreviewForumCurriculumMutationVariables = {moduleId: number;data: BodyType<ForumCurriculumInput>}
+
+    /**
+ * @summary Compare an incoming ADG worksheet without changing registered curriculum
+ */
+export const usePreviewForumCurriculum = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewForumCurriculum>>, TError,PreviewForumCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewForumCurriculum>>,
+        TError,
+        PreviewForumCurriculumMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewForumCurriculumMutationOptions(options), queryClient);
+    }
+
+export const getApplyForumCurriculumUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration/curriculum/apply`
+}
+
+/**
+ * @summary Explicitly apply selected changes and retain before and after history
+ */
+export const applyForumCurriculum = async (moduleId: number,
+    forumCurriculumSelection: ForumCurriculumSelection, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ForumCurriculumPreview>(getApplyForumCurriculumUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(forumCurriculumSelection)
+  }
+);}
+
+
+
+
+
+export const getApplyForumCurriculumMutationKey = () => ['applyForumCurriculum'] as const;
+
+export const getApplyForumCurriculumMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyForumCurriculum>>, TError,ApplyForumCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyForumCurriculum>>, TError,ApplyForumCurriculumMutationVariables, TContext> => {
+
+const mutationKey = getApplyForumCurriculumMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyForumCurriculum>>, ApplyForumCurriculumMutationVariables> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  applyForumCurriculum(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyForumCurriculumMutationResult = NonNullable<Awaited<ReturnType<typeof applyForumCurriculum>>>
+    export type ApplyForumCurriculumMutationBody = BodyType<ForumCurriculumSelection>
+    export type ApplyForumCurriculumMutationError = ErrorType<ErrorResponse>
+    export type ApplyForumCurriculumMutationVariables = {moduleId: number;data: BodyType<ForumCurriculumSelection>}
+
+    /**
+ * @summary Explicitly apply selected changes and retain before and after history
+ */
+export const useApplyForumCurriculum = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyForumCurriculum>>, TError,ApplyForumCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof applyForumCurriculum>>,
+        TError,
+        ApplyForumCurriculumMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApplyForumCurriculumMutationOptions(options), queryClient);
+    }
+
+export const getGetForumCurriculumHistoryUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration/curriculum/history`
+}
+
+/**
+ * @summary Read curriculum revision history
+ */
+export const getForumCurriculumHistory = async (moduleId: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumHistoryEntry[]> => {
+
+  return customFetch<ForumCurriculumHistoryEntry[]>(getGetForumCurriculumHistoryUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumCurriculumHistoryQueryKey = (moduleId: number,) => {
+    return [
+    `/api/forum/modules/${moduleId}/collaboration/curriculum/history`
+    ] as const;
+    }
+
+
+export const getGetForumCurriculumHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumCurriculumHistoryQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCurriculumHistory>>> = ({ signal }) => getForumCurriculumHistory(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: moduleId !== null && moduleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumCurriculumHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getForumCurriculumHistory>>>
+export type GetForumCurriculumHistoryQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCurriculumHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCurriculumHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCurriculumHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCurriculumHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read curriculum revision history
+ */
+
+export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumCurriculumHistoryQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListForumThreadsUrl = (params: ListForumThreadsParams,) => {
   const normalizedParams = new URLSearchParams();

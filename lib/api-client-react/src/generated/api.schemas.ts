@@ -2666,6 +2666,140 @@ export interface ProgrammingSection {
   order: number;
 }
 
+export interface ForumCurriculumCriterion {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  code: string;
+  /**
+     * @minLength 1
+     * @maxLength 15000
+     */
+  description: string;
+  /**
+     * @minimum 0
+     * @maximum 999
+     */
+  order: number;
+}
+
+export interface ForumCurriculumOutcome {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  code: string;
+  /**
+     * @minLength 1
+     * @maxLength 15000
+     */
+  description: string;
+  /**
+     * @minimum 0
+     * @maximum 999
+     */
+  order: number;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  criteria: ForumCurriculumCriterion[];
+}
+
+export type ForumCurriculumInputFamily = typeof ForumCurriculumInputFamily[keyof typeof ForumCurriculumInputFamily];
+
+
+export const ForumCurriculumInputFamily = {
+  Administración_y_Gestión: 'Administración y Gestión',
+} as const;
+
+export interface ForumCurriculumInput {
+  family: ForumCurriculumInputFamily;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  moduleName: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  cycleName: string;
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  workbook: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  officialCode: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  sourceTitle: string;
+  /** @maxLength 2000 */
+  sourceUrl: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  curriculumVersion: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  territory: string;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  outcomes: ForumCurriculumOutcome[];
+}
+
+export interface ForumCurriculumSelection {
+  incoming: ForumCurriculumInput;
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  token: string;
+  /**
+     * @minItems 1
+     * @maxItems 11000
+     * @items.minLength 1
+     * @items.maxLength 500
+     */
+  selectedKeys: string[];
+  confirmReviewed: boolean;
+}
+
+export interface ForumCurriculumChange {
+  key: string;
+  label: string;
+  before: string;
+  after: string;
+}
+
+export interface ForumCurriculumPreview {
+  token: string;
+  revision: number;
+  changes: ForumCurriculumChange[];
+  warnings: string[];
+}
+
+export interface ForumCurriculumHistoryEntry {
+  revision: number;
+  /** @nullable */
+  actorName: string | null;
+  createdAt: string;
+  /** JSON snapshot including before/after and selected changes when available */
+  configuration: string;
+}
+
 export interface ForumCollaborationInput {
   /** @minimum 0 */
   revision: number;
@@ -2758,6 +2892,7 @@ export interface ForumCollaboration {
   academicYear: string | null;
   enabled: boolean;
   canConfigure: boolean;
+  canReviewCurriculum: boolean;
   verificationCurrent: boolean;
   fingerprint: string;
   diagnostics: string[];
