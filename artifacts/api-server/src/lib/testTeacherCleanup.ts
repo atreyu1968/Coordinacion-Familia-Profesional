@@ -5,7 +5,7 @@ import {
 } from "@workspace/db";
 import { disconnectUserSessions } from "./realtime";
 import { getSettings } from "./settings";
-import { resolveNextcloudConfig, resolveNextcloudUrl, disableTestTeacherNextcloudAccount } from "./nextcloud";
+import { resolveNextcloudConfig, resolveNextcloudUrl, disableNextcloudAccount, formatNextcloudRevocationDiagnostic } from "./nextcloud";
 
 export const TEST_TEACHER_CONFIRMATION = "ELIMINAR DOCENTES DE PRUEBA";
 export class TestTeacherCleanupError extends Error {
@@ -30,29 +30,32 @@ const attendances = `SELECT id FROM event_attendances WHERE ${own("user_id")} OR
 type Rule = { table: string; label: string; where: string };
 // Children precede parents, including relations not enforced by legacy FKs.
 const deletions: Rule[] = [
+  { table: "message_user_hides", label: "Mensajes ocultados por la cuenta", where: `${own("user_id")} OR message_id IN (${sentMessages})` },
   { table: "message_reactions", label: "Reacciones", where: `${own("user_id")} OR message_id IN (${sentMessages})` },
   { table: "messages", label: "Mensajes enviados y conversaciones directas", where: `${own("sender_id")} OR ${own("recipient_id")}` },
   { table: "forum_thread_reads", label: "Lecturas de foros", where: `${own("user_id")} OR thread_id IN (${threads})` },
   { table: "forum_posts", label: "Publicaciones en foros", where: `${own("author_id")} OR thread_id IN (${threads})` },
-  { table: "forum_threads", label: "Hilos de prueba", where: own("author_id") },
+  { table: "forum_threads", label: "Hilos creados por la cuenta", where: own("author_id") },
   { table: "survey_answers", label: "Respuestas identificables a encuestas", where: `response_id IN (${responses}) OR survey_id IN (${surveys})` },
   { table: "survey_responses", label: "Participaciones en encuestas", where: `${own("user_id")} OR survey_id IN (${surveys})` },
   { table: "survey_questions", label: "Preguntas de encuestas de prueba", where: `survey_id IN (${surveys})` },
-  { table: "surveys", label: "Encuestas de prueba", where: own("created_by_id") },
+  { table: "surveys", label: "Encuestas creadas por la cuenta", where: own("created_by_id") },
   { table: "document_submission_values", label: "Datos entregados en formularios", where: `submission_id IN (${submissions}) OR field_id IN (SELECT id FROM document_form_fields WHERE form_id IN (${forms}))` },
   { table: "document_submissions", label: "Entregas de formularios", where: `${own("user_id")} OR form_id IN (${forms})` },
   { table: "document_form_fields", label: "Campos de formularios de prueba", where: `form_id IN (${forms})` },
-  { table: "document_forms", label: "Formularios de prueba", where: own("created_by_id") },
+  { table: "document_forms", label: "Formularios creados por la cuenta", where: own("created_by_id") },
   { table: "lms_lesson_progress", label: "Progreso de formación", where: `${own("user_id")} OR course_id IN (${courses})` },
   { table: "lms_certificates", label: "Certificados de formación", where: `${own("user_id")} OR course_id IN (${courses})` },
   { table: "lms_upload_intents", label: "Subidas de formación", where: `${own("user_id")} OR course_id IN (${courses})` },
-  { table: "lms_lessons", label: "Lecciones de cursos de prueba", where: `course_id IN (${courses})` },
-  { table: "lms_courses", label: "Cursos de prueba", where: own("created_by") },
+  { table: "lms_course_import_intents", label: "Importaciones de cursos pendientes", where: own("user_id") },
+  { table: "lms_course_positions", label: "Posición de lectura en cursos", where: `${own("user_id")} OR course_id IN (${courses})` },
+  { table: "lms_lessons", label: "Lecciones de cursos creados por la cuenta", where: `course_id IN (${courses})` },
+  { table: "lms_courses", label: "Cursos creados por la cuenta", where: own("created_by") },
   { table: "lms_course_managers", label: "Permisos de formación", where: own("user_id") },
   { table: "wiki_upload_intents", label: "Subidas de documentación", where: `${own("user_id")} OR page_id IN (${pages})` },
-  { table: "wiki_external_links", label: "Enlaces de documentación de prueba", where: `${own("created_by")} OR page_id IN (${pages})` },
-  { table: "wiki_attachments", label: "Adjuntos de documentación de prueba", where: `${own("uploaded_by")} OR page_id IN (${pages})` },
-  { table: "wiki_pages", label: "Páginas de documentación de prueba", where: `id IN (${pages})` },
+  { table: "wiki_external_links", label: "Enlaces de documentación", where: `${own("created_by")} OR page_id IN (${pages})` },
+  { table: "wiki_attachments", label: "Adjuntos de documentación", where: `${own("uploaded_by")} OR page_id IN (${pages})` },
+  { table: "wiki_pages", label: "Páginas de documentación", where: `id IN (${pages})` },
   { table: "wiki_module_editors", label: "Permisos de documentación", where: own("user_id") },
   { table: "wiki_module_permission_group_members", label: "Grupos de permisos de documentación", where: own("user_id") },
   { table: "event_attendance_certificates", label: "Certificados de asistencia", where: `attendance_id IN (${attendances}) OR event_id IN (${events})` },
@@ -60,24 +63,27 @@ const deletions: Rule[] = [
   { table: "event_rsvps", label: "Inscripciones a eventos", where: `${own("user_id")} OR event_id IN (${events})` },
   { table: "event_staff", label: "Participaciones en organización", where: `${own("user_id")} OR event_id IN (${events})` },
   { table: "event_accreditations", label: "Acreditaciones", where: `lower(holder_email) = ANY($2::text[]) OR event_id IN (${events})` },
-  { table: "event_spaces", label: "Espacios de eventos de prueba", where: `event_id IN (${events})` },
+  { table: "event_spaces", label: "Espacios de eventos", where: `event_id IN (${events})` },
   { table: "meeting_minutes_messages", label: "Conversaciones privadas de actas", where: `${own("created_by")} OR event_id IN (${events})` },
-  { table: "meeting_minutes_shared_documents", label: "Adjuntos de reuniones de prueba", where: `event_id IN (${events})` },
-  { table: "meeting_minutes_sources", label: "Fuentes de reuniones de prueba", where: `event_id IN (${events})` },
-  { table: "meeting_minutes", label: "Actas de eventos de prueba", where: `event_id IN (${events})` },
-  { table: "event_attendance_settings", label: "Configuración de eventos de prueba", where: `event_id IN (${events})` },
+  { table: "meeting_minutes_shared_documents", label: "Adjuntos de reuniones", where: `event_id IN (${events})` },
+  { table: "meeting_minutes_sources", label: "Fuentes de reuniones", where: `event_id IN (${events})` },
+  { table: "meeting_minutes", label: "Actas de eventos", where: `event_id IN (${events})` },
+  { table: "event_attendance_settings", label: "Configuración de eventos", where: `event_id IN (${events})` },
   { table: "calendar_entries", label: "Entradas de calendario", where: `${own("created_by_id")} OR event_id IN (${events})` },
-  { table: "events", label: "Eventos de prueba", where: own("created_by_id") },
-  { table: "announcement_attachments", label: "Adjuntos de anuncios de prueba", where: `announcement_id IN (SELECT id FROM announcements WHERE ${own("author_id")})` },
-  { table: "announcements", label: "Anuncios de prueba", where: own("author_id") },
-  { table: "resources", label: "Recursos de prueba", where: own("author_id") },
-  { table: "company_alerts", label: "Avisos de prueba", where: own("created_by_id") },
-  { table: "annual_reports", label: "Informes de prueba", where: own("generated_by_id") },
+  { table: "events", label: "Eventos creados por la cuenta", where: own("created_by_id") },
+  { table: "announcement_attachments", label: "Adjuntos de anuncios", where: `announcement_id IN (SELECT id FROM announcements WHERE ${own("author_id")})` },
+  { table: "announcements", label: "Anuncios publicados por la cuenta", where: own("author_id") },
+  { table: "resources", label: "Recursos publicados por la cuenta", where: own("author_id") },
+  { table: "company_alerts", label: "Avisos creados por la cuenta", where: own("created_by_id") },
+  { table: "annual_reports", label: "Informes generados por la cuenta", where: own("generated_by_id") },
   { table: "meetings", label: "Videoconferencias de prueba", where: own("host_id") },
   { table: "teaching_assignments", label: "Asignaciones docentes", where: own("teacher_id") },
   { table: "teacher_year_confirmations", label: "Confirmaciones de curso", where: own("teacher_id") },
   { table: "module_memberships", label: "Inscripciones en módulos", where: own("user_id") },
   { table: "chat_group_members", label: "Pertenencias a grupos de mensajes", where: own("user_id") },
+  { table: "forum_agreement_positions", label: "Posiciones en acuerdos de módulo", where: own("user_id") },
+  { table: "forum_agreement_position_history", label: "Historial de posiciones en acuerdos", where: own("user_id") },
+  { table: "forum_digest_deliveries", label: "Avisos resumidos de foros", where: own("user_id") },
   { table: "collaborative_space_members", label: "Pertenencias a espacios", where: own("user_id") },
   { table: "collaborative_space_audit", label: "Actividad en espacios", where: own("actor_id") },
   { table: "notifications", label: "Notificaciones", where: own("user_id") },
@@ -98,7 +104,9 @@ const deletions: Rule[] = [
   { table: "coordinator_mail_cases", label: "Asuntos de correo personales", where: own("owner_id") },
   { table: "coordinator_mail_case_groups", label: "Agrupaciones de correo personales", where: own("owner_id") },
   { table: "coordinator_mail_accounts", label: "Conexiones personales de correo", where: own("user_id") },
-  { table: "account_audit", label: "Historial de las cuentas de prueba", where: `${own("actor_id")} OR ${own("target_id")}` },
+  { table: "forum_moderation_events", label: "Historial de moderación de foros", where: own("actor_id") },
+  // Deletion decisions outlive the actor, including the installer suppression marker.
+  { table: "account_audit", label: "Historial administrativo de la cuenta", where: `(${own("actor_id")} OR ${own("target_id")}) AND action NOT IN ('purge_test_teachers', 'permanent_delete')` },
 ];
 
 // Preserve shared catalogues/configuration; clear attribution, not other users.
@@ -108,6 +116,12 @@ const detach: Array<Rule & { columns: string[]; replaceWithAdmin?: boolean }> = 
   { table: "cycles", label: "Autoría del catálogo", columns: ["created_by"], where: own("created_by") },
   { table: "chat_groups", label: "Autoría de grupos compartidos", columns: ["created_by_id"], where: own("created_by_id") },
   { table: "collaborative_spaces", label: "Autoría de espacios compartidos", columns: ["created_by"], where: own("created_by") },
+  { table: "forum_agreements", label: "Autoría de acuerdos curriculares compartidos", columns: ["created_by"], where: own("created_by") },
+  { table: "forum_agreements", label: "Edición de acuerdos curriculares compartidos", columns: ["updated_by"], where: own("updated_by") },
+  { table: "forum_collaborations", label: "Verificación de configuraciones compartidas", columns: ["verified_by"], where: own("verified_by") },
+  { table: "forum_collaboration_revisions", label: "Autoría de revisiones compartidas", columns: ["actor_id"], where: own("actor_id") },
+  { table: "forum_agreement_revisions", label: "Autoría de revisiones de acuerdos", columns: ["actor_id"], where: own("actor_id") },
+  { table: "forum_digest_events", label: "Autoría de avisos resumidos", columns: ["actor_id"], where: own("actor_id") },
   { table: "wiki_pages", label: "Última edición de documentación compartida", columns: ["updated_by"], where: own("updated_by"), replaceWithAdmin: true },
   { table: "wiki_permission_groups", label: "Autoría de permisos compartidos", columns: ["created_by"], where: own("created_by"), replaceWithAdmin: true },
   { table: "wiki_module_permission_group_members", label: "Concesiones de permisos", columns: ["created_by"], where: own("created_by"), replaceWithAdmin: true },
@@ -121,21 +135,23 @@ const detach: Array<Rule & { columns: string[]; replaceWithAdmin?: boolean }> = 
   ].map(([table, column]) => ({ table, label: "Referencias en documentos compartidos", columns: [column], where: own(column) })),
 ];
 const blockers: Rule[] = [
-  { table: "forum_posts", label: "Respuestas reales a hilos de prueba", where: `thread_id IN (${threads}) AND author_id IS NOT NULL AND NOT (${own("author_id")})` },
-  { table: "survey_responses", label: "Participaciones reales en encuestas de prueba", where: `survey_id IN (${surveys}) AND NOT (${own("user_id")})` },
-  { table: "document_submissions", label: "Entregas reales en formularios de prueba", where: `form_id IN (${forms}) AND NOT (${own("user_id")})` },
-  { table: "lms_lesson_progress", label: "Progreso real en cursos de prueba", where: `course_id IN (${courses}) AND NOT (${own("user_id")})` },
-  { table: "lms_certificates", label: "Certificados reales en cursos de prueba", where: `course_id IN (${courses}) AND NOT (${own("user_id")})` },
-  { table: "wiki_pages", label: "Documentos reales bajo páginas de prueba", where: `id IN (${pages}) AND NOT (${own("created_by")})` },
-  { table: "wiki_pages", label: "Páginas de prueba revisadas por usuarios reales", where: `${own("created_by")} AND NOT (${own("updated_by")})` },
-  { table: "wiki_attachments", label: "Adjuntos reales en documentación de prueba", where: `page_id IN (${pages}) AND NOT (${own("uploaded_by")})` },
-  { table: "wiki_external_links", label: "Enlaces reales en documentación de prueba", where: `page_id IN (${pages}) AND NOT (${own("created_by")})` },
-  { table: "event_attendances", label: "Asistentes reales en eventos de prueba", where: `event_id IN (${events}) AND NOT (lower(email) = ANY($2::text[])) AND (user_id IS NULL OR NOT (${own("user_id")}))` },
-  { table: "event_rsvps", label: "Inscripciones reales en eventos de prueba", where: `event_id IN (${events}) AND NOT (${own("user_id")})` },
-  { table: "event_staff", label: "Personal real en eventos de prueba", where: `event_id IN (${events}) AND NOT (${own("user_id")})` },
-  { table: "event_accreditations", label: "Acreditaciones reales en eventos de prueba", where: `event_id IN (${events}) AND (holder_email IS NULL OR NOT (lower(holder_email) = ANY($2::text[])))` },
-  { table: "meeting_minutes", label: "Actas oficiales en eventos de prueba", where: `event_id IN (${events}) AND published_at IS NOT NULL` },
-  { table: "survey_answers", label: "Respuestas anónimas no atribuibles en encuestas de prueba", where: `survey_id IN (${surveys}) AND response_id IS NULL` },
+  { table: "forum_agreements", label: "Acuerdos compartidos vinculados a hilos que se borrarían", where: `thread_id IN (${threads})` },
+  { table: "forum_posts", label: "Publicaciones de otras cuentas en hilos que se borrarían", where: `thread_id IN (${threads}) AND author_id IS NOT NULL AND NOT (${own("author_id")})` },
+  { table: "survey_responses", label: "Participaciones de otras cuentas en encuestas que se borrarían", where: `survey_id IN (${surveys}) AND NOT (${own("user_id")})` },
+  { table: "document_submissions", label: "Entregas de otras cuentas en formularios que se borrarían", where: `form_id IN (${forms}) AND NOT (${own("user_id")})` },
+  { table: "lms_lesson_progress", label: "Progreso de otras cuentas en cursos que se borrarían", where: `course_id IN (${courses}) AND NOT (${own("user_id")})` },
+  { table: "lms_certificates", label: "Certificados de otras cuentas en cursos que se borrarían", where: `course_id IN (${courses}) AND NOT (${own("user_id")})` },
+  { table: "lms_course_positions", label: "Posiciones de otras cuentas en cursos que se borrarían", where: `course_id IN (${courses}) AND NOT (${own("user_id")})` },
+  { table: "wiki_pages", label: "Documentos de otras cuentas bajo páginas que se borrarían", where: `id IN (${pages}) AND NOT (${own("created_by")})` },
+  { table: "wiki_pages", label: "Páginas modificadas por otras cuentas", where: `${own("created_by")} AND NOT (${own("updated_by")})` },
+  { table: "wiki_attachments", label: "Adjuntos de otras cuentas en documentación que se borraría", where: `page_id IN (${pages}) AND NOT (${own("uploaded_by")})` },
+  { table: "wiki_external_links", label: "Enlaces de otras cuentas en documentación que se borraría", where: `page_id IN (${pages}) AND NOT (${own("created_by")})` },
+  { table: "event_attendances", label: "Asistentes de otras cuentas en eventos que se borrarían", where: `event_id IN (${events}) AND NOT (lower(email) = ANY($2::text[])) AND (user_id IS NULL OR NOT (${own("user_id")}))` },
+  { table: "event_rsvps", label: "Inscripciones de otras cuentas en eventos que se borrarían", where: `event_id IN (${events}) AND NOT (${own("user_id")})` },
+  { table: "event_staff", label: "Personal de otras cuentas en eventos que se borrarían", where: `event_id IN (${events}) AND NOT (${own("user_id")})` },
+  { table: "event_accreditations", label: "Acreditaciones de otras personas en eventos que se borrarían", where: `event_id IN (${events}) AND (holder_email IS NULL OR NOT (lower(holder_email) = ANY($2::text[])))` },
+  { table: "meeting_minutes", label: "Actas publicadas vinculadas a eventos que se borrarían", where: `event_id IN (${events}) AND published_at IS NOT NULL` },
+  { table: "survey_answers", label: "Respuestas anónimas no atribuibles en encuestas que se borrarían", where: `survey_id IN (${surveys}) AND response_id IS NULL` },
 ];
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 type Captured = Rule & { tids: string[] };
@@ -180,6 +196,254 @@ async function snapshot(client: PoolClient) {
     },
   };
 }
+
+export class PermanentUserDeletionError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
+async function snapshotUserDeletion(client: PoolClient, userId: number, actorId: number) {
+  const accountResult = await client.query<{
+    id: number; name: string; email: string; role: User["role"]; status: User["status"];
+    province_id: number | null; center_id: number | null;
+  }>(
+    "SELECT id, name, email, role, status, province_id, center_id FROM users WHERE id=$1",
+    [userId],
+  );
+  const target = accountResult.rows[0];
+  if (!target) throw new PermanentUserDeletionError(404, "Usuario no encontrado.");
+
+  const ids = [target.id];
+  const emails = [target.email.toLowerCase()];
+  const parameters = [ids, emails];
+  const withParameters = (rules: Rule[]) => rules.map(rule => ({
+    ...rule,
+    where: `(${rule.where}) AND $2::text[] IS NOT NULL`,
+  }));
+  const deletionRules = [
+    ...deletions,
+    { table: "users", label: "Cuenta", where: own("id") },
+  ];
+  const deletionRows = await capture(client, withParameters(deletionRules), parameters);
+  const detachRows = await capture(client, withParameters(detach), parameters);
+  const blockedRows = await capture(client, withParameters(blockers), parameters);
+  const blockedReasons = blockedRows.result
+    .filter(row => row.tids.length)
+    .map(row => row.label);
+  if (actorId === target.id) {
+    blockedReasons.unshift("No puedes eliminar la cuenta con la que has iniciado sesión.");
+  }
+  const admins = await client.query<{ id: number }>(
+    "SELECT id FROM users WHERE role='superadmin' AND status='active' AND deleted_at IS NULL ORDER BY id",
+  );
+  if (
+    target.role === "superadmin" &&
+    target.status === "active" &&
+    !admins.rows.some(admin => admin.id !== target.id)
+  ) {
+    blockedReasons.unshift("No se puede eliminar el último superadministrador activo.");
+  }
+  const fingerprint = createHash("sha256").update(JSON.stringify([
+    ...deletionRows.hashes,
+    ...detachRows.hashes,
+    ...blockedRows.hashes,
+    admins.rows.map(admin => admin.id),
+    actorId,
+  ])).digest("hex");
+  const assignmentCount = deletionRows.result
+    .find(row => row.table === "teaching_assignments")?.tids.length ?? 0;
+  const history = deletionRows.result
+    .filter(row => row.table !== "users" && row.table !== "teaching_assignments" && row.tids.length)
+    .map(row => ({ label: row.label, count: row.tids.length }));
+  return {
+    target,
+    ids,
+    emails,
+    deletionRows: deletionRows.result,
+    detachRows: detachRows.result,
+    preview: {
+      target,
+      assignments: assignmentCount,
+      history,
+      blockedReasons,
+      fingerprint,
+    },
+  };
+}
+
+export async function previewPermanentUserDeletion(actor: User, userId: number) {
+  if (actor.role !== "superadmin") {
+    throw new PermanentUserDeletionError(403, "Solo el superadministrador puede eliminar usuarios definitivamente.");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const { preview } = await snapshotUserDeletion(client, userId, actor.id);
+    await client.query("COMMIT");
+    return preview;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function permanentlyDeleteUser(
+  actor: User,
+  userId: number,
+  fingerprint: string,
+  confirmation: string,
+) {
+  if (actor.role !== "superadmin") {
+    throw new PermanentUserDeletionError(403, "Solo el superadministrador puede eliminar usuarios definitivamente.");
+  }
+  const settings = await getSettings();
+  const nextcloud = resolveNextcloudConfig(settings);
+  const client = await pool.connect();
+  let remoteRevocationAttempted = false;
+  let result: {
+    userId: number;
+    name: string;
+    assignmentsDeleted: number;
+    historyDeleted: number;
+  };
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '3s'");
+    await client.query("SET LOCAL statement_timeout = '15s'");
+    // Serialize this path with the reserved test-account purge too.
+    await client.query("SELECT pg_advisory_xact_lock($1)", [TEST_TEACHER_LOCK]);
+    const tables = [...new Set([...deletions, ...detach, ...blockers].map(rule => rule.table))]
+      .filter(table => table !== "users")
+      .sort();
+    await client.query("LOCK TABLE users IN ACCESS EXCLUSIVE MODE");
+    if (tables.length) {
+      await client.query(`LOCK TABLE ${tables.map(quote).join(", ")} IN SHARE ROW EXCLUSIVE MODE`);
+    }
+    const currentActor = await client.query(
+      "SELECT id FROM users WHERE id=$1 AND role='superadmin' AND status='active' AND deleted_at IS NULL AND token_version=$2 AND session_nonce=$3",
+      [actor.id, actor.tokenVersion, actor.sessionNonce],
+    );
+    if (!currentActor.rowCount) {
+      throw new PermanentUserDeletionError(403, "Tu sesión o tus permisos han cambiado. Inicia sesión de nuevo.");
+    }
+
+    const data = await snapshotUserDeletion(client, userId, actor.id);
+    if (data.preview.fingerprint !== fingerprint) {
+      throw new PermanentUserDeletionError(409, "Los datos han cambiado. Actualiza la vista previa antes de confirmar.");
+    }
+    if (data.preview.blockedReasons.length) {
+      throw new PermanentUserDeletionError(409, data.preview.blockedReasons.join(" "));
+    }
+    if (confirmation !== data.target.email) {
+      throw new PermanentUserDeletionError(400, "Escribe exactamente el correo del usuario para confirmar.");
+    }
+    if (resolveNextcloudUrl(settings) && !nextcloud) {
+      throw new PermanentUserDeletionError(
+        503,
+        "No se puede verificar la cuenta de Nextcloud. No se ha borrado ningún dato local.",
+      );
+    }
+    if (nextcloud) {
+      remoteRevocationAttempted = true;
+      try {
+        await disableNextcloudAccount(nextcloud, userId);
+      } catch (error) {
+        throw new PermanentUserDeletionError(
+          503,
+          `No se pudo confirmar la revocación en Nextcloud. No se han borrado datos locales; la cuenta remota podría haber quedado deshabilitada. Comprueba Nextcloud y reintenta.${formatNextcloudRevocationDiagnostic(error)}`,
+        );
+      }
+    }
+
+    const affectedGroups = await client.query<{ id: number }>(
+      `SELECT DISTINCT group_id AS id FROM messages WHERE group_id IS NOT NULL AND (${own("sender_id")} OR ${own("recipient_id")})`,
+      [data.ids],
+    );
+    // Keep replies from other users valid by clearing pointers before removing
+    // the target's messages.
+    await client.query(
+      `UPDATE messages SET reply_to_id=NULL WHERE reply_to_id IN (${sentMessages}) AND NOT (${own("sender_id")}) AND (recipient_id IS NULL OR NOT (${own("recipient_id")}))`,
+      [data.ids],
+    );
+
+    const deletionSnapshot = await capture(
+      client,
+      deletions.map(rule => ({ ...rule, where: `(${rule.where}) AND $2::text[] IS NOT NULL` })),
+      [data.ids, data.emails],
+    );
+    let historyDeleted = 0;
+    for (const row of deletionSnapshot.result) {
+      if (!row.tids.length) continue;
+      const deleted = await client.query(
+        `DELETE FROM ${quote(row.table)} WHERE ctid = ANY($1::tid[])`,
+        [row.tids],
+      );
+      historyDeleted += deleted.rowCount ?? 0;
+    }
+    for (const rule of detach.filter(rule => rule.table !== "messages")) {
+      await client.query(
+        `UPDATE ${quote(rule.table)} SET ${rule.columns.map(column => `${quote(column)} = ${rule.replaceWithAdmin ? "$3::int" : "NULL"}`).join(", ")} WHERE (${rule.where}) AND $2::text[] IS NOT NULL${rule.replaceWithAdmin ? " AND $3::int IS NOT NULL" : ""}`,
+        rule.replaceWithAdmin
+          ? [data.ids, data.emails, actor.id]
+          : [data.ids, data.emails],
+      );
+    }
+    await client.query("DELETE FROM users WHERE id=$1", [userId]);
+    if (affectedGroups.rows.length) {
+      await client.query(
+        "UPDATE chat_groups g SET last_message_at = (SELECT max(created_at) FROM messages m WHERE m.group_id = g.id AND m.deleted_at IS NULL) WHERE g.id = ANY($1::int[])",
+        [affectedGroups.rows.map(row => row.id)],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO account_audit
+        (actor_id, actor_name, target_id, action, changes, before_role, after_role,
+         before_province_id, after_province_id, before_center_id, after_center_id)
+       VALUES ($1, $2, $3, 'permanent_delete', $4::jsonb, $5, $5, $6, NULL, $7, NULL)`,
+      [
+        actor.id,
+        actor.name,
+        userId,
+        JSON.stringify([
+          { field: "name", before: data.target.name, after: null },
+          { field: "email", before: data.target.email, after: null },
+          { field: "status", before: data.target.status, after: "deleted" },
+        ]),
+        data.target.role,
+        data.target.province_id,
+        data.target.center_id,
+      ],
+    );
+    result = {
+      userId,
+      name: data.target.name,
+      assignmentsDeleted: data.preview.assignments,
+      historyDeleted,
+    };
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    if (error instanceof PermanentUserDeletionError) throw error;
+    const code = (error as { code?: string }).code;
+    if (["23503", "55P03", "40P01", "40001", "57014"].includes(code ?? "")) {
+      const remoteNote = remoteRevocationAttempted
+        ? " Nextcloud podría haber quedado deshabilitado; comprueba la cuenta remota."
+        : "";
+      throw new PermanentUserDeletionError(
+        409,
+        `No se borró ningún dato local: hay relaciones o actividad simultánea que requieren revisión.${remoteNote} Vuelve a consultar la vista previa.`,
+      );
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+  disconnectUserSessions(userId);
+  return result!;
+}
+
 export async function previewTestTeacherCleanup() {
   const client = await pool.connect();
   try {
@@ -221,9 +485,9 @@ export async function purgeTestTeachers(actor: User, fingerprint: string, confir
       throw new TestTeacherCleanupError(503, "Configura las credenciales administrativas de Nextcloud antes de eliminar sus usuarios de prueba.");
     }
     if (nextcloud) {
-      try { await Promise.all(ids.map(id => disableTestTeacherNextcloudAccount(nextcloud, id))); }
-      catch {
-        throw new TestTeacherCleanupError(503, "No se pudo confirmar la revocación en Nextcloud. No se han borrado datos locales; alguna cuenta remota puede haber quedado deshabilitada. Comprueba Nextcloud y reintenta.");
+      try { await Promise.all(ids.map(id => disableNextcloudAccount(nextcloud, id))); }
+      catch (error) {
+        throw new TestTeacherCleanupError(503, `No se pudo confirmar la revocación en Nextcloud. No se han borrado datos locales; alguna cuenta remota puede haber quedado deshabilitada. Comprueba Nextcloud y reintenta.${formatNextcloudRevocationDiagnostic(error)}`);
       }
     }
     const affectedGroups = await client.query<{ id: number }>(`SELECT DISTINCT group_id AS id FROM messages WHERE group_id IS NOT NULL AND (${own("sender_id")} OR ${own("recipient_id")})`, [ids]);

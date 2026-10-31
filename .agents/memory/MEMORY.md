@@ -82,7 +82,7 @@
 - [Correo privado de coordinación](coordinator-mail.md) — OAuth de Google se configura en la app; cada coordinador autoriza y conserva aislados sus propios asuntos y tokens.
 - [Fuentes de consulta de la IA](ai-knowledge-scope.md) — debe poder consultar todo el material subido y los correos recibidos, respetando los permisos de cada usuario.
 - [Tareas pendientes de coordinación](coordinator-pending-tasks.md) — tareas privadas por coordinador; la IA propone, el coordinador confirma y añade manualmente.
-- [Borrado de docentes de prueba](test-teacher-cleanup.md) — eliminación definitiva también en producción; conservar la decisión administrativa de no recrearlos.
+- [Borrado de usuarios](test-teacher-cleanup.md) — cuentas erróneas y limpieza de pruebas separadas; confirmación explícita y conservación de decisiones administrativas.
 - [LMS media retention](lms-media-retention.md) — delayed, reference-aware cleanup avoids breaking concurrent course ZIP exports.
 - [Normativa link monitoring](normativa-link-monitoring.md) — los avisos son orientativos; no sustituir fuentes ni regenerar contenido editado para reparar un fallo de acceso.
 - [Revisión normativa](normativa-review-policy.md) — detectar BOE/BOC no implica vigencia; revisar anexos y preservar las ediciones humanas.

@@ -20,3 +20,9 @@ La eliminación administrativa debe sobrevivir a futuras ejecuciones del instala
 **Why:** borrar las cuentas sin recordar la decisión permitiría que una actualización las volviera a crear.
 
 **How to apply:** cualquier modificación de las semillas o limpieza del registro administrativo debe respetar esta supresión persistente; no confundir el registro del administrador con el historial de las cuentas eliminadas.
+
+El usuario también autorizó una acción independiente de superadministración para eliminar usuarios erróneos, escogiendo «Borrar toda la actividad». Esta petición no autoriza al agente a borrar cuentas reales durante el desarrollo.
+
+**Why:** necesita eliminar registros erróneos, no solo desactivarlos, sin ampliar por heurísticas la limpieza de identidades artificiales.
+
+**How to apply:** seleccionar explícitamente la cuenta, revisar el impacto y confirmar su identidad. Mantener separado el borrado irreversible de la desactivación recuperable y proteger las aportaciones de otras cuentas.

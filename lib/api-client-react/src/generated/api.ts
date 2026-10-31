@@ -325,6 +325,9 @@ import type {
   User,
   UserAuditPage,
   UserDirectoryFilterOptions,
+  UserPermanentDeletionInput,
+  UserPermanentDeletionPreview,
+  UserPermanentDeletionResult,
   VapidPublicKey,
   VerifyAttendanceEmailBody,
   WikiAttachmentInput,
@@ -7735,6 +7738,196 @@ export const usePurgeTestTeachers = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getPurgeTestTeachersMutationOptions(options), queryClient);
+    }
+
+export const getPreviewUserPermanentDeletionUrl = (id: number,) => {
+
+
+
+
+  return `/api/users/${id}/permanent-delete-preview`
+}
+
+/**
+ * @summary Preview permanent deletion of one user and their application activity
+ */
+export const previewUserPermanentDeletion = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<UserPermanentDeletionPreview> => {
+
+  return customFetch<UserPermanentDeletionPreview>(getPreviewUserPermanentDeletionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewUserPermanentDeletionQueryKey = (id: number,) => {
+    return [
+    `/api/users/${id}/permanent-delete-preview`
+    ] as const;
+    }
+
+
+export const getPreviewUserPermanentDeletionQueryOptions = <TData = Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewUserPermanentDeletionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewUserPermanentDeletion>>> = ({ signal }) => previewUserPermanentDeletion(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PreviewUserPermanentDeletionQueryResult = NonNullable<Awaited<ReturnType<typeof previewUserPermanentDeletion>>>
+export type PreviewUserPermanentDeletionQueryError = ErrorType<ErrorResponse>
+
+
+export function usePreviewUserPermanentDeletion<TData = Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewUserPermanentDeletion>>,
+          TError,
+          Awaited<ReturnType<typeof previewUserPermanentDeletion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewUserPermanentDeletion<TData = Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewUserPermanentDeletion>>,
+          TError,
+          Awaited<ReturnType<typeof previewUserPermanentDeletion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewUserPermanentDeletion<TData = Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Preview permanent deletion of one user and their application activity
+ */
+
+export function usePreviewUserPermanentDeletion<TData = Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewUserPermanentDeletion>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPreviewUserPermanentDeletionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPermanentlyDeleteUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/users/${id}/permanent-delete`
+}
+
+/**
+ * @summary Permanently delete one user after preview and exact email confirmation
+ */
+export const permanentlyDeleteUser = async (id: number,
+    userPermanentDeletionInput: UserPermanentDeletionInput, options?: Parameters<typeof customFetch>[1]): Promise<UserPermanentDeletionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UserPermanentDeletionResult>(getPermanentlyDeleteUserUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(userPermanentDeletionInput)
+  }
+);}
+
+
+
+
+
+export const getPermanentlyDeleteUserMutationKey = () => ['permanentlyDeleteUser'] as const;
+
+export const getPermanentlyDeleteUserMutationOptions = <TError = ErrorType<ErrorResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteUser>>, TError,PermanentlyDeleteUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteUser>>, TError,PermanentlyDeleteUserMutationVariables, TContext> => {
+
+const mutationKey = getPermanentlyDeleteUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof permanentlyDeleteUser>>, PermanentlyDeleteUserMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  permanentlyDeleteUser(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PermanentlyDeleteUserMutationResult = NonNullable<Awaited<ReturnType<typeof permanentlyDeleteUser>>>
+    export type PermanentlyDeleteUserMutationBody = BodyType<UserPermanentDeletionInput>
+    export type PermanentlyDeleteUserMutationError = ErrorType<ErrorResponse | Error>
+    export type PermanentlyDeleteUserMutationVariables = {id: number;data: BodyType<UserPermanentDeletionInput>}
+
+    /**
+ * @summary Permanently delete one user after preview and exact email confirmation
+ */
+export const usePermanentlyDeleteUser = <TError = ErrorType<ErrorResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof permanentlyDeleteUser>>, TError,PermanentlyDeleteUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof permanentlyDeleteUser>>,
+        TError,
+        PermanentlyDeleteUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPermanentlyDeleteUserMutationOptions(options), queryClient);
     }
 
 export const getListManagedUsersUrl = (params?: ListManagedUsersParams,) => {

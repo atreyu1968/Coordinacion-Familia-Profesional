@@ -2646,6 +2646,69 @@ export const PurgeTestTeachersResponse = zod.object({
 
 
 /**
+ * @summary Preview permanent deletion of one user and their application activity
+ */
+export const PreviewUserPermanentDeletionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const previewUserPermanentDeletionResponseAssignmentsMin = 0;
+
+export const previewUserPermanentDeletionResponseHistoryItemCountMin = 0;
+
+export const previewUserPermanentDeletionResponseFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const PreviewUserPermanentDeletionResponse = zod.object({
+  "target": zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['superadmin', 'coordinator', 'department_head', 'teacher', 'prospector']),
+  "status": zod.enum(['active', 'inactive'])
+}),
+  "assignments": zod.number().int().min(previewUserPermanentDeletionResponseAssignmentsMin),
+  "history": zod.array(zod.object({
+  "label": zod.string(),
+  "count": zod.number().int().min(previewUserPermanentDeletionResponseHistoryItemCountMin)
+})),
+  "blockedReasons": zod.array(zod.string()),
+  "fingerprint": zod.string().regex(previewUserPermanentDeletionResponseFingerprintRegExp)
+})
+
+
+/**
+ * @summary Permanently delete one user after preview and exact email confirmation
+ */
+export const PermanentlyDeleteUserParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const permanentlyDeleteUserBodyFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const permanentlyDeleteUserBodyConfirmationMax = 320;
+
+
+
+export const PermanentlyDeleteUserBody = zod.object({
+  "fingerprint": zod.string().regex(permanentlyDeleteUserBodyFingerprintRegExp),
+  "confirmation": zod.string().min(1).max(permanentlyDeleteUserBodyConfirmationMax)
+})
+
+export const permanentlyDeleteUserResponseAssignmentsDeletedMin = 0;
+
+export const permanentlyDeleteUserResponseHistoryDeletedMin = 0;
+
+
+
+export const PermanentlyDeleteUserResponse = zod.object({
+  "userId": zod.number().int(),
+  "name": zod.string(),
+  "assignmentsDeleted": zod.number().int().min(permanentlyDeleteUserResponseAssignmentsDeletedMin),
+  "historyDeleted": zod.number().int().min(permanentlyDeleteUserResponseHistoryDeletedMin)
+})
+
+
+/**
  * @summary Paginated user administration, including deactivated accounts within the manager's scope
  */
 
@@ -2751,9 +2814,9 @@ export const ListUserAuditResponse = zod.object({
   "actorName": zod.string(),
   "targetId": zod.number().int(),
   "occurredAt": zod.coerce.date(),
-  "action": zod.enum(['update', 'deactivate', 'reactivate', 'purge_test_teachers']),
+  "action": zod.enum(['update', 'deactivate', 'reactivate', 'purge_test_teachers', 'permanent_delete']),
   "changes": zod.array(zod.object({
-  "field": zod.enum(['name', 'role', 'centerId', 'provinceId', 'status']),
+  "field": zod.enum(['name', 'email', 'role', 'centerId', 'provinceId', 'status']),
   "before": zod.string().nullable(),
   "after": zod.string().nullable()
 }))

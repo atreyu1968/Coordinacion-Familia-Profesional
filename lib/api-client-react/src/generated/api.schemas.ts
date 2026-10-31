@@ -1207,6 +1207,7 @@ export type UserAuditChangeField = typeof UserAuditChangeField[keyof typeof User
 
 export const UserAuditChangeField = {
   name: 'name',
+  email: 'email',
   role: 'role',
   centerId: 'centerId',
   provinceId: 'provinceId',
@@ -1229,6 +1230,7 @@ export const UserAuditEventAction = {
   deactivate: 'deactivate',
   reactivate: 'reactivate',
   purge_test_teachers: 'purge_test_teachers',
+  permanent_delete: 'permanent_delete',
 } as const;
 
 export interface UserAuditEvent {
@@ -1281,6 +1283,68 @@ export interface TestTeacherCleanupInput {
 export interface TestTeacherCleanupResult {
   accountsDeleted: number;
   assignmentsDeleted: number;
+  historyDeleted: number;
+}
+
+export interface UserPermanentDeletionHistoryCount {
+  label: string;
+  /** @minimum 0 */
+  count: number;
+}
+
+export type UserPermanentDeletionPreviewTargetRole = typeof UserPermanentDeletionPreviewTargetRole[keyof typeof UserPermanentDeletionPreviewTargetRole];
+
+
+export const UserPermanentDeletionPreviewTargetRole = {
+  superadmin: 'superadmin',
+  coordinator: 'coordinator',
+  department_head: 'department_head',
+  teacher: 'teacher',
+  prospector: 'prospector',
+} as const;
+
+export type UserPermanentDeletionPreviewTargetStatus = typeof UserPermanentDeletionPreviewTargetStatus[keyof typeof UserPermanentDeletionPreviewTargetStatus];
+
+
+export const UserPermanentDeletionPreviewTargetStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type UserPermanentDeletionPreviewTarget = {
+  id: number;
+  name: string;
+  email: string;
+  role: UserPermanentDeletionPreviewTargetRole;
+  status: UserPermanentDeletionPreviewTargetStatus;
+};
+
+export interface UserPermanentDeletionPreview {
+  target: UserPermanentDeletionPreviewTarget;
+  /** @minimum 0 */
+  assignments: number;
+  history: UserPermanentDeletionHistoryCount[];
+  blockedReasons: string[];
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+}
+
+export interface UserPermanentDeletionInput {
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+  /**
+     * @minLength 1
+     * @maxLength 320
+     */
+  confirmation: string;
+}
+
+export interface UserPermanentDeletionResult {
+  userId: number;
+  name: string;
+  /** @minimum 0 */
+  assignmentsDeleted: number;
+  /** @minimum 0 */
   historyDeleted: number;
 }
 

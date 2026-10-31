@@ -5,9 +5,15 @@ import { Button } from "@/components/ui/button";
 import { ROLE_LABELS } from "@/lib/user-management";
 
 const labels: Record<string, string> = {
-  name: "Nombre", role: "Rol", centerId: "Centro", provinceId: "Provincia", status: "Estado",
+  name: "Nombre", email: "Correo", role: "Rol", centerId: "Centro", provinceId: "Provincia", status: "Estado",
 };
-const actions = { update: "Edición", deactivate: "Desactivación", reactivate: "Reactivación", purge_test_teachers: "Eliminación definitiva de datos de prueba" };
+const actions = {
+  update: "Edición",
+  deactivate: "Desactivación",
+  reactivate: "Reactivación",
+  purge_test_teachers: "Eliminación definitiva de datos de prueba",
+  permanent_delete: "Eliminación definitiva de usuario",
+};
 
 export function UserAuditDialog({ user, onClose, centers, provinces }: {
   user: ManagedUser;

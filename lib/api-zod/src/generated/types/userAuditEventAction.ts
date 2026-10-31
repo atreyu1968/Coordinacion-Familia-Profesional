@@ -14,4 +14,5 @@ export const UserAuditEventAction = {
   deactivate: 'deactivate',
   reactivate: 'reactivate',
   purge_test_teachers: 'purge_test_teachers',
+  permanent_delete: 'permanent_delete',
 } as const;

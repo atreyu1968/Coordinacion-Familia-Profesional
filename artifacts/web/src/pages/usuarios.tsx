@@ -43,6 +43,7 @@ import {
 import { UserEditDialog } from "@/components/user-edit-dialog";
 import { UserAuditDialog } from "@/components/user-audit-dialog";
 import { TestTeacherCleanupDialog } from "@/components/test-teacher-cleanup-dialog";
+import { UserPermanentDeletionDialog } from "@/components/user-permanent-deletion-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,7 @@ import {
   Pencil,
   RotateCw,
   Search,
+  Trash2,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -342,6 +344,7 @@ export default function UsuariosPage() {
 
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [auditUser, setAuditUser] = useState<ManagedUser | null>(null);
+  const [deletionUser, setDeletionUser] = useState<ManagedUser | null>(null);
   const [access, setAccess] = useState<PendingAccess>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<Map<number, ManagedUser>>(new Map());
@@ -1098,6 +1101,20 @@ export default function UsuariosPage() {
                               )}
                             </>
                           )}
+                          {isSuperadmin && !isSelf && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              disabled={anyPending}
+                              onClick={() => setDeletionUser(u)}
+                              aria-label={`Eliminar definitivamente a ${u.name}`}
+                              title="Eliminar definitivamente"
+                              data-testid={`button-permanent-delete-user-${u.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1312,6 +1329,21 @@ export default function UsuariosPage() {
           )}
         </AlertDialogContent>
       </AlertDialog>
+
+      <UserPermanentDeletionDialog
+        user={deletionUser}
+        open={deletionUser != null}
+        onClose={() => setDeletionUser(null)}
+        onDeleted={async (id) => {
+          setDeletionUser(null);
+          setSelectedUsers((current) => {
+            const next = new Map(current);
+            next.delete(id);
+            return next;
+          });
+          await invalidateAll(id);
+        }}
+      />
     </div>
   );
 }

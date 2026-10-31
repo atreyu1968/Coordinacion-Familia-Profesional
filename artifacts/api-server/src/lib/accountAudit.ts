@@ -5,7 +5,7 @@ import { revokeNextcloudAdministrator } from "./nextcloudAdministrator";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Action = typeof accountAuditTable.$inferInsert.action;
-const fields: AccountAuditField[] = ["name", "role", "centerId", "provinceId", "status"];
+const fields: AccountAuditField[] = ["name", "email", "role", "centerId", "provinceId", "status"];
 
 // null means the validated snapshot changed while the request was in flight.
 // Lock before writing so concurrent requests cannot overwrite an unlogged change.

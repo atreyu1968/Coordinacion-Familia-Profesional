@@ -1,7 +1,7 @@
 import { index, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import type { User } from "./users";
 
-export type AccountAuditField = "name" | "role" | "centerId" | "provinceId" | "status";
+export type AccountAuditField = "name" | "email" | "role" | "centerId" | "provinceId" | "status";
 export type AccountAuditChange = { field: AccountAuditField; before: string | null; after: string | null };
 
 // Independent snapshots: no cascading foreign keys, no historical backfill.
@@ -11,7 +11,7 @@ export const accountAuditTable = pgTable("account_audit", {
   actorName: text("actor_name").notNull(),
   targetId: integer("target_id").notNull(),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
-  action: text("action").$type<"update" | "deactivate" | "reactivate" | "purge_test_teachers">().notNull(),
+  action: text("action").$type<"update" | "deactivate" | "reactivate" | "purge_test_teachers" | "permanent_delete">().notNull(),
   changes: jsonb("changes").$type<AccountAuditChange[]>().notNull(),
   beforeProvinceId: integer("before_province_id"),
   afterProvinceId: integer("after_province_id"),

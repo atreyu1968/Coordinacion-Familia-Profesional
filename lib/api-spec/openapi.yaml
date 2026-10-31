@@ -1779,6 +1779,70 @@ paths:
                 $ref: "#/components/schemas/TestTeacherCleanupResult"
         "409":
           description: Preview changed or shared real-user activity prevents deletion; nothing was deleted
+  /users/{id}/permanent-delete-preview:
+    get:
+      operationId: previewUserPermanentDeletion
+      tags: [users]
+      summary: Preview permanent deletion of one user and their application activity
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Account, associated activity, safety blockers, and confirmation fingerprint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPermanentDeletionPreview"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /users/{id}/permanent-delete:
+    post:
+      operationId: permanentlyDeleteUser
+      tags: [users]
+      summary: Permanently delete one user after preview and exact email confirmation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPermanentDeletionInput"
+      responses:
+        "200":
+          description: User and associated application records deleted atomically
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPermanentDeletionResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Preview changed or shared data prevents deletion; nothing was deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: External account revocation could not be confirmed; local records were not deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/management:
     get:
       operationId: listManagedUsers
@@ -7630,7 +7694,7 @@ components:
       properties:
         field:
           type: string
-          enum: [name, role, centerId, provinceId, status]
+          enum: [name, email, role, centerId, provinceId, status]
         before:
           type: [string, "null"]
         after:
@@ -7652,7 +7716,7 @@ components:
           format: date-time
         action:
           type: string
-          enum: [update, deactivate, reactivate, purge_test_teachers]
+          enum: [update, deactivate, reactivate, purge_test_teachers, permanent_delete]
         changes:
           type: array
           items:
@@ -7726,6 +7790,75 @@ components:
         historyDeleted:
           type: integer
       required: [accountsDeleted, assignmentsDeleted, historyDeleted]
+    UserPermanentDeletionHistoryCount:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+      required: [label, count]
+    UserPermanentDeletionPreview:
+      type: object
+      properties:
+        target:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            role:
+              type: string
+              enum: [superadmin, coordinator, department_head, teacher, prospector]
+            status:
+              type: string
+              enum: [active, inactive]
+          required: [id, name, email, role, status]
+        assignments:
+          type: integer
+          minimum: 0
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserPermanentDeletionHistoryCount"
+        blockedReasons:
+          type: array
+          items:
+            type: string
+        fingerprint:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+      required: [target, assignments, history, blockedReasons, fingerprint]
+    UserPermanentDeletionInput:
+      type: object
+      properties:
+        fingerprint:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        confirmation:
+          type: string
+          minLength: 1
+          maxLength: 320
+      required: [fingerprint, confirmation]
+    UserPermanentDeletionResult:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        assignmentsDeleted:
+          type: integer
+          minimum: 0
+        historyDeleted:
+          type: integer
+          minimum: 0
+      required: [userId, name, assignmentsDeleted, historyDeleted]
     AdminSessionInvalidationResult:
       type: object
       properties:

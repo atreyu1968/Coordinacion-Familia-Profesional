@@ -11,6 +11,7 @@ export type UserAuditChangeField = typeof UserAuditChangeField[keyof typeof User
 
 export const UserAuditChangeField = {
   name: 'name',
+  email: 'email',
   role: 'role',
   centerId: 'centerId',
   provinceId: 'provinceId',

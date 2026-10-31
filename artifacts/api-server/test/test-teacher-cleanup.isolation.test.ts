@@ -10,7 +10,7 @@ vi.mock("../src/lib/nextcloud", async importOriginal => ({
   ...await importOriginal<typeof import("../src/lib/nextcloud")>(),
   resolveNextcloudConfig: () => remote.enabled ? { url: "https://cloud.example.test", adminUser: "test", adminPassword: "test-only" } : null,
   resolveNextcloudUrl: () => remote.enabled ? "https://cloud.example.test" : null,
-  disableTestTeacherNextcloudAccount: async (_config: unknown, id: number) => {
+  disableNextcloudAccount: async (_config: unknown, id: number) => {
     remote.calls.push(id);
     if (remote.fail) throw new Error("Simulated external revocation failure");
   },
@@ -22,9 +22,12 @@ let helpers: typeof import("./helpers");
 let admin: Awaited<ReturnType<typeof import("./helpers")["createUser"]>>;
 let real: typeof admin;
 let coordinator: typeof admin;
+let erroneous: typeof admin;
 const fixtureIds: number[] = [];
 let centerId: number, moduleId: number, groupId: number, realReply: number;
 const endpoint = "/api/users/test-teachers/cleanup";
+const permanentDeleteEndpoint = (id: number) => `/api/users/${id}/permanent-delete`;
+const permanentDeletePreviewEndpoint = (id: number) => `/api/users/${id}/permanent-delete-preview`;
 const confirmation = "ELIMINAR DOCENTES DE PRUEBA";
 const auth = () => helpers.authHeader(admin.token);
 const preview = () => request(app).get(endpoint).set(auth());
@@ -54,6 +57,7 @@ beforeAll(async () => {
   await t.db.update(t.usersTable).set({ email: "unrelated@admin.coordina.test" }).where(eq(t.usersTable.id, real.user.id));
   centerId = await helpers.createCenter(await helpers.createProvince());
   [moduleId] = (await t.db.insert(t.modulesTable).values({ name: "Isolated cleanup module" }).returning({ id: t.modulesTable.id })).map(row => row.id);
+  erroneous = await helpers.createUser({ role: "teacher", centerId });
   for (const [index, email] of t.TEST_TEACHER_EMAILS.entries()) {
     const teacher = await helpers.createUser({ role: "teacher", centerId });
     fixtureIds.push(teacher.user.id);
@@ -103,6 +107,59 @@ describe("Permanent fixture cleanup, including production", () => {
     expect(JSON.stringify(result.body)).not.toContain("passwordHash");
     expect(await teacherCount()).toBe(4);
   });
+  it("previews and permanently removes only the selected account and its activity", async () => {
+    const targetId = erroneous.user.id;
+    await t.db.insert(t.teachingAssignmentsTable).values({ teacherId: targetId, moduleId, centerId, schoolYear: "2099-2100" });
+    await t.db.insert(t.notificationsTable).values({ userId: targetId, title: "User purge fixture" });
+    const ownPreview = await request(app)
+      .get(permanentDeletePreviewEndpoint(admin.user.id))
+      .set(auth());
+    expect(ownPreview.status).toBe(200);
+    expect(ownPreview.body.blockedReasons).toContain("No puedes eliminar la cuenta con la que has iniciado sesión.");
+
+    const previewResponse = await request(app)
+      .get(permanentDeletePreviewEndpoint(targetId))
+      .set(auth());
+    expect(previewResponse.status).toBe(200);
+    expect(previewResponse.body.target.email).toBe(erroneous.user.email);
+    expect(previewResponse.body.assignments).toBe(1);
+    expect(previewResponse.body.blockedReasons).toEqual([]);
+
+    expect((await request(app)
+      .post(permanentDeleteEndpoint(targetId))
+      .set(helpers.authHeader(real.token))
+      .send({ fingerprint: previewResponse.body.fingerprint, confirmation: erroneous.user.email })).status).toBe(403);
+    expect((await request(app)
+      .post(permanentDeleteEndpoint(targetId))
+      .set(auth())
+      .send({ fingerprint: previewResponse.body.fingerprint, confirmation: "wrong@example.test" })).status).toBe(400);
+
+    await t.db.insert(t.notificationsTable).values({ userId: targetId, title: "Changed after preview" });
+    expect((await request(app)
+      .post(permanentDeleteEndpoint(targetId))
+      .set(auth())
+      .send({ fingerprint: previewResponse.body.fingerprint, confirmation: erroneous.user.email })).status).toBe(409);
+
+    const currentPreview = await request(app)
+      .get(permanentDeletePreviewEndpoint(targetId))
+      .set(auth());
+    expect(currentPreview.status).toBe(200);
+    const deleted = await request(app)
+      .post(permanentDeleteEndpoint(targetId))
+      .set(auth())
+      .send({ fingerprint: currentPreview.body.fingerprint, confirmation: erroneous.user.email });
+    expect(deleted.status).toBe(200);
+    expect(deleted.body).toMatchObject({
+      userId: targetId,
+      assignmentsDeleted: 1,
+    });
+    expect((await t.db.select().from(t.usersTable).where(eq(t.usersTable.id, targetId)))).toHaveLength(0);
+    expect((await t.db.select().from(t.teachingAssignmentsTable).where(eq(t.teachingAssignmentsTable.teacherId, targetId)))).toHaveLength(0);
+    expect((await t.db.select().from(t.notificationsTable).where(eq(t.notificationsTable.userId, targetId)))).toHaveLength(0);
+    expect((await t.db.select().from(t.accountAuditTable).where(
+      sql`${t.accountAuditTable.targetId} = ${targetId} AND ${t.accountAuditTable.action} = 'permanent_delete'`,
+    ))).toHaveLength(1);
+  });
   it("requires the typed confirmation and rejects a stale snapshot", async () => {
     const before = await preview();
     expect((await request(app).post(endpoint).set(auth()).send({ fingerprint: before.body.fingerprint, confirmation: "yes" })).status).toBe(400);
@@ -115,7 +172,7 @@ describe("Permanent fixture cleanup, including production", () => {
     const [thread] = await t.db.insert(t.forumThreadsTable).values({ title: "Test thread with real participation", moduleId, authorId: fixtureIds[0] }).returning();
     const [post] = await t.db.insert(t.forumPostsTable).values({ threadId: thread.id, authorId: real.user.id, content: "Preserve me" }).returning();
     const state = await preview();
-    expect(state.body.blockedReasons).toContain("Respuestas reales a hilos de prueba");
+    expect(state.body.blockedReasons).toContain("Publicaciones de otras cuentas en hilos que se borrarían");
     expect((await purge(state.body.fingerprint)).status).toBe(409);
     expect(await teacherCount()).toBe(4);
     expect((await t.db.select().from(t.forumPostsTable).where(eq(t.forumPostsTable.id, post.id)))).toHaveLength(1);
@@ -167,7 +224,7 @@ describe("Permanent fixture cleanup, including production", () => {
     const messages = await t.db.select().from(t.messagesTable);
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({ id: realReply, replyToId: null, content: "Real group reply to preserve" });
-    expect((await t.db.select().from(t.accountAuditTable))).toEqual([expect.objectContaining({ action: t.TEST_TEACHER_PURGE_ACTION, targetId: admin.user.id })]);
+    expect((await t.db.select().from(t.accountAuditTable).where(eq(t.accountAuditTable.action, t.TEST_TEACHER_PURGE_ACTION)))).toEqual([expect.objectContaining({ action: t.TEST_TEACHER_PURGE_ACTION, targetId: admin.user.id })]);
   });
   it("prevents the installer from recreating removed fixtures", async () => {
     const result = spawnSync("pnpm", ["--filter", "@workspace/scripts", "run", "seed-test-teachers"], {

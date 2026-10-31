@@ -656,30 +656,55 @@ export async function revokeIndependentSpaceMember(
 
 export { OcsError };
 
-/** Revoke a removed fixture's external sessions without deleting shared files. */
-export async function disableTestTeacherNextcloudAccount(config: NextcloudConfig, userId: number): Promise<void> {
+function parseNextcloudEnabled(value: unknown): boolean | null {
+  if (value === true || value === 1 || value === "1" || value === "true") return true;
+  if (value === false || value === 0 || value === "0" || value === "false") return false;
+  return null;
+}
+
+export class NextcloudRevocationError extends Error {
+  constructor(
+    message: string,
+    readonly diagnostic: { step: string; httpStatus: number | null; ocsCode: number | null; errorType: string },
+  ) {
+    super(message);
+    this.name = "NextcloudRevocationError";
+  }
+}
+
+export function formatNextcloudRevocationDiagnostic(error: unknown): string {
+  if (!(error instanceof NextcloudRevocationError)) return "";
+  const { step, httpStatus, ocsCode, errorType } = error.diagnostic;
+  return ` (paso=${step}; HTTP=${httpStatus ?? "n/d"}; OCS=${ocsCode ?? "n/d"}; tipo=${errorType})`;
+}
+
+/** Revoke an app user's external sessions without deleting shared files. */
+export async function disableNextcloudAccount(config: NextcloudConfig, userId: number): Promise<void> {
   const path = `/ocs/v2.php/cloud/users/${encodeURIComponent(nextcloudUid(userId))}`;
   type UserInfo = { ocs?: { data?: { enabled?: unknown } } };
   let step = "check-account";
   try {
     const before = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
-    if (before?.enabled === false || before?.enabled === "false") return;
+    const enabledBefore = parseNextcloudEnabled(before?.enabled);
+    if (enabledBefore === false) return;
+    if (enabledBefore === null) throw new Error("Nextcloud no devolvió un estado de cuenta reconocible.");
     step = "disable-account";
     await ocs(config, "PUT", `${path}/disable`, undefined, AbortSignal.timeout(5000));
     step = "verify-disable";
     const after = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
-    if (after?.enabled !== false && after?.enabled !== "false") throw new Error("Nextcloud no confirmó la desactivación.");
+    if (parseNextcloudEnabled(after?.enabled) !== false) throw new Error("Nextcloud no confirmó la desactivación.");
   } catch (error) {
     // OCS v2 can return its logical "user not found" code (998) in an HTTP
     // 200 response. A bare proxy/server 404 has no OCS code and must still fail
     // closed; it is not evidence that the account is absent.
     if (error instanceof OcsError && error.ocsCode === 998) return;
-    logger.warn({
+    const diagnostic = {
       step,
       httpStatus: error instanceof OcsError ? error.status : null,
       ocsCode: error instanceof OcsError ? error.ocsCode : null,
       errorType: error instanceof Error ? error.name : "unknown",
-    }, "No se pudo confirmar la revocación de una cuenta de prueba en Nextcloud");
-    throw error;
+    };
+    logger.warn(diagnostic, "No se pudo confirmar la revocación de una cuenta en Nextcloud");
+    throw new NextcloudRevocationError("Nextcloud no confirmó la desactivación de la cuenta remota.", diagnostic);
   }
 }
