@@ -120,7 +120,10 @@ describe("dashboard chart drilldowns", () => {
     // The chart count includes center-less accounts assigned to this province;
     // the active directory endpoint must preserve that same population.
     expect(dashboardApi).toMatch(/isNull\(usersTable\.centerId\)[\s\S]*?eq\(usersTable\.provinceId,\s*scope\.provinceId\)/);
-    expect(usersApi).toMatch(/and\(isNull\(usersTable\.centerId\),\s*eq\(usersTable\.provinceId,\s*scope\.provinceId\)\)/);
+    // The current directory uses an explicit location filter, including the
+    // teaching center before falling back to the account's province.
+    expect(usersApi).toMatch(/function userLocationPredicate\(/);
+    expect(usersApi).toMatch(/and\(\s*isNull\(usersTable\.centerId\),\s*isNull\(usersTable\.teachingCenterId\),\s*eq\(usersTable\.provinceId,\s*provinceId\)/);
     // Regional surveys and events stay in scope instead of being dropped by a province filter.
     expect(surveys).toMatch(/surveyParams\.provinceId\s*=\s*requestedProvinceId/);
     expect(events).toMatch(/eventParams\.provinceId\s*=\s*requestedProvinceId/);
