@@ -9,6 +9,8 @@ import {
   type ListModulesParams,
   type Module,
 } from "@workspace/api-client-react";
+import { summarizeTeachingAssignments } from "./teaching-assignment-summary";
+import type { AssignedTeacher } from "./teaching-assignment-summary";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,9 +56,17 @@ import {
 function ModuleNavRow({
   module: m,
   canManage,
+  assignedTeachers,
+  assignmentPeriod,
+  assignmentsLoading,
+  assignmentsError,
 }: {
   module: Module;
   canManage: boolean;
+  assignedTeachers: AssignedTeacher[];
+  assignmentPeriod: string;
+  assignmentsLoading: boolean;
+  assignmentsError: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 p-3">
@@ -80,7 +90,15 @@ function ModuleNavRow({
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {m.memberCount ?? 0} {m.memberCount === 1 ? "miembro" : "miembros"}
+            {assignmentsLoading
+              ? "Cargando asignaciones…"
+              : assignmentsError
+                ? "Asignaciones no disponibles"
+                : `${assignedTeachers.length} ${
+                    assignedTeachers.length === 1
+                      ? "docente asignado"
+                      : "docentes asignados"
+                  }`}
             {m.coordinatorName ? ` · ${m.coordinatorName}` : ""}
           </p>
         </div>
@@ -92,6 +110,12 @@ function ModuleNavRow({
             module={m}
             canDesignateCoordinator={canManage}
             canManageForumModerators={canManage}
+            assignedTeachers={
+              assignmentsLoading || assignmentsError
+                ? undefined
+                : assignedTeachers
+            }
+            assignmentPeriod={assignmentPeriod}
             trigger={
               <Button size="sm" variant="outline" className="gap-1.5">
                 <Users className="w-3.5 h-3.5" /> Miembros
@@ -110,11 +134,19 @@ function CycleGroup({
   modules,
   canManage,
   defaultOpen,
+  teachersByModule,
+  assignmentPeriod,
+  assignmentsLoading,
+  assignmentsError,
 }: {
   cycleName: string;
   modules: Module[];
   canManage: boolean;
   defaultOpen: boolean;
+  teachersByModule: Map<number, AssignedTeacher[]>;
+  assignmentPeriod: string;
+  assignmentsLoading: boolean;
+  assignmentsError: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -138,7 +170,15 @@ function CycleGroup({
       {open && (
         <div className="border-t divide-y">
           {modules.map((m) => (
-            <ModuleNavRow key={m.id} module={m} canManage={canManage} />
+            <ModuleNavRow
+              key={m.id}
+              module={m}
+              canManage={canManage}
+              assignedTeachers={teachersByModule.get(m.id) ?? []}
+              assignmentPeriod={assignmentPeriod}
+              assignmentsLoading={assignmentsLoading}
+              assignmentsError={assignmentsError}
+            />
           ))}
         </div>
       )}
@@ -169,7 +209,11 @@ export default function AcademicaPage() {
 
   const { data: modules = [], isLoading: modulesLoading } =
     useListModules(moduleParams);
-  const { data: assignments = [], isLoading: assignmentsLoading } =
+  const {
+    data: assignments = [],
+    isLoading: assignmentsLoading,
+    isError: assignmentsError,
+  } =
     useListTeachingAssignments(yearParam ? { schoolYear: yearParam } : {});
   const { data: teachers = [], isLoading: teachersLoading } = useListUsers({
     role: "teacher",
@@ -193,13 +237,14 @@ export default function AcademicaPage() {
     return map;
   }, [confirmations]);
 
-  const assignmentsByTeacher = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const a of assignments) {
-      map.set(a.teacherId, (map.get(a.teacherId) ?? 0) + 1);
-    }
-    return map;
-  }, [assignments]);
+  const assignmentSummary = useMemo(
+    () => summarizeTeachingAssignments(assignments),
+    [assignments],
+  );
+  const assignmentPeriod =
+    yearParam === "all"
+      ? "todos los cursos"
+      : yearParam ?? activeYear ?? "curso activo";
 
   const modulesByCycle = useMemo(() => {
     const map = new Map<string, Module[]>();
@@ -274,7 +319,9 @@ export default function AcademicaPage() {
                     <TableHead>Profesor</TableHead>
                     <TableHead>Correo</TableHead>
                     {showConfirmation && <TableHead>Confirmación</TableHead>}
-                    <TableHead className="text-right">Módulos</TableHead>
+                    <TableHead className="text-right">
+                      Módulos asignados
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -314,9 +361,24 @@ export default function AcademicaPage() {
                             </TableCell>
                           )}
                           <TableCell className="text-right">
-                            <Badge variant="secondary">
-                              {assignmentsByTeacher.get(t.id) ?? 0}
-                            </Badge>
+                            {assignmentsLoading ? (
+                              <span className="text-xs text-muted-foreground">
+                                Cargando…
+                              </span>
+                            ) : assignmentsError ? (
+                              <span className="text-xs text-muted-foreground">
+                                No disponible
+                              </span>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                data-testid={`teacher-assigned-module-count-${t.id}`}
+                              >
+                                {assignmentSummary.moduleCountsByTeacher.get(
+                                  t.id,
+                                ) ?? 0}
+                              </Badge>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -371,6 +433,10 @@ export default function AcademicaPage() {
                   modules={cycleModules}
                   canManage={canManage}
                   defaultOpen={modulesByCycle.length <= 3}
+                  teachersByModule={assignmentSummary.teachersByModule}
+                  assignmentPeriod={assignmentPeriod}
+                  assignmentsLoading={assignmentsLoading}
+                  assignmentsError={assignmentsError}
                 />
               ))}
             </div>
@@ -405,6 +471,15 @@ export default function AcademicaPage() {
                     <TableRow>
                       <TableCell colSpan={3} className="text-center py-8">
                         Cargando...
+                      </TableCell>
+                    </TableRow>
+                  ) : assignmentsError ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="text-center py-8 text-destructive"
+                      >
+                        No se pudieron cargar las asignaciones.
                       </TableCell>
                     </TableRow>
                   ) : assignments.length === 0 ? (

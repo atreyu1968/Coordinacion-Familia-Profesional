@@ -70,6 +70,7 @@
 - [App branding customization](branding-customization.md) — superadmin name/logo/favicon in DB; public asset routes need strict canonical path validation at write AND serve time.
 - [Configurable professional family](professional-family-setting.md) — familia profesional is a branding value; all identity texts + the Centros default filter must derive from it, never a hardcoded "Administración y Gestión".
 - [Academic year management](academic-year-management.md) — managed curso académico; active year is the DEFAULT app filter (never ALL); annual teacher confirmation + 15-day auto-deactivation; transition wizard; school_year stays free TEXT.
+- [Asignaciones frente a miembros](academic-assignment-membership.md) — informes por docente/módulo usan asignaciones únicas del curso activo; las inscripciones y responsables son otra relación.
 - [Inactive direct chats](inactive-direct-chats.md) — hide and block chats with inactive counterparts, but retain their history unless deletion is explicitly requested.
 - [Chat reconnect recovery](chat-reconnect-recovery.md) — rejoin the room and rehydrate visible messages and hidden-message lists after every socket reconnect.
 - [Groups and mobile notices](messaging-groups-notifications.md) — voluntary group creation/departure; module groups follow assignments; mobile event notices include updates and cancellation.

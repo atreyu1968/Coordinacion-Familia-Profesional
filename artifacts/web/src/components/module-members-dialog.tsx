@@ -98,6 +98,8 @@ export function ModuleMembersDialog({
   trigger,
   canDesignateCoordinator = true,
   canManageForumModerators = true,
+  assignedTeachers,
+  assignmentPeriod,
 }: {
   module: Module;
   trigger: ReactNode;
@@ -109,6 +111,9 @@ export function ModuleMembersDialog({
   canDesignateCoordinator?: boolean;
   /** Only managers in scope may appoint or remove forum moderators. */
   canManageForumModerators?: boolean;
+  /** Teaching assignments for the selected academic-year filter. */
+  assignedTeachers?: Array<{ teacherId: number; name: string }>;
+  assignmentPeriod?: string;
 }) {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
@@ -217,10 +222,29 @@ export function ModuleMembersDialog({
         <DialogHeader>
           <DialogTitle>Miembros · {module.name}</DialogTitle>
           <DialogDescription>
-            Añade profesorado y gestiona los responsables de este módulo. Puede
-            haber varios moderadores del foro.
+            La lista de miembros gestiona inscripciones y responsables. Las
+            asignaciones docentes del curso se muestran por separado.
           </DialogDescription>
         </DialogHeader>
+
+        {assignedTeachers && (
+          <section className="space-y-2 rounded-md border p-3">
+            <h3 className="text-sm font-medium">
+              Docentes asignados · {assignmentPeriod ?? "curso activo"}
+            </h3>
+            {assignedTeachers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay docentes asignados en este periodo.
+              </p>
+            ) : (
+              <ul className="max-h-28 space-y-1 overflow-y-auto text-sm">
+                {assignedTeachers.map((teacher) => (
+                  <li key={teacher.teacherId}>{teacher.name}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         <div className="flex items-end gap-2">
           <div className="flex-1 min-w-0">

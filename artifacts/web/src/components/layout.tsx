@@ -200,9 +200,9 @@ export function AppLayout({ children }: LayoutProps) {
 
       {/* Body: sidebar + main content */}
       <div className="flex flex-1 min-h-0 w-full">
-        {/* Sidebar: a fixed-width rail reserves space; the panel inside expands
-            on hover (overlaying the content) unless pinned open. */}
-        <div className={`relative ${pinned ? "w-64" : "w-16"} hidden md:block shrink-0 transition-[width] duration-200 ease-in-out`}>
+        {/* Reserve the expanded sidebar width too, so opening it shifts the
+            workspace instead of covering it. */}
+        <div className={`relative ${expanded ? "w-64" : "w-16"} hidden md:block shrink-0 transition-[width] duration-200 ease-in-out`}>
           <aside
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}

@@ -1624,6 +1624,34 @@ router.get(
     }
 
     const filters: SQL[] = [isNull(teachingAssignmentsTable.deletedAt)];
+    const activeFamily = await getActiveFamily();
+    const activeFamilyJson = JSON.stringify([activeFamily]);
+    filters.push(
+      inArray(
+        teachingAssignmentsTable.centerId,
+        db
+          .select({ id: centersTable.id })
+          .from(centersTable)
+          .where(
+            and(
+              isNull(centersTable.deletedAt),
+              sql`${centersTable.families} @> ${activeFamilyJson}::jsonb`,
+            ),
+          ),
+      ),
+      inArray(
+        teachingAssignmentsTable.moduleId,
+        db
+          .select({ id: modulesTable.id })
+          .from(modulesTable)
+          .where(
+            and(
+              isNull(modulesTable.deletedAt),
+              moduleFamilyFilter(activeFamily),
+            ),
+          ),
+      ),
+    );
     if (query.data.centerId != null) {
       filters.push(eq(teachingAssignmentsTable.centerId, query.data.centerId));
     }
@@ -1694,6 +1722,13 @@ router.post(
       res.status(404).json({ message: "Centro no encontrado" });
       return;
     }
+    const activeFamily = await getActiveFamily();
+    if (!(await centerBelongsToFamily(center.id, activeFamily))) {
+      res.status(400).json({
+        message: "El centro no pertenece a la familia profesional activa",
+      });
+      return;
+    }
     if (
       !hasScopeOver(req.user!, {
         provinceId: center.provinceId,
@@ -1733,6 +1768,7 @@ router.post(
         and(
           eq(modulesTable.id, parsed.data.moduleId),
           isNull(modulesTable.deletedAt),
+          moduleFamilyFilter(activeFamily),
         ),
       );
     if (!module) {
