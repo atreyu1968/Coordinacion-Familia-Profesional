@@ -694,10 +694,13 @@ export async function disableNextcloudAccount(config: NextcloudConfig, userId: n
     const after = (await ocs(config, "GET", path, undefined, AbortSignal.timeout(5000)) as UserInfo)?.ocs?.data;
     if (parseNextcloudEnabled(after?.enabled) !== false) throw new Error("Nextcloud no confirmó la desactivación.");
   } catch (error) {
-    // OCS v2 can return its logical "user not found" code (998) in an HTTP
-    // 200 response. A bare proxy/server 404 has no OCS code and must still fail
-    // closed; it is not evidence that the account is absent.
-    if (error instanceof OcsError && error.ocsCode === 998) return;
+    // OCS can report a missing user as logical code 998 or 404. Accept 404 only
+    // while checking the account itself: a missing route during disable/verify,
+    // or a bare proxy/server 404 without an OCS code, is not proof of absence.
+    if (
+      error instanceof OcsError &&
+      (error.ocsCode === 998 || (step === "check-account" && error.ocsCode === 404))
+    ) return;
     const diagnostic = {
       step,
       httpStatus: error instanceof OcsError ? error.status : null,

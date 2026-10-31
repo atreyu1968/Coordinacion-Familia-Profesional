@@ -45,6 +45,18 @@ describe("External fixture revocation without deleting files", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response("Proxy route not found", { status: 404 })));
     await expect(disableNextcloudAccount(config, 123)).rejects.toThrow();
   });
+  it("accepts an explicit OCS 404 for the user during the initial account check", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ocs: { meta: { statuscode: 404 }, data: { message: "User does not exist" } } }), { status: 404 }),
+    ));
+    await expect(disableNextcloudAccount(config, 123)).resolves.toBeUndefined();
+  });
+  it("does not treat an OCS 404 during disable verification as an absent account", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(reply(true))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ocs: { meta: { statuscode: 404 }, data: {} } }), { status: 404 })));
+    await expect(disableNextcloudAccount(config, 123)).rejects.toThrow("no confirmó");
+  });
   it("rejects an unconfirmed revocation", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply(true)).mockResolvedValueOnce(reply(true)).mockResolvedValueOnce(reply(true)));
     await expect(disableNextcloudAccount(config, 123)).rejects.toThrow("no confirmó");
