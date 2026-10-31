@@ -334,7 +334,7 @@ function ReviewBody({ collab, open, onDone }: { collab: ForumCollaboration; open
               <StepTitle n={4} title={`Seleccionar cambios (${selected.size}/${preview.changes.length})`} />
               {preview.warnings.map((w, i) => <Warn key={i}>{w}</Warn>)}
               <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1 text-muted-foreground">
-                <p>Ningún cambio viene seleccionado. Los que no selecciones se conservan tal como están.</p>
+                <p>Selecciona únicamente los cambios que quieras aplicar. Los demás se conservan tal como están.</p>
                 <p>El texto humano reemplazado queda guardado en el historial.</p>
                 <p>Un cambio de código RA/CE aparece como baja y alta: el nuevo elemento recibe otro identificador. Las bajas se archivan, no se borran.</p>
               </div>
