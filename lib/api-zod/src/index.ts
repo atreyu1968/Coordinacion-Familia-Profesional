@@ -5,6 +5,7 @@ export * from "./generated/types";
 export { ListGroupMessagesParams } from "./generated/api";
 export { GetCollaborativeSpaceHistoryParams } from "./generated/api";
 export { GetCoordinatorMailCaseParams } from "./generated/api";
+export { GetForumCurriculumHistoryParams } from "./generated/api";
 export { ListUserAuditParams } from "./generated/api";
 export { CreateLmsLessonScormSessionParams } from "./generated/api";
 export {

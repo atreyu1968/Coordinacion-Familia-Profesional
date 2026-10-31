@@ -2837,6 +2837,19 @@ export interface ForumCurriculumHistoryEntry {
   /** @nullable */
   actorName: string | null;
   createdAt: string;
+}
+
+export interface ForumCurriculumHistoryPage {
+  entries: ForumCurriculumHistoryEntry[];
+  /**
+     * Use as beforeRevision to load the next page
+     * @nullable
+     */
+  nextBeforeRevision: number | null;
+}
+
+export interface ForumCurriculumHistoryDetail {
+  revision: number;
   /** JSON snapshot including before/after and selected changes when available */
   configuration: string;
 }
@@ -4784,6 +4797,19 @@ export const ListFeedbackStatus = {
   reviewed: 'reviewed',
   resolved: 'resolved',
 } as const;
+
+export type GetForumCurriculumHistoryParams = {
+/**
+ * Return revisions strictly older than this revision
+ * @minimum 1
+ */
+beforeRevision?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
 
 export type ListForumThreadsParams = {
 moduleId: number;

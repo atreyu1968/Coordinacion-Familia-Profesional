@@ -1007,18 +1007,38 @@ paths:
     get:
       operationId: getForumCurriculumHistory
       tags: [forum]
-      summary: Read curriculum revision history
+      summary: Read a page of curriculum revision history
       security: [{bearerAuth: []}]
       parameters:
         - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: beforeRevision, in: query, required: false, schema: {type: integer, minimum: 1}, description: "Return revisions strictly older than this revision"}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
       responses:
         "200":
-          description: Immutable revision records
+          description: Revision summaries and cursor for the next page
           content:
             application/json:
               schema:
-                type: array
-                items: {$ref: "#/components/schemas/ForumCurriculumHistoryEntry"}
+                $ref: "#/components/schemas/ForumCurriculumHistoryPage"
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/history/{revision}:
+    get:
+      operationId: getForumCurriculumHistoryDetail
+      tags: [forum]
+      summary: Read a curriculum revision snapshot
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: revision, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Revision snapshot
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCurriculumHistoryDetail"}
         "400": {$ref: "#/components/responses/Error"}
         "401": {$ref: "#/components/responses/Error"}
         "403": {$ref: "#/components/responses/Error"}
@@ -9365,11 +9385,24 @@ components:
         warnings: {type: array, items: {type: string}}
     ForumCurriculumHistoryEntry:
       type: object
-      required: [revision, actorName, createdAt, configuration]
+      required: [revision, actorName, createdAt]
       properties:
         revision: {type: integer}
         actorName: {type: ["string", "null"]}
         createdAt: {type: string, format: date-time}
+    ForumCurriculumHistoryPage:
+      type: object
+      required: [entries, nextBeforeRevision]
+      properties:
+        entries:
+          type: array
+          items: {$ref: "#/components/schemas/ForumCurriculumHistoryEntry"}
+        nextBeforeRevision: {type: ["integer", "null"], description: "Use as beforeRevision to load the next page"}
+    ForumCurriculumHistoryDetail:
+      type: object
+      required: [revision, configuration]
+      properties:
+        revision: {type: integer}
         configuration: {type: string, description: "JSON snapshot including before/after and selected changes when available"}
     ForumCollaborationInput:
       type: object

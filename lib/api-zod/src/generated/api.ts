@@ -1774,7 +1774,7 @@ export const ApplyForumCurriculumResponse = zod.object({
 
 
 /**
- * @summary Read curriculum revision history
+ * @summary Read a page of curriculum revision history
  */
 
 
@@ -1783,13 +1783,43 @@ export const GetForumCurriculumHistoryParams = zod.object({
   "moduleId": zod.coerce.number().int().min(1)
 })
 
-export const GetForumCurriculumHistoryResponseItem = zod.object({
+
+export const getForumCurriculumHistoryQueryLimitDefault = 20;
+export const getForumCurriculumHistoryQueryLimitMax = 50;
+
+
+
+export const GetForumCurriculumHistoryQueryParams = zod.object({
+  "beforeRevision": zod.coerce.number().int().min(1).optional().describe('Return revisions strictly older than this revision'),
+  "limit": zod.coerce.number().int().min(1).max(getForumCurriculumHistoryQueryLimitMax).default(getForumCurriculumHistoryQueryLimitDefault)
+})
+
+export const GetForumCurriculumHistoryResponse = zod.object({
+  "entries": zod.array(zod.object({
   "revision": zod.number().int(),
   "actorName": zod.string().nullable(),
-  "createdAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
+  "nextBeforeRevision": zod.number().int().nullable().describe('Use as beforeRevision to load the next page')
+})
+
+
+/**
+ * @summary Read a curriculum revision snapshot
+ */
+
+
+
+
+export const GetForumCurriculumHistoryDetailParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1),
+  "revision": zod.coerce.number().int().min(1)
+})
+
+export const GetForumCurriculumHistoryDetailResponse = zod.object({
+  "revision": zod.number().int(),
   "configuration": zod.string().describe('JSON snapshot including before/after and selected changes when available')
 })
-export const GetForumCurriculumHistoryResponse = zod.array(GetForumCurriculumHistoryResponseItem)
 
 
 /**

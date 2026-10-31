@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   usePreviewForumCurriculum,
   useApplyForumCurriculum,
   useGetForumCurriculumHistory,
   getGetForumCurriculumHistoryQueryKey,
+  useGetForumCurriculumHistoryDetail,
   type ForumCollaboration,
   type ForumCurriculumChange,
   type ForumCurriculumHistoryEntry,
@@ -26,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, FileSpreadsheet, GitCompareArrows, History, RotateCcw, Upload } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, FileSpreadsheet, GitCompareArrows, History, RotateCcw, Upload } from "lucide-react";
 import { errorMessage, invalidateCollaboration } from "@/components/forum-collaboration";
 import {
   readCurriculumFile,
@@ -466,9 +467,19 @@ function DiffBox({ label, text, tone }: { label: string; text: string; tone: "be
 }
 
 function HistoryPanel({ moduleId, open }: { moduleId: number; open: boolean }) {
-  const q = useGetForumCurriculumHistory(moduleId, {
-    query: { queryKey: getGetForumCurriculumHistoryQueryKey(moduleId), enabled: open },
+  const pageSize = 20;
+  const [navigation, setNavigation] = useState<{ moduleId: number; cursors: (number | undefined)[] }>({
+    moduleId, cursors: [undefined],
   });
+  const cursors = navigation.moduleId === moduleId ? navigation.cursors : [undefined];
+  const beforeRevision = cursors[cursors.length - 1];
+  const params = { ...(beforeRevision === undefined ? {} : { beforeRevision }), limit: pageSize };
+  const q = useGetForumCurriculumHistory(moduleId, params, {
+    query: { queryKey: getGetForumCurriculumHistoryQueryKey(moduleId, params), enabled: open },
+  });
+  useEffect(() => {
+    if (navigation.moduleId !== moduleId) setNavigation({ moduleId, cursors: [undefined] });
+  }, [moduleId, navigation.moduleId]);
   if (q.isLoading) return <div className="space-y-2"><Skeleton className="h-14" /><Skeleton className="h-14" /></div>;
   if (q.isError)
     return (
@@ -477,23 +488,57 @@ function HistoryPanel({ moduleId, open }: { moduleId: number; open: boolean }) {
         <Button size="sm" variant="outline" onClick={() => void q.refetch()}>Reintentar</Button>
       </div>
     );
-  const entries = [...(q.data ?? [])].sort((a, b) => b.revision - a.revision);
+  const entries = q.data?.entries ?? [];
   if (!entries.length)
-    return <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">Aún no hay revisiones registradas para este módulo.</p>;
+    return cursors.length > 1 ? (
+      <div className="space-y-3">
+        <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">No hay más revisiones.</p>
+        <Button size="sm" variant="outline" onClick={() => setNavigation({ moduleId, cursors: cursors.slice(0, -1) })}>
+          <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+        </Button>
+      </div>
+    ) : <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">Aún no hay revisiones registradas para este módulo.</p>;
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Cada entrada es una instantánea de la configuración en esa revisión. Las revisiones antiguas pueden no incluir los RA/CE; no es un historial completo de todos los textos.
+        El detalle se carga al abrir cada revisión. Las revisiones antiguas pueden no incluir una instantánea textual de los RA/CE; este historial no contiene necesariamente todos los textos curriculares.
       </p>
-      <ol className="space-y-2">{entries.map((e) => <HistoryItem key={`${e.revision}-${e.createdAt}`} entry={e} />)}</ol>
+      <ol className="space-y-2">{entries.map((e) => <HistoryItem key={e.revision} moduleId={moduleId} entry={e} />)}</ol>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={cursors.length <= 1}
+          onClick={() => setNavigation({ moduleId, cursors: cursors.slice(0, -1) })}
+        >
+          <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+        </Button>
+        <span className="text-xs text-muted-foreground">Página {cursors.length}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={q.data?.nextBeforeRevision == null}
+          onClick={() => {
+            const next = q.data?.nextBeforeRevision;
+            if (next == null) return;
+            setNavigation({ moduleId, cursors: [...cursors, next] });
+          }}
+        >
+          Siguiente <ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
 
-function HistoryItem({ entry }: { entry: ForumCurriculumHistoryEntry }) {
+function HistoryItem({ moduleId, entry }: { moduleId: number; entry: ForumCurriculumHistoryEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const detail = useGetForumCurriculumHistoryDetail(moduleId, entry.revision, {
+    query: { enabled: expanded },
+  });
   const parsed = useMemo(() => {
-    try { return JSON.parse(entry.configuration) as unknown; } catch { return null; }
-  }, [entry.configuration]);
+    try { return JSON.parse(detail.data?.configuration ?? "") as unknown; } catch { return null; }
+  }, [detail.data?.configuration]);
   const obj = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
   const review = obj?.curriculumReview;
   const audit = review && typeof review === "object" && !Array.isArray(review)
@@ -503,16 +548,23 @@ function HistoryItem({ entry }: { entry: ForumCurriculumHistoryEntry }) {
   const date = new Date(entry.createdAt);
   return (
     <li className="rounded-lg border">
-      <details>
+      <details onToggle={(event) => setExpanded(event.currentTarget.open)}>
         <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2 text-sm">
           <Badge variant="outline">Rev. {entry.revision}</Badge>
           <span className="font-medium">{entry.actorName ?? "Actor desconocido"}</span>
           <span className="text-xs text-muted-foreground">{isNaN(date.getTime()) ? entry.createdAt : date.toLocaleString("es-ES")}</span>
-          {!hasDiff && <Badge variant="secondary">Solo instantánea</Badge>}
+          {detail.data && !hasDiff && <Badge variant="secondary">Solo instantánea</Badge>}
         </summary>
         <div className="border-t p-3 space-y-2 text-xs">
-          {parsed == null ? (
-            <pre className="whitespace-pre-wrap break-words">{entry.configuration}</pre>
+          {detail.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : detail.isError ? (
+            <div className="space-y-2">
+              <p className="text-destructive">{errorMessage(detail.error, "No se pudo cargar el detalle de esta revisión.")}</p>
+              <Button size="sm" variant="outline" onClick={() => void detail.refetch()}>Reintentar</Button>
+            </div>
+          ) : parsed == null ? (
+            <pre className="whitespace-pre-wrap break-words">{detail.data?.configuration}</pre>
           ) : hasDiff ? (
             <>
               <div className="grid gap-2 sm:grid-cols-2">

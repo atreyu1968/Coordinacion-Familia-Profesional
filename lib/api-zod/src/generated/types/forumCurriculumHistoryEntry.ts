@@ -11,6 +11,4 @@ export interface ForumCurriculumHistoryEntry {
   /** @nullable */
   actorName: string | null;
   createdAt: Date;
-  /** JSON snapshot including before/after and selected changes when available */
-  configuration: string;
 }

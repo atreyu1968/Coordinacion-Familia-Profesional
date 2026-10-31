@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import {
   db, cyclesTable, modulesTable, moduleLearningOutcomesTable, moduleEvaluationCriteriaTable, forumCurriculumFingerprint,
   forumCollaborationsTable, forumCollaborationRevisionsTable,
@@ -8,6 +8,8 @@ import {
 import {
   ConfigureForumCollaborationBody, InitializeForumCollaborationBody,
   GetForumCollaborationResponse,
+  GetForumCurriculumHistoryParams, GetForumCurriculumHistoryQueryParams, GetForumCurriculumHistoryResponse,
+  GetForumCurriculumHistoryDetailParams, GetForumCurriculumHistoryDetailResponse,
   PreviewForumCurriculumBody, ApplyForumCurriculumBody,
   type ForumCollaborationThread,
 } from "@workspace/api-zod";
@@ -170,15 +172,51 @@ router.use("/forum/modules/:moduleId/collaboration/curriculum", async (req, res,
   if (!state.canReviewCurriculum) { res.status(403).json({ message: "Solo la coordinación del módulo o superadministración puede revisar importaciones curriculares." }); return; }
   next();
 });
-router.get("/forum/modules/:moduleId/collaboration/curriculum/history", async (req, res) => {
-  const entries = await db.select({ entry: forumCollaborationRevisionsTable, actorName: usersTable.name })
+router.get("/forum/modules/:moduleId/collaboration/curriculum/history", async (req, res): Promise<void> => {
+  const params = GetForumCurriculumHistoryParams.safeParse(req.params);
+  const query = GetForumCurriculumHistoryQueryParams.safeParse(req.query);
+  if (!params.success || !query.success) {
+    res.status(400).json({ message: "Parámetros de paginación no válidos." });
+    return;
+  }
+  const filters = [eq(forumCollaborationRevisionsTable.moduleId, params.data.moduleId)];
+  if (query.data.beforeRevision !== undefined) {
+    filters.push(lt(forumCollaborationRevisionsTable.revision, query.data.beforeRevision));
+  }
+  const entries = await db.select({ revision: forumCollaborationRevisionsTable.revision, actorName: usersTable.name,
+    createdAt: forumCollaborationRevisionsTable.createdAt })
     .from(forumCollaborationRevisionsTable).leftJoin(usersTable, eq(usersTable.id, forumCollaborationRevisionsTable.actorId))
-    .where(eq(forumCollaborationRevisionsTable.moduleId, Number(req.params.moduleId)))
-    .orderBy(desc(forumCollaborationRevisionsTable.revision));
-  res.json(entries.map(({ entry, actorName }) => ({
-    revision: entry.revision, actorName, createdAt: entry.createdAt.toISOString(),
+    .where(and(...filters))
+    .orderBy(desc(forumCollaborationRevisionsTable.revision))
+    .limit(query.data.limit + 1);
+  const hasMore = entries.length > query.data.limit;
+  const page = entries.slice(0, query.data.limit);
+  res.json(GetForumCurriculumHistoryResponse.parse({
+    entries: page,
+    nextBeforeRevision: hasMore ? page[page.length - 1]?.revision ?? null : null,
+  }));
+});
+router.get("/forum/modules/:moduleId/collaboration/curriculum/history/:revision", async (req, res): Promise<void> => {
+  const params = GetForumCurriculumHistoryDetailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ message: "Identificador de revisión no válido." });
+    return;
+  }
+  const [entry] = await db.select({
+    revision: forumCollaborationRevisionsTable.revision,
+    configuration: forumCollaborationRevisionsTable.configuration,
+  }).from(forumCollaborationRevisionsTable).where(and(
+    eq(forumCollaborationRevisionsTable.moduleId, params.data.moduleId),
+    eq(forumCollaborationRevisionsTable.revision, params.data.revision),
+  ));
+  if (!entry) {
+    res.status(404).json({ message: "Revisión curricular no encontrada." });
+    return;
+  }
+  res.json(GetForumCurriculumHistoryDetailResponse.parse({
+    revision: entry.revision,
     configuration: JSON.stringify(entry.configuration, null, 2),
-  })));
+  }));
 });
 router.post("/forum/modules/:moduleId/collaboration/curriculum/preview", async (req, res) => {
   const parsed = PreviewForumCurriculumBody.safeParse(req.body);

@@ -146,7 +146,8 @@ import type {
   ForumCollaboration,
   ForumCollaborationInput,
   ForumCollaborationTracking,
-  ForumCurriculumHistoryEntry,
+  ForumCurriculumHistoryDetail,
+  ForumCurriculumHistoryPage,
   ForumCurriculumInput,
   ForumCurriculumPreview,
   ForumCurriculumSelection,
@@ -162,6 +163,7 @@ import type {
   GetCoordinatorMailWorkspaceParams,
   GetDashboardStatisticsParams,
   GetDashboardSummaryParams,
+  GetForumCurriculumHistoryParams,
   GetLmsScormSessionParams,
   GetMyTeachingProfileParams,
   Group,
@@ -4482,20 +4484,29 @@ export const useApplyForumCurriculum = <TError = ErrorType<ErrorResponse>,
       return useMutation(getApplyForumCurriculumMutationOptions(options), queryClient);
     }
 
-export const getGetForumCurriculumHistoryUrl = (moduleId: number,) => {
+export const getGetForumCurriculumHistoryUrl = (moduleId: number,
+    params?: GetForumCurriculumHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/forum/modules/${moduleId}/collaboration/curriculum/history`
+  return stringifiedParams.length > 0 ? `/api/forum/modules/${moduleId}/collaboration/curriculum/history?${stringifiedParams}` : `/api/forum/modules/${moduleId}/collaboration/curriculum/history`
 }
 
 /**
- * @summary Read curriculum revision history
+ * @summary Read a page of curriculum revision history
  */
-export const getForumCurriculumHistory = async (moduleId: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumHistoryEntry[]> => {
+export const getForumCurriculumHistory = async (moduleId: number,
+    params?: GetForumCurriculumHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumHistoryPage> => {
 
-  return customFetch<ForumCurriculumHistoryEntry[]>(getGetForumCurriculumHistoryUrl(moduleId),
+  return customFetch<ForumCurriculumHistoryPage>(getGetForumCurriculumHistoryUrl(moduleId,params),
   {
     ...options,
     method: 'GET'
@@ -4508,23 +4519,25 @@ export const getForumCurriculumHistory = async (moduleId: number, options?: Para
 
 
 
-export const getGetForumCurriculumHistoryQueryKey = (moduleId: number,) => {
+export const getGetForumCurriculumHistoryQueryKey = (moduleId: number,
+    params?: GetForumCurriculumHistoryParams,) => {
     return [
-    `/api/forum/modules/${moduleId}/collaboration/curriculum/history`
+    `/api/forum/modules/${moduleId}/collaboration/curriculum/history`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetForumCurriculumHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetForumCurriculumHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(moduleId: number,
+    params?: GetForumCurriculumHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetForumCurriculumHistoryQueryKey(moduleId);
+  const queryKey =  queryOptions?.queryKey ?? getGetForumCurriculumHistoryQueryKey(moduleId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCurriculumHistory>>> = ({ signal }) => getForumCurriculumHistory(moduleId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCurriculumHistory>>> = ({ signal }) => getForumCurriculumHistory(moduleId,params, { signal, ...requestOptions });
 
 
 
@@ -4538,7 +4551,8 @@ export type GetForumCurriculumHistoryQueryError = ErrorType<ErrorResponse>
 
 
 export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
- moduleId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
+ moduleId: number,
+    params: undefined |  GetForumCurriculumHistoryParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getForumCurriculumHistory>>,
           TError,
@@ -4548,7 +4562,8 @@ export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof g
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
- moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
+ moduleId: number,
+    params?: GetForumCurriculumHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getForumCurriculumHistory>>,
           TError,
@@ -4558,19 +4573,130 @@ export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof g
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
- moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ moduleId: number,
+    params?: GetForumCurriculumHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Read curriculum revision history
+ * @summary Read a page of curriculum revision history
  */
 
 export function useGetForumCurriculumHistory<TData = Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError = ErrorType<ErrorResponse>>(
- moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ moduleId: number,
+    params?: GetForumCurriculumHistoryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetForumCurriculumHistoryQueryOptions(moduleId,options)
+  const queryOptions = getGetForumCurriculumHistoryQueryOptions(moduleId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetForumCurriculumHistoryDetailUrl = (moduleId: number,
+    revision: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration/curriculum/history/${revision}`
+}
+
+/**
+ * @summary Read a curriculum revision snapshot
+ */
+export const getForumCurriculumHistoryDetail = async (moduleId: number,
+    revision: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumCurriculumHistoryDetail> => {
+
+  return customFetch<ForumCurriculumHistoryDetail>(getGetForumCurriculumHistoryDetailUrl(moduleId,revision),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumCurriculumHistoryDetailQueryKey = (moduleId: number,
+    revision: number,) => {
+    return [
+    `/api/forum/modules/${moduleId}/collaboration/curriculum/history/${revision}`
+    ] as const;
+    }
+
+
+export const getGetForumCurriculumHistoryDetailQueryOptions = <TData = Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError = ErrorType<ErrorResponse>>(moduleId: number,
+    revision: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumCurriculumHistoryDetailQueryKey(moduleId,revision);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>> = ({ signal }) => getForumCurriculumHistoryDetail(moduleId,revision, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: moduleId !== null && moduleId !== undefined && revision !== null && revision !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumCurriculumHistoryDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>>
+export type GetForumCurriculumHistoryDetailQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumCurriculumHistoryDetail<TData = Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number,
+    revision: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCurriculumHistoryDetail<TData = Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number,
+    revision: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCurriculumHistoryDetail<TData = Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number,
+    revision: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read a curriculum revision snapshot
+ */
+
+export function useGetForumCurriculumHistoryDetail<TData = Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number,
+    revision: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCurriculumHistoryDetail>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumCurriculumHistoryDetailQueryOptions(moduleId,revision,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

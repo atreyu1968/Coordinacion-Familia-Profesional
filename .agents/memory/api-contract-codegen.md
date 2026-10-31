@@ -32,3 +32,15 @@ and workspace type checks have completed successfully.
 **How to apply:** First verify that generation finished and the referenced files
 exist. Restart the existing Expo workflow rather than changing imports or
 creating another server.
+
+**Rule:** If an operation has both path parameters and query parameters, check
+for a generated name collision in `lib/api-zod/src/index.ts`. When the runtime
+path schema and generated query type have the same export name, explicitly
+re-export the runtime schema from `./generated/api`.
+
+**Why:** Orval names the path schema and query-parameter TypeScript type from
+the same operation ID, so its wildcard barrel exports can become ambiguous at
+the library typecheck even though generation itself succeeds.
+
+**How to apply:** Add a focused explicit export next to the existing collision
+workarounds, then rerun codegen and `typecheck:libs`.

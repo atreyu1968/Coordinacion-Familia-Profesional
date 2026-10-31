@@ -17,8 +17,10 @@ const base = (id: number) => `/api/forum/modules/${id}/collaboration`;
 const post = (id: number, action: string, data: unknown, user = owner) =>
   request(app).post(`${base(id)}/curriculum/${action}`).set(authHeader(user.token)).send(data);
 const get = (id: number) => request(app).get(base(id)).set(authHeader(owner.token));
-const history = (id: number, user = owner) =>
-  request(app).get(`${base(id)}/curriculum/history`).set(authHeader(user.token));
+const history = (id: number, user = owner, query: Record<string, number> = {}) =>
+  request(app).get(`${base(id)}/curriculum/history`).set(authHeader(user.token)).query(query);
+const historyDetail = (id: number, revision: number, user = owner) =>
+  request(app).get(`${base(id)}/curriculum/history/${revision}`).set(authHeader(user.token));
 const apply = (id: number, incoming: ForumCurriculumInput, token: string, selectedKeys: string[], patch = {}) =>
   post(id, "apply", { incoming, token, selectedKeys, confirmReviewed: true, ...patch });
 
@@ -76,11 +78,15 @@ describe("Selected curriculum revisions", () => {
       curriculumKey("ce", "RA1", "1.a"), curriculumKey("sourceTitle"), curriculumKey("sourceUrl"), curriculumKey("curriculumVersion"),
     ]));
     expect((await get(id)).body).toEqual(before);
-    expect((await history(id)).body).toHaveLength(1);
+    const firstPage = await history(id);
+    expect(firstPage.body.entries).toHaveLength(1);
+    expect(firstPage.body.entries[0]).not.toHaveProperty("configuration");
+    expect((await historyDetail(id, firstPage.body.entries[0].revision)).body.configuration).toContain('"moduleId"');
     for (const user of [teacher, coordinator]) {
       expect((await post(id, "preview", incoming, user)).status).toBe(403);
       expect((await post(id, "apply", {}, user)).status).toBe(403);
       expect((await history(id, user)).status).toBe(403);
+      expect((await historyDetail(id, firstPage.body.entries[0].revision, user)).status).toBe(403);
     }
     expect((await request(app).post(`${base(id)}/curriculum/preview`).send(incoming)).status).toBe(401);
   });
@@ -100,10 +106,11 @@ describe("Selected curriculum revisions", () => {
     expect(state.sections[0].title).toBe("Apartado editado por una persona");
     expect(state.sections[0].prompt).toBe("Conservar esta plantilla humana");
     expect(await db.select().from(forumThreadsTable).where(eq(forumThreadsTable.moduleId, id))).toHaveLength(0);
-    const entries = (await history(id)).body;
+    const entries = (await history(id)).body.entries;
     expect(entries).toHaveLength(2);
     expect(entries[0].actorName).toBe(owner.user.name);
-    const audit = JSON.parse(entries[0].configuration).curriculumReview;
+    const detail = await historyDetail(id, entries[0].revision);
+    const audit = JSON.parse(detail.body.configuration).curriculumReview;
     expect(audit.selectedKeys).toEqual(selected);
     expect(audit.before.criteria[0].description).toBe("Edición humana CE");
     expect(audit.after.criteria[0].description).toBe("Nuevo CE de la hoja");
@@ -123,7 +130,39 @@ describe("Selected curriculum revisions", () => {
     const state = (await get(id)).body;
     expect(state.verificationCurrent).toBe(true);
     expect(state.enabled).toBe(false);
-    expect((await history(id)).body).toHaveLength(2);
+    expect((await history(id)).body.entries).toHaveLength(2);
+  });
+
+  it("paginates with a strict revision cursor and loads legacy snapshots only on demand", async () => {
+    const { id } = await fixture();
+    await db.insert(revisions).values(Array.from({ length: 5 }, (_, index) => ({
+      moduleId: id,
+      revision: 10 + index,
+      configuration: { legacyConfiguration: `revision-${10 + index}` },
+      actorId: owner.user.id,
+    })));
+    const pages = [];
+    let beforeRevision: number | undefined;
+    do {
+      const response = await history(id, owner, { limit: 2, ...(beforeRevision === undefined ? {} : { beforeRevision }) });
+      expect(response.status).toBe(200);
+      pages.push(response.body);
+      beforeRevision = response.body.nextBeforeRevision ?? undefined;
+    } while (beforeRevision !== undefined);
+    const revisionsSeen = pages.flatMap(page => page.entries.map((entry: { revision: number }) => entry.revision));
+    expect(revisionsSeen).toEqual([14, 13, 12, 11, 10, 1]);
+    expect(new Set(revisionsSeen).size).toBe(revisionsSeen.length);
+    for (const page of pages) {
+      expect(page.entries.every((entry: object) => !("configuration" in entry))).toBe(true);
+    }
+    expect(pages.map(page => page.entries.length)).toEqual([2, 2, 2]);
+    expect(pages.at(-1).nextBeforeRevision).toBeNull();
+    expect(JSON.parse((await historyDetail(id, 10)).body.configuration)).toEqual({
+      legacyConfiguration: "revision-10",
+    });
+    expect((await historyDetail(id, 99)).status).toBe(404);
+    expect((await request(app).get(`${base(id)}/curriculum/history/10`)).status).toBe(401);
+    expect((await history(id, owner, { limit: 0 })).status).toBe(400);
   });
 
   it("archives removed identities, preserves the old text, and does not resurrect tombstones", async () => {
