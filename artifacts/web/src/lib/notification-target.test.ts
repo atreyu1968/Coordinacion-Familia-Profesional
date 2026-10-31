@@ -18,6 +18,7 @@ describe("persisted internal notification targets", () => {
     ["survey", "/encuestas?aviso=9", "/survey/9"],
     ["form", "/formularios?aviso=9", "/form/9"],
     ["forum", "/foros?tema=9", "/foros/tema/9"],
+    ["forum_module", "/foros?module=9", "/foros/modulo/9"],
     ["space", "/espacio?aviso=9", "/espacios-colaborativos?aviso=9"],
     ["meeting", "/videoconferencias?aviso=9", "/videoconferencias?aviso=9"],
     ["announcement", "/anuncios?aviso=9", "/?aviso=9"],

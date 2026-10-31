@@ -375,6 +375,14 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
 
 ## 4.b Espacio colaborativo (Nextcloud + Collabora)
 
+**Administración:** al abrir Nextcloud desde la aplicación, la cuenta activa con
+rol **superadministrador** obtiene permisos globales de administración en su
+propia cuenta vinculada. Los demás roles no reciben ese permiso. La cuenta
+técnica utilizada por la integración se conserva y su contraseña no se comparte.
+Si se retira el rol de superadministrador o se desactiva la cuenta, se exige la
+confirmación de la retirada del permiso en Nextcloud antes de guardar el cambio.
+Si esa confirmación falla, se informa del error y no se aplica el cambio local.
+
 Añade a cada módulo una carpeta compartida (Nextcloud Drive) y edición de
 documentos en tiempo real (Collabora). El inicio de sesión es único: el propio
 API actúa como proveedor de identidad (OIDC) y Nextcloud (app `user_oidc`) es el
@@ -564,6 +572,13 @@ Sin configurar, la página *Documentación* avisa de que no está disponible y e
 resto de la app funciona con normalidad.
 
 ---
+
+### Oferta formativa por curso con IA
+
+El superadministrador puede consultar las fuentes oficiales desde **Centros →
+Actualizar oferta con IA** o desde la ficha de un centro. La propuesta se revisa
+antes de añadir ciclos al curso activo; no elimina ofertas ni cambia otros cursos.
+Consulta [las instrucciones y límites de esta herramienta](docs/oferta-formativa-ia.md).
 
 ## 5. Desarrollo local (opcional)
 

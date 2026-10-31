@@ -131,3 +131,143 @@ mtime_ms = 1792919911394
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/50cad622-de80-4583-8576-0115e51a2443/1e0c4f51-70d4-46f5-943e-beb0d9350217"
 storage_version_token = "1792919957624426"
 content_type = "image/png"
+
+[[outputs]]
+id = "ssFG2AdHBZ5IioUo3cAF-"
+uri = "file://docs/colaboracion-intercentros-diagnostico.md"
+type = "text"
+title = "Diagnóstico de colaboración intercentros"
+description = "Inventario de Administración y Gestión, reutilización, riesgos y alcance de la primera etapa."
+logical_id = "63c1da5d-2b50-43d8-9635-a923d092f23b"
+content_hash = "sha256:8c63090a4f26f5882fbe8bcda4b1de17d75e52885d3deddb9e3f1b0ddea31807"
+size = 4883
+mtime_ms = 1793395132010
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/63c1da5d-2b50-43d8-9635-a923d092f23b/b100c91a-e914-4fc1-97dc-0d46a65b9fc5"
+storage_version_token = "1793396340166784"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "Ez8H2avLRXFoItzwvSMN7"
+uri = "file://docs/colaboracion-intercentros-uso.md"
+type = "text"
+title = "Manual del foro intercentros"
+description = "Configuración, uso docente, activación del piloto y despliegue seguro."
+logical_id = "78c30c83-55e7-4ce5-ba66-e431c5c76f09"
+content_hash = "sha256:d61ba180625ad6f09e9beef0ec705bd9c94b6fa4df32e8570b407cf037e35691"
+size = 4712
+mtime_ms = 1793395526662
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/78c30c83-55e7-4ce5-ba66-e431c5c76f09/042c704a-4741-4e35-99fb-c020d6e08ddb"
+storage_version_token = "1793396340884029"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "5g8Q3d5mxmMJ1i5EUmiKX"
+uri = "file://docs/colaboracion-intercentros-validacion.md"
+type = "text"
+title = "Validación actualizada"
+description = "Pruebas de API, interfaz y migraciones, capturas reales y comprobaciones pendientes."
+logical_id = "ed5393ca-6230-41bc-8eb7-6d4344dd3d66"
+content_hash = "sha256:5a52d7827780ee4eb505a564817407d186f2bd5b70cc90e082532398ad526ad4"
+size = 5715
+mtime_ms = 1793401991406
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/ed5393ca-6230-41bc-8eb7-6d4344dd3d66/958d12d1-c86a-4dfe-84b3-af33ef7a6ea4"
+storage_version_token = "1793402039463283"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "1xCB3vxQw6nk-jAzVbths"
+uri = "file://docs/colaboracion-intercentros-recursos.md"
+type = "text"
+title = "Manual de recursos RA/CE"
+description = "Asociaciones múltiples, fuentes canónicas, permisos, archivo y actualización segura de la segunda etapa."
+logical_id = "33e09369-3e2a-47a7-b6bf-4a68bc9e7562"
+content_hash = "sha256:b6332486d28ba925c5c6779c119409ea73a503d3d2266e2d2f88212ffb7545a2"
+size = 6246
+mtime_ms = 1793401265742
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/33e09369-3e2a-47a7-b6bf-4a68bc9e7562/e7538e9f-5fef-4725-85f0-15fcb2f70bca"
+storage_version_token = "1793402038909273"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "KhjrLBQW8480ujWhoH5zi"
+uri = "file://docs/colaboracion-intercentros-acuerdos.md"
+type = "text"
+title = "Guía de acuerdos intercentros"
+description = "Funcionamiento, permisos, consultas, versiones, plantilla Word y límites de la comprobación de Nextcloud."
+logical_id = "429ecdbc-5049-40a6-9917-fcf89fe011ae"
+content_hash = "sha256:69940914e30f2d6799589c8e603d95c5fc4ed0c12537db2a2daf102b7737a445"
+size = 7807
+mtime_ms = 1793403480990
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/429ecdbc-5049-40a6-9917-fcf89fe011ae/b3a5e904-1f03-41b6-b825-1e00ecd80302"
+storage_version_token = "1793404254171344"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "S_ZzDJDW-Cp899omCXr3L"
+uri = "file://docs/colaboracion-intercentros-seguimiento.md"
+type = "text"
+title = "Guía de seguimiento intercentros"
+description = "Acceso web y móvil, significado de los indicadores, filtros, informe CSV y límites."
+logical_id = "e69ba696-1a87-45bc-8fbf-a644146bf98b"
+content_hash = "sha256:0441f6b52da0a3a080f41d558fb9188fc9a3d6d3c04ba40567b9414a962e48fb"
+size = 3274
+mtime_ms = 1793405667694
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/e69ba696-1a87-45bc-8fbf-a644146bf98b/eda8606a-3ae3-44de-b0c9-0f7d5316a3d2"
+storage_version_token = "1793405825173696"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "yZUGV3z2RSZMD5iyZxDwS"
+uri = "file://docs/colaboracion-intercentros-avisos.md"
+type = "text"
+title = "Guía de avisos intercentros agrupados"
+description = "Ventanas de cinco minutos, destinatarios, recuperación, límites del push y actualización del servidor."
+logical_id = "114747ff-1b5a-49c0-9acf-310822244093"
+content_hash = "sha256:27607d2908994ee5c0abd51c8e88bc67a137c5d89ef127910f5ebf4de5266ee6"
+size = 2958
+mtime_ms = 1793406930230
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/114747ff-1b5a-49c0-9acf-310822244093/c4180d15-54af-49c8-8ebb-55cfd0677544"
+storage_version_token = "1793407298628766"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "fD7NUDnpG1nPKwnvYfNsR"
+uri = "file://generated-artifacts/modulos-administracion-gestion-revision-ra-ce.xlsx"
+type = "table"
+title = "Hoja Excel: módulos por ciclo y plantilla RA-CE"
+description = "86 módulos y plantilla para verificar resultados de aprendizaje y criterios."
+logical_id = "07757b3c-d999-4c56-969d-7a35c3a2ce92"
+content_hash = "sha256:5a57322c56784cb5f605ae08ce4855680f6f9ccec2e35cd0b1c14146ac39e0e8"
+size = 91101
+mtime_ms = 1793407601459
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/07757b3c-d999-4c56-969d-7a35c3a2ce92/4bfa1147-1784-4f26-a991-b167fece696d"
+storage_version_token = "1793408083983885"
+content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+[[outputs]]
+id = "77aDBe6-dRGuvz6Q3oJUY"
+uri = "file://generated-artifacts/instrucciones-revision-modulos-ra-ce.pdf"
+type = "pdf"
+title = "Instrucciones para trabajar la hoja"
+description = "Guía paso a paso en PDF."
+logical_id = "9d2b4f7d-2166-410b-81a0-3ca262d41a67"
+content_hash = "sha256:f1fee9d71471beab2a935db45c9a52ae1db90ee4ddd7bbde7a760edf53338bf5"
+size = 4472
+mtime_ms = 1793407968663
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/9d2b4f7d-2166-410b-81a0-3ca262d41a67/12fcea1d-a198-4ba5-8fd6-f14f83840e59"
+storage_version_token = "1793408084515869"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "H-ldQxEzQ8cHIoJlhH9px"
+uri = "file://generated-artifacts/descarga-directa-hoja-y-instrucciones.html"
+type = "html"
+title = "Descarga directa de Excel y PDF"
+description = "Abre esta página y pulsa los botones para guardar la hoja Excel y la guía PDF en tu dispositivo."
+logical_id = "d9a01dad-c6ff-4f45-ae82-22bd7f8ebc73"
+content_hash = "sha256:0a0c7765ff15ce92b42ed6e7548f03b94c03439502d7870302beff06ef8fd9d0"
+size = 130226
+mtime_ms = 1793408078614
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:23af8127-9343-4c36-b5e8-4810013bb784/d9a01dad-c6ff-4f45-ae82-22bd7f8ebc73/226fce46-e3f8-4752-a3bb-f3b291d5aa40"
+storage_version_token = "1793408083485192"
+content_type = "text/html"

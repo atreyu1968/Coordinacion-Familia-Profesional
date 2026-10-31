@@ -14,6 +14,7 @@ export function notificationTargetPath(value: unknown, platform: "web" | "mobile
       case "survey": return `/encuestas?aviso=${id}`;
       case "form": return `/formularios?aviso=${id}`;
       case "forum": return `/foros?tema=${id}`;
+      case "forum_module": return `/foros?module=${id}`;
       case "space": return `/espacio?aviso=${id}`;
       case "announcement": return `/anuncios?aviso=${id}`;
       case "meeting": return `/videoconferencias?aviso=${id}`;
@@ -32,6 +33,7 @@ export function notificationTargetPath(value: unknown, platform: "web" | "mobile
     case "survey": return `/survey/${id}`;
     case "form": return `/form/${id}`;
     case "forum": return `/foros/tema/${id}`;
+    case "forum_module": return `/foros/modulo/${id}`;
     case "space": return `/espacios-colaborativos?aviso=${id}`;
     case "announcement": return `/?aviso=${id}`;
     case "meeting": return `/videoconferencias?aviso=${id}`;

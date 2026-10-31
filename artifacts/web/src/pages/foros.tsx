@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useGetForumThread } from "@workspace/api-client-react";
 import { useNoticeId } from "@/lib/notification-selection";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
+import { Activity } from "lucide-react";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -67,6 +68,19 @@ import {
   Send,
   History,
 } from "lucide-react";
+import {
+  CATEGORY_LABELS,
+  CollaborationConfigDialog,
+  CollaborationIdentity,
+  ThreadOriginLink,
+  categoryOf,
+  classifyThreads,
+  showsStructure,
+  useForumCollaboration,
+  type ForumCategory,
+} from "@/components/forum-collaboration";
+import { CurriculumResourcesPanel } from "@/components/curriculum-resources";
+import { AgreementPanel } from "@/components/forum-agreement/agreement-panel";
 
 const SIN_CICLO = "Sin ciclo";
 
@@ -468,6 +482,8 @@ function ThreadDetail({
   const createMut = useCreateForumPost();
   const markReadMut = useMarkForumThreadRead();
   const [reply, setReply] = useState("");
+  const { data: collab } = useForumCollaboration(thread.moduleId);
+  const origin = classifyThreads(collab).get(thread.id);
 
   // Mark the thread read on open, then refresh the unread badges.
   useEffect(() => {
@@ -530,7 +546,25 @@ function ThreadDetail({
           {thread.authorName ? ` · ${thread.authorName}` : ""}
           {thread.editedAt ? " · editado" : ""}
         </p>
+        {origin && (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Badge variant="outline" data-testid="badge-thread-category">
+              {CATEGORY_LABELS[categoryOf(origin)]} · {origin.key}
+            </Badge>
+            <ThreadOriginLink moduleId={thread.moduleId} entry={origin} />
+          </div>
+        )}
       </div>
+
+      {origin?.kind === "material_ce" && origin.criterionId != null ? (
+        <CurriculumResourcesPanel moduleId={thread.moduleId} filter={{ kind: "criterion", criterionId: origin.criterionId }} />
+      ) : origin?.kind === "material_ra" && origin.outcomeId != null ? (
+        <CurriculumResourcesPanel moduleId={thread.moduleId} filter={{ kind: "outcome", outcomeId: origin.outcomeId }} />
+      ) : null}
+
+      {origin && ["programming_section", "material_ra", "material_ce"].includes(origin.kind) && (
+        <AgreementPanel threadId={thread.id} posts={posts} moduleName={thread.moduleName ?? ""} threadTitle={thread.title} />
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>
@@ -588,6 +622,33 @@ function ModuleThreads({
   const deleteThreadMut = useDeleteForumThread();
   const pinMut = usePinForumThread();
   const [active, setActive] = useState<ForumThread | null>(null);
+  const { data: collab } = useForumCollaboration(module.id);
+  const structured = showsStructure(collab);
+  const classified = useMemo(() => classifyThreads(collab), [collab]);
+  const [tab, setTab] = useState<ForumCategory>("general");
+  const visibleThreads = useMemo(() => {
+    if (!structured) return threads;
+    const inTab = threads.filter((t) => categoryOf(classified.get(t.id)) === tab);
+    if (tab === "general") return inTab;
+    const rank = new Map<string, number>();
+    collab?.sections.forEach((sec) => rank.set(sec.key, sec.order));
+    collab?.threads.forEach((ct, i) => { if (!rank.has(ct.key)) rank.set(ct.key, 1000 + i); });
+    return [...inTab].sort((a, b) => {
+      if (!!a.pinnedAt !== !!b.pinnedAt) return a.pinnedAt ? -1 : 1;
+      return (rank.get(classified.get(a.id)?.key ?? "") ?? 0) - (rank.get(classified.get(b.id)?.key ?? "") ?? 0);
+    });
+  }, [structured, threads, classified, tab, collab]);
+  const counts = useMemo(() => {
+    const c: Record<ForumCategory, { total: number; unread: number }> = {
+      programacion: { total: 0, unread: 0 }, materiales: { total: 0, unread: 0 }, general: { total: 0, unread: 0 },
+    };
+    for (const t of threads) {
+      const k = categoryOf(classified.get(t.id));
+      c[k].total += 1;
+      c[k].unread += t.unreadCount;
+    }
+    return c;
+  }, [threads, classified]);
 
   const invalidate = async () => {
     await qc.invalidateQueries({
@@ -633,20 +694,48 @@ function ModuleThreads({
       <Button variant="ghost" size="sm" className="gap-2" onClick={onBack}>
         <ChevronLeft className="w-4 h-4" /> Volver a los módulos
       </Button>
-      <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold tracking-tight">{module.name}</h2>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-[1_1_16rem]">
+          <h2 className="break-words text-xl font-bold tracking-tight">{module.name}</h2>
           {module.cycleName && (
             <p className="text-sm text-muted-foreground">{module.cycleName}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {module.canViewModerationHistory && (
             <ModerationHistoryDialog module={module} />
           )}
           <NewThreadDialog module={module} />
         </div>
       </div>
+
+      {collab && structured && <CollaborationIdentity collab={collab} />}
+      {collab?.canConfigure && <CollaborationConfigDialog collab={collab} />}
+
+      {structured && (
+        <div role="tablist" aria-label="Secciones del foro" className="grid min-w-0 grid-cols-1 gap-1 rounded-lg bg-muted p-1 sm:grid-cols-3">
+          {(["programacion", "materiales", "general"] as ForumCategory[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              onClick={() => setTab(k)}
+              data-testid={`tab-forum-${k}`}
+              className={`min-w-0 break-words rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === k ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {CATEGORY_LABELS[k]}
+              <span className="ml-1.5 text-xs text-muted-foreground">{counts[k].total}</span>
+              {counts[k].unread > 0 && <Badge className="ml-1.5 h-5 px-1.5">{counts[k].unread}</Badge>}
+            </button>
+          ))}
+        </div>
+      )}
+      {structured && tab !== "general" && (
+        <p className="text-xs text-muted-foreground">
+          Los temas nuevos se publican en Debates generales. Los temas de esta sección se crean desde la configuración del módulo.
+        </p>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -660,17 +749,19 @@ function ModuleThreads({
 
       {isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>
-      ) : threads.length === 0 ? (
+      ) : visibleThreads.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            {search.trim()
+            {structured && tab !== "general" && !search.trim()
+              ? "Aún no hay temas en esta sección."
+              : search.trim()
               ? "Ningún tema coincide con tu búsqueda."
               : "Aún no hay temas en este foro. ¡Crea el primero!"}
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {threads.map((t) => (
+          {visibleThreads.map((t) => (
             <Card
               key={t.id}
               className="hover:bg-accent/50 transition-colors cursor-pointer"
@@ -684,6 +775,9 @@ function ModuleThreads({
                   <h3 className="font-semibold leading-tight flex items-center gap-1.5">
                     {t.pinnedAt && (
                       <Pin className="w-3.5 h-3.5 text-primary shrink-0" />
+                    )}
+                    {classified.get(t.id) && (
+                      <Badge variant="outline" className="mr-1 shrink-0">{classified.get(t.id)?.key}</Badge>
                     )}
                     {t.title}
                     {t.unreadCount > 0 && (
@@ -768,20 +862,26 @@ function NoticeThread({ id, onBack }: { id: number; onBack: () => void }) {
 }
 
 export default function ForosPage() {
-  const noticeThreadId = useNoticeId("tema");
+  const temaParam = useNoticeId("tema");
+  const threadParam = useNoticeId("thread");
+  const noticeThreadId = temaParam ?? threadParam;
   const [, navigate] = useLocation();
   const moduleParam = useModuleParam();
   const { data: modules = [], isLoading } = useListForumModules();
   const [active, setActive] = useState<ForumModule | null>(null);
   const [search, setSearch] = useState("");
-  const [didPreselect, setDidPreselect] = useState(false);
+  const [preselectedModuleId, setPreselectedModuleId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (didPreselect || moduleParam == null || modules.length === 0) return;
+    if (moduleParam == null) {
+      if (preselectedModuleId != null) setPreselectedModuleId(null);
+      return;
+    }
+    if (preselectedModuleId === moduleParam || modules.length === 0) return;
     const match = modules.find((m) => m.id === moduleParam);
-    if (match) setActive(match);
-    setDidPreselect(true);
-  }, [didPreselect, moduleParam, modules]);
+    setActive(match ?? null);
+    setPreselectedModuleId(moduleParam);
+  }, [preselectedModuleId, moduleParam, modules]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -819,6 +919,9 @@ export default function ForosPage() {
             Debates organizados por ciclo formativo y módulo.
           </p>
         </div>
+        <Link href="/foros/seguimiento" className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted" data-testid="link-collab-tracking">
+          <Activity className="w-4 h-4" /> Seguimiento
+        </Link>
       </div>
 
       {noticeThreadId != null ? (

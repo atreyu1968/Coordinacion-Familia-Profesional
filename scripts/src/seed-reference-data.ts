@@ -6,6 +6,10 @@ import { syncAdgCenters } from "./lib/sync-adg-centers";
 import { seedNormativaCatalog } from "./lib/seed-normativa";
 import { seedFpaCatalog } from "./lib/seed-fpa";
 import {
+  logLearningOutcomesSeedStats,
+  seedLearningOutcomesCatalog,
+} from "./lib/seed-learning-outcomes";
+import {
   db,
   pool,
   provincesTable,
@@ -94,6 +98,9 @@ async function main(): Promise<void> {
   const cycleNameBySrcId = new Map(cycles.map((c) => [c.id, c.name]));
 
   const stats = { inserted: 0, updated: 0, skipped: 0 };
+  let curriculumStats:
+    | Awaited<ReturnType<typeof seedLearningOutcomesCatalog>>
+    | undefined;
 
   await db.transaction(async (tx) => {
     // --- provinces (key: code) --------------------------------------------
@@ -348,8 +355,13 @@ async function main(): Promise<void> {
     stats.inserted += fpa.inserted;
     stats.updated += fpa.updated;
     stats.skipped += fpa.skipped;
+
+    // Load only user-verified RA/CE, including explicit legacy cycle aliases.
+    // Unresolved incidents remain pending; no curricular data is invented.
+    curriculumStats = await seedLearningOutcomesCatalog(tx);
   });
 
+  if (curriculumStats) logLearningOutcomesSeedStats(curriculumStats);
   console.log(
     `Reference data ready — inserted: ${stats.inserted}, updated: ${stats.updated}, unchanged: ${stats.skipped}.`,
   );

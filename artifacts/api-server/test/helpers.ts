@@ -57,6 +57,15 @@ const created = {
   schoolYears: [] as string[],
 };
 
+// Only development fixture scripts import these helpers. Persist IDs, never
+// credentials, so cleanup can run in a separate process after a browser check.
+export function snapshotTestFixtures() {
+  return structuredClone(created);
+}
+export function restoreTestFixtures(snapshot: typeof created) {
+  Object.assign(created, snapshot);
+}
+
 let userSeq = 0;
 
 export const DEFAULT_PASSWORD = "Sup3rSecret!";

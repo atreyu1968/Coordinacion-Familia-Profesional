@@ -1561,6 +1561,84 @@ export interface UpdateCycleInput {
   level?: string | null;
 }
 
+export interface TrainingOfferAiDiscoveryInput {
+  /** @minimum 1 */
+  centerId?: number;
+  /**
+     * @maxItems 10
+     * @items.maxLength 2000
+     */
+  sourceUrls?: string[];
+}
+
+export interface TrainingOfferAiDiscovery {
+  schoolYear: string;
+  family: string;
+  centerCount: number;
+  sources: string[];
+  warnings: string[];
+  contextToken: string;
+}
+
+export interface TrainingOfferAiAnalysisInput {
+  /**
+     * @minLength 20
+     * @maxLength 300000
+     */
+  contextToken: string;
+  /** @maxLength 2000 */
+  sourceUrl: string;
+}
+
+export interface TrainingOfferAiCandidate {
+  centerId: number;
+  centerCode: string;
+  centerName: string;
+  cycleId: number;
+  cycleName: string;
+  /** @nullable */
+  level: string | null;
+  sourceUrl: string;
+  evidence: string;
+  existing: boolean;
+}
+
+export interface TrainingOfferAiAnalysis {
+  rows: TrainingOfferAiCandidate[];
+  rejected: number;
+  warnings: string[];
+  resultToken: string;
+}
+
+export interface TrainingOfferAiApplyInput {
+  /**
+     * @minLength 20
+     * @maxLength 300000
+     */
+  contextToken: string;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     * @items.minLength 20
+     * @items.maxLength 300000
+     */
+  resultTokens: string[];
+}
+
+export type TrainingOfferAiImportResultPendingCentersItem = {
+  id: number;
+  name: string;
+  reason: string;
+};
+
+export interface TrainingOfferAiImportResult {
+  schoolYear: string;
+  added: number;
+  unchanged: number;
+  matchedCenters: number;
+  pendingCenters: TrainingOfferAiImportResultPendingCentersItem[];
+}
+
 export interface CreateTrainingOfferInput {
   /** @nullable */
   cycleId?: number | null;
@@ -1702,6 +1780,42 @@ export interface TransferInput {
   moduleIds?: number[];
 }
 
+export type ResourceCurriculumAudience = typeof ResourceCurriculumAudience[keyof typeof ResourceCurriculumAudience];
+
+
+export const ResourceCurriculumAudience = {
+  teachers: 'teachers',
+  students: 'students',
+} as const;
+
+export interface ResourceLearningTarget {
+  /** @minimum 1 */
+  outcomeId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  criterionId: number | null;
+}
+
+export interface ResourceCurriculum {
+  moduleId: number;
+  /** @nullable */
+  originCenterId?: number | null;
+  /** @nullable */
+  originCenterName?: string | null;
+  revision: number;
+  license: string;
+  version: string;
+  audience: ResourceCurriculumAudience;
+  restricted: boolean;
+  archived: boolean;
+  curriculumVersion: string;
+  fingerprint: string;
+  canEdit: boolean;
+  targets: ResourceLearningTarget[];
+}
+
 export interface Resource {
   id: number;
   title: string;
@@ -1721,7 +1835,273 @@ export interface Resource {
   /** @nullable */
   centerId?: number | null;
   createdAt?: string;
+  curriculum?: ResourceCurriculum;
 }
+
+export interface AgreementSource {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  url: string;
+}
+
+export type AgreementInputStatus = typeof AgreementInputStatus[keyof typeof AgreementInputStatus];
+
+
+export const AgreementInputStatus = {
+  abierto: 'abierto',
+  sintesis: 'sintesis',
+  propuesta: 'propuesta',
+  consulta: 'consulta',
+  consensuado: 'consensuado',
+  sin_consenso: 'sin_consenso',
+  revision_normativa: 'revision_normativa',
+  archivado: 'archivado',
+} as const;
+
+export interface AgreementInput {
+  /** @minimum 0 */
+  revision: number;
+  newVersion?: boolean;
+  status: AgreementInputStatus;
+  /** @maxLength 3000 */
+  summary: string;
+  /** @maxLength 60000 */
+  proposedText: string;
+  /** @maxLength 10000 */
+  observations: string;
+  /** @maxLength 5000 */
+  closureReason: string;
+  /** @maxItems 50 */
+  sources: AgreementSource[];
+  /**
+     * @maxItems 100
+     * @items.minimum 1
+     */
+  sourcePostIds: number[];
+  /**
+     * @maxItems 50
+     * @items.minimum 1
+     */
+  editorIds: number[];
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  documentUrl: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  fingerprint: string;
+}
+
+export interface AgreementPublicationInput {
+  /** @minimum 1 */
+  revision: number;
+  /** @minimum 1 */
+  version: number;
+  documentConfirmed: true;
+  referenceOnlyConfirmed: true;
+}
+
+export type AgreementPositionInputPosition = typeof AgreementPositionInputPosition[keyof typeof AgreementPositionInputPosition];
+
+
+export const AgreementPositionInputPosition = {
+  a_favor: 'a_favor',
+  con_reservas: 'con_reservas',
+  en_contra: 'en_contra',
+} as const;
+
+export interface AgreementPositionInput {
+  /** @minimum 1 */
+  revision: number;
+  /** @minimum 1 */
+  version: number;
+  position: AgreementPositionInputPosition;
+  /** @maxLength 5000 */
+  reason: string;
+  /** @minimum 1 */
+  centerId: number;
+}
+
+export interface AgreementParticipation {
+  teachers: number;
+  centers: number;
+  eligible: number;
+  limited: boolean;
+  warning: string;
+}
+
+export type AgreementRecordStatus = typeof AgreementRecordStatus[keyof typeof AgreementRecordStatus];
+
+
+export const AgreementRecordStatus = {
+  abierto: 'abierto',
+  sintesis: 'sintesis',
+  propuesta: 'propuesta',
+  consulta: 'consulta',
+  consensuado: 'consensuado',
+  sin_consenso: 'sin_consenso',
+  revision_normativa: 'revision_normativa',
+  archivado: 'archivado',
+} as const;
+
+export interface AgreementRecord {
+  /** @nullable */
+  responsibleId?: number | null;
+  /** @nullable */
+  reviewerId?: number | null;
+  id: number;
+  threadId: number;
+  moduleId: number;
+  revision: number;
+  version: number;
+  status: AgreementRecordStatus;
+  summary: string;
+  proposedText: string;
+  observations: string;
+  closureReason: string;
+  sources: AgreementSource[];
+  sourcePostIds: number[];
+  editorIds: number[];
+  /** @nullable */
+  documentUrl: string | null;
+  fingerprint: string;
+  curriculumVersion: string;
+  /** @nullable */
+  publishedPageId: number | null;
+  updatedAt: string;
+}
+
+export interface AgreementRevision {
+  revision: number;
+  version: number;
+  /** @nullable */
+  actorName: string | null;
+  createdAt: string;
+  snapshot: AgreementRecord;
+  participation: AgreementParticipation;
+}
+
+export type AgreementPositionPosition = typeof AgreementPositionPosition[keyof typeof AgreementPositionPosition];
+
+
+export const AgreementPositionPosition = {
+  a_favor: 'a_favor',
+  con_reservas: 'con_reservas',
+  en_contra: 'en_contra',
+} as const;
+
+export interface AgreementPosition {
+  id: number;
+  version: number;
+  userId: number;
+  /** @nullable */
+  userName: string | null;
+  /** @nullable */
+  centerId: number | null;
+  centerName: string;
+  position: AgreementPositionPosition;
+  reason: string;
+  updatedAt: string;
+}
+
+export interface AgreementCenter {
+  id: number;
+  name: string;
+}
+
+export interface AgreementParticipant {
+  id: number;
+  name: string;
+  isModerator: boolean;
+  centers: AgreementCenter[];
+}
+
+export interface AgreementWorkspace {
+  /** @nullable */
+  notificationWarning?: string | null;
+  moduleId: number;
+  threadId: number;
+  canEdit: boolean;
+  canPublish: boolean;
+  canDelegate: boolean;
+  canPosition: boolean;
+  fingerprint: string;
+  curriculumCurrent: boolean;
+  nextcloudConfigured: boolean;
+  agreement: AgreementRecord | null;
+  revisions: AgreementRevision[];
+  positions: AgreementPosition[];
+  positionHistory: AgreementPosition[];
+  participants: AgreementParticipant[];
+  participation: AgreementParticipation;
+}
+
+export type ResourceCurriculumInputAudience = typeof ResourceCurriculumInputAudience[keyof typeof ResourceCurriculumInputAudience];
+
+
+export const ResourceCurriculumInputAudience = {
+  teachers: 'teachers',
+  students: 'students',
+} as const;
+
+export interface ResourceCurriculumInput {
+  /** @minimum 0 */
+  revision: number;
+  /** @minLength 1 */
+  fingerprint: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  license: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  version: string;
+  audience: ResourceCurriculumInputAudience;
+  restricted: boolean;
+  archived: boolean;
+  rightsConfirmed: true;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  targets: ResourceLearningTarget[];
+}
+
+export type CurriculumResourceInput = ResourceCurriculumInput & ({
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  title: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  type: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  fileUrl: string;
+});
 
 export interface CreateResourceInput {
   title: string;
@@ -2187,6 +2567,204 @@ export const MeetingAccessProvider = {
 export interface MeetingAccess {
   provider: MeetingAccessProvider;
   url: string;
+}
+
+export type ForumCollaborationTrackingProviderCheck = typeof ForumCollaborationTrackingProviderCheck[keyof typeof ForumCollaborationTrackingProviderCheck];
+
+
+export const ForumCollaborationTrackingProviderCheck = {
+  not_checked: 'not_checked',
+} as const;
+
+export interface ForumTrackingThread {
+  id: number;
+  title: string;
+  kind: string;
+  status: string;
+  /** @nullable */
+  version: number | null;
+  /** @nullable */
+  publishedPageId: number | null;
+}
+
+export interface ForumTrackingModule {
+  id: number;
+  /** @nullable */
+  code: string | null;
+  name: string;
+  /** @nullable */
+  cycleName: string | null;
+  enabled: boolean;
+  verificationCurrent: boolean;
+  reviewNeeded: boolean;
+  diagnostics: string[];
+  outcomes: number;
+  outcomesWithCriteria: number;
+  criteria: number;
+  outcomesWithResources: number;
+  resources: number;
+  resourcesNeedingReview: number;
+  plannedThreads: number;
+  createdThreads: number;
+  participants: number;
+  centers: number;
+  eligibleParticipants: number;
+  eligibleCenters: number;
+  publishedVersions: number;
+  /** @nullable */
+  lastActivityAt: string | null;
+  threads: ForumTrackingThread[];
+}
+
+export interface ForumTrackingTotals {
+  modules: number;
+  enabled: number;
+  reviewNeeded: number;
+  participants: number;
+  centers: number;
+  resources: number;
+  publishedVersions: number;
+  openConsultations: number;
+}
+
+export interface ForumCollaborationTracking {
+  generatedAt: string;
+  /** @nullable */
+  academicYear: string | null;
+  family: string;
+  legend: string;
+  providerCheck: ForumCollaborationTrackingProviderCheck;
+  modules: ForumTrackingModule[];
+  totals: ForumTrackingTotals;
+}
+
+export interface InitializeForumCollaborationInput {
+  /** @minimum 1 */
+  revision: number;
+  /** @minLength 1 */
+  fingerprint: string;
+}
+
+export interface ProgrammingSection {
+  /** @pattern ^PD-(0[1-9]|1[0-6])$ */
+  key: string;
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 6000
+     */
+  prompt: string;
+  enabled: boolean;
+  /**
+     * @minimum 0
+     * @maximum 999
+     */
+  order: number;
+}
+
+export interface ForumCollaborationInput {
+  /** @minimum 0 */
+  revision: number;
+  /** @minLength 1 */
+  fingerprint: string;
+  enabled: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  officialCode: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  sourceTitle: string;
+  /** @maxLength 2000 */
+  sourceUrl: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  curriculumVersion: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  territory: string;
+  confirmReviewed: boolean;
+  /**
+     * @minItems 16
+     * @maxItems 16
+     */
+  sections: ProgrammingSection[];
+}
+
+export interface ForumCollaborationConfiguration {
+  revision: number;
+  enabled: boolean;
+  officialCode: string;
+  sourceTitle: string;
+  sourceUrl: string;
+  curriculumVersion: string;
+  territory: string;
+  verifiedAt: string;
+}
+
+export type ForumCollaborationThreadKind = typeof ForumCollaborationThreadKind[keyof typeof ForumCollaborationThreadKind];
+
+
+export const ForumCollaborationThreadKind = {
+  programming_section: 'programming_section',
+  material_ra: 'material_ra',
+  material_ce: 'material_ce',
+} as const;
+
+export interface ForumCollaborationThread {
+  key: string;
+  kind: ForumCollaborationThreadKind;
+  title: string;
+  content: string;
+  /** @nullable */
+  outcomeId: number | null;
+  /** @nullable */
+  criterionId: number | null;
+  /** @nullable */
+  threadId: number | null;
+  archived: boolean;
+  /** @nullable */
+  curriculumVersion: string | null;
+}
+
+export type CurriculumImportReportReasonsItem = {
+  code: string;
+  message: string;
+};
+
+export interface CurriculumImportReport {
+  reasons: CurriculumImportReportReasonsItem[];
+}
+
+export interface ForumCollaboration {
+  moduleId: number;
+  /** @nullable */
+  moduleCode: string | null;
+  moduleName: string;
+  /** @nullable */
+  cycleName: string | null;
+  /** @nullable */
+  academicYear: string | null;
+  enabled: boolean;
+  canConfigure: boolean;
+  verificationCurrent: boolean;
+  fingerprint: string;
+  diagnostics: string[];
+  importReport?: CurriculumImportReport | null;
+  sections: ProgrammingSection[];
+  threads: ForumCollaborationThread[];
+  configuration: ForumCollaborationConfiguration | null;
 }
 
 export interface ForumModule {
@@ -3150,6 +3728,7 @@ export const NotificationTargetKind = {
   survey: 'survey',
   form: 'form',
   forum: 'forum',
+  forum_module: 'forum_module',
   space: 'space',
   announcement: 'announcement',
   meeting: 'meeting',
@@ -4180,6 +4759,14 @@ export type ListResourcesParams = {
 moduleId?: number;
 centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
+/**
+ * @minimum 1
+ */
+outcomeId?: number;
+/**
+ * @minimum 1
+ */
+criterionId?: number;
 };
 
 export type ListCompanyAlertsParams = {

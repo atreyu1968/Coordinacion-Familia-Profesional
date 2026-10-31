@@ -12,4 +12,12 @@ export type ListResourcesParams = {
 moduleId?: number;
 centerId?: CenterQueryParameter;
 search?: SearchQueryParameter;
+/**
+ * @minimum 1
+ */
+outcomeId?: number;
+/**
+ * @minimum 1
+ */
+criterionId?: number;
 };

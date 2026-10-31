@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -14,6 +14,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import {
   useListForumThreads,
+  useGetForumCollaboration,
+  getGetForumCollaborationQueryKey,
+  type ForumCollaborationThread,
   useCreateForumThread,
   useDeleteForumThread,
   useUpdateForumThread,
@@ -33,6 +36,17 @@ import { Button, Card, EmptyState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatRelative } from "@/lib/format";
+import { openBrowserLink } from "@/lib/browser-link";
+import { webForumModuleUrl } from "@/lib/web-links";
+
+type Category = "programacion" | "materiales" | "general";
+const CATEGORY_LABELS: Record<Category, string> = {
+  programacion: "Programación didáctica",
+  materiales: "Materiales RA/CE",
+  general: "Debates generales",
+};
+const categoryOf = (t?: ForumCollaborationThread): Category =>
+  !t ? "general" : t.kind === "programming_section" ? "programacion" : "materiales";
 
 export default function ForoModuloScreen() {
   const colors = useColors();
@@ -64,6 +78,41 @@ export default function ForoModuloScreen() {
     moduleId,
     ...(search.trim() ? { q: search.trim() } : {}),
   });
+  const { data: collab } = useGetForumCollaboration(moduleId, {
+    query: {
+      queryKey: getGetForumCollaborationQueryKey(moduleId),
+      retry: false,
+      refetchOnMount: "always",
+      refetchInterval: 60_000,
+    },
+  });
+  const structured = !!collab && (collab.enabled || collab.canConfigure);
+  const [tab, setTab] = useState<Category>("general");
+  const classified = useMemo(() => {
+    const m = new Map<number, ForumCollaborationThread>();
+    if (collab && structured) for (const t of collab.threads) if (t.threadId != null) m.set(t.threadId, t);
+    return m;
+  }, [collab, structured]);
+  const visibleThreads = useMemo(() => {
+    if (!structured) return threads;
+    const order = new Map<string, number>();
+    collab?.sections.forEach((sec) => order.set(sec.key, sec.order));
+    collab?.threads.forEach((ct, i) => { if (!order.has(ct.key)) order.set(ct.key, 1000 + i); });
+    const inTab = threads.filter((t) => categoryOf(classified.get(t.id)) === tab);
+    if (tab === "general") return inTab;
+    return [...inTab].sort((a, b) => {
+      if (!!a.pinnedAt !== !!b.pinnedAt) return a.pinnedAt ? -1 : 1;
+      return (order.get(classified.get(a.id)?.key ?? "") ?? 0) - (order.get(classified.get(b.id)?.key ?? "") ?? 0);
+    });
+  }, [structured, threads, classified, tab, collab]);
+  const pendingCount = collab ? collab.threads.filter((t) => t.threadId == null && !t.archived).length : 0;
+  const openWebConfig = () => {
+    const url = webForumModuleUrl(moduleId);
+    if (!url) return setError("No se pudo abrir la configuración web.");
+    void openBrowserLink(url).catch(() =>
+      setError("No se pudo abrir la configuración web."),
+    );
+  };
   const createMut = useCreateForumThread();
   const deleteMut = useDeleteForumThread();
   const updateMut = useUpdateForumThread();
@@ -346,6 +395,77 @@ export default function ForoModuloScreen() {
           </>
         ) : null}
 
+        {structured && collab ? (
+          <Card style={styles.collabCard} testID="panel-collaboration-identity">
+            <Text style={[styles.collabTitle, { color: colors.foreground }]}>
+              {collab.moduleName}
+              {collab.configuration?.officialCode || collab.moduleCode
+                ? ` · ${collab.configuration?.officialCode || collab.moduleCode}`
+                : ""}
+            </Text>
+            <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+              {collab.cycleName ?? "Sin ciclo"} · Curso {collab.academicYear ?? "sin definir"} · Versión{" "}
+              {collab.configuration?.curriculumVersion ?? "sin configurar"}
+            </Text>
+            <Text style={[styles.meta, { color: collab.verificationCurrent ? colors.primary : colors.destructive }]}>
+              {collab.verificationCurrent ? "Currículo verificado" : "Verificación pendiente"}
+              {collab.enabled ? "" : " · Piloto no activo"}
+            </Text>
+            {collab.configuration?.sourceUrl ? (
+              <Pressable onPress={() => void openBrowserLink(collab.configuration!.sourceUrl).catch(() => undefined)}>
+                <Text style={[styles.meta, { color: colors.primary, textDecorationLine: "underline" }]}>
+                  Fuente: {collab.configuration.sourceTitle}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+              Propuesta intercentros de referencia; no sustituye la programación oficial de cada centro.
+            </Text>
+            {collab.canConfigure ? (
+              <>
+                {collab.diagnostics.map((d, i) => (
+                  <Text key={i} style={[styles.meta, { color: colors.destructive }]}>{d}</Text>
+                ))}
+                <Button
+                  label={pendingCount > 0 ? `Configurar en la web (${pendingCount} temas pendientes)` : "Configurar en la web"}
+                  variant="secondary"
+                  onPress={openWebConfig}
+                  style={{ marginTop: 8 }}
+                />
+              </>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {structured && !showForm ? (
+          <View style={styles.tabs} accessibilityRole="tablist">
+            {(["programacion", "materiales", "general"] as Category[]).map((k) => {
+              const selected = tab === k;
+              return (
+                <Pressable
+                  key={k}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  testID={`tab-forum-${k}`}
+                  onPress={() => setTab(k)}
+                  style={[
+                    styles.tab,
+                    {
+                      backgroundColor: selected ? colors.primary : colors.card,
+                      borderColor: colors.border,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.tabText, { color: selected ? colors.primaryForeground : colors.foreground }]}>
+                    {CATEGORY_LABELS[k]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         {!showForm ? (
           <View
             style={[
@@ -370,7 +490,7 @@ export default function ForoModuloScreen() {
 
         {isLoading ? (
           <Loading />
-        ) : threads.length === 0 ? (
+        ) : visibleThreads.length === 0 ? (
           <EmptyState
             icon="message-square"
             title={search.trim() ? "Sin resultados" : "Sin temas"}
@@ -381,7 +501,8 @@ export default function ForoModuloScreen() {
             }
           />
         ) : (
-          threads.map((t: ForumThread) => {
+          visibleThreads.map((t: ForumThread) => {
+            const origin = classified.get(t.id);
             const isAuthor = t.authorId === user?.id;
             const canDelete = isAuthor || t.canModerate;
             const canPin = t.canModerate;
@@ -439,6 +560,7 @@ export default function ForoModuloScreen() {
                           style={[styles.itemTitle, { color: colors.foreground }]}
                           numberOfLines={2}
                         >
+                          {origin ? `${origin.key} · ` : ""}
                           {t.title}
                         </Text>
                         {t.unreadCount > 0 ? (
@@ -511,6 +633,18 @@ export default function ForoModuloScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  collabCard: { gap: 4 },
+  collabTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tab: {
+    flexGrow: 1,
+    minHeight: 40,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  tabText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   content: { padding: 16, gap: 12 },
   headerBtn: {
     width: 38,

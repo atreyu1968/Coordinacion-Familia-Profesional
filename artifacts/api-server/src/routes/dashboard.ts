@@ -1,4 +1,6 @@
 import { Router, type IRouter } from "express";
+import { moduleFamilyFilter } from "../lib/familyCatalog";
+import { modulesTable } from "@workspace/db";
 import {
   eq,
   and,
@@ -161,7 +163,12 @@ function resourceScopeFilters(
 ): SQL[] {
   return [
     isNull(resourcesTable.deletedAt),
-    inArray(resourcesTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+    or(inArray(resourcesTable.centerId, activeFamilyCenterIds(scope, activeFamily)),
+      sql`${activeFamily} = 'Administración y Gestión' and exists (
+        select 1 from resource_curriculum rc where rc.resource_id = ${resourcesTable.id} and rc.archived = false
+        and ${inArray(sql`rc.module_id`, db.select({ id: modulesTable.id }).from(modulesTable).where(
+          and(isNull(modulesTable.deletedAt), moduleFamilyFilter(activeFamily))))})`)!,
+    sql`not exists (select 1 from resource_curriculum archived_rc where archived_rc.resource_id = ${resourcesTable.id} and archived_rc.archived = true)`,
     ...periodFilters(resourcesTable.createdAt, period),
   ];
 }

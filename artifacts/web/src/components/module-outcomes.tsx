@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AutoLinkText } from "@/components/auto-link-text";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -40,7 +40,34 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { Library, ListChecks, MessagesSquare, Pencil, Plus, Trash2 } from "lucide-react";
+import { Link } from "wouter";
+import { useForumCollaboration } from "@/components/forum-collaboration";
+import { libraryHref } from "@/lib/curriculum-resources";
+import { outcomeThreadLinks } from "@/lib/forum-collaboration-classify";
+
+type ThreadLinks = { ra: Map<number, number>; ce: Map<number, number> };
+
+function ThreadLink({ threadId, label, testId }: { threadId?: number; label: string; testId: string }) {
+  if (threadId == null) return null;
+  return (
+    <Link
+      href={`/foros?tema=${threadId}`}
+      className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
+      data-testid={testId}
+    >
+      <MessagesSquare className="w-3 h-3" /> {label}
+    </Link>
+  );
+}
+
+function LibraryLink({ href, testId }: { href: string; testId: string }) {
+  return (
+    <Link href={href} className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0" data-testid={testId}>
+      <Library className="w-3 h-3" /> Recursos
+    </Link>
+  );
+}
 
 type OutcomeFormState = { code: string; description: string };
 
@@ -132,10 +159,14 @@ function CodeDescriptionDialog({
 }
 
 function CriterionRow({
+  moduleId,
   criterion,
   canEdit,
   onChanged,
+  links,
 }: {
+  moduleId: number;
+  links: ThreadLinks;
   criterion: EvaluationCriterion;
   canEdit: boolean;
   onChanged: () => void;
@@ -172,7 +203,7 @@ function CriterionRow({
   };
 
   return (
-    <li className="flex items-start justify-between gap-2 py-1.5">
+    <li id={`ce-${criterion.id}`} className="flex items-start justify-between gap-2 py-1.5 scroll-mt-20 target:bg-primary/5">
       <div className="flex items-start gap-2 min-w-0">
         <Badge variant="outline" className="shrink-0 mt-0.5">
           {criterion.code}
@@ -181,6 +212,8 @@ function CriterionRow({
           <AutoLinkText text={criterion.description} />
         </span>
       </div>
+      <LibraryLink href={libraryHref(moduleId, { kind: "criterion", criterionId: criterion.id })} testId={`link-ce-library-${criterion.id}`} />
+      <ThreadLink threadId={links.ce.get(criterion.id)} label="Debate" testId={`link-ce-thread-${criterion.id}`} />
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">
           <Button
@@ -236,7 +269,9 @@ function OutcomeBlock({
   outcome,
   canEdit,
   onChanged,
+  links,
 }: {
+  links: ThreadLinks;
   outcome: LearningOutcome;
   canEdit: boolean;
   onChanged: () => void;
@@ -289,12 +324,14 @@ function OutcomeBlock({
   };
 
   return (
-    <div className="rounded-md border p-3 space-y-2">
+    <div id={`ra-${outcome.id}`} className="rounded-md border p-3 space-y-2 scroll-mt-20 target:ring-2 target:ring-primary/40">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0">
           <Badge className="shrink-0 mt-0.5">{outcome.code}</Badge>
           <span className="text-sm font-medium"><AutoLinkText text={outcome.description} /></span>
         </div>
+        <LibraryLink href={libraryHref(outcome.moduleId, { kind: "outcome", outcomeId: outcome.id })} testId={`link-ra-library-${outcome.id}`} />
+        <ThreadLink threadId={links.ra.get(outcome.id)} label="Debate del RA" testId={`link-ra-thread-${outcome.id}`} />
         {canEdit && (
           <div className="flex items-center gap-1 shrink-0">
             <Button
@@ -357,6 +394,8 @@ function OutcomeBlock({
               <CriterionRow
                 key={c.id}
                 criterion={c}
+                moduleId={outcome.moduleId}
+                links={links}
                 canEdit={canEdit}
                 onChanged={onChanged}
               />
@@ -396,6 +435,14 @@ export function ModuleOutcomes({ moduleId }: { moduleId: number }) {
 
   const { data: outcomes = [], isLoading } = useListLearningOutcomes(moduleId);
   const createOutcomeMut = useCreateLearningOutcome();
+  const { data: collab } = useForumCollaboration(moduleId);
+  const outcomesReady = !isLoading && outcomes.length > 0;
+  useEffect(() => {
+    if (!outcomesReady) return;
+    const hash = window.location.hash.slice(1);
+    if (/^(ra|ce)-\d+$/.test(hash)) document.getElementById(hash)?.scrollIntoView({ block: "center" });
+  }, [outcomesReady]);
+  const links: ThreadLinks = outcomeThreadLinks(collab);
 
   // The module's coordinator may edit RA/CE. We only know that from the member
   // list, which is itself readable by managers/members; on 403 we simply treat
@@ -463,6 +510,7 @@ export function ModuleOutcomes({ moduleId }: { moduleId: number }) {
             <OutcomeBlock
               key={o.id}
               outcome={o}
+              links={links}
               canEdit={canEdit}
               onChanged={invalidate}
             />

@@ -36,6 +36,7 @@ const EspacioColaborativoPage = lazy(
 );
 const DocumentacionPage = lazy(() => import("@/pages/documentacion"));
 const ForosPage = lazy(() => import("@/pages/foros"));
+const ForosSeguimientoPage = lazy(() => import("@/pages/foros-seguimiento"));
 const SugerenciasPage = lazy(() => import("@/pages/sugerencias"));
 const MemoriasPage = lazy(() => import("@/pages/memorias"));
 const AsistenteIaPage = lazy(() => import("@/pages/asistente-ia"));
@@ -89,6 +90,7 @@ function AuthedRoutes() {
           <Route path="/chat" component={ChatPage} />
           <Route path="/espacio" component={EspacioColaborativoPage} />
           <Route path="/documentacion" component={DocumentacionPage} />
+          <Route path="/foros/seguimiento" component={ForosSeguimientoPage} />
           <Route path="/foros" component={ForosPage} />
           <Route path="/sugerencias" component={SugerenciasPage} />
           <Route path="/memorias" component={MemoriasPage} />

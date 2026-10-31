@@ -312,7 +312,7 @@ async function ensureGroup(config: NextcloudConfig, groupId: string): Promise<vo
 
 async function ensureUser(
   config: NextcloudConfig,
-  opts: { uid: string; displayName: string; email?: string | null },
+  opts: { uid: string; displayName: string; email?: string | null; signal?: AbortSignal },
 ): Promise<void> {
   try {
     const form: Record<string, string> = {
@@ -322,11 +322,53 @@ async function ensureUser(
       displayName: opts.displayName,
     };
     if (opts.email) form["email"] = opts.email;
-    await ocs(config, "POST", "/ocs/v2.php/cloud/users", form);
+    await ocs(config, "POST", "/ocs/v2.php/cloud/users", form, opts.signal);
   } catch (err) {
     // Already exists -> ignore (idempotent).
     if (isAlreadyExists(err)) return;
     throw err;
+  }
+}
+
+/**
+ * The application's role is authoritative only for its own coordina-* account.
+ * Never change the bootstrap administrator or any other remote account.
+ */
+export async function syncNextcloudAdministrator(
+  config: NextcloudConfig,
+  user: { id: number; name: string; email: string; role: string; status: string; deletedAt?: Date | null },
+): Promise<void> {
+  const uid = nextcloudUid(user.id);
+  const administrator = user.role === "superadmin" && user.status === "active" && !user.deletedAt;
+  if (!administrator && uid === config.adminUser) {
+    throw new Error("Configura otra cuenta técnica de Nextcloud antes de retirar este administrador.");
+  }
+  if (administrator) {
+    await ensureUser(config, { uid, displayName: user.name, email: user.email, signal: AbortSignal.timeout(10_000) });
+  }
+  const path = `/ocs/v2.php/cloud/users/${encodeURIComponent(uid)}/groups`;
+  const readGroups = async (): Promise<string[]> => {
+    try {
+      const result = await ocs(config, "GET", `${path}?format=json`, undefined, AbortSignal.timeout(10_000)) as {
+        ocs?: { data?: { groups?: unknown } };
+      };
+      const groups = result.ocs?.data?.groups;
+      if (!Array.isArray(groups) || groups.some(g => typeof g !== "string")) {
+        throw new Error("Nextcloud no confirmó los grupos de la cuenta.");
+      }
+      return groups;
+    } catch (error) {
+      // Only an explicit OCS "user does not exist" proves absence.
+      if (!administrator && error instanceof OcsError && error.ocsCode === 998) return [];
+      throw error;
+    }
+  };
+  const groups = await readGroups();
+  if (groups.includes("admin") === administrator) return;
+  await ocs(config, administrator ? "POST" : "DELETE", path,
+    { groupid: "admin" }, AbortSignal.timeout(10_000));
+  if ((await readGroups()).includes("admin") !== administrator) {
+    throw new Error("Nextcloud no confirmó el cambio de permisos de administración.");
   }
 }
 

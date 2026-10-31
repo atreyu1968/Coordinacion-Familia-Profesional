@@ -17,6 +17,7 @@ import {
   forumPostsTable,
   forumThreadReadsTable,
   forumModerationEventsTable,
+  forumThreadContextsTable,
   modulesTable,
   centersTable,
   usersTable,
@@ -57,6 +58,7 @@ import {
 } from "../middlewares/auth";
 import { toForumModule, toForumThread, toForumPost } from "../lib/mappers";
 import { notifyUsers } from "../lib/notify";
+import { enqueueForumDigest } from "../lib/forumDigestQueue";
 import { resolveAudienceUserIds } from "../lib/audience";
 import { getActiveFamily, getActiveAcademicYear } from "../lib/settings";
 import { moduleFamilyFilter } from "../lib/familyCatalog";
@@ -173,7 +175,7 @@ async function moduleVisibleTo(
   return assignment != null;
 }
 
-async function moduleVisibleById(
+export async function moduleVisibleById(
   caller: User,
   moduleId: number,
 ): Promise<boolean> {
@@ -199,7 +201,7 @@ async function provinceOfCenter(centerId: number | null): Promise<number | null>
   return center?.provinceId ?? null;
 }
 
-async function canModerateForumModule(
+export async function canModerateForumModule(
   caller: User,
   moduleId: number,
   centerId: number | null,
@@ -723,22 +725,22 @@ router.post(
       return;
     }
 
-    const [created] = await db
-      .insert(forumPostsTable)
-      .values({
-        threadId: thread.thread.id,
-        authorId: caller.id,
-        content: body.data.content,
-      })
-      .returning();
-    await db
-      .update(forumThreadsTable)
-      .set({ lastPostAt: new Date() })
-      .where(eq(forumThreadsTable.id, thread.thread.id));
+    const [context] = await db.select().from(forumThreadContextsTable)
+      .where(eq(forumThreadContextsTable.threadId, thread.thread.id));
+    const created = await db.transaction(async tx => {
+      const [post] = await tx.insert(forumPostsTable).values({
+        threadId: thread.thread.id, authorId: caller.id, content: body.data.content,
+      }).returning();
+      await tx.update(forumThreadsTable).set({ lastPostAt: new Date() })
+        .where(eq(forumThreadsTable.id, thread.thread.id));
+      if (context) await enqueueForumDigest(tx, { moduleId: thread.thread.moduleId, threadId: thread.thread.id,
+        actorId: caller.id, eventKey: `reply:${post.id}`, kind: "reply" });
+      return post;
+    });
 
     // Notify everyone who has taken part in the thread (its author + previous
     // repliers), except the person replying now. Best-effort.
-    void notifyThreadParticipants(thread.thread, caller, body.data.content);
+    if (!context) void notifyThreadParticipants(thread.thread, caller, body.data.content);
 
     res.status(201).json(
       toForumPost({ ...created!, authorName: caller.name }),

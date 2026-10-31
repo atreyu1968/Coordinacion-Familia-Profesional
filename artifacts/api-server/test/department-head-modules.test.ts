@@ -75,11 +75,14 @@ it("includes heads in assigned module chats only and removes stale management me
   const centerId = await createCenter(province);
   const head = await createUser({ role: "department_head", centerId, provinceId: province });
   const colleague = await createUser({ centerId, provinceId: province });
+  const otherColleague = await createUser({ centerId, provinceId: province });
   const ownModule = await createModule({ centerId });
   const otherModule = await createModule({ centerId });
   const schoolYear = await getActiveAcademicYear() ?? "Prueba sin curso activo";
   await createTeachingAssignment({ teacherId: head.user.id, centerId, moduleId: ownModule, schoolYear });
+  await createTeachingAssignment({ teacherId: colleague.user.id, centerId, moduleId: ownModule, schoolYear });
   await createTeachingAssignment({ teacherId: colleague.user.id, centerId, moduleId: otherModule, schoolYear });
+  await createTeachingAssignment({ teacherId: otherColleague.user.id, centerId, moduleId: otherModule, schoolYear });
   await syncModuleChatGroup(ownModule);
   await syncModuleChatGroup(otherModule);
   const groups = await db.select().from(chatGroupsTable)

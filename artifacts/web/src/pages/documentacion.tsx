@@ -403,7 +403,10 @@ export default function DocumentacionPage() {
     }
   }, [locationSearch]);
   const [kind, setKind] = useState<"all" | "files" | "zip">("all");
-  const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
+  const [selectedPageId, setSelectedPageId] = useState<number | null>(() => {
+    const raw = new URLSearchParams(window.location.search).get("page");
+    return raw && /^[1-9]\d*$/.test(raw) && Number(raw) <= 2147483647 ? Number(raw) : null;
+  });
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorPage, setEditorPage] = useState<WikiPage | null>(null);
   const [editorsModule, setEditorsModule] = useState<Module | null>(null);

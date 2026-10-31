@@ -30,6 +30,9 @@ app.use(
   }),
 );
 app.use(cors());
+// Signed multi-source reviews can exceed the general 100 KB JSON limit.
+// Keep the larger allowance confined to this authenticated, bounded API.
+app.use("/api/centers/training-offer/ai", express.json({ limit: "2mb" }));
 app.use(
   express.json({
     // File uploads are raw PUT bodies even when the file itself has a JSON MIME

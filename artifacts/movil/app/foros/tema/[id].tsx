@@ -17,6 +17,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import {
   useGetForumThread,
+  useGetForumCollaboration,
+  getGetForumCollaborationQueryKey,
   useListForumPosts,
   useCreateForumPost,
   useDeleteForumPost,
@@ -25,14 +27,23 @@ import {
   getListForumPostsQueryKey,
   getListForumThreadsQueryKey,
   getListForumModulesQueryKey,
+  useListCurriculumResources,
+  getListCurriculumResourcesQueryKey,
+  useListLearningOutcomes,
+  getListLearningOutcomesQueryKey,
   type ForumPost,
+  type Resource,
 } from "@workspace/api-client-react";
 
 import { AppHeader } from "@/components/AppHeader";
+import { AgreementPanel } from "@/components/AgreementPanel";
 import { Button, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { formatRelative } from "@/lib/format";
+import { openBrowserLink } from "@/lib/browser-link";
+import { webAppUrl, webOutcomeUrl } from "@/lib/web-links";
+import { downloadAttachment, wikiAttachmentId } from "@/lib/wiki-attachment";
 
 export default function ForoTemaScreen() {
   const colors = useColors();
@@ -47,6 +58,74 @@ export default function ForoTemaScreen() {
   }>();
   const threadId = Number(params.id);
   const { data: thread } = useGetForumThread(threadId);
+  const collabModuleId = thread?.moduleId ?? 0;
+  const { data: collab } = useGetForumCollaboration(collabModuleId, {
+    query: {
+      queryKey: getGetForumCollaborationQueryKey(collabModuleId),
+      enabled: collabModuleId > 0,
+      retry: false,
+    },
+  });
+  const origin =
+    collab && (collab.enabled || collab.canConfigure)
+      ? collab.threads.find((t) => t.threadId === threadId)
+      : undefined;
+  const originUrl =
+    origin && thread
+      ? webOutcomeUrl(thread.moduleId, origin.kind, origin.outcomeId, origin.criterionId)
+      : null;
+  const materialFilter =
+    origin?.kind === "material_ce" && origin.criterionId != null
+      ? { criterionId: origin.criterionId, outcomeId: null as number | null }
+      : origin?.kind === "material_ra" && origin.outcomeId != null
+        ? { criterionId: null as number | null, outcomeId: origin.outcomeId }
+        : null;
+  const resModuleId = materialFilter ? collabModuleId : 0;
+  const resQuery = useListCurriculumResources(resModuleId, {
+    query: {
+      queryKey: getListCurriculumResourcesQueryKey(resModuleId),
+      enabled: resModuleId > 0,
+      retry: false,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    },
+  });
+  const { data: outcomes = [] } = useListLearningOutcomes(resModuleId, {
+    query: { queryKey: getListLearningOutcomesQueryKey(resModuleId), enabled: resModuleId > 0 },
+  });
+  const parentOf = new Map<number, number>();
+  outcomes.forEach((o) => o.criteria.forEach((c) => parentOf.set(c.id, o.id)));
+  const materialResources: Resource[] = materialFilter
+    ? (resQuery.data ?? []).filter((r) => {
+        const c = r.curriculum;
+        if (!c || c.archived) return false;
+        if (materialFilter.criterionId != null) return c.targets.some((t) => t.criterionId === materialFilter.criterionId);
+        return c.targets.some(
+          (t) => (t.criterionId != null ? parentOf.get(t.criterionId) ?? t.outcomeId : t.outcomeId) === materialFilter.outcomeId,
+        );
+      })
+    : [];
+  const libraryUrl = materialFilter
+    ? webAppUrl(
+        `/recursos?module=${collabModuleId}&${materialFilter.criterionId != null ? `criterionId=${materialFilter.criterionId}` : `outcomeId=${materialFilter.outcomeId}`}`,
+      )
+    : null;
+  const [resError, setResError] = useState<string | null>(null);
+  const openResource = (r: Resource) => {
+    const url = r.fileUrl;
+    if (!url) return;
+    setResError(null);
+    const attachmentId = wikiAttachmentId(url);
+    if (attachmentId != null) {
+      void downloadAttachment(attachmentId, r.title).catch((e: unknown) =>
+        setResError(e instanceof Error ? e.message : "No se pudo abrir el adjunto."),
+      );
+      return;
+    }
+    if (url.startsWith("/")) return;
+    void openBrowserLink(url).catch(() => setResError("No se pudo abrir el enlace."));
+  };
+  const [showResources, setShowResources] = useState(false);
   const canManagePost = (authorId: number | null | undefined) =>
     (authorId != null && authorId === user?.id) ||
     thread?.canModerate === true;
@@ -128,6 +207,80 @@ export default function ForoTemaScreen() {
         subtitle={params.module || undefined}
         showBack
       />
+      {origin ? (
+        <View style={[styles.originBar, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+          <Text style={[styles.originText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {origin.kind === "programming_section" ? "Programación didáctica" : "Materiales RA/CE"} · {origin.key}
+            {origin.archived ? " · archivado" : ""}
+          </Text>
+          {originUrl ? (
+            <Pressable
+              testID="link-thread-origin"
+              accessibilityRole="link"
+              hitSlop={8}
+              onPress={() => void openBrowserLink(originUrl).catch(() => undefined)}
+            >
+              <Text style={[styles.originLink, { color: colors.primary }]}>
+                {origin.kind === "material_ce" ? "Ver criterio (web)" : "Ver RA (web)"}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+      {origin && thread && ["programming_section", "material_ra", "material_ce"].includes(origin.kind) ? (
+        <AgreementPanel threadId={threadId} moduleId={thread.moduleId} />
+      ) : null}
+      {materialFilter ? (
+        <View style={[styles.resBox, { borderBottomColor: colors.border, backgroundColor: colors.card }]} testID="panel-curriculum-resources">
+          <Pressable style={styles.resHead} onPress={() => setShowResources((v) => !v)} accessibilityRole="button" testID="toggle-curriculum-resources">
+            <Feather name="book-open" size={14} color={colors.primary} />
+            <Text style={[styles.resTitle, { color: colors.foreground }]}>
+              Recursos {materialFilter.criterionId != null ? "del CE" : "del RA"}
+              {resQuery.isLoading ? "" : ` (${materialResources.length})`}
+            </Text>
+            <Feather name={showResources ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+          </Pressable>
+          {showResources ? (
+            <View style={styles.resList}>
+              {resQuery.isLoading ? (
+                <Text style={[styles.resMeta, { color: colors.mutedForeground }]}>Cargando recursos...</Text>
+              ) : resQuery.isError ? (
+                <Pressable onPress={() => void resQuery.refetch()} testID="button-retry-curriculum">
+                  <Text style={[styles.resMeta, { color: colors.destructive }]}>No se pudieron cargar. Toca para reintentar.</Text>
+                </Pressable>
+              ) : materialResources.length === 0 ? (
+                <Text style={[styles.resMeta, { color: colors.mutedForeground }]}>Aún no hay recursos asociados.</Text>
+              ) : (
+                materialResources.slice(0, 8).map((r) => (
+                  <Pressable
+                    key={r.id}
+                    disabled={!r.fileUrl}
+                    onPress={() => openResource(r)}
+                    style={styles.resRow}
+                    testID={`row-curriculum-resource-${r.id}`}
+                  >
+                    <Text style={[styles.resName, { color: r.fileUrl ? colors.primary : colors.foreground }]} numberOfLines={2}>
+                      {r.title}
+                    </Text>
+                    <Text style={[styles.resMeta, { color: colors.mutedForeground }]} numberOfLines={2}>
+                      {r.curriculum?.originCenterName ?? "Centro de origen no disponible"} · {r.type} · {r.curriculum?.audience === "students" ? "Para alumnado" : "Uso docente"} · {r.curriculum?.license}
+                      {r.curriculum?.restricted ? " · Solución restringida" : ""}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+              {resError ? (
+                <Text style={[styles.resMeta, { color: colors.destructive }]}>{resError}</Text>
+              ) : null}
+              {libraryUrl ? (
+                <Pressable onPress={() => void openBrowserLink(libraryUrl).catch(() => undefined)} accessibilityRole="link" testID="link-curriculum-library-web">
+                  <Text style={[styles.originLink, { color: colors.primary }]}>Ver y gestionar en la biblioteca (web)</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={0}>
         {isLoading ? (
           <Loading />
@@ -278,7 +431,25 @@ export default function ForoTemaScreen() {
 }
 
 const styles = StyleSheet.create({
+  originBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  originText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
+  originLink: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   container: { flex: 1 },
+  resBox: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, gap: 6 },
+  resHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  resTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  resList: { gap: 8, maxHeight: 260 },
+  resRow: { gap: 2 },
+  resName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  resMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
   flex: { flex: 1 },
   list: { padding: 16, gap: 10, flexGrow: 1 },
   emptyWrap: { flex: 1, minHeight: 300 },

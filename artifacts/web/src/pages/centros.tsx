@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CenterMap, type MapCenter } from "@/components/center-map";
 import { CenterFormDialog } from "@/components/center-form-dialog";
+import { TrainingOfferAiDialog } from "@/components/training-offer-ai-dialog";
 import {
   Building2,
   MapPin,
@@ -188,6 +189,7 @@ export default function CentrosPage() {
             <FileSpreadsheet className="h-4 w-4" />
             Exportar Excel
           </Button>
+          {user?.role === "superadmin" && <TrainingOfferAiDialog />}
           {canManage && (
             <CenterFormDialog
               trigger={

@@ -6,6 +6,7 @@ import { startMeetingMinutesWorker } from "./lib/meetingMinutesWorker";
 import { startCoordinatorMailWorker } from "./lib/coordinatorMailWorker";
 import { startAiKnowledgeWorker } from "./lib/aiKnowledge";
 import { startChatAttachmentDeletionWorker } from "./lib/chatAttachmentDeletionWorker";
+import { startForumDigestWorker } from "./lib/forumDigestWorker";
 import { seedIntegrationSettingsFromEnv } from "./lib/settings";
 import { seedAcademicYears } from "./routes/academicYears";
 import { startConfirmationScheduler } from "./lib/scheduler";
@@ -57,6 +58,7 @@ async function start(): Promise<void> {
   startCoordinatorMailWorker();
   startAiKnowledgeWorker();
   startChatAttachmentDeletionWorker();
+  startForumDigestWorker();
   server.listen(port, () => {
     logger.info({ port }, "Server listening");
   });

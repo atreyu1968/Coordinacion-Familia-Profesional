@@ -1250,6 +1250,60 @@ export const GetMeetingTokenResponse = zod.object({
 
 
 /**
+ * @summary Current authorized ADG module collaboration indicators, not institutional approval
+ */
+export const GetForumCollaborationTrackingResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "academicYear": zod.string().nullable(),
+  "family": zod.string(),
+  "legend": zod.string(),
+  "providerCheck": zod.enum(['not_checked']),
+  "modules": zod.array(zod.object({
+  "id": zod.number().int(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "cycleName": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "verificationCurrent": zod.boolean(),
+  "reviewNeeded": zod.boolean(),
+  "diagnostics": zod.array(zod.string()),
+  "outcomes": zod.number().int(),
+  "outcomesWithCriteria": zod.number().int(),
+  "criteria": zod.number().int(),
+  "outcomesWithResources": zod.number().int(),
+  "resources": zod.number().int(),
+  "resourcesNeedingReview": zod.number().int(),
+  "plannedThreads": zod.number().int(),
+  "createdThreads": zod.number().int(),
+  "participants": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligibleParticipants": zod.number().int(),
+  "eligibleCenters": zod.number().int(),
+  "publishedVersions": zod.number().int(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "threads": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "kind": zod.string(),
+  "status": zod.string(),
+  "version": zod.number().int().nullable(),
+  "publishedPageId": zod.number().int().nullable()
+}))
+})),
+  "totals": zod.object({
+  "modules": zod.number().int(),
+  "enabled": zod.number().int(),
+  "reviewNeeded": zod.number().int(),
+  "participants": zod.number().int(),
+  "centers": zod.number().int(),
+  "resources": zod.number().int(),
+  "publishedVersions": zod.number().int(),
+  "openConsultations": zod.number().int()
+})
+})
+
+
+/**
  * @summary List modules with forum thread counts (grouped by cycle in UI)
  */
 export const ListForumModulesResponseItem = zod.object({
@@ -1282,6 +1336,264 @@ export const ListForumModerationHistoryResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListForumModerationHistoryResponse = zod.array(ListForumModerationHistoryResponseItem)
+
+
+/**
+ * @summary Read existing forum structure and a non-mutating initialization preview
+ */
+
+
+
+export const GetForumCollaborationParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const getForumCollaborationResponseSectionsItemKeyRegExp = new RegExp('^PD-(0[1-9]|1[0-6])$');
+export const getForumCollaborationResponseSectionsItemTitleMax = 250;
+
+export const getForumCollaborationResponseSectionsItemPromptMax = 6000;
+
+export const getForumCollaborationResponseSectionsItemOrderMin = 0;
+export const getForumCollaborationResponseSectionsItemOrderMax = 999;
+
+
+
+export const GetForumCollaborationResponse = zod.object({
+  "moduleId": zod.number().int(),
+  "moduleCode": zod.string().nullable(),
+  "moduleName": zod.string(),
+  "cycleName": zod.string().nullable(),
+  "academicYear": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "canConfigure": zod.boolean(),
+  "verificationCurrent": zod.boolean(),
+  "fingerprint": zod.string(),
+  "diagnostics": zod.array(zod.string()),
+  "importReport": zod.union([zod.object({
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string()
+}))
+}),zod.null()]).optional(),
+  "sections": zod.array(zod.object({
+  "key": zod.string().regex(getForumCollaborationResponseSectionsItemKeyRegExp),
+  "title": zod.string().min(1).max(getForumCollaborationResponseSectionsItemTitleMax),
+  "prompt": zod.string().min(1).max(getForumCollaborationResponseSectionsItemPromptMax),
+  "enabled": zod.boolean(),
+  "order": zod.number().int().min(getForumCollaborationResponseSectionsItemOrderMin).max(getForumCollaborationResponseSectionsItemOrderMax)
+})),
+  "threads": zod.array(zod.object({
+  "key": zod.string(),
+  "kind": zod.enum(['programming_section', 'material_ra', 'material_ce']),
+  "title": zod.string(),
+  "content": zod.string(),
+  "outcomeId": zod.number().int().nullable(),
+  "criterionId": zod.number().int().nullable(),
+  "threadId": zod.number().int().nullable(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string().nullable()
+})),
+  "configuration": zod.union([zod.object({
+  "revision": zod.number().int(),
+  "enabled": zod.boolean(),
+  "officialCode": zod.string(),
+  "sourceTitle": zod.string(),
+  "sourceUrl": zod.string(),
+  "curriculumVersion": zod.string(),
+  "territory": zod.string(),
+  "verifiedAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Explicitly verify module curriculum and save a versioned pilot configuration
+ */
+
+
+
+export const ConfigureForumCollaborationParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const configureForumCollaborationBodyRevisionMin = 0;
+
+
+export const configureForumCollaborationBodyOfficialCodeMax = 80;
+
+export const configureForumCollaborationBodySourceTitleMax = 500;
+
+export const configureForumCollaborationBodySourceUrlMax = 2000;
+
+export const configureForumCollaborationBodyCurriculumVersionMax = 200;
+
+export const configureForumCollaborationBodyTerritoryMax = 200;
+
+export const configureForumCollaborationBodySectionsItemKeyRegExp = new RegExp('^PD-(0[1-9]|1[0-6])$');
+export const configureForumCollaborationBodySectionsItemTitleMax = 250;
+
+export const configureForumCollaborationBodySectionsItemPromptMax = 6000;
+
+export const configureForumCollaborationBodySectionsItemOrderMin = 0;
+export const configureForumCollaborationBodySectionsItemOrderMax = 999;
+
+export const configureForumCollaborationBodySectionsMin = 16;
+export const configureForumCollaborationBodySectionsMax = 16;
+
+
+
+export const ConfigureForumCollaborationBody = zod.object({
+  "revision": zod.number().int().min(configureForumCollaborationBodyRevisionMin),
+  "fingerprint": zod.string().min(1),
+  "enabled": zod.boolean(),
+  "officialCode": zod.string().min(1).max(configureForumCollaborationBodyOfficialCodeMax),
+  "sourceTitle": zod.string().min(1).max(configureForumCollaborationBodySourceTitleMax),
+  "sourceUrl": zod.string().url().max(configureForumCollaborationBodySourceUrlMax),
+  "curriculumVersion": zod.string().min(1).max(configureForumCollaborationBodyCurriculumVersionMax),
+  "territory": zod.string().min(1).max(configureForumCollaborationBodyTerritoryMax),
+  "confirmReviewed": zod.boolean(),
+  "sections": zod.array(zod.object({
+  "key": zod.string().regex(configureForumCollaborationBodySectionsItemKeyRegExp),
+  "title": zod.string().min(1).max(configureForumCollaborationBodySectionsItemTitleMax),
+  "prompt": zod.string().min(1).max(configureForumCollaborationBodySectionsItemPromptMax),
+  "enabled": zod.boolean(),
+  "order": zod.number().int().min(configureForumCollaborationBodySectionsItemOrderMin).max(configureForumCollaborationBodySectionsItemOrderMax)
+})).min(configureForumCollaborationBodySectionsMin).max(configureForumCollaborationBodySectionsMax)
+})
+
+export const configureForumCollaborationResponseSectionsItemKeyRegExp = new RegExp('^PD-(0[1-9]|1[0-6])$');
+export const configureForumCollaborationResponseSectionsItemTitleMax = 250;
+
+export const configureForumCollaborationResponseSectionsItemPromptMax = 6000;
+
+export const configureForumCollaborationResponseSectionsItemOrderMin = 0;
+export const configureForumCollaborationResponseSectionsItemOrderMax = 999;
+
+
+
+export const ConfigureForumCollaborationResponse = zod.object({
+  "moduleId": zod.number().int(),
+  "moduleCode": zod.string().nullable(),
+  "moduleName": zod.string(),
+  "cycleName": zod.string().nullable(),
+  "academicYear": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "canConfigure": zod.boolean(),
+  "verificationCurrent": zod.boolean(),
+  "fingerprint": zod.string(),
+  "diagnostics": zod.array(zod.string()),
+  "importReport": zod.union([zod.object({
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string()
+}))
+}),zod.null()]).optional(),
+  "sections": zod.array(zod.object({
+  "key": zod.string().regex(configureForumCollaborationResponseSectionsItemKeyRegExp),
+  "title": zod.string().min(1).max(configureForumCollaborationResponseSectionsItemTitleMax),
+  "prompt": zod.string().min(1).max(configureForumCollaborationResponseSectionsItemPromptMax),
+  "enabled": zod.boolean(),
+  "order": zod.number().int().min(configureForumCollaborationResponseSectionsItemOrderMin).max(configureForumCollaborationResponseSectionsItemOrderMax)
+})),
+  "threads": zod.array(zod.object({
+  "key": zod.string(),
+  "kind": zod.enum(['programming_section', 'material_ra', 'material_ce']),
+  "title": zod.string(),
+  "content": zod.string(),
+  "outcomeId": zod.number().int().nullable(),
+  "criterionId": zod.number().int().nullable(),
+  "threadId": zod.number().int().nullable(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string().nullable()
+})),
+  "configuration": zod.union([zod.object({
+  "revision": zod.number().int(),
+  "enabled": zod.boolean(),
+  "officialCode": zod.string(),
+  "sourceTitle": zod.string(),
+  "sourceUrl": zod.string(),
+  "curriculumVersion": zod.string(),
+  "territory": zod.string(),
+  "verifiedAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Confirm the preview and create missing structural threads idempotently
+ */
+
+
+
+export const InitializeForumCollaborationParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const InitializeForumCollaborationBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "fingerprint": zod.string().min(1)
+})
+
+export const initializeForumCollaborationResponseSectionsItemKeyRegExp = new RegExp('^PD-(0[1-9]|1[0-6])$');
+export const initializeForumCollaborationResponseSectionsItemTitleMax = 250;
+
+export const initializeForumCollaborationResponseSectionsItemPromptMax = 6000;
+
+export const initializeForumCollaborationResponseSectionsItemOrderMin = 0;
+export const initializeForumCollaborationResponseSectionsItemOrderMax = 999;
+
+
+
+export const InitializeForumCollaborationResponse = zod.object({
+  "moduleId": zod.number().int(),
+  "moduleCode": zod.string().nullable(),
+  "moduleName": zod.string(),
+  "cycleName": zod.string().nullable(),
+  "academicYear": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "canConfigure": zod.boolean(),
+  "verificationCurrent": zod.boolean(),
+  "fingerprint": zod.string(),
+  "diagnostics": zod.array(zod.string()),
+  "importReport": zod.union([zod.object({
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string()
+}))
+}),zod.null()]).optional(),
+  "sections": zod.array(zod.object({
+  "key": zod.string().regex(initializeForumCollaborationResponseSectionsItemKeyRegExp),
+  "title": zod.string().min(1).max(initializeForumCollaborationResponseSectionsItemTitleMax),
+  "prompt": zod.string().min(1).max(initializeForumCollaborationResponseSectionsItemPromptMax),
+  "enabled": zod.boolean(),
+  "order": zod.number().int().min(initializeForumCollaborationResponseSectionsItemOrderMin).max(initializeForumCollaborationResponseSectionsItemOrderMax)
+})),
+  "threads": zod.array(zod.object({
+  "key": zod.string(),
+  "kind": zod.enum(['programming_section', 'material_ra', 'material_ce']),
+  "title": zod.string(),
+  "content": zod.string(),
+  "outcomeId": zod.number().int().nullable(),
+  "criterionId": zod.number().int().nullable(),
+  "threadId": zod.number().int().nullable(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string().nullable()
+})),
+  "configuration": zod.union([zod.object({
+  "revision": zod.number().int(),
+  "enabled": zod.boolean(),
+  "officialCode": zod.string(),
+  "sourceTitle": zod.string(),
+  "sourceUrl": zod.string(),
+  "curriculumVersion": zod.string(),
+  "territory": zod.string(),
+  "verifiedAt": zod.coerce.date()
+}),zod.null()])
+})
 
 
 /**
@@ -2223,6 +2535,95 @@ export const ListMunicipalitiesResponse = zod.array(ListMunicipalitiesResponseIt
 
 
 /**
+ * @summary Discover official sources for the active year's training offer (superadmin)
+ */
+
+export const discoverTrainingOfferAiBodySourceUrlsItemMax = 2000;
+
+export const discoverTrainingOfferAiBodySourceUrlsMax = 10;
+
+
+
+export const DiscoverTrainingOfferAiBody = zod.object({
+  "centerId": zod.number().int().min(1).optional(),
+  "sourceUrls": zod.array(zod.string().url().max(discoverTrainingOfferAiBodySourceUrlsItemMax)).max(discoverTrainingOfferAiBodySourceUrlsMax).optional()
+})
+
+export const DiscoverTrainingOfferAiResponse = zod.object({
+  "schoolYear": zod.string(),
+  "family": zod.string(),
+  "centerCount": zod.number().int(),
+  "sources": zod.array(zod.string().url()),
+  "warnings": zod.array(zod.string()),
+  "contextToken": zod.string()
+})
+
+
+/**
+ * @summary Extract evidenced training offers from one official source using configured AI
+ */
+export const analyzeTrainingOfferAiBodyContextTokenMin = 20;
+export const analyzeTrainingOfferAiBodyContextTokenMax = 300000;
+
+export const analyzeTrainingOfferAiBodySourceUrlMax = 2000;
+
+
+
+export const AnalyzeTrainingOfferAiBody = zod.object({
+  "contextToken": zod.string().min(analyzeTrainingOfferAiBodyContextTokenMin).max(analyzeTrainingOfferAiBodyContextTokenMax),
+  "sourceUrl": zod.string().url().max(analyzeTrainingOfferAiBodySourceUrlMax)
+})
+
+export const AnalyzeTrainingOfferAiResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "centerId": zod.number().int(),
+  "centerCode": zod.string(),
+  "centerName": zod.string(),
+  "cycleId": zod.number().int(),
+  "cycleName": zod.string(),
+  "level": zod.string().nullable(),
+  "sourceUrl": zod.string().url(),
+  "evidence": zod.string(),
+  "existing": zod.boolean()
+})),
+  "rejected": zod.number().int(),
+  "warnings": zod.array(zod.string()),
+  "resultToken": zod.string()
+})
+
+
+/**
+ * @summary Add reviewed offers to the still-active year without deleting existing offers
+ */
+export const applyTrainingOfferAiBodyContextTokenMin = 20;
+export const applyTrainingOfferAiBodyContextTokenMax = 300000;
+
+export const applyTrainingOfferAiBodyResultTokensItemMin = 20;
+export const applyTrainingOfferAiBodyResultTokensItemMax = 300000;
+
+export const applyTrainingOfferAiBodyResultTokensMax = 30;
+
+
+
+export const ApplyTrainingOfferAiBody = zod.object({
+  "contextToken": zod.string().min(applyTrainingOfferAiBodyContextTokenMin).max(applyTrainingOfferAiBodyContextTokenMax),
+  "resultTokens": zod.array(zod.string().min(applyTrainingOfferAiBodyResultTokensItemMin).max(applyTrainingOfferAiBodyResultTokensItemMax)).min(1).max(applyTrainingOfferAiBodyResultTokensMax)
+})
+
+export const ApplyTrainingOfferAiResponse = zod.object({
+  "schoolYear": zod.string(),
+  "added": zod.number().int(),
+  "unchanged": zod.number().int(),
+  "matchedCenters": zod.number().int(),
+  "pendingCenters": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "reason": zod.string()
+}))
+})
+
+
+/**
  * @summary List centers, filterable by province/island/municipality/family/nature/type
  */
 export const ListCentersQueryParams = zod.object({
@@ -2957,11 +3358,21 @@ export const TransferTeachingAssignmentsResponse = zod.object({
 /**
  * @summary Resource and programming repository
  */
+
+
+
+
 export const ListResourcesQueryParams = zod.object({
   "moduleId": zod.coerce.number().int().optional(),
   "centerId": zod.coerce.number().int().optional(),
-  "search": zod.coerce.string().optional()
+  "search": zod.coerce.string().optional(),
+  "outcomeId": zod.coerce.number().int().min(1).optional(),
+  "criterionId": zod.coerce.number().int().min(1).optional()
 })
+
+
+
+
 
 export const ListResourcesResponseItem = zod.object({
   "id": zod.number().int(),
@@ -2974,7 +3385,25 @@ export const ListResourcesResponseItem = zod.object({
   "originalAuthorName": zod.string().nullish(),
   "moduleId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
-  "createdAt": zod.coerce.date().optional()
+  "createdAt": zod.coerce.date().optional(),
+  "curriculum": zod.object({
+  "moduleId": zod.number().int(),
+  "originCenterId": zod.number().int().nullish(),
+  "originCenterName": zod.string().nullish(),
+  "revision": zod.number().int(),
+  "license": zod.string(),
+  "version": zod.string(),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string(),
+  "fingerprint": zod.string(),
+  "canEdit": zod.boolean(),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+}))
+}).optional()
 })
 export const ListResourcesResponse = zod.array(ListResourcesResponseItem)
 
@@ -2988,6 +3417,10 @@ export const CreateResourceBody = zod.object({
   "centerId": zod.number().int().nullish()
 })
 
+
+
+
+
 export const CreateResourceResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -2999,7 +3432,25 @@ export const CreateResourceResponse = zod.object({
   "originalAuthorName": zod.string().nullish(),
   "moduleId": zod.number().int().nullish(),
   "centerId": zod.number().int().nullish(),
-  "createdAt": zod.coerce.date().optional()
+  "createdAt": zod.coerce.date().optional(),
+  "curriculum": zod.object({
+  "moduleId": zod.number().int(),
+  "originCenterId": zod.number().int().nullish(),
+  "originCenterName": zod.string().nullish(),
+  "revision": zod.number().int(),
+  "license": zod.string(),
+  "version": zod.string(),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string(),
+  "fingerprint": zod.string(),
+  "canEdit": zod.boolean(),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+}))
+}).optional()
 })
 
 
@@ -3008,6 +3459,799 @@ export const DeleteResourceParams = zod.object({
 })
 
 export const DeleteResourceResponse = zod.void()
+
+
+export const GetForumAgreementParams = zod.object({
+  "threadId": zod.coerce.number().int()
+})
+
+export const getForumAgreementResponseAgreementOneSourcesItemTitleMax = 300;
+
+export const getForumAgreementResponseAgreementOneSourcesItemUrlMax = 2000;
+
+export const getForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax = 300;
+
+export const getForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax = 2000;
+
+
+
+export const GetForumAgreementResponse = zod.object({
+  "notificationWarning": zod.string().nullish(),
+  "moduleId": zod.number().int(),
+  "threadId": zod.number().int(),
+  "canEdit": zod.boolean(),
+  "canPublish": zod.boolean(),
+  "canDelegate": zod.boolean(),
+  "canPosition": zod.boolean(),
+  "fingerprint": zod.string(),
+  "curriculumCurrent": zod.boolean(),
+  "nextcloudConfigured": zod.boolean(),
+  "agreement": zod.union([zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(getForumAgreementResponseAgreementOneSourcesItemTitleMax),
+  "url": zod.string().min(1).max(getForumAgreementResponseAgreementOneSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "revisions": zod.array(zod.object({
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "snapshot": zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(getForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax),
+  "url": zod.string().min(1).max(getForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})),
+  "positions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "positionHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "participants": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isModerator": zod.boolean(),
+  "centers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}))
+})),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})
+
+
+export const SaveForumAgreementParams = zod.object({
+  "threadId": zod.coerce.number().int()
+})
+
+export const saveForumAgreementBodyRevisionMin = 0;
+
+export const saveForumAgreementBodyNewVersionDefault = false;
+export const saveForumAgreementBodySummaryMax = 3000;
+
+export const saveForumAgreementBodyProposedTextMax = 60000;
+
+export const saveForumAgreementBodyObservationsMax = 10000;
+
+export const saveForumAgreementBodyClosureReasonMax = 5000;
+
+export const saveForumAgreementBodySourcesItemTitleMax = 300;
+
+export const saveForumAgreementBodySourcesItemUrlMax = 2000;
+
+export const saveForumAgreementBodySourcesMax = 50;
+
+
+export const saveForumAgreementBodySourcePostIdsMax = 100;
+
+
+export const saveForumAgreementBodyEditorIdsMax = 50;
+
+export const saveForumAgreementBodyDocumentUrlMax = 2000;
+
+export const saveForumAgreementBodyFingerprintMax = 100;
+
+
+
+export const SaveForumAgreementBody = zod.object({
+  "revision": zod.number().int().min(saveForumAgreementBodyRevisionMin),
+  "newVersion": zod.boolean().default(saveForumAgreementBodyNewVersionDefault),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string().max(saveForumAgreementBodySummaryMax),
+  "proposedText": zod.string().max(saveForumAgreementBodyProposedTextMax),
+  "observations": zod.string().max(saveForumAgreementBodyObservationsMax),
+  "closureReason": zod.string().max(saveForumAgreementBodyClosureReasonMax),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(saveForumAgreementBodySourcesItemTitleMax),
+  "url": zod.string().min(1).max(saveForumAgreementBodySourcesItemUrlMax)
+})).max(saveForumAgreementBodySourcesMax),
+  "sourcePostIds": zod.array(zod.number().int().min(1)).max(saveForumAgreementBodySourcePostIdsMax),
+  "editorIds": zod.array(zod.number().int().min(1)).max(saveForumAgreementBodyEditorIdsMax),
+  "documentUrl": zod.string().max(saveForumAgreementBodyDocumentUrlMax).nullable(),
+  "fingerprint": zod.string().min(1).max(saveForumAgreementBodyFingerprintMax)
+})
+
+export const saveForumAgreementResponseAgreementOneSourcesItemTitleMax = 300;
+
+export const saveForumAgreementResponseAgreementOneSourcesItemUrlMax = 2000;
+
+export const saveForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax = 300;
+
+export const saveForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax = 2000;
+
+
+
+export const SaveForumAgreementResponse = zod.object({
+  "notificationWarning": zod.string().nullish(),
+  "moduleId": zod.number().int(),
+  "threadId": zod.number().int(),
+  "canEdit": zod.boolean(),
+  "canPublish": zod.boolean(),
+  "canDelegate": zod.boolean(),
+  "canPosition": zod.boolean(),
+  "fingerprint": zod.string(),
+  "curriculumCurrent": zod.boolean(),
+  "nextcloudConfigured": zod.boolean(),
+  "agreement": zod.union([zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(saveForumAgreementResponseAgreementOneSourcesItemTitleMax),
+  "url": zod.string().min(1).max(saveForumAgreementResponseAgreementOneSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "revisions": zod.array(zod.object({
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "snapshot": zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(saveForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax),
+  "url": zod.string().min(1).max(saveForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})),
+  "positions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "positionHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "participants": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isModerator": zod.boolean(),
+  "centers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}))
+})),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})
+
+
+export const RecordAgreementPositionParams = zod.object({
+  "threadId": zod.coerce.number().int()
+})
+
+
+
+export const recordAgreementPositionBodyReasonMax = 5000;
+
+
+
+
+export const RecordAgreementPositionBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "version": zod.number().int().min(1),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string().max(recordAgreementPositionBodyReasonMax),
+  "centerId": zod.number().int().min(1)
+})
+
+export const recordAgreementPositionResponseAgreementOneSourcesItemTitleMax = 300;
+
+export const recordAgreementPositionResponseAgreementOneSourcesItemUrlMax = 2000;
+
+export const recordAgreementPositionResponseRevisionsItemSnapshotSourcesItemTitleMax = 300;
+
+export const recordAgreementPositionResponseRevisionsItemSnapshotSourcesItemUrlMax = 2000;
+
+
+
+export const RecordAgreementPositionResponse = zod.object({
+  "notificationWarning": zod.string().nullish(),
+  "moduleId": zod.number().int(),
+  "threadId": zod.number().int(),
+  "canEdit": zod.boolean(),
+  "canPublish": zod.boolean(),
+  "canDelegate": zod.boolean(),
+  "canPosition": zod.boolean(),
+  "fingerprint": zod.string(),
+  "curriculumCurrent": zod.boolean(),
+  "nextcloudConfigured": zod.boolean(),
+  "agreement": zod.union([zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(recordAgreementPositionResponseAgreementOneSourcesItemTitleMax),
+  "url": zod.string().min(1).max(recordAgreementPositionResponseAgreementOneSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "revisions": zod.array(zod.object({
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "snapshot": zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(recordAgreementPositionResponseRevisionsItemSnapshotSourcesItemTitleMax),
+  "url": zod.string().min(1).max(recordAgreementPositionResponseRevisionsItemSnapshotSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})),
+  "positions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "positionHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "participants": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isModerator": zod.boolean(),
+  "centers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}))
+})),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})
+
+
+export const PublishForumAgreementParams = zod.object({
+  "threadId": zod.coerce.number().int()
+})
+
+
+
+
+
+export const PublishForumAgreementBody = zod.object({
+  "revision": zod.number().int().min(1),
+  "version": zod.number().int().min(1),
+  "documentConfirmed": zod.literal(true),
+  "referenceOnlyConfirmed": zod.literal(true)
+})
+
+export const publishForumAgreementResponseAgreementOneSourcesItemTitleMax = 300;
+
+export const publishForumAgreementResponseAgreementOneSourcesItemUrlMax = 2000;
+
+export const publishForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax = 300;
+
+export const publishForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax = 2000;
+
+
+
+export const PublishForumAgreementResponse = zod.object({
+  "notificationWarning": zod.string().nullish(),
+  "moduleId": zod.number().int(),
+  "threadId": zod.number().int(),
+  "canEdit": zod.boolean(),
+  "canPublish": zod.boolean(),
+  "canDelegate": zod.boolean(),
+  "canPosition": zod.boolean(),
+  "fingerprint": zod.string(),
+  "curriculumCurrent": zod.boolean(),
+  "nextcloudConfigured": zod.boolean(),
+  "agreement": zod.union([zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(publishForumAgreementResponseAgreementOneSourcesItemTitleMax),
+  "url": zod.string().min(1).max(publishForumAgreementResponseAgreementOneSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "revisions": zod.array(zod.object({
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "actorName": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "snapshot": zod.object({
+  "responsibleId": zod.number().int().nullish(),
+  "reviewerId": zod.number().int().nullish(),
+  "id": zod.number().int(),
+  "threadId": zod.number().int(),
+  "moduleId": zod.number().int(),
+  "revision": zod.number().int(),
+  "version": zod.number().int(),
+  "status": zod.enum(['abierto', 'sintesis', 'propuesta', 'consulta', 'consensuado', 'sin_consenso', 'revision_normativa', 'archivado']),
+  "summary": zod.string(),
+  "proposedText": zod.string(),
+  "observations": zod.string(),
+  "closureReason": zod.string(),
+  "sources": zod.array(zod.object({
+  "title": zod.string().min(1).max(publishForumAgreementResponseRevisionsItemSnapshotSourcesItemTitleMax),
+  "url": zod.string().min(1).max(publishForumAgreementResponseRevisionsItemSnapshotSourcesItemUrlMax)
+})),
+  "sourcePostIds": zod.array(zod.number().int()),
+  "editorIds": zod.array(zod.number().int()),
+  "documentUrl": zod.string().nullable(),
+  "fingerprint": zod.string(),
+  "curriculumVersion": zod.string(),
+  "publishedPageId": zod.number().int().nullable(),
+  "updatedAt": zod.string()
+}),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})),
+  "positions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "positionHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "version": zod.number().int(),
+  "userId": zod.number().int(),
+  "userName": zod.string().nullable(),
+  "centerId": zod.number().int().nullable(),
+  "centerName": zod.string(),
+  "position": zod.enum(['a_favor', 'con_reservas', 'en_contra']),
+  "reason": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "participants": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isModerator": zod.boolean(),
+  "centers": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+}))
+})),
+  "participation": zod.object({
+  "teachers": zod.number().int(),
+  "centers": zod.number().int(),
+  "eligible": zod.number().int(),
+  "limited": zod.boolean(),
+  "warning": zod.string()
+})
+})
+
+
+
+
+
+export const ListCurriculumResourcesParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const ListCurriculumResourcesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "fileUrl": zod.string().nullish(),
+  "authorId": zod.number().int().nullish(),
+  "authorName": zod.string().nullish(),
+  "originalAuthorName": zod.string().nullish(),
+  "moduleId": zod.number().int().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "curriculum": zod.object({
+  "moduleId": zod.number().int(),
+  "originCenterId": zod.number().int().nullish(),
+  "originCenterName": zod.string().nullish(),
+  "revision": zod.number().int(),
+  "license": zod.string(),
+  "version": zod.string(),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string(),
+  "fingerprint": zod.string(),
+  "canEdit": zod.boolean(),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+}))
+}).optional()
+})
+export const ListCurriculumResourcesResponse = zod.array(ListCurriculumResourcesResponseItem)
+
+
+
+
+
+export const CreateCurriculumResourceParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+export const createCurriculumResourceBodyOneRevisionMin = 0;
+
+
+export const createCurriculumResourceBodyOneLicenseMax = 200;
+
+export const createCurriculumResourceBodyOneVersionMax = 100;
+
+
+
+export const createCurriculumResourceBodyOneTargetsMax = 100;
+
+export const createCurriculumResourceBodyTwoTitleMax = 300;
+
+export const createCurriculumResourceBodyTwoDescriptionMax = 10000;
+
+export const createCurriculumResourceBodyTwoTypeMax = 100;
+
+export const createCurriculumResourceBodyTwoFileUrlMax = 2000;
+
+
+
+export const CreateCurriculumResourceBody = zod.object({
+  "revision": zod.number().int().min(createCurriculumResourceBodyOneRevisionMin),
+  "fingerprint": zod.string().min(1),
+  "license": zod.string().min(1).max(createCurriculumResourceBodyOneLicenseMax),
+  "version": zod.string().min(1).max(createCurriculumResourceBodyOneVersionMax),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "rightsConfirmed": zod.literal(true),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+})).min(1).max(createCurriculumResourceBodyOneTargetsMax)
+}).and(zod.object({
+  "title": zod.string().min(1).max(createCurriculumResourceBodyTwoTitleMax),
+  "description": zod.string().max(createCurriculumResourceBodyTwoDescriptionMax).nullish(),
+  "type": zod.string().min(1).max(createCurriculumResourceBodyTwoTypeMax),
+  "fileUrl": zod.string().min(1).max(createCurriculumResourceBodyTwoFileUrlMax)
+}))
+
+
+
+
+
+export const CreateCurriculumResourceResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "fileUrl": zod.string().nullish(),
+  "authorId": zod.number().int().nullish(),
+  "authorName": zod.string().nullish(),
+  "originalAuthorName": zod.string().nullish(),
+  "moduleId": zod.number().int().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "curriculum": zod.object({
+  "moduleId": zod.number().int(),
+  "originCenterId": zod.number().int().nullish(),
+  "originCenterName": zod.string().nullish(),
+  "revision": zod.number().int(),
+  "license": zod.string(),
+  "version": zod.string(),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string(),
+  "fingerprint": zod.string(),
+  "canEdit": zod.boolean(),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+}))
+}).optional()
+})
+
+
+
+
+
+
+export const UpdateResourceCurriculumParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1),
+  "resourceId": zod.coerce.number().int().min(1)
+})
+
+export const updateResourceCurriculumBodyRevisionMin = 0;
+
+
+export const updateResourceCurriculumBodyLicenseMax = 200;
+
+export const updateResourceCurriculumBodyVersionMax = 100;
+
+
+
+export const updateResourceCurriculumBodyTargetsMax = 100;
+
+
+
+export const UpdateResourceCurriculumBody = zod.object({
+  "revision": zod.number().int().min(updateResourceCurriculumBodyRevisionMin),
+  "fingerprint": zod.string().min(1),
+  "license": zod.string().min(1).max(updateResourceCurriculumBodyLicenseMax),
+  "version": zod.string().min(1).max(updateResourceCurriculumBodyVersionMax),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "rightsConfirmed": zod.literal(true),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+})).min(1).max(updateResourceCurriculumBodyTargetsMax)
+})
+
+
+
+
+
+export const UpdateResourceCurriculumResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "fileUrl": zod.string().nullish(),
+  "authorId": zod.number().int().nullish(),
+  "authorName": zod.string().nullish(),
+  "originalAuthorName": zod.string().nullish(),
+  "moduleId": zod.number().int().nullish(),
+  "centerId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "curriculum": zod.object({
+  "moduleId": zod.number().int(),
+  "originCenterId": zod.number().int().nullish(),
+  "originCenterName": zod.string().nullish(),
+  "revision": zod.number().int(),
+  "license": zod.string(),
+  "version": zod.string(),
+  "audience": zod.enum(['teachers', 'students']),
+  "restricted": zod.boolean(),
+  "archived": zod.boolean(),
+  "curriculumVersion": zod.string(),
+  "fingerprint": zod.string(),
+  "canEdit": zod.boolean(),
+  "targets": zod.array(zod.object({
+  "outcomeId": zod.number().int().min(1),
+  "criterionId": zod.number().int().min(1).nullable()
+}))
+}).optional()
+})
 
 
 /**
@@ -5189,7 +6433,7 @@ export const ListNotificationsResponseItem = zod.object({
   "body": zod.string().nullish(),
   "type": zod.string().nullish(),
   "target": zod.union([zod.object({
-  "kind": zod.enum(['event', 'calendar', 'course', 'chat', 'survey', 'form', 'forum', 'space', 'announcement', 'meeting', 'company_alert', 'minutes', 'certificate_event', 'normativa']),
+  "kind": zod.enum(['event', 'calendar', 'course', 'chat', 'survey', 'form', 'forum', 'forum_module', 'space', 'announcement', 'meeting', 'company_alert', 'minutes', 'certificate_event', 'normativa']),
   "id": zod.number().int().min(1).max(listNotificationsResponseTargetOneIdMax)
 }).describe('Destino interno; no concede acceso. El recurso se consulta con los permisos actuales del usuario.'),zod.null()]).optional().describe('Ausente o nulo en avisos históricos; abrir la sección según type.'),
   "readAt": zod.coerce.date().nullish(),

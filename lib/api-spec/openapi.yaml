@@ -838,6 +838,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /forum/collaboration-tracking:
+    get:
+      operationId: getForumCollaborationTracking
+      tags: [forum]
+      summary: Current authorized ADG module collaboration indicators, not institutional approval
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Live indicators, limited to modules and resources the caller can read.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCollaborationTracking"}
+        "403":
+          $ref: "#/components/responses/Error"
   /forum/modules:
     get:
       operationId: listForumModules
@@ -878,6 +893,68 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /forum/modules/{moduleId}/collaboration:
+    get:
+      operationId: getForumCollaboration
+      tags: [forum]
+      summary: Read existing forum structure and a non-mutating initialization preview
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Structure and diagnostics, subject to existing module permissions.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCollaboration"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+    put:
+      operationId: configureForumCollaboration
+      tags: [forum]
+      summary: Explicitly verify module curriculum and save a versioned pilot configuration
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ForumCollaborationInput"}
+      responses:
+        "200":
+          description: Saved configuration.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCollaboration"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/initialize:
+    post:
+      operationId: initializeForumCollaboration
+      tags: [forum]
+      summary: Confirm the preview and create missing structural threads idempotently
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/InitializeForumCollaborationInput"}
+      responses:
+        "200":
+          description: Current structure after atomic initialization.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCollaboration"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
   /forum/threads:
     get:
       operationId: listForumThreads
@@ -1691,6 +1768,12 @@ paths:
                 $ref: "#/components/schemas/User"
         "409":
           description: Account changed concurrently; reload before retrying
+        "502":
+          description: Nextcloud administrator revocation could not be confirmed; account change rolled back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       operationId: deactivateUser
       tags: [users]
@@ -1704,6 +1787,12 @@ paths:
           description: Deactivated
         "409":
           description: Account changed concurrently; reload before retrying
+        "502":
+          description: Nextcloud administrator revocation could not be confirmed; deactivation rolled back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # ---------------------------------------------------------------------------
   # Geo
@@ -1775,6 +1864,81 @@ paths:
   # ---------------------------------------------------------------------------
   # Centers
   # ---------------------------------------------------------------------------
+  /centers/training-offer/ai/discover:
+    post:
+      operationId: discoverTrainingOfferAi
+      tags: [centers]
+      summary: Discover official sources for the active year's training offer (superadmin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingOfferAiDiscoveryInput"
+      responses:
+        "200":
+          description: Year-specific sources and signed consultation context; no changes made
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingOfferAiDiscovery"
+        default:
+          description: Permission, configuration or official-source error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /centers/training-offer/ai/analyze:
+    post:
+      operationId: analyzeTrainingOfferAi
+      tags: [centers]
+      summary: Extract evidenced training offers from one official source using configured AI
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingOfferAiAnalysisInput"
+      responses:
+        "200":
+          description: Signed candidates for review; no changes made
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingOfferAiAnalysis"
+        default:
+          description: Invalid context, year mismatch, unavailable source or AI error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /centers/training-offer/ai/apply:
+    post:
+      operationId: applyTrainingOfferAi
+      tags: [centers]
+      summary: Add reviewed offers to the still-active year without deleting existing offers
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingOfferAiApplyInput"
+      responses:
+        "200":
+          description: Atomic import result; repeat submissions do not duplicate offers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingOfferAiImportResult"
+        default:
+          description: Expired, tampered, foreign or stale proposal; no changes made
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /centers:
     get:
       operationId: listCenters
@@ -2719,6 +2883,12 @@ paths:
             type: integer
         - $ref: "#/components/parameters/CenterQuery"
         - $ref: "#/components/parameters/SearchQuery"
+        - name: outcomeId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: criterionId
+          in: query
+          schema: { type: integer, minimum: 1 }
       responses:
         "200":
           description: Resources
@@ -2746,6 +2916,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Resource"
+        "409":
+          $ref: "#/components/responses/Error"
   /resources/{id}:
     delete:
       operationId: deleteResource
@@ -2757,6 +2929,151 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /forum/threads/{threadId}/agreement:
+    get:
+      operationId: getForumAgreement
+      tags: [Forums]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Ficha e historial autorizados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgreementWorkspace" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: saveForumAgreement
+      tags: [Forums]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgreementInput" }
+      responses:
+        "200":
+          description: Ficha guardada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgreementWorkspace" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /forum/threads/{threadId}/agreement/positions:
+    post:
+      operationId: recordAgreementPosition
+      tags: [Forums]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgreementPositionInput" }
+      responses:
+        "200":
+          description: Postura registrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgreementWorkspace" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /forum/threads/{threadId}/agreement/publish:
+    post:
+      operationId: publishForumAgreement
+      tags: [Forums]
+      parameters:
+        - { name: threadId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgreementPublicationInput" }
+      responses:
+        "200":
+          description: Versión publicada en Documentación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgreementWorkspace" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /forum/modules/{moduleId}/resources:
+    get:
+      operationId: listCurriculumResources
+      tags: [academics]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Authorized canonical resources, without copying files
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Resource" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createCurriculumResource
+      tags: [academics]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumResourceInput" }
+      responses:
+        "201":
+          description: Resource created in the existing library
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Resource" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /forum/modules/{moduleId}/resources/{resourceId}:
+    put:
+      operationId: updateResourceCurriculum
+      tags: [academics]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: moduleId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: resourceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResourceCurriculumInput" }
+      responses:
+        "200":
+          description: Associations updated; file unchanged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Resource" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 
   # ---------------------------------------------------------------------------
   # AI assistant
@@ -7652,6 +7969,90 @@ components:
         level:
           type: string
           nullable: true
+    TrainingOfferAiDiscoveryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        centerId: { type: integer, minimum: 1 }
+        sourceUrls:
+          type: array
+          maxItems: 10
+          items: { type: string, format: uri, maxLength: 2000 }
+    TrainingOfferAiDiscovery:
+      type: object
+      required: [schoolYear, family, centerCount, sources, warnings, contextToken]
+      properties:
+        schoolYear: { type: string }
+        family: { type: string }
+        centerCount: { type: integer }
+        sources:
+          type: array
+          items: { type: string, format: uri }
+        warnings:
+          type: array
+          items: { type: string }
+        contextToken: { type: string }
+    TrainingOfferAiAnalysisInput:
+      type: object
+      additionalProperties: false
+      required: [contextToken, sourceUrl]
+      properties:
+        contextToken: { type: string, minLength: 20, maxLength: 300000 }
+        sourceUrl: { type: string, format: uri, maxLength: 2000 }
+    TrainingOfferAiCandidate:
+      type: object
+      required: [centerId, centerCode, centerName, cycleId, cycleName, level, sourceUrl, evidence, existing]
+      properties:
+        centerId: { type: integer }
+        centerCode: { type: string }
+        centerName: { type: string }
+        cycleId: { type: integer }
+        cycleName: { type: string }
+        level: { type: [string, "null"] }
+        sourceUrl: { type: string, format: uri }
+        evidence: { type: string }
+        existing: { type: boolean }
+    TrainingOfferAiAnalysis:
+      type: object
+      required: [rows, rejected, warnings, resultToken]
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainingOfferAiCandidate"
+        rejected: { type: integer }
+        warnings:
+          type: array
+          items: { type: string }
+        resultToken: { type: string }
+    TrainingOfferAiApplyInput:
+      type: object
+      additionalProperties: false
+      required: [contextToken, resultTokens]
+      properties:
+        contextToken: { type: string, minLength: 20, maxLength: 300000 }
+        resultTokens:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string, minLength: 20, maxLength: 300000 }
+    TrainingOfferAiImportResult:
+      type: object
+      required: [schoolYear, added, unchanged, matchedCenters, pendingCenters]
+      properties:
+        schoolYear: { type: string }
+        added: { type: integer }
+        unchanged: { type: integer }
+        matchedCenters: { type: integer }
+        pendingCenters:
+          type: array
+          items:
+            type: object
+            required: [id, name, reason]
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              reason: { type: string }
     TrainingOffer:
       type: object
       properties:
@@ -7907,7 +8308,195 @@ components:
         createdAt:
           type: string
           format: date-time
+        curriculum:
+          $ref: "#/components/schemas/ResourceCurriculum"
       required: [id, title, type]
+    AgreementSource:
+      type: object
+      required: [title, url]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        url: { type: string, minLength: 1, maxLength: 2000 }
+    AgreementInput:
+      type: object
+      required: [revision, status, summary, proposedText, observations, closureReason, sources, sourcePostIds, editorIds, documentUrl, fingerprint]
+      properties:
+        revision: { type: integer, minimum: 0 }
+        newVersion: { type: boolean, default: false }
+        status: { type: string, enum: [abierto, sintesis, propuesta, consulta, consensuado, sin_consenso, revision_normativa, archivado] }
+        summary: { type: string, maxLength: 3000 }
+        proposedText: { type: string, maxLength: 60000 }
+        observations: { type: string, maxLength: 10000 }
+        closureReason: { type: string, maxLength: 5000 }
+        sources: { type: array, maxItems: 50, items: { $ref: "#/components/schemas/AgreementSource" } }
+        sourcePostIds: { type: array, maxItems: 100, items: { type: integer, minimum: 1 } }
+        editorIds: { type: array, maxItems: 50, items: { type: integer, minimum: 1 } }
+        documentUrl: { type: [string, "null"], maxLength: 2000 }
+        fingerprint: { type: string, minLength: 1, maxLength: 100 }
+    AgreementPublicationInput:
+      type: object
+      required: [revision, version, documentConfirmed, referenceOnlyConfirmed]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        version: { type: integer, minimum: 1 }
+        documentConfirmed: { type: boolean, const: true }
+        referenceOnlyConfirmed: { type: boolean, const: true }
+    AgreementPositionInput:
+      type: object
+      required: [revision, version, position, reason, centerId]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        version: { type: integer, minimum: 1 }
+        position: { type: string, enum: [a_favor, con_reservas, en_contra] }
+        reason: { type: string, maxLength: 5000 }
+        centerId: { type: integer, minimum: 1 }
+    AgreementParticipation:
+      type: object
+      required: [teachers, centers, eligible, limited, warning]
+      properties:
+        teachers: { type: integer }
+        centers: { type: integer }
+        eligible: { type: integer }
+        limited: { type: boolean }
+        warning: { type: string }
+    AgreementRecord:
+      type: object
+      required: [id, threadId, moduleId, revision, version, status, summary, proposedText, observations, closureReason, sources, sourcePostIds, editorIds, documentUrl, fingerprint, curriculumVersion, publishedPageId, updatedAt]
+      properties:
+        responsibleId: { type: [integer, "null"] }
+        reviewerId: { type: [integer, "null"] }
+        id: { type: integer }
+        threadId: { type: integer }
+        moduleId: { type: integer }
+        revision: { type: integer }
+        version: { type: integer }
+        status: { type: string, enum: [abierto, sintesis, propuesta, consulta, consensuado, sin_consenso, revision_normativa, archivado] }
+        summary: { type: string }
+        proposedText: { type: string }
+        observations: { type: string }
+        closureReason: { type: string }
+        sources: { type: array, items: { $ref: "#/components/schemas/AgreementSource" } }
+        sourcePostIds: { type: array, items: { type: integer } }
+        editorIds: { type: array, items: { type: integer } }
+        documentUrl: { type: [string, "null"] }
+        fingerprint: { type: string }
+        curriculumVersion: { type: string }
+        publishedPageId: { type: [integer, "null"] }
+        updatedAt: { type: string }
+    AgreementRevision:
+      type: object
+      required: [revision, version, actorName, createdAt, snapshot, participation]
+      properties:
+        revision: { type: integer }
+        version: { type: integer }
+        actorName: { type: [string, "null"] }
+        createdAt: { type: string }
+        snapshot: { $ref: "#/components/schemas/AgreementRecord" }
+        participation: { $ref: "#/components/schemas/AgreementParticipation" }
+    AgreementPosition:
+      type: object
+      required: [id, version, userId, userName, centerId, centerName, position, reason, updatedAt]
+      properties:
+        id: { type: integer }
+        version: { type: integer }
+        userId: { type: integer }
+        userName: { type: [string, "null"] }
+        centerId: { type: [integer, "null"] }
+        centerName: { type: string }
+        position: { type: string, enum: [a_favor, con_reservas, en_contra] }
+        reason: { type: string }
+        updatedAt: { type: string }
+    AgreementParticipant:
+      type: object
+      required: [id, name, isModerator, centers]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        isModerator: { type: boolean }
+        centers:
+          type: array
+          items: { $ref: "#/components/schemas/AgreementCenter" }
+    AgreementCenter:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    AgreementWorkspace:
+      type: object
+      required: [moduleId, threadId, canEdit, canPublish, canDelegate, canPosition, fingerprint, curriculumCurrent, nextcloudConfigured, agreement, revisions, positions, positionHistory, participants, participation]
+      properties:
+        notificationWarning: { type: [string, "null"] }
+        moduleId: { type: integer }
+        threadId: { type: integer }
+        canEdit: { type: boolean }
+        canPublish: { type: boolean }
+        canDelegate: { type: boolean }
+        canPosition: { type: boolean }
+        fingerprint: { type: string }
+        curriculumCurrent: { type: boolean }
+        nextcloudConfigured: { type: boolean }
+        agreement:
+          oneOf:
+            - { $ref: "#/components/schemas/AgreementRecord" }
+            - { type: "null" }
+        revisions: { type: array, items: { $ref: "#/components/schemas/AgreementRevision" } }
+        positions: { type: array, items: { $ref: "#/components/schemas/AgreementPosition" } }
+        positionHistory: { type: array, items: { $ref: "#/components/schemas/AgreementPosition" } }
+        participants: { type: array, items: { $ref: "#/components/schemas/AgreementParticipant" } }
+        participation: { $ref: "#/components/schemas/AgreementParticipation" }
+    ResourceLearningTarget:
+      type: object
+      required: [outcomeId, criterionId]
+      properties:
+        outcomeId: { type: integer, minimum: 1 }
+        criterionId: { type: [integer, "null"], minimum: 1 }
+    ResourceCurriculumInput:
+      type: object
+      required: [revision, fingerprint, license, version, audience, restricted, archived, rightsConfirmed, targets]
+      properties:
+        revision: { type: integer, minimum: 0 }
+        fingerprint: { type: string, minLength: 1 }
+        license: { type: string, minLength: 1, maxLength: 200 }
+        version: { type: string, minLength: 1, maxLength: 100 }
+        audience: { type: string, enum: [teachers, students] }
+        restricted: { type: boolean }
+        archived: { type: boolean }
+        rightsConfirmed: { type: boolean, enum: [true] }
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ResourceLearningTarget" }
+    CurriculumResourceInput:
+      allOf:
+        - $ref: "#/components/schemas/ResourceCurriculumInput"
+        - type: object
+          required: [title, type, fileUrl]
+          properties:
+            title: { type: string, minLength: 1, maxLength: 300 }
+            description: { type: [string, "null"], maxLength: 10000 }
+            type: { type: string, minLength: 1, maxLength: 100 }
+            fileUrl: { type: string, minLength: 1, maxLength: 2000 }
+    ResourceCurriculum:
+      type: object
+      required: [moduleId, revision, license, version, audience, restricted, archived, curriculumVersion, fingerprint, canEdit, targets]
+      properties:
+        moduleId: { type: integer }
+        originCenterId: { type: [integer, "null"] }
+        originCenterName: { type: [string, "null"] }
+        revision: { type: integer }
+        license: { type: string }
+        version: { type: string }
+        audience: { type: string, enum: [teachers, students] }
+        restricted: { type: boolean }
+        archived: { type: boolean }
+        curriculumVersion: { type: string }
+        fingerprint: { type: string }
+        canEdit: { type: boolean }
+        targets:
+          type: array
+          items: { $ref: "#/components/schemas/ResourceLearningTarget" }
     CreateResourceInput:
       type: object
       properties:
@@ -8486,6 +9075,164 @@ components:
         url:
           type: string
       required: [provider, url]
+    ForumCollaborationTracking:
+      type: object
+      required: [generatedAt, academicYear, family, legend, modules, totals, providerCheck]
+      properties:
+        generatedAt: {type: string, format: date-time}
+        academicYear: {type: [string, "null"]}
+        family: {type: string}
+        legend: {type: string}
+        providerCheck: {type: string, enum: [not_checked]}
+        modules:
+          type: array
+          items: {$ref: "#/components/schemas/ForumTrackingModule"}
+        totals: {$ref: "#/components/schemas/ForumTrackingTotals"}
+    ForumTrackingTotals:
+      type: object
+      required: [modules, enabled, reviewNeeded, participants, centers, resources, publishedVersions, openConsultations]
+      properties:
+        modules: {type: integer}
+        enabled: {type: integer}
+        reviewNeeded: {type: integer}
+        participants: {type: integer}
+        centers: {type: integer}
+        resources: {type: integer}
+        publishedVersions: {type: integer}
+        openConsultations: {type: integer}
+    ForumTrackingModule:
+      type: object
+      required: [id, code, name, cycleName, enabled, verificationCurrent, reviewNeeded, diagnostics, outcomes, outcomesWithCriteria, criteria, outcomesWithResources, resources, resourcesNeedingReview, plannedThreads, createdThreads, participants, centers, eligibleParticipants, eligibleCenters, publishedVersions, lastActivityAt, threads]
+      properties:
+        id: {type: integer}
+        code: {type: [string, "null"]}
+        name: {type: string}
+        cycleName: {type: [string, "null"]}
+        enabled: {type: boolean}
+        verificationCurrent: {type: boolean}
+        reviewNeeded: {type: boolean}
+        diagnostics:
+          type: array
+          items: {type: string}
+        outcomes: {type: integer}
+        outcomesWithCriteria: {type: integer}
+        criteria: {type: integer}
+        outcomesWithResources: {type: integer}
+        resources: {type: integer}
+        resourcesNeedingReview: {type: integer}
+        plannedThreads: {type: integer}
+        createdThreads: {type: integer}
+        participants: {type: integer}
+        centers: {type: integer}
+        eligibleParticipants: {type: integer}
+        eligibleCenters: {type: integer}
+        publishedVersions: {type: integer}
+        lastActivityAt: {type: [string, "null"], format: date-time}
+        threads:
+          type: array
+          items: {$ref: "#/components/schemas/ForumTrackingThread"}
+    ForumTrackingThread:
+      type: object
+      required: [id, title, kind, status, version, publishedPageId]
+      properties:
+        id: {type: integer}
+        title: {type: string}
+        kind: {type: string}
+        status: {type: string}
+        version: {type: [integer, "null"]}
+        publishedPageId: {type: [integer, "null"]}
+    InitializeForumCollaborationInput:
+      type: object
+      required: [revision, fingerprint]
+      properties:
+        revision: {type: integer, minimum: 1}
+        fingerprint: {type: string, minLength: 1}
+    ProgrammingSection:
+      type: object
+      required: [key, title, prompt, enabled, order]
+      properties:
+        key: {type: string, pattern: '^PD-(0[1-9]|1[0-6])$'}
+        title: {type: string, minLength: 1, maxLength: 250}
+        prompt: {type: string, minLength: 1, maxLength: 6000}
+        enabled: {type: boolean}
+        order: {type: integer, minimum: 0, maximum: 999}
+    ForumCollaborationInput:
+      type: object
+      required: [revision, fingerprint, enabled, officialCode, sourceTitle, sourceUrl, curriculumVersion, territory, confirmReviewed, sections]
+      properties:
+        revision: {type: integer, minimum: 0}
+        fingerprint: {type: string, minLength: 1}
+        enabled: {type: boolean}
+        officialCode: {type: string, minLength: 1, maxLength: 80}
+        sourceTitle: {type: string, minLength: 1, maxLength: 500}
+        sourceUrl: {type: string, format: uri, maxLength: 2000}
+        curriculumVersion: {type: string, minLength: 1, maxLength: 200}
+        territory: {type: string, minLength: 1, maxLength: 200}
+        confirmReviewed: {type: boolean}
+        sections:
+          type: array
+          minItems: 16
+          maxItems: 16
+          items: {$ref: "#/components/schemas/ProgrammingSection"}
+    ForumCollaborationConfiguration:
+      type: object
+      required: [revision, enabled, officialCode, sourceTitle, sourceUrl, curriculumVersion, territory, verifiedAt]
+      properties:
+        revision: {type: integer}
+        enabled: {type: boolean}
+        officialCode: {type: string}
+        sourceTitle: {type: string}
+        sourceUrl: {type: string}
+        curriculumVersion: {type: string}
+        territory: {type: string}
+        verifiedAt: {type: string, format: date-time}
+    ForumCollaborationThread:
+      type: object
+      required: [key, kind, title, content, outcomeId, criterionId, threadId, archived, curriculumVersion]
+      properties:
+        key: {type: string}
+        kind: {type: string, enum: [programming_section, material_ra, material_ce]}
+        title: {type: string}
+        content: {type: string}
+        outcomeId: {type: integer, nullable: true}
+        criterionId: {type: integer, nullable: true}
+        threadId: {type: integer, nullable: true}
+        archived: {type: boolean}
+        curriculumVersion: {type: string, nullable: true}
+    ForumCollaboration:
+      type: object
+      required: [moduleId, moduleCode, moduleName, cycleName, academicYear, enabled, canConfigure, verificationCurrent, fingerprint, diagnostics, sections, threads, configuration]
+      properties:
+        moduleId: {type: integer}
+        moduleCode: {type: string, nullable: true}
+        moduleName: {type: string}
+        cycleName: {type: string, nullable: true}
+        academicYear: {type: string, nullable: true}
+        enabled: {type: boolean}
+        canConfigure: {type: boolean}
+        verificationCurrent: {type: boolean}
+        fingerprint: {type: string}
+        diagnostics: {type: array, items: {type: string}}
+        importReport:
+          allOf: [{$ref: "#/components/schemas/CurriculumImportReport"}]
+          nullable: true
+        sections: {type: array, items: {$ref: "#/components/schemas/ProgrammingSection"}}
+        threads: {type: array, items: {$ref: "#/components/schemas/ForumCollaborationThread"}}
+        configuration:
+          allOf: [{$ref: "#/components/schemas/ForumCollaborationConfiguration"}]
+          nullable: true
+    CurriculumImportReport:
+      type: object
+      required: [reasons]
+      properties:
+        reasons:
+          type: array
+          items:
+            type: object
+            required: [code, message]
+            properties:
+              code: {type: string}
+              message: {type: string}
     ForumModule:
       type: object
       properties:
@@ -9536,7 +10283,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [event, calendar, course, chat, survey, form, forum, space, announcement, meeting, company_alert, minutes, certificate_event, normativa]
+          enum: [event, calendar, course, chat, survey, form, forum, forum_module, space, announcement, meeting, company_alert, minutes, certificate_event, normativa]
         id:
           type: integer
           minimum: 1

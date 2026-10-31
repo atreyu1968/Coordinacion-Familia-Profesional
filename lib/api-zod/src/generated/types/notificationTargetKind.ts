@@ -17,6 +17,7 @@ export const NotificationTargetKind = {
   survey: 'survey',
   form: 'form',
   forum: 'forum',
+  forum_module: 'forum_module',
   space: 'space',
   announcement: 'announcement',
   meeting: 'meeting',

@@ -52,6 +52,8 @@ const allowMissingUpgradeColumns =
 // Existing relations must match their columns/defaults. Only the explicitly
 // repairable task keys/indexes below may be absent before their migration.
 const additiveTables = [
+  "forum_digest_events", "forum_digest_deliveries",
+  "forum_agreements", "forum_agreement_revisions", "forum_agreement_positions", "forum_agreement_position_history",
   "ai_knowledge_accounts",
   "ai_knowledge_entries",
   "meeting_minutes",
@@ -85,6 +87,11 @@ const additiveTables = [
   "chat_attachment_deletions",
   "message_user_hides",
   "forum_moderation_events",
+  "forum_collaborations",
+  "resource_curriculum",
+  "resource_learning_targets",
+  "forum_collaboration_revisions",
+  "forum_thread_contexts",
 ];
 const coordinatorTaskTables = new Set([
   "coordinator_tasks",

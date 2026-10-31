@@ -1,0 +1,722 @@
+[
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Comunicación y atención al cliente",
+    "code": "0651",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Contabilidad y fiscalidad",
+    "code": "0654",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Digitalización aplicada a los sectores productivos (Grado Superior)",
+    "code": "1665",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VII.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Gestión de la documentación jurídica y empresarial",
+    "code": "0647",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Gestión de recursos humanos",
+    "code": "0652",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Gestión financiera",
+    "code": "0653",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Gestión logística y comercial",
+    "code": "0655",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Inglés Profesional (Grado Superior)",
+    "code": "0179",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo X.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Itinerario personal para la empleabilidad I",
+    "code": "1709",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Itinerario personal para la empleabilidad II",
+    "code": "1710",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Ofimática y proceso de la información",
+    "code": "0649",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Proceso integral de la actividad comercial",
+    "code": "0650",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Proyecto intermodular de administración y finanzas",
+    "code": "0657",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Recursos humanos y responsabilidad social corporativa",
+    "code": "0648",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Simulación empresarial",
+    "code": "0656",
+    "sourceTitle": "Real Decreto 1584/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19533",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Administración y Finanzas",
+    "name": "Sostenibilidad aplicada al sistema productivo",
+    "code": "1708",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VIII.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Comunicación y atención al cliente",
+    "code": "0651",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Digitalización aplicada a los sectores productivos (Grado Superior)",
+    "code": "1665",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VII.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Gestión avanzada de la información",
+    "code": "0663",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Gestión de la documentación jurídica y empresarial",
+    "code": "0647",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Inglés Profesional (Grado Superior)",
+    "code": "0179",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo X.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Itinerario personal para la empleabilidad I",
+    "code": "1709",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Itinerario personal para la empleabilidad II",
+    "code": "1710",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Ofimática y proceso de la información",
+    "code": "0649",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Organización de eventos empresariales",
+    "code": "0662",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Proceso integral de la actividad comercial",
+    "code": "0650",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Protocolo empresarial",
+    "code": "0661",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Proyecto intermodular de asistencia a la dirección",
+    "code": "0664",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Recursos humanos y responsabilidad social corporativa",
+    "code": "0648",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Segunda lengua extranjera",
+    "code": "0180",
+    "sourceTitle": "Real Decreto 1582/2011, de 4 de noviembre, anexo I; texto consolidado. Ordenación modificada por RD 500/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-19531",
+    "curriculumVersion": "Título de 2011 · ordenación adaptada por RD 500/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico Superior en Asistencia a la Dirección",
+    "name": "Sostenibilidad aplicada al sistema productivo",
+    "code": "1708",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VIII.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Comunicación empresarial y atención al cliente",
+    "code": "0437",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Digitalización aplicada a los sectores productivos (Grado Medio)",
+    "code": "1664",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VI.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Empresa en el aula",
+    "code": "0446",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Empresa y Administración",
+    "code": "0439",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Inglés Profesional (Grado Medio)",
+    "code": "0156",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo IX.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Itinerario personal para la empleabilidad I",
+    "code": "1709",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Itinerario personal para la empleabilidad II",
+    "code": "1710",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo V.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Operaciones administrativas de compra-venta",
+    "code": "0438",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Operaciones administrativas de recursos humanos",
+    "code": "0442",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Operaciones auxiliares de gestión de tesorería",
+    "code": "0448",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Sostenibilidad aplicada al sistema productivo",
+    "code": "1708",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo VIII.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Técnica contable",
+    "code": "0441",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Tratamiento de la documentación contable",
+    "code": "0443",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Tratamiento informático de la información",
+    "code": "0440",
+    "sourceTitle": "Real Decreto 1631/2009, de 30 de octubre, anexo I; texto consolidado. Ordenación modificada por RD 499/2024.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2009-19148",
+    "curriculumVersion": "Título de 2009 · ordenación adaptada por RD 499/2024",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Ámbito de Ciencias Aplicadas I",
+    "code": "3163",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Ámbito de Ciencias Aplicadas II",
+    "code": "3164",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Ámbito de Comunicación y Ciencias Sociales I",
+    "code": "3161",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Ámbito de Comunicación y Ciencias Sociales II",
+    "code": "3162",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Instalación y mantenimiento de redes para transmisión de datos",
+    "code": "3016",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 2, currículo del ámbito profesional de Informática de Oficina.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/3_CFGB_informatica_oficina.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Itinerario personal para la empleabilidad",
+    "code": "3159",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo III.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Montaje y mantenimiento de sistemas y componentes informáticos",
+    "code": "3029",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 2, currículo del ámbito profesional de Informática de Oficina.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/3_CFGB_informatica_oficina.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Ofimática y archivo de documentos",
+    "code": "3031",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 2, currículo del ámbito profesional de Informática de Oficina.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/3_CFGB_informatica_oficina.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Operaciones auxiliares para la configuración y la explotación",
+    "code": "3030",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 2, currículo del ámbito profesional de Informática de Oficina.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/3_CFGB_informatica_oficina.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Informática de Oficina",
+    "name": "Proyecto intermodular de aprendizaje colaborativo",
+    "code": "3160",
+    "sourceTitle": "Real Decreto 498/2024, de 21 de mayo, anexo I.",
+    "sourceUrl": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-10683",
+    "curriculumVersion": "Currículo básico del proyecto · RD 498/2024, anexo I",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Ámbito de Ciencias Aplicadas I",
+    "code": "3163",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Ámbito de Ciencias Aplicadas II",
+    "code": "3164",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Ámbito de Comunicación y Ciencias Sociales I",
+    "code": "3161",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Ámbito de Comunicación y Ciencias Sociales II",
+    "code": "3162",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 1, competencias específicas y criterios de evaluación.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/1_ambitos_comunes.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Aplicaciones básicas de ofimática",
+    "code": "3002",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Archivo y comunicación",
+    "code": "3004",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Atención al cliente",
+    "code": "3005",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Itinerario personal para la empleabilidad",
+    "code": "3159",
+    "sourceTitle": "Real Decreto 659/2023, de 18 de julio, texto consolidado. Anexo III.",
+    "sourceUrl": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-16889",
+    "curriculumVersion": "RD 659/2023 · texto consolidado consultado el 31/10/2026",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Preparación de pedidos y venta de productos",
+    "code": "3006",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Proyecto intermodular de aprendizaje colaborativo",
+    "code": "3160",
+    "sourceTitle": "Real Decreto 498/2024, de 21 de mayo, anexo I.",
+    "sourceUrl": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-10683",
+    "curriculumVersion": "Currículo básico del proyecto · RD 498/2024, anexo I",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Técnicas administrativas básicas",
+    "code": "3003",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Título Profesional Básico en Servicios Administrativos",
+    "name": "Tratamiento informático de datos",
+    "code": "3001",
+    "sourceTitle": "Decreto 9/2023, de 26 de enero, anexo 3, currículo del ámbito profesional de Servicios Administrativos.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/formacion_profesional/_galerias/descargas/cfgb/4_CFGB-_servicios_administrativos.pdf",
+    "curriculumVersion": "Currículo autonómico 2023 · nueva ordenación desde 2024/2025",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "FPA · Operaciones auxiliares de servicios administrativos y generales",
+    "name": "Ámbito de Ciencias aplicadas y competencia lógica",
+    "code": "",
+    "sourceTitle": "Resolución de 21 de febrero de 2025, BOC 46, de 6 de marzo, anexo II.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-2-instrucciones-implantacion-iffpa-24-25.pdf",
+    "curriculumVersion": "Currículo FPA · Resolución de 21/02/2025, anexo II",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "FPA · Operaciones auxiliares de servicios administrativos y generales",
+    "name": "Ámbito de Prevención y orientación profesional",
+    "code": "",
+    "sourceTitle": "Resolución de 21 de febrero de 2025, BOC 46, de 6 de marzo, anexo II.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-2-instrucciones-implantacion-iffpa-24-25.pdf",
+    "curriculumVersion": "Currículo FPA · Resolución de 21/02/2025, anexo II",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "FPA · Operaciones de grabación y tratamiento de datos y documentos",
+    "name": "Ámbito de Ciencias aplicadas y competencia lógica",
+    "code": "",
+    "sourceTitle": "Resolución de 21 de febrero de 2025, BOC 46, de 6 de marzo, anexo II.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-2-instrucciones-implantacion-iffpa-24-25.pdf",
+    "curriculumVersion": "Currículo FPA · Resolución de 21/02/2025, anexo II",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "FPA · Operaciones de grabación y tratamiento de datos y documentos",
+    "name": "Ámbito de Prevención y orientación profesional",
+    "code": "",
+    "sourceTitle": "Resolución de 21 de febrero de 2025, BOC 46, de 6 de marzo, anexo II.",
+    "sourceUrl": "https://www.gobiernodecanarias.org/cmsgob1/export/sites/educacion/web/_galerias/descargas/otros/anexo-2-instrucciones-implantacion-iffpa-24-25.pdf",
+    "curriculumVersion": "Currículo FPA · Resolución de 21/02/2025, anexo II",
+    "territory": "Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  },
+  {
+    "cycle": "Técnico en Gestión Administrativa",
+    "name": "Proyecto intermodular",
+    "code": "1713",
+    "sourceTitle": "Real Decreto 499/2024, de 21 de mayo, anexo II.",
+    "sourceUrl": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-10684",
+    "curriculumVersion": "Currículo básico del proyecto · RD 499/2024, anexo II",
+    "territory": "Estatal (España) · aplicación en Canarias",
+    "verifiedAt": "2026-10-31T00:00:00.000Z"
+  }
+]

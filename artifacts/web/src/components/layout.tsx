@@ -7,39 +7,11 @@ import {
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard,
-  Users,
-  MailPlus,
-  Inbox,
-  AtSign,
-  Building2,
-  Settings,
   LogOut,
-  GraduationCap,
-  Briefcase,
-  BarChart,
-  Calendar,
-  BookCheck,
-  Video,
-  Megaphone,
-  FileSignature,
-  FileText,
-  ClipboardList,
-  FolderOpen,
-  FolderKanban,
-  BookText,
-  Sparkles,
-  Smartphone,
-  GraduationCap as LearningIcon,
-  MessageSquarePlus,
-  MessagesSquare,
-  MessageCircle,
   Pin,
   PinOff,
   Menu,
   X,
-  Award,
-  CheckSquare,
   LoaderCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -47,12 +19,11 @@ import { ProfileDialog } from "./profile-dialog";
 import { getTeachingProfileGateState } from "./teaching-profile-gate";
 import { TeacherConfirmationBanner } from "./teacher-confirmation-banner";
 import { AppNotifications } from "./collab/space-notifications";
+import { PrimaryNavigation } from "./navigation/primary-navigation";
 import logoWhite from "@/assets/logo-white.png";
 import asdLogo from "@/assets/asd-logo.png";
 
 const APP_VERSION = "4.0";
-const CORPORATE_EMAIL_URL =
-  "https://www3.gobiernodecanarias.org/sso/login?service=https%3A%2F%2Fecorreo.gobiernodecanarias.org%2Fpublic%2Fpreauth.jsp";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -98,7 +69,8 @@ export function AppLayout({ children }: LayoutProps) {
     return window.localStorage.getItem(SIDEBAR_PINNED_KEY) === "1";
   });
   const [hovered, setHovered] = useState(false);
-  const expanded = pinned || hovered;
+  const [sidebarFocused, setSidebarFocused] = useState(false);
+  const expanded = pinned || hovered || sidebarFocused;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -158,36 +130,6 @@ export function AppLayout({ children }: LayoutProps) {
   }
 
   const role = user.role;
-
-  const navItems = [
-    { label: "Panel Principal", path: "/", icon: LayoutDashboard, visible: true },
-    { label: "Usuarios", path: "/usuarios", icon: Users, visible: true },
-    { label: "Invitaciones", path: "/invitaciones", icon: MailPlus, visible: ["superadmin", "coordinator", "department_head"].includes(role) },
-    { label: "Centros", path: "/centros", icon: Building2, visible: role !== "superadmin" },
-    { label: "Coord. Académica", path: "/academica", icon: GraduationCap, visible: true },
-    { label: "FCT y Prospección", path: "/fct", icon: Briefcase, visible: false },
-    { label: "Eventos", path: "/eventos", icon: Calendar, visible: true },
-    { label: "Actas publicadas", path: "/actas", icon: BookCheck, visible: role === "department_head" },
-    { label: "Asuntos de correo", path: "/asuntos-correo", icon: Inbox, visible: ["coordinator", "superadmin"].includes(role) },
-    { label: "Correo corporativo", path: CORPORATE_EMAIL_URL, icon: AtSign, visible: true },
-    { label: "Tareas pendientes", path: "/tareas-pendientes", icon: CheckSquare, visible: ["coordinator", "superadmin"].includes(role) },
-    { label: "Videoconferencias", path: "/videoconferencias", icon: Video, visible: true },
-    { label: "Anuncios", path: "/anuncios", icon: Megaphone, visible: true },
-    { label: "Mensajes", path: "/chat", icon: MessageCircle, visible: true },
-    { label: "Espacio colaborativo", path: "/espacio", icon: FolderKanban, visible: true },
-    { label: "Documentación", path: "/documentacion", icon: BookText, visible: true },
-    { label: "Foros", path: "/foros", icon: MessagesSquare, visible: true },
-    { label: "Encuestas", path: "/encuestas", icon: BarChart, visible: true },
-    { label: "Formularios", path: "/formularios", icon: ClipboardList, visible: true },
-    { label: "Recursos", path: "/recursos", icon: FolderOpen, visible: true },
-    { label: "Memorias", path: "/memorias", icon: FileText, visible: ["superadmin", "coordinator"].includes(role) },
-    { label: "Asistente IA", path: "/asistente-ia", icon: Sparkles, visible: role === "superadmin" },
-    { label: "Sugerencias", path: "/sugerencias", icon: MessageSquarePlus, visible: true },
-    { label: "App Móvil", path: "/app-movil", icon: Smartphone, visible: true },
-    { label: "Mis certificados", path: "/mis-certificados", icon: Award, visible: true },
-    { label: "Autodirigido", path: "/autodirigido", icon: LearningIcon, visible: true },
-    { label: "Configuración", path: "/panel-control", icon: Settings, visible: role === "superadmin" },
-  ];
 
   return (
     <div className="relative flex flex-col h-screen w-full bg-background overflow-hidden">
@@ -252,44 +194,7 @@ export function AppLayout({ children }: LayoutProps) {
           aria-label="Navegación principal"
           className="absolute inset-x-0 top-14 bottom-8 z-40 overflow-y-auto border-b border-border bg-background p-3 shadow-xl md:hidden"
         >
-          <div className="grid grid-cols-2 gap-2">
-            {navItems.filter((item) => item.visible).map((item) => {
-              const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
-              const className = `flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
-              }`;
-              if (item.path.startsWith("https://")) {
-                return (
-                  <a
-                    key={item.path}
-                    href={item.path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${item.label} (se abre en una pestaña nueva)`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={className}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </a>
-                );
-              }
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={className}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+          <PrimaryNavigation role={role} location={location} mobile onNavigate={() => setMobileMenuOpen(false)} />
         </nav>
       )}
 
@@ -301,59 +206,21 @@ export function AppLayout({ children }: LayoutProps) {
           <aside
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            onPointerDownCapture={() => setSidebarFocused(false)}
+            onFocusCapture={(event) => {
+              if ((event.target as HTMLElement).matches(":focus-visible")) setSidebarFocused(true);
+            }}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSidebarFocused(false);
+            }}
             className={`absolute inset-y-0 left-0 ${
               expanded ? "w-64" : "w-16"
             } bg-sidebar border-r border-sidebar-border flex flex-col text-sidebar-foreground transition-[width] duration-200 ease-in-out z-30 ${
-              hovered && !pinned ? "shadow-xl" : ""
+              expanded && !pinned ? "shadow-xl" : ""
             }`}
           >
-            <nav className="flex-1 py-3 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2">
-              {navItems.filter((i) => i.visible).map((item) => {
-                const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
-                const className = `flex items-center gap-3 rounded-md transition-colors text-sm font-medium ${
-                  expanded ? "px-3 py-2" : "justify-center px-0 py-2.5"
-                } ${
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`;
-                if (item.path.startsWith("https://")) {
-                  return (
-                    <a
-                      key={item.path}
-                      href={item.path}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={item.label}
-                      aria-label={`${item.label} (se abre en una pestaña nueva)`}
-                      className={className}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      {expanded ? (
-                        <span className="truncate">{item.label}</span>
-                      ) : (
-                        <span className="sr-only">{item.label}</span>
-                      )}
-                    </a>
-                  );
-                }
-                return (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    title={item.label}
-                    aria-label={item.label}
-                    className={className}
-                  >
-                    <item.icon className="w-4 h-4 shrink-0" />
-                    {expanded ? (
-                      <span className="truncate">{item.label}</span>
-                    ) : (
-                      <span className="sr-only">{item.label}</span>
-                    )}
-                  </Link>
-                );
-              })}
+            <nav aria-label="Navegación principal" className="flex-1 min-h-0 py-3 overflow-y-auto overflow-x-hidden px-2">
+              <PrimaryNavigation role={role} location={location} expanded={expanded} />
             </nav>
 
             {/* Pin (chincheta): keeps the sidebar open. */}

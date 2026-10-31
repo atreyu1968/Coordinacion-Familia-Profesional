@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed-admin": "tsx ./src/seed-admin.ts",
     "seed-reference-data": "tsx ./src/seed-reference-data.ts",
+    "seed-learning-outcomes": "tsx ./src/seed-learning-outcomes.ts",
     "seed-normativa": "tsx ./src/seed-normativa.ts",
     "seed-fpa": "tsx ./src/seed-fpa.ts",
     "sync-adg-centers": "tsx ./src/sync-adg-centers.ts",

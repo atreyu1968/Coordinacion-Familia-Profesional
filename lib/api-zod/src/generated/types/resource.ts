@@ -5,6 +5,7 @@
  * Coordina ADG API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ResourceCurriculum } from './resourceCurriculum';
 
 export interface Resource {
   id: number;
@@ -25,4 +26,5 @@ export interface Resource {
   /** @nullable */
   centerId?: number | null;
   createdAt?: Date;
+  curriculum?: ResourceCurriculum;
 }

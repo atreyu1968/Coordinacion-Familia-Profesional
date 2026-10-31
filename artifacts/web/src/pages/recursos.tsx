@@ -62,6 +62,21 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link } from "wouter";
+import {
+  CurriculumMeta,
+  CurriculumResourceDialog,
+  canPublishCurriculum,
+  useModuleOutcomes,
+} from "@/components/curriculum-resources";
+import { useForumCollaboration } from "@/components/forum-collaboration";
+import { Link2 } from "lucide-react";
+import { openResourceUrl } from "@/lib/protected-resource-link";
+import type { Resource } from "@workspace/api-client-react";
+
+function positiveParam(v: string | null): number | null {
+  const n = Number(v);
+  return v && Number.isInteger(n) && n > 0 ? n : null;
+}
 
 const ALL = "all";
 const NONE = "none";
@@ -223,7 +238,24 @@ export default function RecursosPage() {
 
   const moduleParam = useModuleParam();
   const [search, setSearch] = useState("");
-  const [moduleId, setModuleId] = useState<number | null>(moduleParam);
+  const [moduleId, setModuleIdState] = useState<number | null>(moduleParam);
+  const [outcomeId, setOutcomeId] = useState<number | null>(positiveParam(searchParams.get("outcomeId")));
+  const [criterionId, setCriterionId] = useState<number | null>(positiveParam(searchParams.get("criterionId")));
+  const setModuleId = (v: number | null) => {
+    setModuleIdState(v);
+    setOutcomeId(null);
+    setCriterionId(null);
+  };
+  const { data: outcomes = [] } = useModuleOutcomes(moduleId);
+  const { data: collab } = useForumCollaboration(moduleId);
+  const [associating, setAssociating] = useState<Resource | null>(null);
+  const [creatingCurricular, setCreatingCurricular] = useState(false);
+  const curricularValue = criterionId != null ? `ce-${criterionId}` : outcomeId != null ? `ra-${outcomeId}` : ALL;
+  const onCurricular = (v: string) => {
+    setOutcomeId(v.startsWith("ra-") ? Number(v.slice(3)) : null);
+    setCriterionId(v.startsWith("ce-") ? Number(v.slice(3)) : null);
+  };
+  const isManagerRole = user?.role === "superadmin" || user?.role === "coordinator" || user?.role === "department_head";
   const legacyDashboardFilter = searchParams.get("dashboard") === "resources";
   const requestedProvinceId = Number(searchParams.get("provinceId"));
   const provinceId =
@@ -253,9 +285,13 @@ export default function RecursosPage() {
   const params: ListResourcesParams = {};
   if (search.trim()) params.search = search.trim();
   if (moduleId != null) params.moduleId = moduleId;
+  if (moduleId != null && criterionId != null) params.criterionId = criterionId;
+  else if (moduleId != null && outcomeId != null) params.outcomeId = outcomeId;
 
-  const { data: allResources = [], isLoading: resourcesLoading } =
-    useListResources(params);
+  const { data: allResources = [], isLoading: resourcesLoading, isError: resourcesError, refetch: refetchResources } =
+    useListResources(params, {
+      query: { queryKey: getListResourcesQueryKey(params), refetchOnMount: "always", refetchOnWindowFocus: true },
+    });
   const centerIds = new Set((centersQuery.data ?? []).map((center) => center.id));
   const periodResources = allResources.filter((resource) => {
     if (!matchesDashboardPeriod(resource.createdAt, searchParams)) return false;
@@ -358,7 +394,51 @@ export default function RecursosPage() {
             ))}
           </SelectContent>
         </Select>
+        {moduleId != null && outcomes.length > 0 && (
+          <Select value={curricularValue} onValueChange={onCurricular}>
+            <SelectTrigger className="w-full sm:w-64" data-testid="select-curricular-filter">
+              <SelectValue placeholder="Todos los RA/CE" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[60vh]">
+              <SelectItem value={ALL}>Todos los RA/CE</SelectItem>
+              {outcomes.flatMap((o) => [
+                <SelectItem key={`ra-${o.id}`} value={`ra-${o.id}`}>{o.code} (con sus CE)</SelectItem>,
+                ...o.criteria.map((c) => (
+                  <SelectItem key={`ce-${c.id}`} value={`ce-${c.id}`}>&nbsp;&nbsp;{o.code} · {c.code}</SelectItem>
+                )),
+              ])}
+            </SelectContent>
+          </Select>
+        )}
+        {moduleId != null && canPublishCurriculum(collab) && (
+          <Button variant="outline" className="gap-2" onClick={() => setCreatingCurricular(true)} data-testid="button-new-curricular">
+            <Plus className="w-4 h-4" /> Recurso curricular
+          </Button>
+        )}
       </div>
+
+      {moduleId != null && (
+        <>
+          <CurriculumResourceDialog
+            moduleId={moduleId}
+            open={creatingCurricular}
+            onOpenChange={setCreatingCurricular}
+            defaultTargets={
+              criterionId != null
+                ? outcomes.flatMap((o) => o.criteria.filter((c) => c.id === criterionId).map((c) => ({ outcomeId: o.id, criterionId: c.id })))
+                : outcomeId != null ? [{ outcomeId, criterionId: null }] : []
+            }
+          />
+        </>
+      )}
+      {associating?.moduleId != null && (
+        <CurriculumResourceDialog
+          moduleId={associating.moduleId}
+          open
+          onOpenChange={(v) => !v && setAssociating(null)}
+          resource={associating}
+        />
+      )}
 
       {(dashboardDrilldown || month) && (
         <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground flex flex-wrap items-center justify-between gap-2">
@@ -380,6 +460,19 @@ export default function RecursosPage() {
 
       {isLoading ? (
         <p className="text-muted-foreground py-8 text-center">Cargando...</p>
+      ) : resourcesError ? (
+        <Card>
+          <CardContent className="py-10 text-center space-y-3">
+            <p className="text-destructive">No se pudieron cargar los recursos.</p>
+            <Button variant="outline" onClick={() => void refetchResources()}>Reintentar</Button>
+          </CardContent>
+        </Card>
+      ) : resources.length === 0 && (outcomeId != null || criterionId != null) ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Ningún recurso está asociado a este {criterionId != null ? "criterio" : "resultado de aprendizaje"}.
+          </CardContent>
+        </Card>
       ) : resources.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -428,6 +521,13 @@ export default function RecursosPage() {
                       {moduleName}
                     </Badge>
                   )}
+                  {r.curriculum && (
+                    <CurriculumMeta
+                      resource={r}
+                      outcomes={r.curriculum.moduleId === moduleId ? outcomes : []}
+                      currentFingerprint={r.curriculum.moduleId === moduleId ? collab?.fingerprint : null}
+                    />
+                  )}
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <UserIcon className="w-3 h-3" />
                     {author ? (
@@ -454,6 +554,12 @@ export default function RecursosPage() {
                           href={r.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            void openResourceUrl(r.fileUrl!).catch((err: unknown) =>
+                              toast({ title: "No se pudo abrir", description: err instanceof Error ? err.message : "Inténtalo de nuevo.", variant: "destructive" }),
+                            );
+                          }}
                         >
                           <Download className="w-4 h-4" /> Abrir
                         </a>
@@ -463,7 +569,19 @@ export default function RecursosPage() {
                         Sin archivo adjunto
                       </span>
                     )}
-                    {canDelete(r.authorId) && (
+                    {r.moduleId != null &&
+                      (r.curriculum ? r.curriculum.canEdit : r.authorId === user?.id || isManagerRole) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title={r.curriculum ? "Editar asociación RA/CE" : "Asociar a RA/CE"}
+                          onClick={() => setAssociating(r)}
+                          data-testid={`button-associate-${r.id}`}
+                        >
+                          <Link2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    {canDelete(r.authorId) && !r.curriculum && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

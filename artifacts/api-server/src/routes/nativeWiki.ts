@@ -241,7 +241,19 @@ async function getSectionPermissions(
   return permissions.get(moduleId) ?? { ...NO_WIKI_PERMISSIONS };
 }
 
-async function loadPage(pageId: number, user: { id: number; role: string }) {
+router.use("/wiki/pages/:pageId", requireAuth, async (req, res, next) => {
+  try {
+    const { isAgreementWikiPage } = await import("../lib/forumAgreementSupport");
+    if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && Number.isSafeInteger(Number(req.params.pageId)) &&
+      await isAgreementWikiPage(Number(req.params.pageId))) {
+      res.status(409).json({ message: "Esta versión de acuerdo es inmutable. Abre una nueva versión desde el foro." }); return;
+    }
+    next();
+  } catch (error) { next(error); }
+});
+export async function loadPage(pageId: number, user: { id: number; role: string }) {
+  const { canReadAgreementWiki } = await import("../lib/forumAgreementSupport");
+  if (!await canReadAgreementWiki(pageId, user)) return null;
   const [page] = await db
     .select({
       id: wikiPagesTable.id,
@@ -311,6 +323,8 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
     .orderBy(asc(wikiExternalLinksTable.createdAt));
 
   const permissions = await getSectionPermissions(user, page.moduleId);
+  const { isAgreementWikiPage } = await import("../lib/forumAgreementSupport");
+  const frozen = await isAgreementWikiPage(pageId);
   return {
     ...page,
     tags: page.tags ?? [],
@@ -318,6 +332,7 @@ async function loadPage(pageId: number, user: { id: number; role: string }) {
     externalLinks,
     attachmentCount: attachments.length,
     ...permissions,
+    ...(frozen ? NO_WIKI_PERMISSIONS : {}),
   };
 }
 
@@ -409,7 +424,9 @@ router.get(
       return;
     }
 
+    const { agreementWikiVisibility, isAgreementWikiPage } = await import("../lib/forumAgreementSupport");
     const filters = [
+      await agreementWikiVisibility(req.user!),
       isNull(wikiPagesTable.deletedAt),
       sql`(
         ${wikiPagesTable.moduleId} IS NULL OR
@@ -525,7 +542,7 @@ router.get(
       editorModuleIds,
     );
 
-    const items = rows.map((row) => ({
+    const items = await Promise.all(rows.map(async (row) => ({
       ...row,
       tags: row.tags ?? [],
       attachmentCount: attachmentCounts.get(row.id) ?? 0,
@@ -534,7 +551,8 @@ router.get(
           ? ALL_WIKI_PERMISSIONS
           : NO_WIKI_PERMISSIONS
         : (modulePermissions.get(row.moduleId) ?? NO_WIKI_PERMISSIONS)),
-    }));
+      ...(await isAgreementWikiPage(row.id) ? NO_WIKI_PERMISSIONS : {}),
+    })));
     const canCreate = (
       await getSectionPermissions(caller, moduleId ?? null)
     ).canEdit;

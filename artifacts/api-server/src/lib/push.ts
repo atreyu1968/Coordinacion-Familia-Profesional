@@ -47,6 +47,7 @@ function pushPath(data: Record<string, unknown>): string {
       survey: `/survey/${target.id}`,
       form: `/form/${target.id}`,
       forum: `/foros/tema/${target.id}`,
+      forum_module: `/foros/modulo/${target.id}`,
       space: `/espacios-colaborativos?aviso=${target.id}`,
       announcement: `/?aviso=${target.id}`,
       meeting: `/videoconferencias?aviso=${target.id}`,

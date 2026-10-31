@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 
 import { useListForumModules, type ForumModule } from "@workspace/api-client-react";
 
+import { TrackingPanel } from "@/components/TrackingPanel";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, EmptyState, Loading } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
@@ -24,6 +25,7 @@ export default function ForosScreen() {
   const router = useRouter();
   const { data: modules = [], isLoading } = useListForumModules();
   const [search, setSearch] = useState("");
+  const [tracking, setTracking] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -52,7 +54,18 @@ export default function ForosScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Foros" subtitle="Debates por módulo" showBack />
-      {isLoading ? (
+      <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12 }}>
+        {([[false, "Módulos"], [true, "Seguimiento"]] as const).map(([v, l]) => (
+          <Pressable key={l} onPress={() => setTracking(v)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: tracking === v ? colors.primary : colors.card }}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: tracking === v ? colors.primaryForeground : colors.foreground }}>{l}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {tracking ? (
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
+          <TrackingPanel />
+        </ScrollView>
+      ) : isLoading ? (
         <Loading />
       ) : modules.length === 0 ? (
         <EmptyState

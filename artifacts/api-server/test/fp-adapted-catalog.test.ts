@@ -10,6 +10,7 @@ import {
   trainingOfferTable,
 } from "@workspace/db";
 import app from "../src/app";
+import { getActiveFamily } from "../src/lib/settings";
 import { cycleFamilyFilter, moduleFamilyFilter } from "../src/lib/familyCatalog";
 import { fpCycleFamilies } from "../src/lib/generated/fpCycleFamilies";
 import { authHeader, cleanup, createCenter, createProvince, createUser } from "./helpers";
@@ -44,7 +45,7 @@ it("clasifica los dos itinerarios FPA en ADG sin depender de ofertas de centros"
   }
 });
 
-it("lista por API los módulos globales FPA sin oferta y excluye otras familias", async () => {
+it("ofrece en el perfil los módulos globales FPA sin oferta y excluye otras familias", async () => {
   const [settings] = await db.select().from(integrationSettingsTable).limit(1);
   const createdSettings = !settings;
   const activeSettings = settings
@@ -54,6 +55,7 @@ it("lista por API los módulos globales FPA sin oferta y excluye otras familias"
     await db.update(integrationSettingsTable)
       .set({ professionalFamily: catalog.family })
       .where(eq(integrationSettingsTable.id, activeSettings.id));
+    expect(await getActiveFamily()).toBe(catalog.family);
 
     const foreignCycleName = Object.entries(fpCycleFamilies)
       .find(([, families]) => !families.includes(catalog.family))?.[0];
@@ -83,17 +85,29 @@ it("lista por API los módulos globales FPA sin oferta y excluye otras familias"
       },
     ]).returning();
     moduleIds.push(...fpaModules.map(({ id }) => id));
+    const familyFilteredModules = await db
+      .select({ id: modulesTable.id })
+      .from(modulesTable)
+      .where(and(
+        inArray(modulesTable.id, fpaModules.map(({ id }) => id)),
+        moduleFamilyFilter(catalog.family),
+      ));
+    const familyFilteredIds = familyFilteredModules.map(({ id }) => id);
+    expect(familyFilteredIds).toContain(fpaModules[0]!.id);
+    expect(familyFilteredIds).toContain(fpaModules[1]!.id);
+    expect(familyFilteredIds).not.toContain(fpaModules[2]!.id);
 
     const provinceId = await createProvince("Centro activo FP Adaptada sin oferta");
     const centerId = await createCenter(provinceId);
     const teacher = await createUser({ role: "teacher", provinceId, centerId });
     expect(await db.select().from(trainingOfferTable).where(eq(trainingOfferTable.centerId, centerId))).toHaveLength(0);
     const response = await request(app)
-      .get("/api/modules")
-      .query({ search: " API " })
+      .get("/api/auth/me/teaching-profile")
+      .query({ targetCenterId: centerId })
       .set(authHeader(teacher.token));
     expect(response.status).toBe(200);
-    const listedIds = response.body.map((module: { id: number }) => module.id);
+    expect(response.body.targetCenterId).toBe(centerId);
+    const listedIds = response.body.modules.map((module: { id: number }) => module.id);
     expect(listedIds).toContain(fpaModules[0]!.id);
     expect(listedIds).toContain(fpaModules[1]!.id);
     expect(listedIds).not.toContain(fpaModules[2]!.id);

@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response, type ErrorRequestHandler } from "express";
 import { eq, and, isNull, ilike, or, desc, count, sql, not, inArray, getTableColumns, asc, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
@@ -32,6 +32,7 @@ import {
   ListUserAuditResponse,
 } from "@workspace/api-zod";
 import { changeAccount } from "../lib/accountAudit";
+import { NextcloudAdminRevocationError } from "../lib/nextcloudAdministrator";
 import { disconnectUserSessions } from "../lib/realtime";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
 import { teachingProfilePredicates, TEACHING_PROFILE_ROLES, requiresTeachingProfile } from "../lib/teachingProfileAccess";
@@ -818,5 +819,13 @@ router.post(
     res.json(UpdateUserResponse.parse(updated));
   },
 );
+
+router.use(((error, _req, res, next) => {
+  if (error instanceof NextcloudAdminRevocationError) {
+    res.status(502).json({ message: error.message });
+    return;
+  }
+  next(error);
+}) satisfies ErrorRequestHandler);
 
 export default router;

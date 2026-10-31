@@ -23,6 +23,7 @@
 - [Backup & restore (server migration)](backup-restore-migration.md) — fail-closed DB restore needs matching external object bytes and fresh session IDs.
 - [Sin certificación docente](scorm-certificate-policy.md) — el LMS no ofrece ni emite certificados; se mantienen los certificados de asistencia a eventos.
 - [Contract-driven workflow](contract-driven-workflow.md) — the OpenAPI-first edit/codegen/db-push loop for the monorepo.
+- [Comparaciones JSONB](jsonb-comparisons.md) — comparar valores, no el orden de las claves; evitar conflictos falsos tras guardar y recuperar de PostgreSQL.
 - [API contract changes need codegen](api-contract-codegen.md) — change a response/request shape via openapi → orval → zod + react client.
 - [orval-generated api client](api-client-orval.md) — how @workspace/api-client-react exposes hooks/functions; naming gotcha + mutation variable shapes.
 - [react-query orval queryKey requirement](react-query-orval-querykey.md) — custom query options to generated useGetX hooks require queryKey.
@@ -31,6 +32,7 @@
 - [Preflight for model-default upgrades](model-default-upgrades.md) — allow only a known prior default during migration preflight, then verify the new default after SQL runs.
 - [API Server dev needs restart for new routes](api-server-dev-restart.md) — new Express routes 404 until the workflow restarts.
 - [api-server testing harness](api-server-testing.md) — how automated tests run (Vitest + supertest + real Postgres).
+- [Audiencias de prueba](notification-test-audiences.md) — en desarrollo compartido, los gestores existentes también pueden recibir avisos de destinos ficticios; limpiar por destino.
 - [lib/db dist declarations](lib-db-dist.md) — why api-server typecheck misses @workspace/db exports after schema edits.
 - [Coordina ADG authorization model](rbac-authorization-model.md) — role hierarchy + scope rules every protected route must enforce.
 - [Scope checks — read vs manage](scope-authz.md) — which authorization helper to use when validating a write target's center/province.
@@ -85,3 +87,8 @@
 - [Revisión normativa](normativa-review-policy.md) — detectar BOE/BOC no implica vigencia; revisar anexos y preservar las ediciones humanas.
 - [Integraciones simultáneas](merge-validation.md) — revisar también fuera de las marcas de conflicto; validar las migraciones en una base aislada.
 - [Reautenticación solo cuando haga falta](session-invalidation-policy.md) — las actualizaciones rutinarias conservan sesiones; el cierre masivo se activa solo expresamente.
+- [Colaboración intercentros](intercentros-collaboration.md) — ampliación limitada a Administración y Gestión; propuestas de referencia sin aprobación institucional automática.
+- [Salida de terminal Ubuntu](ubuntu-terminal-stdout.md) — en el VPS, stdout de la sesión puede ir a /dev/tty1; dirigir diagnósticos a stderr.
+- [Administración de Nextcloud](nextcloud-administration.md) — el superadministrador de la plataforma debe tener también administración global en Nextcloud.
+- [Fuentes de oferta formativa](training-offer-official-sources.md) — el portal puede adelantar el próximo curso; planificación y autorización no prueban oferta impartida.
+- [Densidad de navegación](navigation-density.md) — el usuario quiere menos apartados visibles; ubicar nuevas funciones en grupos existentes antes de ampliar el primer nivel.

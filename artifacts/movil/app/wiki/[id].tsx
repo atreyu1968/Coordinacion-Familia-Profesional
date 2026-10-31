@@ -3,8 +3,6 @@ import { AutoLinkText } from "@/components/AutoLinkText";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,8 +11,6 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 
 import {
   getGetWikiPageQueryKey,
@@ -24,54 +20,14 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card, ErrorState } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { WikiLinkHealth } from "@/components/WikiLinkHealth";
-import { getAuthToken } from "@/contexts/AuthContext";
 import { PdfPreviewButton, isPdfDocument } from "@/components/PdfPreviewButton";
 import { openBrowserLink } from "@/lib/browser-link";
+import { downloadAttachment } from "@/lib/wiki-attachment";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-async function downloadAttachment(attachmentId: number, fileName: string) {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (!domain) throw new Error("No se pudo conectar con el servicio de documentación.");
-  const url = `https://${domain}/api/wiki/attachments/${attachmentId}/download`;
-  const token = getAuthToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-
-  if (Platform.OS === "web") {
-    const response = await fetch(url, { headers });
-    if (!response.ok) throw new Error("No se pudo descargar el archivo.");
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = blobUrl;
-    anchor.download = fileName || "documento";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(blobUrl);
-    return;
-  }
-
-  const cacheDirectory = FileSystem.cacheDirectory;
-  if (!cacheDirectory) throw new Error("No hay una carpeta temporal disponible.");
-  const safeName = (fileName || `documento-${Date.now()}`).replace(
-    /[^\w.\-]+/g,
-    "_",
-  );
-  const result = await FileSystem.downloadAsync(
-    url,
-    `${cacheDirectory}${safeName}`,
-    { headers },
-  );
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(result.uri);
-  } else {
-    await Linking.openURL(result.uri);
-  }
 }
 
 function WikiPageSkeleton() {

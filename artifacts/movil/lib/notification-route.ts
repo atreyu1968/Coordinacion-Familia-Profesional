@@ -12,6 +12,10 @@ export function notificationRoute(data: unknown): Href | null {
     return /^[1-9]\d*$/.test(text) && Number(text) <= 2147483647 ? text : null;
   };
   switch (payload.type) {
+    case "forum_digest": {
+      const moduleId = id(payload.moduleId);
+      return moduleId ? `/foros/modulo/${moduleId}` as Href : "/foros";
+    }
     case "chat_group":
     case "message": {
       const groupId = id(payload.groupId);

@@ -1,6 +1,7 @@
 import { db, usersTable, accountAuditTable, type User, type AccountAuditField, type AccountAuditChange } from "@workspace/db";
 import { eq, type SQL } from "drizzle-orm";
 import { canManageUser } from "../middlewares/auth";
+import { revokeNextcloudAdministrator } from "./nextcloudAdministrator";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Action = typeof accountAuditTable.$inferInsert.action;
@@ -22,6 +23,7 @@ export async function changeAccount(
         before.updatedAt.getTime() !== expected.updatedAt.getTime() ||
         (caller.role !== "superadmin" && !canManageUser(caller, before))) return null;
     const [after] = await tx.update(usersTable).set(updates).where(eq(usersTable.id, before.id)).returning();
+    await revokeNextcloudAdministrator(before, after);
     const changes: AccountAuditChange[] = fields.flatMap((field) =>
       before[field] === after[field] ? [] : [{
         field,

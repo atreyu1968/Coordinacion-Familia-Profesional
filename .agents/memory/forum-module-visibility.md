@@ -17,6 +17,6 @@ Teaching-profile completion and annual-confirmation forms still need the full mo
 
 Ordinary users may access only forums for modules assigned to them as teaching work in the active academic year. A module being global or belonging to the user's center does not by itself grant access. Preserve exceptions for superadministrators, coordinators and appointed moderators, except that department heads still need a teaching assignment even if an old moderation or module-membership record exists.
 
-**Why:** The user initially retained management and moderation exceptions, then specifically limited department heads to their own teaching modules.
+**Why:** The user initially retained management and moderation exceptions, then specifically limited department heads to their own teaching modules. They confirmed that a teacher seeing only their two assigned modules is the intended result, while coordinators and superadministrators retain broader access.
 
 **How to apply:** Enforce the same rule for module listings, thread reads and writes, moderation history, and forum notifications. Apply the active-family restriction as well.

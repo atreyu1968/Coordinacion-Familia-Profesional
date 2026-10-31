@@ -1973,16 +1973,36 @@ router.get("/resources", requireAuth, async (req, res): Promise<void> => {
 
   const filters: SQL[] = [isNull(resourcesTable.deletedAt)];
   if (query.data.moduleId != null) {
-    filters.push(eq(resourcesTable.moduleId, query.data.moduleId));
+    filters.push(sql`(${resourcesTable.moduleId} = ${query.data.moduleId} or exists (
+      select 1 from resource_curriculum rc where rc.resource_id = ${resourcesTable.id} and rc.module_id = ${query.data.moduleId}))`);
   }
+  if (query.data.outcomeId != null || query.data.criterionId != null) filters.push(sql`exists (
+    select 1 from resource_learning_targets rt where rt.resource_id = ${resourcesTable.id}
+    and ${query.data.outcomeId == null ? sql`true` : sql`rt.outcome_id = ${query.data.outcomeId}`}
+    and ${query.data.criterionId == null ? sql`true` : sql`rt.criterion_id = ${query.data.criterionId}`})`);
   if (query.data.centerId != null) {
-    filters.push(eq(resourcesTable.centerId, query.data.centerId));
+    filters.push(sql`(${resourcesTable.centerId} = ${query.data.centerId} or exists (
+      select 1 from resource_curriculum rc where rc.resource_id = ${resourcesTable.id} and rc.origin_center_id = ${query.data.centerId}))`);
   }
   if (query.data.search) {
     const term = `%${query.data.search}%`;
     const match = or(
       ilike(resourcesTable.title, term),
       ilike(resourcesTable.description, term),
+      ilike(resourcesTable.type, term),
+      ilike(resourcesTable.originalAuthorName, term),
+      ilike(usersTable.name, term),
+      sql`exists (select 1 from resource_curriculum rc
+        inner join modules cm on cm.id = rc.module_id
+        left join centers origin_center on origin_center.id = rc.origin_center_id
+        where rc.resource_id = ${resourcesTable.id} and (
+          rc.license ilike ${term} or rc.version ilike ${term} or cm.code ilike ${term}
+          or cm.name ilike ${term} or origin_center.name ilike ${term}))`,
+      sql`exists (select 1 from resource_learning_targets rt
+        inner join module_learning_outcomes ra on ra.id = rt.outcome_id
+        left join module_evaluation_criteria ce on ce.id = rt.criterion_id
+        where rt.resource_id = ${resourcesTable.id} and (
+          ra.code ilike ${term} or ra.description ilike ${term} or ce.code ilike ${term} or ce.description ilike ${term}))`,
     );
     if (match) filters.push(match);
   }
@@ -2023,7 +2043,9 @@ router.get("/resources", requireAuth, async (req, res): Promise<void> => {
     .leftJoin(usersTable, eq(usersTable.id, resourcesTable.authorId))
     .where(and(...filters))
     .orderBy(resourcesTable.createdAt);
-  res.json(ListResourcesResponse.parse(rows.map(toResource)));
+  const { authorizedCurriculumResources } = await import("../lib/resourceCurriculumAccess");
+  const authorized = await authorizedCurriculumResources(rows, req.user!);
+  res.json(ListResourcesResponse.parse(authorized.map(row => ({ ...toResource(row), curriculum: row.curriculum }))));
 });
 
 router.post("/resources", requireAuth, async (req, res): Promise<void> => {
@@ -2038,6 +2060,11 @@ router.post("/resources", requireAuth, async (req, res): Promise<void> => {
   // own center, a center in their province, or anything for superadmin) so a
   // user cannot attach a resource to an out-of-scope center. Otherwise default
   // to the uploader's own center (null for unscoped roles = shared/global).
+  let canonicalResourceReference: string | undefined;
+  if (parsed.data.fileUrl) {
+    const { canonicalResourceUrl } = await import("./curriculumResources");
+    try { canonicalResourceReference = canonicalResourceUrl(parsed.data.fileUrl.trim()); } catch { /* preserve unrelated legacy source formats */ }
+  }
   let centerId = parsed.data.centerId ?? caller.centerId ?? null;
   if (parsed.data.centerId != null) {
     const [center] = await db
@@ -2069,8 +2096,16 @@ router.post("/resources", requireAuth, async (req, res): Promise<void> => {
     centerId = center.id;
   }
 
-  const [created] = await db
-    .insert(resourcesTable)
+  const created = await db.transaction(async tx => {
+    if (canonicalResourceReference) {
+      const { createHash } = await import("node:crypto");
+      const { resourceCurriculumTable } = await import("@workspace/db");
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${canonicalResourceReference}, 1949))`);
+      const [existing] = await tx.select({ id: resourceCurriculumTable.resourceId }).from(resourceCurriculumTable)
+        .where(eq(resourceCurriculumTable.canonicalKey, createHash("sha256").update(canonicalResourceReference).digest("hex")));
+      if (existing) return null;
+    }
+    const [row] = await tx.insert(resourcesTable)
     .values({
       title: parsed.data.title,
       description: parsed.data.description ?? null,
@@ -2082,6 +2117,9 @@ router.post("/resources", requireAuth, async (req, res): Promise<void> => {
       centerId,
     })
     .returning();
+    return row;
+  });
+  if (!created) { res.status(409).json({ message: "La referencia ya pertenece al catálogo curricular. Usa su recurso existente, sin duplicarlo." }); return; }
   res.status(201).json(
     toResource({ ...created, authorName: caller.name }),
   );

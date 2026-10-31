@@ -51,8 +51,91 @@ migrate_database() {
   bash "${SCRIPT_DIR}/db.sh" migrate
 }
 
+seed_reference_data_database() {
+  local name="$1"
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/${name}?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/scripts run seed-reference-data
+}
+
 # A fast, independently runnable security regression suite. Both the URL and
 # server identity are checked by the test before it creates any fixtures.
+if [[ "${1:-}" == "--forum-collaboration-only" ]]; then
+  echo "==> Testing additive forum collaboration schema, preservation and repeatability"
+  create_test_database coordina_forum_collaboration
+  migrate_database coordina_forum_collaboration
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" \
+    --command="INSERT INTO resources(id,title,type,file_url) VALUES (987654,'Preserved previous resource','Enlace','https://example.test/canonical-preserved')"
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" <<'SQL'
+    DROP TRIGGER IF EXISTS forum_agreement_page_immutable ON wiki_pages;
+    DROP FUNCTION IF EXISTS protect_forum_agreement_page();
+    DROP TABLE forum_agreement_position_history;
+    DROP TABLE forum_digest_deliveries;
+    DROP TABLE forum_digest_events;
+    DROP TABLE forum_agreement_positions;
+    DROP TABLE forum_agreement_revisions;
+    DROP TABLE forum_agreements;
+    DROP TABLE resource_learning_targets;
+    DROP TABLE resource_curriculum;
+    DROP TABLE forum_thread_contexts;
+    DROP TABLE forum_collaboration_revisions;
+    DROP TABLE forum_collaborations;
+    INSERT INTO modules(id,code,name) VALUES (987654,'TEST-COLLAB','Preserved test module');
+    INSERT INTO forum_threads(id,module_id,title) VALUES (987654,987654,'Preserved previous thread');
+    INSERT INTO forum_posts(thread_id,content) VALUES (987654,'Preserved previous text');
+    INSERT INTO forum_thread_reads(user_id,thread_id,last_read_at) VALUES (987654,987654,'2026-01-01T00:00:00Z');
+    INSERT INTO users(name,email,password_hash,role) VALUES ('Preserved collaboration test','forum-migration@example.test','not-a-real-password','teacher');
+    CREATE TABLE custom_forum_preserve(id integer PRIMARY KEY, value text NOT NULL);
+    INSERT INTO custom_forum_preserve VALUES (1,'untouched');
+SQL
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT session_nonce FROM users WHERE email='forum-migration@example.test'" > "${TEST_ROOT}/session-before"
+  migrate_database coordina_forum_collaboration
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 "${DATABASE_URL}" <<'SQL'
+    INSERT INTO wiki_pages(id,module_id,title,content,created_by,updated_by)
+      VALUES (987654,987654,'Preserved immutable reference','Preserved reference body',987654,987654);
+    INSERT INTO forum_agreements(id,thread_id,module_id,status,fingerprint,curriculum_version,published_page_id)
+      VALUES (987654,987654,987654,'sin_consenso','test-fingerprint','test-curriculum',987654);
+    INSERT INTO forum_agreement_revisions(agreement_id,revision,version,snapshot,published_page_id)
+      VALUES (987654,1,1,'{}'::jsonb,987654);
+    DO $$ BEGIN
+      BEGIN
+        UPDATE wiki_pages SET content='Must not overwrite' WHERE id=987654;
+        RAISE EXCEPTION 'The immutable page trigger did not reject the write';
+      EXCEPTION WHEN check_violation THEN NULL; END;
+    END $$;
+SQL
+  migrate_database coordina_forum_collaboration
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT session_nonce FROM users WHERE email='forum-migration@example.test'" > "${TEST_ROOT}/session-after"
+  cmp "${TEST_ROOT}/session-before" "${TEST_ROOT}/session-after"
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT (SELECT count(*) FROM forum_threads WHERE id=987654 AND title='Preserved previous thread')=1 AND (SELECT count(*) FROM forum_posts WHERE thread_id=987654 AND content='Preserved previous text')=1 AND (SELECT count(*) FROM forum_thread_reads WHERE thread_id=987654 AND last_read_at='2026-01-01T00:00:00Z')=1 AND (SELECT value FROM custom_forum_preserve WHERE id=1)='untouched' AND (SELECT count(*) FROM forum_thread_contexts)=0" | grep -qx t
+  # The additional resource tables are installed only by the additive migration;
+  # no legacy resource is implicitly tagged or copied.
+  psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align "${DATABASE_URL}" \
+    --command="SELECT (SELECT count(*) FROM resource_curriculum)=0 AND (SELECT count(*) FROM resource_learning_targets)=0 AND (SELECT count(*) FROM resources WHERE id=987654 AND title='Preserved previous resource' AND file_url='https://example.test/canonical-preserved')=1" | grep -qx t
+  # Restore a real complete dump to a separate scratch DB and verify the schema.
+  pg_dump --no-password --format=custom "${DATABASE_URL}" > "${TEST_ROOT}/restore.dump"
+  create_test_database coordina_forum_restore
+  pg_restore --no-password --host="${SOCKET_DIR}" --port="${PORT}" --username=postgres \
+    --dbname=coordina_forum_restore --exit-on-error "${TEST_ROOT}/restore.dump"
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_forum_restore?host=${SOCKET_DIR}" \
+    bash "${SCRIPT_DIR}/db.sh" verify
+  psql --no-password --no-psqlrc --host="${SOCKET_DIR}" --port="${PORT}" --username=postgres \
+    --dbname=coordina_forum_restore --set=ON_ERROR_STOP=1 <<'SQL'
+    DO $$ BEGIN
+      IF (SELECT content FROM wiki_pages WHERE id=987654) <> 'Preserved reference body' THEN
+        RAISE EXCEPTION 'Published reference was not preserved'; END IF;
+      BEGIN
+        DELETE FROM wiki_pages WHERE id=987654;
+        RAISE EXCEPTION 'The restored immutable page trigger did not reject deletion';
+      EXCEPTION WHEN check_violation THEN NULL; END;
+    END $$;
+SQL
+  echo "Forum collaboration fresh-install, legacy preservation, repeatability and dump restore passed."
+  exit 0
+fi
+
 run_notification_target_migrations() {
   echo "==> Testing fresh and existing notification schemas"
   create_test_database coordina_notification_targets
@@ -209,6 +292,7 @@ create_test_database coordina_empty
 migrate_database coordina_empty
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_empty?host=${SOCKET_DIR}" \
   DB_BACKUP_DIR="${BACKUP_DIR}" bash "${SCRIPT_DIR}/db.sh" verify
+seed_reference_data_database coordina_empty
 
 echo "==> Rejecting an unrelated public table before Drizzle can push"
 create_test_database coordina_unknown_public
@@ -386,8 +470,28 @@ psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   " | grep -qx t
 echo "==> Running normativa monitor tests on their dedicated isolated database"
 bash "${APP_DIR}/scripts/test-normativa.sh"
-DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
-  pnpm --filter @workspace/api-server exec vitest run
+echo "==> Seeding production reference data on the upgraded isolated database"
+seed_reference_data_database coordina_upgrade
+echo "==> Setting a representative active academic year for API regression tests"
+psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+  --command="
+    INSERT INTO public.academic_years (name)
+      VALUES ('2026/2027')
+      ON CONFLICT (name) DO UPDATE SET deleted_at = NULL;
+    INSERT INTO public.integration_settings (active_academic_year)
+      VALUES ('2026/2027')
+      ON CONFLICT (id) DO UPDATE
+      SET active_academic_year = EXCLUDED.active_academic_year;
+  "
+if [[ -n "${API_TEST_FILTER:-}" ]]; then
+  echo "==> Running the selected API regression test: ${API_TEST_FILTER}"
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run "${API_TEST_FILTER}" --maxWorkers=1
+else
+  DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
+    pnpm --filter @workspace/api-server exec vitest run
+fi
 DATABASE_URL="postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \
   psql --no-password --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
   "postgresql://postgres@localhost:${PORT}/coordina_upgrade?host=${SOCKET_DIR}" \

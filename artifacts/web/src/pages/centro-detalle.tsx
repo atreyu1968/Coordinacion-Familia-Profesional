@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { CenterMap } from "@/components/center-map";
 import { CenterFormDialog } from "@/components/center-form-dialog";
+import { TrainingOfferAiDialog } from "@/components/training-offer-ai-dialog";
 import { EmailLink, PhoneLink } from "@/components/contact-link";
 import { YearPicker, useAcademicYears } from "@/components/year-selector";
 import { toast } from "@/hooks/use-toast";
@@ -293,7 +294,12 @@ export default function CentroDetallePage() {
             <GraduationCap className="h-5 w-5 text-primary" />
             <CardTitle className="text-base">Oferta formativa</CardTitle>
           </div>
-          {canManageOffer && <AddTrainingOfferDialog centerId={center.id} />}
+          <div className="flex flex-wrap gap-2">
+            {user?.role === "superadmin" && (
+              <TrainingOfferAiDialog centerId={center.id} centerName={center.name} triggerSize="sm" />
+            )}
+            {canManageOffer && <AddTrainingOfferDialog centerId={center.id} />}
+          </div>
         </CardHeader>
         <CardContent>
           {offer.length === 0 ? (

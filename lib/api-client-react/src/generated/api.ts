@@ -32,6 +32,10 @@ import type {
   Accreditation,
   AddModuleMemberInput,
   AdminSessionInvalidationResult,
+  AgreementInput,
+  AgreementPositionInput,
+  AgreementPublicationInput,
+  AgreementWorkspace,
   AiChatInput,
   AiChatReply,
   AiKnowledgeCoverage,
@@ -113,6 +117,7 @@ import type {
   CreateSurveyInput,
   CreateTeachingAssignmentInput,
   CreateTrainingOfferInput,
+  CurriculumResourceInput,
   Cycle,
   DashboardStatistics,
   DashboardSummary,
@@ -136,6 +141,9 @@ import type {
   Feedback,
   FinishCoordinatorGmailOAuthParams,
   ForgotPasswordInput,
+  ForumCollaboration,
+  ForumCollaborationInput,
+  ForumCollaborationTracking,
   ForumModerationEvent,
   ForumModule,
   ForumPost,
@@ -155,6 +163,7 @@ import type {
   HiddenChatMessage,
   ImportEventAttendanceCsv200,
   ImportEventAttendanceCsvBody,
+  InitializeForumCollaborationInput,
   IntegrationSettings,
   IntegrationStatus,
   Invitation,
@@ -257,6 +266,7 @@ import type {
   RenameAcademicYearInput,
   ResetPasswordInput,
   Resource,
+  ResourceCurriculumInput,
   RevokeEventAttendanceCertificateBody,
   RsvpInput,
   SendMessageInput,
@@ -274,6 +284,12 @@ import type {
   TestTeacherCleanupPreview,
   TestTeacherCleanupResult,
   TrainingOffer,
+  TrainingOfferAiAnalysis,
+  TrainingOfferAiAnalysisInput,
+  TrainingOfferAiApplyInput,
+  TrainingOfferAiDiscovery,
+  TrainingOfferAiDiscoveryInput,
+  TrainingOfferAiImportResult,
   TransferInput,
   UpdateBrandingInput,
   UpdateCenterInput,
@@ -3700,6 +3716,107 @@ export const useGetMeetingToken = <TError = ErrorType<Error>,
       return useMutation(getGetMeetingTokenMutationOptions(options), queryClient);
     }
 
+export const getGetForumCollaborationTrackingUrl = () => {
+
+
+
+
+  return `/api/forum/collaboration-tracking`
+}
+
+/**
+ * @summary Current authorized ADG module collaboration indicators, not institutional approval
+ */
+export const getForumCollaborationTracking = async ( options?: Parameters<typeof customFetch>[1]): Promise<ForumCollaborationTracking> => {
+
+  return customFetch<ForumCollaborationTracking>(getGetForumCollaborationTrackingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumCollaborationTrackingQueryKey = () => {
+    return [
+    `/api/forum/collaboration-tracking`
+    ] as const;
+    }
+
+
+export const getGetForumCollaborationTrackingQueryOptions = <TData = Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumCollaborationTrackingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCollaborationTracking>>> = ({ signal }) => getForumCollaborationTracking({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumCollaborationTrackingQueryResult = NonNullable<Awaited<ReturnType<typeof getForumCollaborationTracking>>>
+export type GetForumCollaborationTrackingQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumCollaborationTracking<TData = Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError = ErrorType<ErrorResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCollaborationTracking>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCollaborationTracking>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCollaborationTracking<TData = Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCollaborationTracking>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCollaborationTracking>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCollaborationTracking<TData = Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Current authorized ADG module collaboration indicators, not institutional approval
+ */
+
+export function useGetForumCollaborationTracking<TData = Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaborationTracking>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumCollaborationTrackingQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListForumModulesUrl = () => {
 
 
@@ -3901,6 +4018,285 @@ export function useListForumModerationHistory<TData = Awaited<ReturnType<typeof 
 
 
 
+
+export const getGetForumCollaborationUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration`
+}
+
+/**
+ * @summary Read existing forum structure and a non-mutating initialization preview
+ */
+export const getForumCollaboration = async (moduleId: number, options?: Parameters<typeof customFetch>[1]): Promise<ForumCollaboration> => {
+
+  return customFetch<ForumCollaboration>(getGetForumCollaborationUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumCollaborationQueryKey = (moduleId: number,) => {
+    return [
+    `/api/forum/modules/${moduleId}/collaboration`
+    ] as const;
+    }
+
+
+export const getGetForumCollaborationQueryOptions = <TData = Awaited<ReturnType<typeof getForumCollaboration>>, TError = ErrorType<ErrorResponse>>(moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumCollaborationQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumCollaboration>>> = ({ signal }) => getForumCollaboration(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: moduleId !== null && moduleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumCollaborationQueryResult = NonNullable<Awaited<ReturnType<typeof getForumCollaboration>>>
+export type GetForumCollaborationQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumCollaboration<TData = Awaited<ReturnType<typeof getForumCollaboration>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCollaboration>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCollaboration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCollaboration<TData = Awaited<ReturnType<typeof getForumCollaboration>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumCollaboration>>,
+          TError,
+          Awaited<ReturnType<typeof getForumCollaboration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumCollaboration<TData = Awaited<ReturnType<typeof getForumCollaboration>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read existing forum structure and a non-mutating initialization preview
+ */
+
+export function useGetForumCollaboration<TData = Awaited<ReturnType<typeof getForumCollaboration>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumCollaboration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumCollaborationQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConfigureForumCollaborationUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration`
+}
+
+/**
+ * @summary Explicitly verify module curriculum and save a versioned pilot configuration
+ */
+export const configureForumCollaboration = async (moduleId: number,
+    forumCollaborationInput: ForumCollaborationInput, options?: Parameters<typeof customFetch>[1]): Promise<ForumCollaboration> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ForumCollaboration>(getConfigureForumCollaborationUrl(moduleId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(forumCollaborationInput)
+  }
+);}
+
+
+
+
+
+export const getConfigureForumCollaborationMutationKey = () => ['configureForumCollaboration'] as const;
+
+export const getConfigureForumCollaborationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof configureForumCollaboration>>, TError,ConfigureForumCollaborationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof configureForumCollaboration>>, TError,ConfigureForumCollaborationMutationVariables, TContext> => {
+
+const mutationKey = getConfigureForumCollaborationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof configureForumCollaboration>>, ConfigureForumCollaborationMutationVariables> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  configureForumCollaboration(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfigureForumCollaborationMutationResult = NonNullable<Awaited<ReturnType<typeof configureForumCollaboration>>>
+    export type ConfigureForumCollaborationMutationBody = BodyType<ForumCollaborationInput>
+    export type ConfigureForumCollaborationMutationError = ErrorType<ErrorResponse>
+    export type ConfigureForumCollaborationMutationVariables = {moduleId: number;data: BodyType<ForumCollaborationInput>}
+
+    /**
+ * @summary Explicitly verify module curriculum and save a versioned pilot configuration
+ */
+export const useConfigureForumCollaboration = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof configureForumCollaboration>>, TError,ConfigureForumCollaborationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof configureForumCollaboration>>,
+        TError,
+        ConfigureForumCollaborationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfigureForumCollaborationMutationOptions(options), queryClient);
+    }
+
+export const getInitializeForumCollaborationUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/collaboration/initialize`
+}
+
+/**
+ * @summary Confirm the preview and create missing structural threads idempotently
+ */
+export const initializeForumCollaboration = async (moduleId: number,
+    initializeForumCollaborationInput: InitializeForumCollaborationInput, options?: Parameters<typeof customFetch>[1]): Promise<ForumCollaboration> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ForumCollaboration>(getInitializeForumCollaborationUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(initializeForumCollaborationInput)
+  }
+);}
+
+
+
+
+
+export const getInitializeForumCollaborationMutationKey = () => ['initializeForumCollaboration'] as const;
+
+export const getInitializeForumCollaborationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeForumCollaboration>>, TError,InitializeForumCollaborationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeForumCollaboration>>, TError,InitializeForumCollaborationMutationVariables, TContext> => {
+
+const mutationKey = getInitializeForumCollaborationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeForumCollaboration>>, InitializeForumCollaborationMutationVariables> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  initializeForumCollaboration(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitializeForumCollaborationMutationResult = NonNullable<Awaited<ReturnType<typeof initializeForumCollaboration>>>
+    export type InitializeForumCollaborationMutationBody = BodyType<InitializeForumCollaborationInput>
+    export type InitializeForumCollaborationMutationError = ErrorType<ErrorResponse>
+    export type InitializeForumCollaborationMutationVariables = {moduleId: number;data: BodyType<InitializeForumCollaborationInput>}
+
+    /**
+ * @summary Confirm the preview and create missing structural threads idempotently
+ */
+export const useInitializeForumCollaboration = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeForumCollaboration>>, TError,InitializeForumCollaborationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof initializeForumCollaboration>>,
+        TError,
+        InitializeForumCollaborationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInitializeForumCollaborationMutationOptions(options), queryClient);
+    }
 
 export const getListForumThreadsUrl = (params: ListForumThreadsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -7102,7 +7498,7 @@ return customFetch<User>(getUpdateUserUrl(id),
 
 export const getUpdateUserMutationKey = () => ['updateUser'] as const;
 
-export const getUpdateUserMutationOptions = <TError = ErrorType<void>,
+export const getUpdateUserMutationOptions = <TError = ErrorType<void | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext> => {
 
@@ -7131,10 +7527,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateUser>>>
     export type UpdateUserMutationBody = BodyType<UpdateUserInput>
-    export type UpdateUserMutationError = ErrorType<void>
+    export type UpdateUserMutationError = ErrorType<void | Error>
     export type UpdateUserMutationVariables = {id: number;data: BodyType<UpdateUserInput>}
 
-    export const useUpdateUser = <TError = ErrorType<void>,
+    export const useUpdateUser = <TError = ErrorType<void | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,UpdateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateUser>>,
@@ -7173,7 +7569,7 @@ export const deactivateUser = async (id: number, options?: Parameters<typeof cus
 
 export const getDeactivateUserMutationKey = () => ['deactivateUser'] as const;
 
-export const getDeactivateUserMutationOptions = <TError = ErrorType<void>,
+export const getDeactivateUserMutationOptions = <TError = ErrorType<void | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext> => {
 
@@ -7202,13 +7598,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeactivateUserMutationResult = NonNullable<Awaited<ReturnType<typeof deactivateUser>>>
 
-    export type DeactivateUserMutationError = ErrorType<void>
+    export type DeactivateUserMutationError = ErrorType<void | Error>
     export type DeactivateUserMutationVariables = {id: number}
 
     /**
  * @summary Deactivate a user (soft delete)
  */
-export const useDeactivateUser = <TError = ErrorType<void>,
+export const useDeactivateUser = <TError = ErrorType<void | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateUser>>, TError,DeactivateUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deactivateUser>>,
@@ -7611,6 +8007,270 @@ export function useListMunicipalities<TData = Awaited<ReturnType<typeof listMuni
 
 
 
+
+export const getDiscoverTrainingOfferAiUrl = () => {
+
+
+
+
+  return `/api/centers/training-offer/ai/discover`
+}
+
+/**
+ * @summary Discover official sources for the active year's training offer (superadmin)
+ */
+export const discoverTrainingOfferAi = async (trainingOfferAiDiscoveryInput: TrainingOfferAiDiscoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<TrainingOfferAiDiscovery> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TrainingOfferAiDiscovery>(getDiscoverTrainingOfferAiUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(trainingOfferAiDiscoveryInput)
+  }
+);}
+
+
+
+
+
+export const getDiscoverTrainingOfferAiMutationKey = () => ['discoverTrainingOfferAi'] as const;
+
+export const getDiscoverTrainingOfferAiMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverTrainingOfferAi>>, TError,DiscoverTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverTrainingOfferAi>>, TError,DiscoverTrainingOfferAiMutationVariables, TContext> => {
+
+const mutationKey = getDiscoverTrainingOfferAiMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverTrainingOfferAi>>, DiscoverTrainingOfferAiMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  discoverTrainingOfferAi(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverTrainingOfferAiMutationResult = NonNullable<Awaited<ReturnType<typeof discoverTrainingOfferAi>>>
+    export type DiscoverTrainingOfferAiMutationBody = BodyType<TrainingOfferAiDiscoveryInput>
+    export type DiscoverTrainingOfferAiMutationError = ErrorType<Error>
+    export type DiscoverTrainingOfferAiMutationVariables = {data: BodyType<TrainingOfferAiDiscoveryInput>}
+
+    /**
+ * @summary Discover official sources for the active year's training offer (superadmin)
+ */
+export const useDiscoverTrainingOfferAi = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverTrainingOfferAi>>, TError,DiscoverTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof discoverTrainingOfferAi>>,
+        TError,
+        DiscoverTrainingOfferAiMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDiscoverTrainingOfferAiMutationOptions(options), queryClient);
+    }
+
+export const getAnalyzeTrainingOfferAiUrl = () => {
+
+
+
+
+  return `/api/centers/training-offer/ai/analyze`
+}
+
+/**
+ * @summary Extract evidenced training offers from one official source using configured AI
+ */
+export const analyzeTrainingOfferAi = async (trainingOfferAiAnalysisInput: TrainingOfferAiAnalysisInput, options?: Parameters<typeof customFetch>[1]): Promise<TrainingOfferAiAnalysis> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TrainingOfferAiAnalysis>(getAnalyzeTrainingOfferAiUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(trainingOfferAiAnalysisInput)
+  }
+);}
+
+
+
+
+
+export const getAnalyzeTrainingOfferAiMutationKey = () => ['analyzeTrainingOfferAi'] as const;
+
+export const getAnalyzeTrainingOfferAiMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeTrainingOfferAi>>, TError,AnalyzeTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeTrainingOfferAi>>, TError,AnalyzeTrainingOfferAiMutationVariables, TContext> => {
+
+const mutationKey = getAnalyzeTrainingOfferAiMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeTrainingOfferAi>>, AnalyzeTrainingOfferAiMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  analyzeTrainingOfferAi(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzeTrainingOfferAiMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeTrainingOfferAi>>>
+    export type AnalyzeTrainingOfferAiMutationBody = BodyType<TrainingOfferAiAnalysisInput>
+    export type AnalyzeTrainingOfferAiMutationError = ErrorType<Error>
+    export type AnalyzeTrainingOfferAiMutationVariables = {data: BodyType<TrainingOfferAiAnalysisInput>}
+
+    /**
+ * @summary Extract evidenced training offers from one official source using configured AI
+ */
+export const useAnalyzeTrainingOfferAi = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeTrainingOfferAi>>, TError,AnalyzeTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof analyzeTrainingOfferAi>>,
+        TError,
+        AnalyzeTrainingOfferAiMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAnalyzeTrainingOfferAiMutationOptions(options), queryClient);
+    }
+
+export const getApplyTrainingOfferAiUrl = () => {
+
+
+
+
+  return `/api/centers/training-offer/ai/apply`
+}
+
+/**
+ * @summary Add reviewed offers to the still-active year without deleting existing offers
+ */
+export const applyTrainingOfferAi = async (trainingOfferAiApplyInput: TrainingOfferAiApplyInput, options?: Parameters<typeof customFetch>[1]): Promise<TrainingOfferAiImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TrainingOfferAiImportResult>(getApplyTrainingOfferAiUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(trainingOfferAiApplyInput)
+  }
+);}
+
+
+
+
+
+export const getApplyTrainingOfferAiMutationKey = () => ['applyTrainingOfferAi'] as const;
+
+export const getApplyTrainingOfferAiMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyTrainingOfferAi>>, TError,ApplyTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyTrainingOfferAi>>, TError,ApplyTrainingOfferAiMutationVariables, TContext> => {
+
+const mutationKey = getApplyTrainingOfferAiMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyTrainingOfferAi>>, ApplyTrainingOfferAiMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  applyTrainingOfferAi(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyTrainingOfferAiMutationResult = NonNullable<Awaited<ReturnType<typeof applyTrainingOfferAi>>>
+    export type ApplyTrainingOfferAiMutationBody = BodyType<TrainingOfferAiApplyInput>
+    export type ApplyTrainingOfferAiMutationError = ErrorType<Error>
+    export type ApplyTrainingOfferAiMutationVariables = {data: BodyType<TrainingOfferAiApplyInput>}
+
+    /**
+ * @summary Add reviewed offers to the still-active year without deleting existing offers
+ */
+export const useApplyTrainingOfferAi = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyTrainingOfferAi>>, TError,ApplyTrainingOfferAiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof applyTrainingOfferAi>>,
+        TError,
+        ApplyTrainingOfferAiMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApplyTrainingOfferAiMutationOptions(options), queryClient);
+    }
 
 export const getListCentersUrl = (params?: ListCentersParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -10853,7 +11513,7 @@ return customFetch<Resource>(getCreateResourceUrl(),
 
 export const getCreateResourceMutationKey = () => ['createResource'] as const;
 
-export const getCreateResourceMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateResourceMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResource>>, TError,CreateResourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createResource>>, TError,CreateResourceMutationVariables, TContext> => {
 
@@ -10882,10 +11542,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateResourceMutationResult = NonNullable<Awaited<ReturnType<typeof createResource>>>
     export type CreateResourceMutationBody = BodyType<CreateResourceInput>
-    export type CreateResourceMutationError = ErrorType<unknown>
+    export type CreateResourceMutationError = ErrorType<ErrorResponse>
     export type CreateResourceMutationVariables = {data: BodyType<CreateResourceInput>}
 
-    export const useCreateResource = <TError = ErrorType<unknown>,
+    export const useCreateResource = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResource>>, TError,CreateResourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createResource>>,
@@ -10962,6 +11622,613 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteResourceMutationOptions(options), queryClient);
+    }
+
+export const getGetForumAgreementUrl = (threadId: number,) => {
+
+
+
+
+  return `/api/forum/threads/${threadId}/agreement`
+}
+
+export const getForumAgreement = async (threadId: number, options?: Parameters<typeof customFetch>[1]): Promise<AgreementWorkspace> => {
+
+  return customFetch<AgreementWorkspace>(getGetForumAgreementUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetForumAgreementQueryKey = (threadId: number,) => {
+    return [
+    `/api/forum/threads/${threadId}/agreement`
+    ] as const;
+    }
+
+
+export const getGetForumAgreementQueryOptions = <TData = Awaited<ReturnType<typeof getForumAgreement>>, TError = ErrorType<ErrorResponse>>(threadId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetForumAgreementQueryKey(threadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getForumAgreement>>> = ({ signal }) => getForumAgreement(threadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: threadId !== null && threadId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetForumAgreementQueryResult = NonNullable<Awaited<ReturnType<typeof getForumAgreement>>>
+export type GetForumAgreementQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetForumAgreement<TData = Awaited<ReturnType<typeof getForumAgreement>>, TError = ErrorType<ErrorResponse>>(
+ threadId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumAgreement>>,
+          TError,
+          Awaited<ReturnType<typeof getForumAgreement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumAgreement<TData = Awaited<ReturnType<typeof getForumAgreement>>, TError = ErrorType<ErrorResponse>>(
+ threadId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getForumAgreement>>,
+          TError,
+          Awaited<ReturnType<typeof getForumAgreement>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetForumAgreement<TData = Awaited<ReturnType<typeof getForumAgreement>>, TError = ErrorType<ErrorResponse>>(
+ threadId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetForumAgreement<TData = Awaited<ReturnType<typeof getForumAgreement>>, TError = ErrorType<ErrorResponse>>(
+ threadId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getForumAgreement>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetForumAgreementQueryOptions(threadId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveForumAgreementUrl = (threadId: number,) => {
+
+
+
+
+  return `/api/forum/threads/${threadId}/agreement`
+}
+
+export const saveForumAgreement = async (threadId: number,
+    agreementInput: AgreementInput, options?: Parameters<typeof customFetch>[1]): Promise<AgreementWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AgreementWorkspace>(getSaveForumAgreementUrl(threadId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(agreementInput)
+  }
+);}
+
+
+
+
+
+export const getSaveForumAgreementMutationKey = () => ['saveForumAgreement'] as const;
+
+export const getSaveForumAgreementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveForumAgreement>>, TError,SaveForumAgreementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveForumAgreement>>, TError,SaveForumAgreementMutationVariables, TContext> => {
+
+const mutationKey = getSaveForumAgreementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveForumAgreement>>, SaveForumAgreementMutationVariables> = (props) => {
+          const {threadId,data} = props ?? {};
+
+          return  saveForumAgreement(threadId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveForumAgreementMutationResult = NonNullable<Awaited<ReturnType<typeof saveForumAgreement>>>
+    export type SaveForumAgreementMutationBody = BodyType<AgreementInput>
+    export type SaveForumAgreementMutationError = ErrorType<ErrorResponse>
+    export type SaveForumAgreementMutationVariables = {threadId: number;data: BodyType<AgreementInput>}
+
+    export const useSaveForumAgreement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveForumAgreement>>, TError,SaveForumAgreementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveForumAgreement>>,
+        TError,
+        SaveForumAgreementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveForumAgreementMutationOptions(options), queryClient);
+    }
+
+export const getRecordAgreementPositionUrl = (threadId: number,) => {
+
+
+
+
+  return `/api/forum/threads/${threadId}/agreement/positions`
+}
+
+export const recordAgreementPosition = async (threadId: number,
+    agreementPositionInput: AgreementPositionInput, options?: Parameters<typeof customFetch>[1]): Promise<AgreementWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AgreementWorkspace>(getRecordAgreementPositionUrl(threadId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(agreementPositionInput)
+  }
+);}
+
+
+
+
+
+export const getRecordAgreementPositionMutationKey = () => ['recordAgreementPosition'] as const;
+
+export const getRecordAgreementPositionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAgreementPosition>>, TError,RecordAgreementPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordAgreementPosition>>, TError,RecordAgreementPositionMutationVariables, TContext> => {
+
+const mutationKey = getRecordAgreementPositionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordAgreementPosition>>, RecordAgreementPositionMutationVariables> = (props) => {
+          const {threadId,data} = props ?? {};
+
+          return  recordAgreementPosition(threadId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordAgreementPositionMutationResult = NonNullable<Awaited<ReturnType<typeof recordAgreementPosition>>>
+    export type RecordAgreementPositionMutationBody = BodyType<AgreementPositionInput>
+    export type RecordAgreementPositionMutationError = ErrorType<ErrorResponse>
+    export type RecordAgreementPositionMutationVariables = {threadId: number;data: BodyType<AgreementPositionInput>}
+
+    export const useRecordAgreementPosition = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAgreementPosition>>, TError,RecordAgreementPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recordAgreementPosition>>,
+        TError,
+        RecordAgreementPositionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordAgreementPositionMutationOptions(options), queryClient);
+    }
+
+export const getPublishForumAgreementUrl = (threadId: number,) => {
+
+
+
+
+  return `/api/forum/threads/${threadId}/agreement/publish`
+}
+
+export const publishForumAgreement = async (threadId: number,
+    agreementPublicationInput: AgreementPublicationInput, options?: Parameters<typeof customFetch>[1]): Promise<AgreementWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AgreementWorkspace>(getPublishForumAgreementUrl(threadId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(agreementPublicationInput)
+  }
+);}
+
+
+
+
+
+export const getPublishForumAgreementMutationKey = () => ['publishForumAgreement'] as const;
+
+export const getPublishForumAgreementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishForumAgreement>>, TError,PublishForumAgreementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishForumAgreement>>, TError,PublishForumAgreementMutationVariables, TContext> => {
+
+const mutationKey = getPublishForumAgreementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishForumAgreement>>, PublishForumAgreementMutationVariables> = (props) => {
+          const {threadId,data} = props ?? {};
+
+          return  publishForumAgreement(threadId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishForumAgreementMutationResult = NonNullable<Awaited<ReturnType<typeof publishForumAgreement>>>
+    export type PublishForumAgreementMutationBody = BodyType<AgreementPublicationInput>
+    export type PublishForumAgreementMutationError = ErrorType<ErrorResponse>
+    export type PublishForumAgreementMutationVariables = {threadId: number;data: BodyType<AgreementPublicationInput>}
+
+    export const usePublishForumAgreement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishForumAgreement>>, TError,PublishForumAgreementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof publishForumAgreement>>,
+        TError,
+        PublishForumAgreementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPublishForumAgreementMutationOptions(options), queryClient);
+    }
+
+export const getListCurriculumResourcesUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/resources`
+}
+
+export const listCurriculumResources = async (moduleId: number, options?: Parameters<typeof customFetch>[1]): Promise<Resource[]> => {
+
+  return customFetch<Resource[]>(getListCurriculumResourcesUrl(moduleId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCurriculumResourcesQueryKey = (moduleId: number,) => {
+    return [
+    `/api/forum/modules/${moduleId}/resources`
+    ] as const;
+    }
+
+
+export const getListCurriculumResourcesQueryOptions = <TData = Awaited<ReturnType<typeof listCurriculumResources>>, TError = ErrorType<ErrorResponse>>(moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCurriculumResourcesQueryKey(moduleId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCurriculumResources>>> = ({ signal }) => listCurriculumResources(moduleId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: moduleId !== null && moduleId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCurriculumResourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listCurriculumResources>>>
+export type ListCurriculumResourcesQueryError = ErrorType<ErrorResponse>
+
+
+export function useListCurriculumResources<TData = Awaited<ReturnType<typeof listCurriculumResources>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCurriculumResources>>,
+          TError,
+          Awaited<ReturnType<typeof listCurriculumResources>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCurriculumResources<TData = Awaited<ReturnType<typeof listCurriculumResources>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCurriculumResources>>,
+          TError,
+          Awaited<ReturnType<typeof listCurriculumResources>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCurriculumResources<TData = Awaited<ReturnType<typeof listCurriculumResources>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListCurriculumResources<TData = Awaited<ReturnType<typeof listCurriculumResources>>, TError = ErrorType<ErrorResponse>>(
+ moduleId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCurriculumResources>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCurriculumResourcesQueryOptions(moduleId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCurriculumResourceUrl = (moduleId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/resources`
+}
+
+export const createCurriculumResource = async (moduleId: number,
+    curriculumResourceInput: CurriculumResourceInput, options?: Parameters<typeof customFetch>[1]): Promise<Resource> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Resource>(getCreateCurriculumResourceUrl(moduleId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(curriculumResourceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCurriculumResourceMutationKey = () => ['createCurriculumResource'] as const;
+
+export const getCreateCurriculumResourceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCurriculumResource>>, TError,CreateCurriculumResourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCurriculumResource>>, TError,CreateCurriculumResourceMutationVariables, TContext> => {
+
+const mutationKey = getCreateCurriculumResourceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCurriculumResource>>, CreateCurriculumResourceMutationVariables> = (props) => {
+          const {moduleId,data} = props ?? {};
+
+          return  createCurriculumResource(moduleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCurriculumResourceMutationResult = NonNullable<Awaited<ReturnType<typeof createCurriculumResource>>>
+    export type CreateCurriculumResourceMutationBody = BodyType<CurriculumResourceInput>
+    export type CreateCurriculumResourceMutationError = ErrorType<ErrorResponse>
+    export type CreateCurriculumResourceMutationVariables = {moduleId: number;data: BodyType<CurriculumResourceInput>}
+
+    export const useCreateCurriculumResource = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCurriculumResource>>, TError,CreateCurriculumResourceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCurriculumResource>>,
+        TError,
+        CreateCurriculumResourceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCurriculumResourceMutationOptions(options), queryClient);
+    }
+
+export const getUpdateResourceCurriculumUrl = (moduleId: number,
+    resourceId: number,) => {
+
+
+
+
+  return `/api/forum/modules/${moduleId}/resources/${resourceId}`
+}
+
+export const updateResourceCurriculum = async (moduleId: number,
+    resourceId: number,
+    resourceCurriculumInput: ResourceCurriculumInput, options?: Parameters<typeof customFetch>[1]): Promise<Resource> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Resource>(getUpdateResourceCurriculumUrl(moduleId,resourceId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(resourceCurriculumInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateResourceCurriculumMutationKey = () => ['updateResourceCurriculum'] as const;
+
+export const getUpdateResourceCurriculumMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateResourceCurriculum>>, TError,UpdateResourceCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateResourceCurriculum>>, TError,UpdateResourceCurriculumMutationVariables, TContext> => {
+
+const mutationKey = getUpdateResourceCurriculumMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateResourceCurriculum>>, UpdateResourceCurriculumMutationVariables> = (props) => {
+          const {moduleId,resourceId,data} = props ?? {};
+
+          return  updateResourceCurriculum(moduleId,resourceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateResourceCurriculumMutationResult = NonNullable<Awaited<ReturnType<typeof updateResourceCurriculum>>>
+    export type UpdateResourceCurriculumMutationBody = BodyType<ResourceCurriculumInput>
+    export type UpdateResourceCurriculumMutationError = ErrorType<ErrorResponse>
+    export type UpdateResourceCurriculumMutationVariables = {moduleId: number;resourceId: number;data: BodyType<ResourceCurriculumInput>}
+
+    export const useUpdateResourceCurriculum = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateResourceCurriculum>>, TError,UpdateResourceCurriculumMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateResourceCurriculum>>,
+        TError,
+        UpdateResourceCurriculumMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateResourceCurriculumMutationOptions(options), queryClient);
     }
 
 export const getGetAiKnowledgeCoverageUrl = () => {

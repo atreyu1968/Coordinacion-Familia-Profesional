@@ -37,6 +37,7 @@ import {
 import type { OidcTarget } from "../lib/oidc";
 import { getAppBaseUrl, readCookie } from "../lib/appUrl";
 import { logger } from "../lib/logger";
+import { syncNextcloudAdministratorForSso } from "../lib/nextcloudAdministrator";
 
 // ---------------------------------------------------------------------------
 // OIDC provider endpoints (mounted under /api). This app is the source of truth
@@ -253,6 +254,13 @@ router.get("/oidc/start", async (req: Request, res: Response): Promise<void> => 
     target = `/apps/files/?dir=/${encodeURIComponent(mount)}`;
   }
 
+  try {
+    await syncNextcloudAdministratorForSso(user);
+  } catch {
+    logger.warn({ userId: user.id }, "Nextcloud administrator permissions could not be confirmed");
+    res.status(503).send("No se pudieron confirmar los permisos de Nextcloud. Inténtalo de nuevo o revisa la configuración de la integración.");
+    return;
+  }
   setSsoCookie();
 
   // Provider id is assigned by Nextcloud when the OIDC provider is registered

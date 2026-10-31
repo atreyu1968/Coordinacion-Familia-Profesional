@@ -145,6 +145,7 @@ async function filesFromGroupFolders(user: User, moduleIds: Set<number>, out: Ca
 }
 
 async function collect(user: User) {
+  const { agreementWikiVisibility } = await import("./forumAgreementSupport");
   const items: Candidate[] = []; const warnings: string[] = [];
   const coverage = newCoverageObservations();
   const moduleIds = await userModules(user);
@@ -166,7 +167,7 @@ async function collect(user: User) {
     id: wikiPagesTable.id, title: wikiPagesTable.title, content: wikiPagesTable.content,
     moduleId: wikiPagesTable.moduleId, updatedAt: wikiPagesTable.updatedAt,
   }).from(wikiPagesTable).leftJoin(modulesTable, eq(modulesTable.id, wikiPagesTable.moduleId))
-    .where(and(isNull(wikiPagesTable.deletedAt), or(isNull(wikiPagesTable.moduleId), and(isNull(modulesTable.deletedAt), inArray(wikiPagesTable.moduleId, [...moduleIds])))));
+    .where(and(await agreementWikiVisibility(user), isNull(wikiPagesTable.deletedAt), or(isNull(wikiPagesTable.moduleId), and(isNull(modulesTable.deletedAt), inArray(wikiPagesTable.moduleId, [...moduleIds])))));
   const pageIds = pages.map(x => x.id);
   for (const page of pages) add({
     key: key("wiki", page.id), title: `Wiki: ${page.title}`, url: `/wiki/${page.id}`,
@@ -183,7 +184,9 @@ async function collect(user: User) {
     });
   }
   const scope = resolveReadScope(user);
-  const resourceRows = await db.select().from(resourcesTable).where(isNull(resourcesTable.deletedAt));
+  const { authorizedCurriculumResources } = await import("./resourceCurriculumAccess");
+  const resourceRows = await authorizedCurriculumResources(
+    await db.select().from(resourcesTable).where(isNull(resourcesTable.deletedAt)), user);
   for (const r of resourceRows) {
     const visible = !r.centerId || scope.kind === "global" ||
       scope.kind === "center" && scope.centerId === r.centerId ||

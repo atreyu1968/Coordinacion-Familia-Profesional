@@ -10,6 +10,7 @@ const sources = {
   document_form: ["form", "documentFormId"],
   forum_thread: ["forum", "threadId"],
   forum_reply: ["forum", "threadId"],
+  forum_digest: ["forum_module", "moduleId"],
   collaborative_space: ["space", "spaceId"],
   announcement: ["announcement", "announcementId"],
   meeting: ["meeting", "meetingId"],
