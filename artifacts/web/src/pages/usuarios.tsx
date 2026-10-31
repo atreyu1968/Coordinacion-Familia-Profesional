@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,6 +7,8 @@ import {
   useListManagedUsers,
   useGetFamilyUserFilterOptions,
   useCreateChatGroup,
+  useSendGroupMessage,
+  useSendBulkUserEmail,
   useListProvinces,
   useListCenters,
   useUpdateUser,
@@ -24,6 +26,7 @@ import {
   type ListManagedUsersParams,
   type ManagedUser,
   type ChatGroup,
+  type BulkUserEmailResult,
   type Role,
   type UpdateUserInput,
 } from "@workspace/api-client-react";
@@ -40,10 +43,12 @@ import {
 import { UserEditDialog } from "@/components/user-edit-dialog";
 import { UserAuditDialog } from "@/components/user-audit-dialog";
 import { TestTeacherCleanupDialog } from "@/components/test-teacher-cleanup-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { EmailLink } from "@/components/contact-link";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,6 +77,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { dashboardRoleFromSearch } from "@/lib/dashboard-drilldown-filters";
 import {
@@ -91,6 +104,7 @@ import {
 
 const ALL = "all";
 const PAGE_SIZES = [25, 50, 100];
+const MAX_BULK_RECIPIENTS = 100;
 type StatusFilter = "all" | "active" | "inactive";
 type ProfileFilter = "all" | "incomplete" | "complete";
 const TEACHING_PROFILE_ROLES: readonly Role[] = [
@@ -106,6 +120,7 @@ const MISSING_PROFILE_LABELS = {
 };
 
 type PendingAccess = { kind: "deactivate" | "reactivate"; user: ManagedUser } | null;
+type BulkMessageResult = { sent: number; failedNames: string[] };
 
 export default function UsuariosPage() {
   const searchParams = new URLSearchParams(useSearch());
@@ -305,16 +320,41 @@ export default function UsuariosPage() {
     setPage(1);
   };
 
+  const selectionFilterKey = JSON.stringify([
+    isManager, user?.id, searchInput, search, role, provinceId, islandId, moduleId, centerId,
+    status, teachingProfile, pageSize,
+  ]);
+  const previousSelectionFilterKey = useRef(selectionFilterKey);
+  useEffect(() => {
+    if (previousSelectionFilterKey.current !== selectionFilterKey) {
+      previousSelectionFilterKey.current = selectionFilterKey;
+      setSelectedUsers(new Map());
+    }
+  }, [selectionFilterKey]);
+
   const updateMut = useUpdateUser();
   const deactivateMut = useDeactivateUser();
   const reactivateMut = useReactivateUser();
   const createDirectMut = useCreateChatGroup();
+  const sendGroupMessageMut = useSendGroupMessage();
+  const sendBulkEmailMut = useSendBulkUserEmail();
   const anyPending = updateMut.isPending || deactivateMut.isPending || reactivateMut.isPending;
 
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [auditUser, setAuditUser] = useState<ManagedUser | null>(null);
   const [access, setAccess] = useState<PendingAccess>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<Map<number, ManagedUser>>(new Map());
+  const [bulkMode, setBulkMode] = useState<"message" | "email" | null>(null);
+  const [bulkRecipients, setBulkRecipients] = useState<ManagedUser[]>([]);
+  const [bulkSkippedNoEmail, setBulkSkippedNoEmail] = useState(0);
+  const [bulkSubject, setBulkSubject] = useState("");
+  const [bulkBody, setBulkBody] = useState("");
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkEmailResult, setBulkEmailResult] = useState<BulkUserEmailResult | null>(null);
+  const [bulkMessageResult, setBulkMessageResult] = useState<BulkMessageResult | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const invalidateAll = async (id: number) => {
     await Promise.all([
@@ -359,9 +399,159 @@ export default function UsuariosPage() {
   };
 
   const showActions = isManager;
-  const colCount = showActions ? 7 : 6;
+  const colCount = showActions ? 8 : 6;
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
+  const isBulkEligible = (target: ManagedUser) => {
+    if (!isManager || target.status !== "active" || target.id === user?.id) {
+      return false;
+    }
+    if (user?.role === "superadmin") return true;
+    const targetCenterId = target.centerId ?? target.teachingCenterId;
+    if (user?.role === "department_head") {
+      return user.centerId != null && targetCenterId === user.centerId;
+    }
+    if (user?.role === "coordinator") {
+      const targetProvinceId = target.provinceId ??
+        centers.find((center) => center.id === targetCenterId)?.provinceId;
+      return user.provinceId != null && targetProvinceId === user.provinceId;
+    }
+    return false;
+  };
+  const isEmailEligible = (target: ManagedUser) => isBulkEligible(target) && Boolean(target.email?.trim());
+  const bulkEligibleRows = rows.filter(isBulkEligible);
+  const visibleSelectedCount = bulkEligibleRows.filter((target) => selectedUsers.has(target.id)).length;
+  const selectedRecipientCount = [...selectedUsers.values()].filter(isBulkEligible).length;
+  const selectedEmailRecipientCount = [...selectedUsers.values()].filter(isEmailEligible).length;
+  const selectPageChecked: boolean | "indeterminate" =
+    bulkEligibleRows.length > 0 && visibleSelectedCount === bulkEligibleRows.length
+      ? true
+      : visibleSelectedCount > 0
+        ? "indeterminate"
+        : false;
+  const togglePageSelection = (checked: boolean | "indeterminate") => {
+    const newTargets = checked
+      ? bulkEligibleRows.filter((target) => !selectedUsers.has(target.id))
+      : [];
+    const remaining = MAX_BULK_RECIPIENTS - selectedUsers.size;
+    if (newTargets.length > remaining) {
+      toast({
+        title: "Límite de selección alcanzado",
+        description: `Puedes enviar a un máximo de ${MAX_BULK_RECIPIENTS} usuarios cada vez.`,
+      });
+    }
+    setSelectedUsers((previous) => {
+      const next = new Map(previous);
+      for (const target of bulkEligibleRows) {
+        if (checked) {
+          if (!next.has(target.id) && next.size < MAX_BULK_RECIPIENTS) {
+            next.set(target.id, target);
+          }
+        }
+        else next.delete(target.id);
+      }
+      return next;
+    });
+  };
+  const toggleUserSelection = (target: ManagedUser, checked: boolean | "indeterminate") => {
+    if (checked && !selectedUsers.has(target.id) && selectedUsers.size >= MAX_BULK_RECIPIENTS) {
+      toast({
+        title: "Límite de selección alcanzado",
+        description: `Puedes enviar a un máximo de ${MAX_BULK_RECIPIENTS} usuarios cada vez.`,
+      });
+      return;
+    }
+    setSelectedUsers((previous) => {
+      const next = new Map(previous);
+      if (checked) next.set(target.id, target);
+      else next.delete(target.id);
+      return next;
+    });
+  };
+  const openBulkComposer = (mode: "message" | "email") => {
+    const eligible = [...selectedUsers.values()].filter(isBulkEligible).slice(0, MAX_BULK_RECIPIENTS);
+    const recipients = mode === "email" ? eligible.filter(isEmailEligible) : eligible;
+    if (recipients.length === 0) return;
+    setBulkRecipients(recipients);
+    setBulkSkippedNoEmail(mode === "email" ? eligible.length - recipients.length : 0);
+    setBulkMode(mode);
+    setBulkSubject("");
+    setBulkBody("");
+    setBulkEmailResult(null);
+    setBulkMessageResult(null);
+    setBulkError(null);
+    setBulkConfirmOpen(false);
+  };
+  const closeBulkComposer = () => {
+    if (bulkSending) return;
+    if (bulkEmailResult || bulkMessageResult) setSelectedUsers(new Map());
+    setBulkMode(null);
+    setBulkRecipients([]);
+    setBulkSkippedNoEmail(0);
+    setBulkSubject("");
+    setBulkBody("");
+    setBulkConfirmOpen(false);
+    setBulkEmailResult(null);
+    setBulkMessageResult(null);
+    setBulkError(null);
+  };
+  const confirmBulkSend = async () => {
+    if (!bulkMode || bulkRecipients.length === 0 || !bulkBody.trim()) return;
+    if (bulkMode === "email" && !bulkSubject.trim()) return;
+    setBulkSending(true);
+    setBulkError(null);
+    try {
+      if (bulkMode === "email") {
+        const result = await sendBulkEmailMut.mutateAsync({
+          data: {
+            recipientIds: bulkRecipients.map((recipient) => recipient.id),
+            subject: bulkSubject.trim(),
+            message: bulkBody.trim(),
+          },
+        });
+        setBulkEmailResult(result);
+        setSelectedUsers(new Map());
+        toast({
+          title: "Envío de correos completado",
+          description: `${result.sent} enviados, ${result.pending} pendientes y ${result.failed} fallidos.`,
+          variant: result.failed > 0 ? "destructive" : undefined,
+        });
+      } else {
+        let sent = 0;
+        const failedNames: string[] = [];
+        for (const recipient of bulkRecipients) {
+          try {
+            const group = await createDirectMut.mutateAsync({
+              data: { name: recipient.name, type: "direct", memberIds: [recipient.id] },
+            });
+            await sendGroupMessageMut.mutateAsync({
+              id: group.id,
+              data: { content: bulkBody.trim() },
+            });
+            sent += 1;
+          } catch {
+            failedNames.push(recipient.name);
+          }
+        }
+        await qc.invalidateQueries({ queryKey: getListChatGroupsQueryKey() });
+        const result = { sent, failedNames };
+        setBulkMessageResult(result);
+        setSelectedUsers(new Map());
+        toast({
+          title: "Envío de mensajes completado",
+          description: `${sent} enviados, ${failedNames.length} fallidos.`,
+          variant: failedNames.length > 0 ? "destructive" : undefined,
+        });
+      }
+    } catch (error) {
+      setBulkError(
+        `${getApiErrorMessage(error) ?? "No se pudo confirmar el envío."} Comprueba el resultado antes de repetirlo para evitar duplicados.`,
+      );
+    } finally {
+      setBulkSending(false);
+      setBulkConfirmOpen(false);
+    }
+  };
   const startDirectConversation = (target: ManagedUser) => {
     if (target.id === user?.id || target.status !== "active" || createDirectMut.isPending) return;
     createDirectMut.mutate(
@@ -646,11 +836,68 @@ export default function UsuariosPage() {
         )}
       </div>
 
+      {isManager && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-3" data-testid="bulk-user-actions">
+          <span className="text-sm">Selecciona personas con las casillas de la tabla.</span>
+          <span className="text-sm text-muted-foreground" aria-live="polite" data-testid="text-selected-user-count">
+            {selectedRecipientCount} seleccionados
+            {selectedEmailRecipientCount !== selectedRecipientCount && ` · ${selectedEmailRecipientCount} con correo`}
+          </span>
+          {selectedRecipientCount > 0 && (
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => openBulkComposer("message")}
+                disabled={bulkSending}
+                data-testid="button-bulk-user-message"
+              >
+                <MessageCircle className="h-4 w-4" /> Mensajes privados
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => openBulkComposer("email")}
+                disabled={bulkSending || selectedEmailRecipientCount === 0}
+                data-testid="button-bulk-user-email"
+              >
+                <Mail className="h-4 w-4" /> Correo masivo
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedUsers(new Map())}
+                disabled={bulkSending}
+                data-testid="button-clear-user-selection"
+              >
+                Quitar selección
+              </Button>
+            </div>
+          )}
+          <p className="w-full text-xs text-muted-foreground">
+            La selección se conserva al cambiar de página y se borra al cambiar filtros. Máximo {MAX_BULK_RECIPIENTS} destinatarios por envío.
+          </p>
+        </div>
+      )}
+
       <Card>
         <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                {isManager && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selectPageChecked}
+                      disabled={bulkEligibleRows.length === 0 || bulkSending}
+                      onCheckedChange={togglePageSelection}
+                      aria-label="Seleccionar usuarios activos de esta página"
+                      data-testid="checkbox-select-user-table-page"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Nombre</TableHead>
                 <TableHead>Correo</TableHead>
                 <TableHead>Rol</TableHead>
@@ -717,6 +964,17 @@ export default function UsuariosPage() {
                   const manageable = u.canManage && !isSelf;
                   return (
                     <TableRow key={u.id} data-testid={`row-user-${u.id}`} className={isActive ? undefined : "opacity-75"}>
+                      {isManager && (
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedUsers.has(u.id)}
+                            disabled={!isBulkEligible(u) || bulkSending}
+                            onCheckedChange={(checked) => toggleUserSelection(u, checked)}
+                            aria-label={`Seleccionar a ${u.name}`}
+                            data-testid={`checkbox-select-user-${u.id}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">
                         {u.name}
                         {isSelf && <span className="ml-2 text-xs text-muted-foreground">(tú)</span>}
@@ -889,6 +1147,136 @@ export default function UsuariosPage() {
         pending={updateMut.isPending}
         onSubmit={submitEdit}
       />
+
+      <Dialog
+        open={bulkMode !== null}
+        onOpenChange={(open) => {
+          if (!open) closeBulkComposer();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {bulkMode === "email" ? "Enviar correo a varios usuarios" : "Enviar mensajes privados"}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkMode === "email"
+                ? `Se enviará un correo independiente a ${bulkRecipients.length} destinatarios. Sus direcciones no se compartirán.${bulkSkippedNoEmail > 0 ? ` Se omiten ${bulkSkippedNoEmail} seleccionados sin correo.` : ""}`
+                : `Se enviará un mensaje privado en una conversación individual a ${bulkRecipients.length} destinatarios.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {bulkMode === "email" && (
+            <div className="space-y-2">
+              <Label htmlFor="bulk-email-subject">Asunto</Label>
+              <Input
+                id="bulk-email-subject"
+                value={bulkSubject}
+                maxLength={200}
+                onChange={(event) => {
+                  setBulkSubject(event.target.value);
+                  setBulkError(null);
+                }}
+                disabled={bulkSending || bulkEmailResult !== null || bulkMessageResult !== null}
+                data-testid="input-bulk-email-subject"
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="bulk-message-body">Mensaje</Label>
+            <Textarea
+              id="bulk-message-body"
+              value={bulkBody}
+              maxLength={10000}
+              rows={8}
+              onChange={(event) => {
+                setBulkBody(event.target.value);
+                setBulkError(null);
+              }}
+              disabled={bulkSending || bulkEmailResult !== null || bulkMessageResult !== null}
+              placeholder="Escribe el mensaje…"
+              data-testid="textarea-bulk-user-message"
+            />
+            <p className="text-right text-xs text-muted-foreground">{bulkBody.length}/10000</p>
+          </div>
+
+          {bulkError && (
+            <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" data-testid="text-bulk-send-error">
+              {bulkError}
+            </p>
+          )}
+          {bulkMessageResult && (
+            <div role="status" className="space-y-1 rounded-md border p-3 text-sm" data-testid="text-bulk-message-result">
+              <p>{bulkMessageResult.sent} mensajes enviados; {bulkMessageResult.failedNames.length} fallidos.</p>
+              {bulkMessageResult.failedNames.length > 0 && (
+                <p className="text-muted-foreground">No enviados: {bulkMessageResult.failedNames.join(", ")}</p>
+              )}
+            </div>
+          )}
+          {bulkEmailResult && (
+            <div role="status" className="space-y-1 rounded-md border p-3 text-sm" data-testid="text-bulk-email-result">
+              <p>
+                {bulkEmailResult.sent} enviados; {bulkEmailResult.pending} pendientes; {bulkEmailResult.failed} fallidos.
+              </p>
+              {bulkEmailResult.pending > 0 && (
+                <p className="text-muted-foreground">
+                  El correo está pendiente de configuración. Pide al superadministrador que revise Resend en el Panel de Control.
+                </p>
+              )}
+              {bulkEmailResult.deliveries.some((delivery) => delivery.status === "failed") && (
+                <p className="text-muted-foreground">
+                  Fallidos: {bulkEmailResult.deliveries
+                    .filter((delivery) => delivery.status === "failed")
+                    .map((delivery) => bulkRecipients.find((recipient) => recipient.id === delivery.userId)?.name ?? `Usuario #${delivery.userId}`)
+                    .join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBulkComposer} disabled={bulkSending} data-testid="button-cancel-bulk-user-send">
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => setBulkConfirmOpen(true)}
+              disabled={
+                bulkSending || bulkEmailResult !== null || bulkMessageResult !== null ||
+                !bulkBody.trim() || (bulkMode === "email" && !bulkSubject.trim())
+              }
+              data-testid="button-review-bulk-user-send"
+            >
+              Revisar envío
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={(open) => { if (!bulkSending) setBulkConfirmOpen(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmas el envío a {bulkRecipients.length} usuarios?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkMode === "email"
+                ? `Se enviará un correo separado con el asunto «${bulkSubject.trim()}».${bulkSkippedNoEmail > 0 ? ` Se omiten ${bulkSkippedNoEmail} seleccionados sin correo.` : ""} El envío no se puede deshacer.`
+                : "Se enviará un mensaje privado separado a cada usuario. El envío no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkSending}>Volver a revisar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkSending}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmBulkSend();
+              }}
+              data-testid="button-confirm-bulk-user-send"
+            >
+              {bulkSending ? "Enviando…" : "Confirmar envío"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={access != null} onOpenChange={(o) => { if (!o && !anyPending) setAccess(null); }}>
         <AlertDialogContent>

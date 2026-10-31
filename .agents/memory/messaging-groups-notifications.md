@@ -44,3 +44,9 @@ In chat, identify coordinators in lilac, department heads in green, and everyone
 **Why:** The user explicitly assigned these colors to distinguish roles in conversations.
 
 **How to apply:** Apply the rule to own and received message names, direct-chat identity, participant lists and contact selection in both clients, not just received messages. Keep role/center text visible and group-type colors separate. Superadmins remain blue unless the user changes the rule.
+
+Los envíos masivos iniciados desde el listado de usuarios deben crear o reutilizar conversaciones privadas individuales; nunca un grupo compartido. Los correos también se envían por destinatario, sin exponer la lista de direcciones.
+
+**Why:** El usuario eligió expresamente chats privados individuales para los mensajes masivos.
+
+**How to apply:** Mantén los permisos de alcance en el servidor para cada destinatario y muestra por separado los resultados de entrega.

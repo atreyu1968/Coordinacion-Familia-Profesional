@@ -2589,6 +2589,37 @@ export const ListManagedUsersResponse = zod.object({
 })
 
 
+/**
+ * Sends a separate email to every selected active user. Recipients never see each other's addresses.
+ * @summary Send the same email privately to selected users
+ */
+
+export const sendBulkUserEmailBodyRecipientIdsMax = 100;
+
+export const sendBulkUserEmailBodySubjectMax = 200;
+
+export const sendBulkUserEmailBodyMessageMax = 10000;
+
+
+
+export const SendBulkUserEmailBody = zod.object({
+  "recipientIds": zod.array(zod.number().int().min(1)).min(1).max(sendBulkUserEmailBodyRecipientIdsMax),
+  "subject": zod.string().min(1).max(sendBulkUserEmailBodySubjectMax),
+  "message": zod.string().min(1).max(sendBulkUserEmailBodyMessageMax)
+})
+
+export const SendBulkUserEmailResponse = zod.object({
+  "requested": zod.number().int(),
+  "sent": zod.number().int(),
+  "pending": zod.number().int(),
+  "failed": zod.number().int(),
+  "deliveries": zod.array(zod.object({
+  "userId": zod.number().int(),
+  "status": zod.enum(['sent', 'pending', 'failed'])
+}))
+})
+
+
 export const ListUserAuditParams = zod.object({
   "id": zod.coerce.number().int()
 })

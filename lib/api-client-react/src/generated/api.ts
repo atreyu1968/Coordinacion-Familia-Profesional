@@ -52,6 +52,8 @@ import type {
   AttendanceRegistrationInfo,
   AuthResult,
   BrandingSettings,
+  BulkUserEmailInput,
+  BulkUserEmailResult,
   CalendarEntry,
   Center,
   CenterDetail,
@@ -7535,6 +7537,95 @@ export function useListManagedUsers<TData = Awaited<ReturnType<typeof listManage
 
 
 
+
+export const getSendBulkUserEmailUrl = () => {
+
+
+
+
+  return `/api/users/bulk-email`
+}
+
+/**
+ * Sends a separate email to every selected active user. Recipients never see each other's addresses.
+ * @summary Send the same email privately to selected users
+ */
+export const sendBulkUserEmail = async (bulkUserEmailInput: BulkUserEmailInput, options?: Parameters<typeof customFetch>[1]): Promise<BulkUserEmailResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BulkUserEmailResult>(getSendBulkUserEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(bulkUserEmailInput)
+  }
+);}
+
+
+
+
+
+export const getSendBulkUserEmailMutationKey = () => ['sendBulkUserEmail'] as const;
+
+export const getSendBulkUserEmailMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendBulkUserEmail>>, TError,SendBulkUserEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendBulkUserEmail>>, TError,SendBulkUserEmailMutationVariables, TContext> => {
+
+const mutationKey = getSendBulkUserEmailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendBulkUserEmail>>, SendBulkUserEmailMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendBulkUserEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendBulkUserEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendBulkUserEmail>>>
+    export type SendBulkUserEmailMutationBody = BodyType<BulkUserEmailInput>
+    export type SendBulkUserEmailMutationError = ErrorType<ErrorResponse>
+    export type SendBulkUserEmailMutationVariables = {data: BodyType<BulkUserEmailInput>}
+
+    /**
+ * @summary Send the same email privately to selected users
+ */
+export const useSendBulkUserEmail = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendBulkUserEmail>>, TError,SendBulkUserEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sendBulkUserEmail>>,
+        TError,
+        SendBulkUserEmailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendBulkUserEmailMutationOptions(options), queryClient);
+    }
 
 export const getListUserAuditUrl = (id: number,
     params?: ListUserAuditParams,) => {

@@ -1133,6 +1133,47 @@ export interface AuthResult {
   user: User;
 }
 
+export interface BulkUserEmailInput {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     * @items.minimum 1
+     */
+  recipientIds: number[];
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  /**
+     * @minLength 1
+     * @maxLength 10000
+     */
+  message: string;
+}
+
+export type BulkUserEmailDeliveryStatus = typeof BulkUserEmailDeliveryStatus[keyof typeof BulkUserEmailDeliveryStatus];
+
+
+export const BulkUserEmailDeliveryStatus = {
+  sent: 'sent',
+  pending: 'pending',
+  failed: 'failed',
+} as const;
+
+export interface BulkUserEmailDelivery {
+  userId: number;
+  status: BulkUserEmailDeliveryStatus;
+}
+
+export interface BulkUserEmailResult {
+  requested: number;
+  sent: number;
+  pending: number;
+  failed: number;
+  deliveries: BulkUserEmailDelivery[];
+}
+
 export interface UserDirectoryProvinceOption {
   id: number;
   name: string;

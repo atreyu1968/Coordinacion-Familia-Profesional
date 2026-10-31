@@ -30,8 +30,12 @@ import {
   ListUserAuditParams,
   ListUserAuditQueryParams,
   ListUserAuditResponse,
+  SendBulkUserEmailBody,
+  type BulkUserEmailResult,
 } from "@workspace/api-zod";
 import { changeAccount } from "../lib/accountAudit";
+import { sendEmail } from "../lib/email";
+import { escapeEmailHtml } from "../lib/email-layout";
 import { NextcloudAdminRevocationError } from "../lib/nextcloudAdministrator";
 import { disconnectUserSessions } from "../lib/realtime";
 import { getActiveAcademicYear, getActiveFamily, getSettings, professionalFamilyOf } from "../lib/settings";
@@ -156,6 +160,108 @@ function mayManageAccount(caller: User, target: User): boolean {
   return caller.id !== target.id &&
     (caller.role === "superadmin" || canManageUser(caller, target));
 }
+
+router.post(
+  "/users/bulk-email",
+  requireAuth,
+  requireRole("superadmin", "coordinator", "department_head"),
+  async (req, res): Promise<void> => {
+    const parsed = SendBulkUserEmailBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Destinatarios o contenido del correo no válidos" });
+      return;
+    }
+
+    const caller = req.user!;
+    const recipientIds = parsed.data.recipientIds;
+    if (new Set(recipientIds).size !== recipientIds.length) {
+      res.status(400).json({ message: "No repitas destinatarios en el mismo envío" });
+      return;
+    }
+    const subject = parsed.data.subject.trim();
+    const message = parsed.data.message.trim();
+    if (!subject || !message) {
+      res.status(400).json({ message: "El asunto y el mensaje no pueden estar vacíos" });
+      return;
+    }
+
+    const recipients = await db
+      .select()
+      .from(usersTable)
+      .where(and(
+        inArray(usersTable.id, recipientIds),
+        eq(usersTable.status, "active"),
+        isNull(usersTable.deletedAt),
+        activeFamilyUserPredicate(await getActiveFamily()),
+      ));
+
+    const centerIds = [...new Set(recipients.flatMap((recipient) =>
+      [recipient.centerId, recipient.teachingCenterId].filter((id): id is number => id != null),
+    ))];
+    const targetCenters = centerIds.length > 0
+      ? await db.select({ id: centersTable.id, provinceId: centersTable.provinceId })
+        .from(centersTable)
+        .where(inArray(centersTable.id, centerIds))
+      : [];
+    const provinceByCenter = new Map(targetCenters.map((center) => [center.id, center.provinceId]));
+    const hasAccessToEveryRecipient = recipients.length === recipientIds.length &&
+      recipients.every((recipient) => {
+        const centerId = recipient.centerId ?? recipient.teachingCenterId;
+        return recipient.id !== caller.id &&
+          Boolean(recipient.email.trim()) &&
+          hasScopeOver(caller, {
+            centerId,
+            provinceId: recipient.provinceId ?? (centerId == null ? null : provinceByCenter.get(centerId)),
+          });
+      });
+
+    if (!hasAccessToEveryRecipient) {
+      res.status(404).json({ message: "Alguna cuenta ya no está disponible en tu ámbito" });
+      return;
+    }
+
+    const html = message
+      .split(/\r?\n/)
+      .map((line) => `<p>${escapeEmailHtml(line) || "&nbsp;"}</p>`)
+      .join("");
+    const deliveries: BulkUserEmailResult["deliveries"] = new Array(recipientIds.length);
+    let nextIndex = 0;
+    const worker = async (): Promise<void> => {
+      while (nextIndex < recipients.length) {
+        const index = nextIndex++;
+        const recipient = recipients[index]!;
+        let status: BulkUserEmailResult["deliveries"][number]["status"] = "failed";
+        try {
+          const result = await sendEmail({
+            to: recipient.email,
+            subject,
+            html,
+          });
+          status = result.sent ? "sent" : result.pending ? "pending" : "failed";
+        } catch (error) {
+          req.log?.warn({ userId: recipient.id, err: error }, "Bulk email delivery failed");
+        }
+        deliveries[index] = { userId: recipient.id, status };
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(4, recipients.length) }, () => worker()),
+    );
+
+    const result: BulkUserEmailResult = {
+      requested: deliveries.length,
+      sent: deliveries.filter((delivery) => delivery.status === "sent").length,
+      pending: deliveries.filter((delivery) => delivery.status === "pending").length,
+      failed: deliveries.filter((delivery) => delivery.status === "failed").length,
+      deliveries,
+    };
+    req.log?.info(
+      { actorId: caller.id, requested: result.requested, sent: result.sent, pending: result.pending, failed: result.failed },
+      "Bulk user email completed",
+    );
+    res.json(result);
+  },
+);
 
 // Separate administration from the directory: ordinary users and existing
 // directory consumers must not gain access to soft-deactivated accounts.
