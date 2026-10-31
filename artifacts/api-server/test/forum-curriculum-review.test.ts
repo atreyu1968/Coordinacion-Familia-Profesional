@@ -117,6 +117,77 @@ describe("Selected curriculum revisions", () => {
     expect((await apply(id, incoming, preview.body.token, selected)).status).toBe(409);
   });
 
+  it("recovers one historical text only after a fresh comparison and records a new attributed revision", async () => {
+    const { id, outcome, criterion, incoming } = await fixture();
+    const comparison = (await post(id, "preview", incoming)).body;
+    const selected = [curriculumKey("ra", "RA1"), curriculumKey("sourceTitle")];
+    expect((await apply(id, incoming, comparison.token, selected)).status).toBe(200);
+    const historyBeforeRecovery = (await history(id)).body.entries;
+    const sourceRevision = historyBeforeRecovery[0].revision;
+    const sourceReview = JSON.parse((await historyDetail(id, sourceRevision)).body.configuration).curriculumReview;
+    expect(sourceReview.before.outcomes[0].description).toBe("Edición humana RA");
+    expect(sourceReview.after.outcomes[0].description).toBe("Nuevo RA de la hoja");
+
+    const raKey = curriculumKey("ra", "RA1");
+    const previewRequest = { sourceRevision, sourceSide: "before", fieldKey: raKey };
+    const preview = await post(id, "history/recovery-preview", previewRequest);
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({
+      sourceRevision, sourceSide: "before", fieldKey: raKey,
+      label: "RA RA1 · descripción", current: "Nuevo RA de la hoja", restored: "Edición humana RA",
+    });
+    expect((await post(id, "history/recovery-preview", previewRequest, teacher)).status).toBe(403);
+    expect((await post(id, "history/recover", {
+      ...previewRequest, token: preview.body.token, confirmReviewed: true,
+    }, teacher)).status).toBe(403);
+    expect((await post(id, "history/recover", {
+      ...previewRequest, token: preview.body.token, confirmReviewed: false,
+    })).status).toBe(400);
+
+    await db.update(ra).set({ description: "Edición concurrente" }).where(eq(ra.id, outcome.id));
+    expect((await post(id, "history/recover", {
+      ...previewRequest, token: preview.body.token, confirmReviewed: true,
+    })).status).toBe(409);
+
+    const freshPreview = await post(id, "history/recovery-preview", previewRequest);
+    expect(freshPreview.status).toBe(200);
+    const recovered = await post(id, "history/recover", {
+      ...previewRequest, token: freshPreview.body.token, confirmReviewed: true,
+    });
+    expect(recovered.status).toBe(200);
+    expect(recovered.body.revision).toBe(sourceRevision + 1);
+    expect((await db.select().from(ra).where(eq(ra.id, outcome.id)))[0].description).toBe("Edición humana RA");
+    expect((await db.select().from(ce).where(eq(ce.id, criterion.id)))[0].description).toBe("Edición humana CE");
+    expect((await get(id)).body.configuration.sourceTitle).toBe("Nueva referencia de ensayo");
+    expect((await get(id)).body.enabled).toBe(false);
+
+    const referenceKey = curriculumKey("sourceTitle");
+    const referenceRequest = { sourceRevision, sourceSide: "before", fieldKey: referenceKey };
+    const referencePreview = await post(id, "history/recovery-preview", referenceRequest);
+    expect(referencePreview.body).toMatchObject({
+      current: "Nueva referencia de ensayo", restored: "Normativa ficticia de ensayo",
+    });
+    const referenceRecovery = await post(id, "history/recover", {
+      ...referenceRequest, token: referencePreview.body.token, confirmReviewed: true,
+    });
+    expect(referenceRecovery.status).toBe(200);
+    expect((await get(id)).body.configuration.sourceTitle).toBe("Normativa ficticia de ensayo");
+
+    const finalHistory = (await history(id)).body.entries;
+    expect(finalHistory).toHaveLength(4);
+    const raAudit = JSON.parse((await historyDetail(id, finalHistory[1].revision)).body.configuration).curriculumReview;
+    expect(raAudit.kind).toBe("historical_text_recovery");
+    expect(raAudit.sourceIdentity).toMatchObject({
+      actorId: owner.user.id, actorName: owner.user.name,
+    });
+    expect(raAudit.before.outcomes[0].description).toBe("Edición concurrente");
+    expect(raAudit.after.outcomes[0].description).toBe("Edición humana RA");
+    expect(raAudit.before.configuration.sourceTitle)
+      .toBe("Nueva referencia de ensayo");
+    expect(sourceReview.after.outcomes[0].description).toBe("Nuevo RA de la hoja");
+    expect(await db.select().from(forumThreadsTable).where(eq(forumThreadsTable.moduleId, id))).toHaveLength(0);
+  });
+
   it("rejects stale RA edits and changed proposals, then accepts a fresh full review atomically once", async () => {
     const { id, outcome, incoming } = await fixture();
     const old = (await post(id, "preview", incoming)).body;

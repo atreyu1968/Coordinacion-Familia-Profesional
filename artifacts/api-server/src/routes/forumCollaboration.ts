@@ -12,6 +12,8 @@ import {
   GetForumCurriculumHistoryDetailParams, GetForumCurriculumHistoryDetailResponse,
   PreviewForumCurriculumBody, ApplyForumCurriculumBody,
   type ForumCollaborationThread,
+  PreviewForumCurriculumRecoveryBody, RecoverForumCurriculumTextBody,
+  PreviewForumCurriculumRecoveryResponse, RecoverForumCurriculumTextResponse,
 } from "@workspace/api-zod";
 import { requireAuth, isModuleCoordinator, hasScopeOver } from "../middlewares/auth";
 import { moduleVisibleById } from "./forums";
@@ -27,11 +29,108 @@ import {
   snapshotFingerprint, CurriculumReviewError,
 } from "../lib/forumCurriculumReview";
 
+import { createHash } from "node:crypto";
+
 const router = Router();
 const COLLABORATION_FAMILY = "Administración y Gestión";
 type Database = Pick<typeof db, "select" | "insert" | "update" | "execute">;
 class Conflict extends Error {}
 const normalize = (s: string | null) => (s ?? "").trim().toUpperCase();
+type RecoverySide = "before" | "after";
+type RecoveryTarget = { value: string; label: string; field: "sourceTitle" | "sourceUrl" | "description"; rowId?: number };
+
+function object(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+function historicalTarget(snapshot: unknown, fieldKey: string): RecoveryTarget | null {
+  const parts = JSON.parse(fieldKey) as unknown;
+  if (!Array.isArray(parts) || !parts.every(part => typeof part === "string")) return null;
+  const snap = object(snapshot);
+  const config = object(snap?.configuration);
+  if (parts.length === 1 && (parts[0] === "sourceTitle" || parts[0] === "sourceUrl")) {
+    const value = config?.[parts[0]];
+    if (typeof value !== "string" || !value.trim()) return null;
+    return { value, field: parts[0], label: parts[0] === "sourceTitle" ? "Referencia normativa · título" : "Referencia normativa · enlace" };
+  }
+  const outcomes = Array.isArray(snap?.outcomes) ? snap.outcomes.map(object).filter((v): v is Record<string, unknown> => !!v) : [];
+  const criteria = Array.isArray(snap?.criteria) ? snap.criteria.map(object).filter((v): v is Record<string, unknown> => !!v) : [];
+  if (parts.length === 2 && parts[0] === "ra") {
+    const row = outcomes.find(o => o.code === parts[1] && o.deletedAt == null);
+    if (!row || typeof row.description !== "string" || !row.description.trim() || typeof row.id !== "number") return null;
+    return { value: row.description, field: "description", rowId: row.id, label: `RA ${parts[1]} · descripción` };
+  }
+  if (parts.length === 3 && parts[0] === "ce") {
+    const parent = outcomes.find(o => o.code === parts[1] && o.deletedAt == null);
+    if (!parent || typeof parent.id !== "number") return null;
+    const row = criteria.find(c => c.outcomeId === parent.id && c.code === parts[2] && c.deletedAt == null);
+    if (!row || typeof row.description !== "string" || !row.description.trim() || typeof row.id !== "number") return null;
+    return { value: row.description, field: "description", rowId: row.id, label: `CE ${parts[1]}/${parts[2]} · descripción` };
+  }
+  return null;
+}
+function targetKey(parts: string[]) { return curriculumKey(...parts); }
+function isValidOfficialUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.hash
+      && ["boe.es", "www.boe.es", "gobiernodecanarias.org", "www.gobiernodecanarias.org"].includes(url.hostname);
+  } catch { return false; }
+}
+
+async function recoveryPreview(
+  store: Database, moduleId: number, sourceRevision: number, sourceSide: RecoverySide, fieldKey: string,
+) {
+  let parts: unknown;
+  try { parts = JSON.parse(fieldKey); }
+  catch { throw new CurriculumReviewError(400, "El texto seleccionado no es válido."); }
+  if (!Array.isArray(parts) || !parts.every(part => typeof part === "string")
+    || targetKey(parts) !== fieldKey) {
+    throw new CurriculumReviewError(400, "El texto seleccionado no es válido.");
+  }
+  const [source] = await store.select({ entry: forumCollaborationRevisionsTable, actorName: usersTable.name })
+    .from(forumCollaborationRevisionsTable)
+    .leftJoin(usersTable, eq(usersTable.id, forumCollaborationRevisionsTable.actorId))
+    .where(and(eq(forumCollaborationRevisionsTable.moduleId, moduleId),
+      eq(forumCollaborationRevisionsTable.revision, sourceRevision)));
+  if (!source) throw new CurriculumReviewError(404, "La revisión de origen ya no está disponible.");
+  const review = object(object(source.entry.configuration)?.curriculumReview);
+  const snapshot = object(review?.[sourceSide]);
+  if (!review || !snapshot || (review.kind !== "selected_worksheet_changes" && review.kind !== "historical_text_recovery")) {
+    throw new CurriculumReviewError(400, "Esta revisión no contiene una instantánea curricular recuperable.");
+  }
+  const historicalModule = object(snapshot.module);
+  if (historicalModule?.id !== moduleId) throw new CurriculumReviewError(400, "La instantánea no corresponde a este módulo.");
+  const restored = historicalTarget(snapshot, fieldKey);
+  if (!restored) throw new CurriculumReviewError(400, "Ese texto no está disponible en la instantánea seleccionada.");
+  if (restored.field === "sourceUrl" && !isValidOfficialUrl(restored.value)) {
+    throw new CurriculumReviewError(400, "El enlace histórico no es una referencia oficial válida.");
+  }
+
+  const currentSnapshot = await loadCurriculumSnapshot(store, moduleId);
+  const current = historicalTarget(currentSnapshot, fieldKey);
+  if (!current) throw new CurriculumReviewError(409, "El elemento curricular ya no está activo con esa identidad; no se modificó.");
+  const revision = currentSnapshot.configuration?.revision ?? 0;
+  const token = createHash("sha256").update(JSON.stringify({
+    moduleId, currentSnapshot, sourceRevision, sourceCreatedAt: source.entry.createdAt,
+    sourceActorId: source.entry.actorId, sourceSide, fieldKey, restored: restored.value,
+  })).digest("hex");
+  return {
+    token, revision, sourceRevision, sourceSide, fieldKey, label: restored.label,
+    current: current.value, restored: restored.value, target: current,
+    sourceActorId: source.entry.actorId, sourceActorName: source.actorName,
+    sourceCreatedAt: source.entry.createdAt.toISOString(),
+  };
+}
+
+async function lockCurriculumRows(tx: Database, moduleId: number) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('coordina:adg-ra-ce-curriculum'))`);
+  await tx.execute(sql`select pg_advisory_xact_lock(1947, ${moduleId})`);
+  await tx.execute(sql`select id from modules where id = ${moduleId} for update`);
+  await tx.execute(sql`select id from module_learning_outcomes where module_id = ${moduleId} order by id for update`);
+  await tx.execute(sql`select c.id from module_evaluation_criteria c join module_learning_outcomes o on o.id = c.outcome_id
+    where o.module_id = ${moduleId} order by c.id for update of c`);
+  await tx.execute(sql`select module_id from forum_collaborations where module_id = ${moduleId} for update`);
+}
 
 async function canConfigure(user: User, module: { id: number; centerId: number | null }) {
   if (await isModuleCoordinator(user.id, module.id)) return true;
@@ -217,6 +316,88 @@ router.get("/forum/modules/:moduleId/collaboration/curriculum/history/:revision"
     revision: entry.revision,
     configuration: JSON.stringify(entry.configuration, null, 2),
   }));
+});
+router.post("/forum/modules/:moduleId/collaboration/curriculum/history/recovery-preview", async (req, res) => {
+  const parsed = PreviewForumCurriculumRecoveryBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ message: "Selecciona una revisión, instantánea y texto válidos." }); return; }
+  try {
+    const result = await recoveryPreview(db, Number(req.params.moduleId),
+      parsed.data.sourceRevision, parsed.data.sourceSide, parsed.data.fieldKey);
+    res.json(PreviewForumCurriculumRecoveryResponse.parse(result));
+  } catch (error) {
+    if (!(error instanceof CurriculumReviewError)) throw error;
+    res.status(error.status).json({ message: error.message });
+  }
+});
+router.post("/forum/modules/:moduleId/collaboration/curriculum/history/recover", async (req, res) => {
+  const parsed = RecoverForumCurriculumTextBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.confirmReviewed) {
+    res.status(400).json({ message: "Compara el texto con el actual y confirma expresamente la recuperación." }); return;
+  }
+  const input = parsed.data, moduleId = Number(req.params.moduleId);
+  try {
+    const result = await db.transaction(async tx => {
+      await lockCurriculumRows(tx, moduleId);
+      if (!(await canReviewCurriculum(req.user!, moduleId))) {
+        throw new CurriculumReviewError(403, "Ya no tienes permiso para revisar este módulo.");
+      }
+      const preview = await recoveryPreview(tx, moduleId, input.sourceRevision, input.sourceSide, input.fieldKey);
+      if (preview.token !== input.token) {
+        throw new CurriculumReviewError(409, "El currículo o el texto histórico han cambiado. Vuelve a comparar antes de confirmar.");
+      }
+      if (preview.current === preview.restored) {
+        throw new CurriculumReviewError(400, "El texto actual ya coincide con la revisión seleccionada.");
+      }
+      const before = await loadCurriculumSnapshot(tx, moduleId);
+      const now = new Date();
+      const revision = (before.configuration?.revision ?? 0) + 1;
+      if (!before.configuration) throw new CurriculumReviewError(409, "No hay una configuración curricular que pueda revisarse.");
+
+      if (preview.target.field === "sourceTitle" || preview.target.field === "sourceUrl") {
+        await tx.update(forumCollaborationsTable)
+          .set({ [preview.target.field]: preview.restored, revision, verifiedBy: req.user!.id, verifiedAt: now })
+          .where(eq(forumCollaborationsTable.moduleId, moduleId));
+      } else {
+        const parts = JSON.parse(input.fieldKey) as string[];
+        if (parts[0] === "ra") {
+          await tx.update(moduleLearningOutcomesTable).set({ description: preview.restored })
+            .where(eq(moduleLearningOutcomesTable.id, preview.target.rowId!));
+        } else {
+          await tx.update(moduleEvaluationCriteriaTable).set({ description: preview.restored })
+            .where(eq(moduleEvaluationCriteriaTable.id, preview.target.rowId!));
+        }
+        await tx.update(forumCollaborationsTable)
+          .set({ revision, verifiedBy: req.user!.id, verifiedAt: now })
+          .where(eq(forumCollaborationsTable.moduleId, moduleId));
+      }
+
+      const after = await loadCurriculumSnapshot(tx, moduleId);
+      await tx.insert(forumCollaborationRevisionsTable).values({
+        moduleId, revision, actorId: req.user!.id,
+        configuration: {
+          ...before.configuration,
+          ...(preview.target.field === "sourceTitle" || preview.target.field === "sourceUrl"
+            ? { [preview.target.field]: preview.restored } : {}),
+          revision, verifiedBy: req.user!.id, verifiedAt: now.toISOString(),
+          curriculumReview: {
+            kind: "historical_text_recovery", sourceRevision: input.sourceRevision,
+            sourceSide: input.sourceSide, fieldKey: input.fieldKey,
+            sourceIdentity: {
+              actorId: preview.sourceActorId, actorName: preview.sourceActorName,
+              createdAt: preview.sourceCreatedAt,
+            },
+            changes: [{ key: input.fieldKey, label: preview.label, before: preview.current, after: preview.restored }],
+            before, after,
+          },
+        },
+      });
+      return { ...preview, revision };
+    });
+    res.json(RecoverForumCurriculumTextResponse.parse(result));
+  } catch (error) {
+    if (!(error instanceof CurriculumReviewError)) throw error;
+    res.status(error.status).json({ message: error.message });
+  }
 });
 router.post("/forum/modules/:moduleId/collaboration/curriculum/preview", async (req, res) => {
   const parsed = PreviewForumCurriculumBody.safeParse(req.body);

@@ -2854,6 +2854,73 @@ export interface ForumCurriculumHistoryDetail {
   configuration: string;
 }
 
+export type ForumCurriculumRecoveryRequestSourceSide = typeof ForumCurriculumRecoveryRequestSourceSide[keyof typeof ForumCurriculumRecoveryRequestSourceSide];
+
+
+export const ForumCurriculumRecoveryRequestSourceSide = {
+  before: 'before',
+  after: 'after',
+} as const;
+
+export interface ForumCurriculumRecoveryRequest {
+  /** @minimum 1 */
+  sourceRevision: number;
+  sourceSide: ForumCurriculumRecoveryRequestSourceSide;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  fieldKey: string;
+}
+
+export type ForumCurriculumRecoveryConfirmationSourceSide = typeof ForumCurriculumRecoveryConfirmationSourceSide[keyof typeof ForumCurriculumRecoveryConfirmationSourceSide];
+
+
+export const ForumCurriculumRecoveryConfirmationSourceSide = {
+  before: 'before',
+  after: 'after',
+} as const;
+
+export interface ForumCurriculumRecoveryConfirmation {
+  /** @minimum 1 */
+  sourceRevision: number;
+  sourceSide: ForumCurriculumRecoveryConfirmationSourceSide;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  fieldKey: string;
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  token: string;
+  confirmReviewed: boolean;
+}
+
+export type ForumCurriculumRecoveryPreviewSourceSide = typeof ForumCurriculumRecoveryPreviewSourceSide[keyof typeof ForumCurriculumRecoveryPreviewSourceSide];
+
+
+export const ForumCurriculumRecoveryPreviewSourceSide = {
+  before: 'before',
+  after: 'after',
+} as const;
+
+export interface ForumCurriculumRecoveryPreview {
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  token: string;
+  revision: number;
+  sourceRevision: number;
+  sourceSide: ForumCurriculumRecoveryPreviewSourceSide;
+  fieldKey: string;
+  label: string;
+  current: string;
+  restored: string;
+}
+
 export interface ForumCollaborationInput {
   /** @minimum 0 */
   revision: number;

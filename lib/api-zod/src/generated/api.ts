@@ -1823,6 +1823,87 @@ export const GetForumCurriculumHistoryDetailResponse = zod.object({
 
 
 /**
+ * @summary Compare a historical curriculum text with its current value
+ */
+
+
+
+export const PreviewForumCurriculumRecoveryParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+
+export const previewForumCurriculumRecoveryBodyFieldKeyMax = 500;
+
+
+
+export const PreviewForumCurriculumRecoveryBody = zod.object({
+  "sourceRevision": zod.number().int().min(1),
+  "sourceSide": zod.enum(['before', 'after']),
+  "fieldKey": zod.string().min(1).max(previewForumCurriculumRecoveryBodyFieldKeyMax)
+})
+
+export const previewForumCurriculumRecoveryResponseTokenMin = 64;
+export const previewForumCurriculumRecoveryResponseTokenMax = 64;
+
+
+
+export const PreviewForumCurriculumRecoveryResponse = zod.object({
+  "token": zod.string().min(previewForumCurriculumRecoveryResponseTokenMin).max(previewForumCurriculumRecoveryResponseTokenMax),
+  "revision": zod.number().int(),
+  "sourceRevision": zod.number().int(),
+  "sourceSide": zod.enum(['before', 'after']),
+  "fieldKey": zod.string(),
+  "label": zod.string(),
+  "current": zod.string(),
+  "restored": zod.string()
+})
+
+
+/**
+ * @summary Restore one historical curriculum text as a new revision
+ */
+
+
+
+export const RecoverForumCurriculumTextParams = zod.object({
+  "moduleId": zod.coerce.number().int().min(1)
+})
+
+
+export const recoverForumCurriculumTextBodyFieldKeyMax = 500;
+
+export const recoverForumCurriculumTextBodyTokenMin = 64;
+export const recoverForumCurriculumTextBodyTokenMax = 64;
+
+
+
+export const RecoverForumCurriculumTextBody = zod.object({
+  "sourceRevision": zod.number().int().min(1),
+  "sourceSide": zod.enum(['before', 'after']),
+  "fieldKey": zod.string().min(1).max(recoverForumCurriculumTextBodyFieldKeyMax),
+  "token": zod.string().min(recoverForumCurriculumTextBodyTokenMin).max(recoverForumCurriculumTextBodyTokenMax),
+  "confirmReviewed": zod.boolean()
+})
+
+export const recoverForumCurriculumTextResponseTokenMin = 64;
+export const recoverForumCurriculumTextResponseTokenMax = 64;
+
+
+
+export const RecoverForumCurriculumTextResponse = zod.object({
+  "token": zod.string().min(recoverForumCurriculumTextResponseTokenMin).max(recoverForumCurriculumTextResponseTokenMax),
+  "revision": zod.number().int(),
+  "sourceRevision": zod.number().int(),
+  "sourceSide": zod.enum(['before', 'after']),
+  "fieldKey": zod.string(),
+  "label": zod.string(),
+  "current": zod.string(),
+  "restored": zod.string()
+})
+
+
+/**
  * @summary List discussion threads for a module
  */
 export const ListForumThreadsQueryParams = zod.object({

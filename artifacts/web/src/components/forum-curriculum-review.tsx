@@ -10,6 +10,9 @@ import {
   type ForumCurriculumChange,
   type ForumCurriculumHistoryEntry,
   type ForumCurriculumPreview,
+  usePreviewForumCurriculumRecovery,
+  useRecoverForumCurriculumText,
+  type ForumCurriculumRecoveryPreview,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -541,8 +544,9 @@ function HistoryItem({ moduleId, entry }: { moduleId: number; entry: ForumCurric
   }, [detail.data?.configuration]);
   const obj = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
   const review = obj?.curriculumReview;
-  const audit = review && typeof review === "object" && !Array.isArray(review)
-    ? review as Record<string, unknown> : obj;
+  const reviewObject = review && typeof review === "object" && !Array.isArray(review)
+    ? review as Record<string, unknown> : null;
+  const audit = reviewObject ?? obj;
   const hasDiff = !!audit && ("before" in audit || "after" in audit);
   const pretty = (v: unknown) => JSON.stringify(v, null, 2);
   const date = new Date(entry.createdAt);
@@ -577,6 +581,9 @@ function HistoryItem({ moduleId, entry }: { moduleId: number; entry: ForumCurric
                   value={pretty(Object.fromEntries(Object.entries(obj!).filter(([k]) => k !== "before" && k !== "after")))}
                 />
               )}
+              {reviewObject && (
+                <RecoveryPanel entry={entry} moduleId={moduleId} review={reviewObject} />
+              )}
             </>
           ) : (
             <JsonBox label="Instantánea" value={pretty(parsed)} />
@@ -584,6 +591,166 @@ function HistoryItem({ moduleId, entry }: { moduleId: number; entry: ForumCurric
         </div>
       </details>
     </li>
+  );
+}
+
+type RecoverySide = "before" | "after";
+type HistoricalCandidate = { key: string; label: string };
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+function recoveryCandidates(snapshot: unknown): HistoricalCandidate[] {
+  const snap = asObject(snapshot);
+  if (!snap) return [];
+  const config = asObject(snap.configuration);
+  const results: HistoricalCandidate[] = [];
+  if (typeof config?.sourceTitle === "string" && config.sourceTitle.trim()) {
+    results.push({ key: JSON.stringify(["sourceTitle"]), label: "Referencia normativa · título" });
+  }
+  if (typeof config?.sourceUrl === "string" && config.sourceUrl.trim()) {
+    results.push({ key: JSON.stringify(["sourceUrl"]), label: "Referencia normativa · enlace" });
+  }
+  const outcomes = Array.isArray(snap.outcomes) ? snap.outcomes.map(asObject).filter((v): v is Record<string, unknown> => !!v) : [];
+  const criteria = Array.isArray(snap.criteria) ? snap.criteria.map(asObject).filter((v): v is Record<string, unknown> => !!v) : [];
+  for (const outcome of outcomes) {
+    if (outcome.deletedAt != null || typeof outcome.code !== "string" || typeof outcome.id !== "number"
+      || typeof outcome.description !== "string" || !outcome.description.trim()) continue;
+    results.push({ key: JSON.stringify(["ra", outcome.code]), label: `RA ${outcome.code} · descripción` });
+    for (const criterion of criteria) {
+      if (criterion.deletedAt != null || criterion.outcomeId !== outcome.id
+        || typeof criterion.code !== "string" || typeof criterion.description !== "string" || !criterion.description.trim()) continue;
+      results.push({ key: JSON.stringify(["ce", outcome.code, criterion.code]), label: `CE ${outcome.code}/${criterion.code} · descripción` });
+    }
+  }
+  return results;
+}
+
+function RecoveryPanel({ entry, moduleId, review }: { entry: ForumCurriculumHistoryEntry; moduleId: number; review: Record<string, unknown> }) {
+  const qc = useQueryClient();
+  const previewMutation = usePreviewForumCurriculumRecovery();
+  const recoverMutation = useRecoverForumCurriculumText();
+  const sides = (["before", "after"] as const).filter((side) => recoveryCandidates(review[side]).length > 0);
+  const [side, setSide] = useState<RecoverySide>(sides.includes("before") ? "before" : "after");
+  const [fieldKey, setFieldKey] = useState("");
+  const [preview, setPreview] = useState<ForumCurriculumRecoveryPreview | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const candidates = recoveryCandidates(review[side]);
+  const selectedKey = candidates.some((candidate) => candidate.key === fieldKey) ? fieldKey : candidates[0]?.key ?? "";
+  const selectedCandidate = candidates.find((candidate) => candidate.key === selectedKey);
+
+  if (!sides.length) return null;
+  const clearPreview = () => { setPreview(null); setConfirmed(false); };
+  const compare = async () => {
+    if (!selectedKey) return;
+    setError(null);
+    clearPreview();
+    try {
+      setPreview(await previewMutation.mutateAsync({
+        moduleId,
+        data: { sourceRevision: entry.revision, sourceSide: side, fieldKey: selectedKey },
+      }));
+    } catch (err) {
+      setError(errorMessage(err, "No se pudo comparar el texto histórico."));
+    }
+  };
+  const recover = async () => {
+    if (!preview || !confirmed) return;
+    setError(null);
+    try {
+      const result = await recoverMutation.mutateAsync({
+        moduleId,
+        data: {
+          sourceRevision: entry.revision, sourceSide: side, fieldKey: selectedKey,
+          token: preview.token, confirmReviewed: true,
+        },
+      });
+      await Promise.all([
+        invalidateCollaboration(qc, moduleId),
+        qc.invalidateQueries({ queryKey: getGetForumCurriculumHistoryQueryKey(moduleId) }),
+      ]);
+      toast({
+        title: "Texto recuperado",
+        description: `Se creó la revisión ${result.revision}; la revisión ${entry.revision} permanece intacta.`,
+      });
+      clearPreview();
+    } catch (err) {
+      setError(errorMessage(err, "No se pudo recuperar el texto."));
+      if (statusOf(err) === 409) {
+        clearPreview();
+        await invalidateCollaboration(qc, moduleId);
+      }
+    }
+  };
+
+  return (
+    <section className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3" data-testid="panel-curriculum-recovery">
+      <div>
+        <p className="text-sm font-medium">Recuperar un texto de esta revisión</p>
+        <p className="text-xs text-muted-foreground">
+          Origen: Rev. {entry.revision} · {entry.actorName ?? "Actor desconocido"} · {new Date(entry.createdAt).toLocaleString("es-ES")}.
+          Solo se recupera un texto; no se revierten pilotos ni hilos.
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[minmax(9rem,0.7fr)_minmax(12rem,1.3fr)_auto]">
+        <div className="space-y-1">
+          <Label htmlFor={`recovery-side-${entry.revision}`}>Instantánea</Label>
+          <select
+            id={`recovery-side-${entry.revision}`}
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={side}
+            onChange={(event) => { setSide(event.target.value as RecoverySide); setFieldKey(""); setError(null); clearPreview(); }}
+            data-testid="select-curriculum-recovery-side"
+          >
+            {sides.map((value) => <option key={value} value={value}>{value === "before" ? "Antes de la revisión" : "Después de la revisión"}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`recovery-field-${entry.revision}`}>Texto histórico</Label>
+          <select
+            id={`recovery-field-${entry.revision}`}
+            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            value={selectedKey}
+            onChange={(event) => { setFieldKey(event.target.value); setError(null); clearPreview(); }}
+            data-testid="select-curriculum-recovery-field"
+          >
+            {candidates.map((candidate) => <option key={candidate.key} value={candidate.key}>{candidate.label}</option>)}
+          </select>
+        </div>
+        <div className="flex items-end">
+          <Button type="button" variant="outline" onClick={() => void compare()} disabled={previewMutation.isPending || !selectedCandidate}>
+            {previewMutation.isPending ? "Comparando..." : "Comparar"}
+          </Button>
+        </div>
+      </div>
+      {preview && (
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2 text-xs">
+            <DiffBox label="Currículo actual" text={preview.current} tone="before" />
+            <DiffBox label={`Rev. ${preview.sourceRevision} · ${selectedCandidate?.label ?? preview.label}`} text={preview.restored} tone="after" />
+          </div>
+          {preview.current === preview.restored ? (
+            <p className="text-xs text-muted-foreground">El texto ya coincide; no hace falta crear otra revisión.</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">La recuperación añadirá una revisión nueva y conservará intactas todas las revisiones anteriores.</p>
+              <label className="flex items-start gap-2 rounded-md border border-primary/30 bg-background p-3 text-sm">
+                <Checkbox checked={confirmed} onCheckedChange={(value) => setConfirmed(value === true)} className="mt-0.5" data-testid="checkbox-curriculum-recovery-confirm" />
+                <span>He comparado el texto histórico con el currículo actual y confirmo recuperar solo este campo.</span>
+              </label>
+            </>
+          )}
+        </div>
+      )}
+      {error && <p role="alert" className="text-sm font-medium text-destructive" data-testid="text-curriculum-recovery-error">{error}</p>}
+      {preview && preview.current !== preview.restored && (
+        <div className="flex justify-end">
+          <Button type="button" onClick={() => void recover()} disabled={!confirmed || recoverMutation.isPending} data-testid="button-curriculum-recover">
+            {recoverMutation.isPending ? "Recuperando..." : "Confirmar recuperación"}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }
 

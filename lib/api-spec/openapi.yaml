@@ -1043,6 +1043,54 @@ paths:
         "401": {$ref: "#/components/responses/Error"}
         "403": {$ref: "#/components/responses/Error"}
         "404": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/history/recovery-preview:
+    post:
+      operationId: previewForumCurriculumRecovery
+      tags: [forum]
+      summary: Compare a historical curriculum text with its current value
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ForumCurriculumRecoveryRequest"}
+      responses:
+        "200":
+          description: Current and historical text values for human review
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCurriculumRecoveryPreview"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /forum/modules/{moduleId}/collaboration/curriculum/history/recover:
+    post:
+      operationId: recoverForumCurriculumText
+      tags: [forum]
+      summary: Restore one historical curriculum text as a new revision
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: moduleId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ForumCurriculumRecoveryConfirmation"}
+      responses:
+        "200":
+          description: Newly recorded recovery revision
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ForumCurriculumRecoveryPreview"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
   /forum/threads:
     get:
       operationId: listForumThreads
@@ -9404,6 +9452,34 @@ components:
       properties:
         revision: {type: integer}
         configuration: {type: string, description: "JSON snapshot including before/after and selected changes when available"}
+    ForumCurriculumRecoveryRequest:
+      type: object
+      required: [sourceRevision, sourceSide, fieldKey]
+      properties:
+        sourceRevision: {type: integer, minimum: 1}
+        sourceSide: {type: string, enum: [before, after]}
+        fieldKey: {type: string, minLength: 1, maxLength: 500}
+    ForumCurriculumRecoveryConfirmation:
+      type: object
+      required: [sourceRevision, sourceSide, fieldKey, token, confirmReviewed]
+      properties:
+        sourceRevision: {type: integer, minimum: 1}
+        sourceSide: {type: string, enum: [before, after]}
+        fieldKey: {type: string, minLength: 1, maxLength: 500}
+        token: {type: string, minLength: 64, maxLength: 64}
+        confirmReviewed: {type: boolean}
+    ForumCurriculumRecoveryPreview:
+      type: object
+      required: [token, revision, sourceRevision, sourceSide, fieldKey, label, current, restored]
+      properties:
+        token: {type: string, minLength: 64, maxLength: 64}
+        revision: {type: integer}
+        sourceRevision: {type: integer}
+        sourceSide: {type: string, enum: [before, after]}
+        fieldKey: {type: string}
+        label: {type: string}
+        current: {type: string}
+        restored: {type: string}
     ForumCollaborationInput:
       type: object
       required: [revision, fingerprint, enabled, officialCode, sourceTitle, sourceUrl, curriculumVersion, territory, confirmReviewed, sections]
