@@ -182,21 +182,35 @@ el espacio de trabajo. No añadas `.env` ni otros archivos de configuración con
 credenciales al commit.
 
 ```bash
-cd /ruta/al/Coordinacion-Familia-Profesional
+cd ~/Coordinacion-Familia-Profesional || exit 1
 git status --short >&2
-git branch --show-current >&2
-# Continúa solo si la rama es main y no hay cambios en archivos versionados.
-test "$(git branch --show-current)" = main &&
-  git pull --ff-only origin main >&2 &&
-  sudo bash deploy/update.sh >&2
+branch="$(git branch --show-current)" || exit 1
+printf 'Rama actual: %s\n' "$branch" >&2
+if [ "$branch" != "main" ]; then
+  echo "Cancelado: producción solo se actualiza desde main." >&2
+  exit 1
+fi
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Cancelado: hay cambios en archivos versionados. No se han descartado." >&2
+  exit 1
+fi
+# El pull previo actualiza también el propio actualizador; este vuelve a comprobar main.
+git pull --ff-only origin main >&2 || exit 1
+sudo bash deploy/update.sh >&2
 ```
 
 Descargar el código antes de iniciar el actualizador garantiza que se ejecute la
-lógica nueva del script; este vuelve a ejecutar `git pull --ff-only origin main`. Si `git
-status --short` muestra cambios en archivos versionados o el `pull` falla,
-detente y revisa el servidor. La configuración local `.env` no se debe borrar ni
-subir al repositorio. Si ya estás conectado como `root`, ejecuta
+lógica nueva del script; este vuelve a ejecutar `git pull --ff-only origin main`.
+Si `git status --short` muestra archivos `.env` sin seguimiento, es normal:
+contienen la configuración local y no deben borrarse ni subirse al repositorio.
+Si aparecen cambios en archivos versionados o el `pull` falla, detente y revisa
+el servidor. Si ya estás conectado como `root`, ejecuta
 `bash deploy/update.sh` sin `sudo`.
+
+En los comandos de este README, `~` representa la carpeta personal del usuario
+con el que se inició sesión. Si clonaste el repositorio en otro directorio,
+cambia `~/Coordinacion-Familia-Profesional` por esa ruta real; no escribas
+literalmente texto de ejemplo que no corresponda a tu servidor.
 
 El actualizador solo admite la rama local `main` y descarga explícitamente
 `origin/main`, aunque el seguimiento local apunte a otra rama. Si estás en otra
@@ -253,7 +267,7 @@ límites del actualizador se describen en
 Para quitar la aplicación o empezar con una instalación totalmente limpia:
 
 ```bash
-cd /ruta/al/proyecto
+cd ~/Coordinacion-Familia-Profesional || exit 1
 
 # Desinstalación conservadora: pregunta antes de borrar datos.
 # Quita el servicio, la configuración de nginx, el contenedor del espacio
@@ -350,10 +364,18 @@ Se guardan en el fichero `.env` de la raíz (lo genera el instalador). Ver
     así que la app móvil nunca se compiló. Indícaselo y vuelve a actualizar:
 
     ```bash
-    cd /ruta/al/repositorio &&
-      test "$(git branch --show-current)" = main &&
-      git pull --ff-only origin main >&2 &&
-      sudo DOMAIN=tu-dominio.com bash deploy/update.sh >&2
+    cd ~/Coordinacion-Familia-Profesional || exit 1
+    branch="$(git branch --show-current)" || exit 1
+    if [ "$branch" != "main" ]; then
+      echo "Cancelado: producción solo se actualiza desde main." >&2
+      exit 1
+    fi
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+      echo "Cancelado: hay cambios en archivos versionados." >&2
+      exit 1
+    fi
+    git pull --ff-only origin main >&2 || exit 1
+    sudo DOMAIN=tu-dominio.com bash deploy/update.sh >&2
     ```
 
     `update.sh` también intenta leer el dominio que hayas guardado en **Panel de
@@ -642,7 +664,7 @@ Cada aplicación se ejecuta con su propio comando `dev` (`pnpm --filter
   y un `rewrite or internal redirection cycle`. Soluciónalo recompilando con la
   versión nueva, que copia la web a `/var/www`:
   ```bash
-  cd /ruta/al/proyecto
+  cd ~/Coordinacion-Familia-Profesional || exit 1
   sudo bash deploy/update.sh
   ```
 - **La web carga pero falla todo lo del API:** revisa el servicio con
