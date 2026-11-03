@@ -232,6 +232,31 @@ dependencias compatibles con su esquema. La copia queda por defecto en
 `/var/backups/coordina-adg/`. No ejecutes `push-force` ni elimines datos para
 resolver una incompatibilidad.
 
+### Subforos de módulos tras instalar o actualizar
+
+El instalador y el actualizador cargan el currículo de Administración y Gestión
+verificado en la hoja de cálculo y ejecutan `seed-forum-threads`. Este paso:
+
+- Activa únicamente las configuraciones originales importadas de la hoja
+  verificada, sin cambios manuales y con identidad y RA/CE coherentes.
+- Crea los apartados habilitados de programación didáctica y los temas de
+  materiales por resultado de aprendizaje y criterio de evaluación.
+- Puede repetirse: conserva los temas y sus respuestas, incluidas las ediciones
+  humanas; no duplica ni recupera temas archivados o eliminados.
+- Respeta revisiones y desactivaciones manuales. Si coordinación ha cambiado una
+  configuración, debe revisar y crear los temas desde **Foros → módulo →
+  Configurar colaboración / Crear temas pendientes**.
+- Deja pendientes las incidencias del catálogo, incluidos los módulos de FP
+  adaptada pendientes de revisión. No inventa resultados ni fusiona identidades
+  ambiguas.
+- Muestra en la terminal cuántos módulos activa, cuántos temas crea y los motivos
+  de las omisiones. No envía avisos masivos por esta inicialización.
+
+La inicialización se ejecuta en una transacción: si falla, se revierten los
+cambios de ese paso y se detiene la instalación/actualización. No revierte las
+migraciones ni la carga de referencia que hayan terminado antes. La creación
+de estos espacios no constituye aprobación institucional de una programación.
+
 Las sesiones se conservan en actualizaciones normales. Para forzar que todos los
 usuarios activos vuelvan a iniciar sesión **en esa actualización**, ejecútala
 expresamente así:

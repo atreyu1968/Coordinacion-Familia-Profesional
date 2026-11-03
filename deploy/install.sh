@@ -404,6 +404,10 @@ log "Preloading reference data (provinces, islands, municipalities, FP centers)"
 run_as_user_preserving_env "DATABASE_URL" \
   "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-reference-data"
 
+log "Preparing verified ADG module forums (without replacing manual changes)"
+run_as_user_preserving_env "DATABASE_URL" \
+  "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-forum-threads"
+
 # ---------------------------------------------------------------------------
 log "Creating the first administrator (if needed)"
 SEED_ADMIN_EMAIL="${ADMIN_EMAIL}" SEED_ADMIN_PASSWORD="${ADMIN_PASSWORD}" \

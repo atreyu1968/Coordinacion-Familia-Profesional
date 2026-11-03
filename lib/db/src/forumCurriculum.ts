@@ -3,6 +3,30 @@ import type { Module } from "./schema/modules";
 import type { ModuleLearningOutcome, ModuleEvaluationCriterion } from "./schema/learningOutcomes";
 import type { ProgrammingSection } from "./schema/forumCollaboration";
 
+// Shared by the interactive initializer and deployment: stable keys must match.
+export function planForumThreads(
+  sections: ProgrammingSection[],
+  outcomes: Pick<ModuleLearningOutcome, "id" | "code" | "description">[],
+  criteria: Pick<ModuleEvaluationCriterion, "id" | "outcomeId" | "code" | "description">[],
+) {
+  return [
+    ...sections.filter(s => s.enabled).sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)).map(s => ({
+      key: s.key, kind: "programming_section" as const, title: `${s.key} · ${s.title}`, content: s.prompt,
+      outcomeId: null as number | null, criterionId: null as number | null,
+    })),
+    ...outcomes.flatMap(o => [
+      { key: `MAT-RA:${o.id}`, kind: "material_ra" as const, title: `${o.code} · Materiales y actividades`,
+        content: `${o.code}: ${o.description}\n\nComparte propuestas integradoras, dudas y referencias a materiales de la biblioteca existente. No adjuntes datos del alumnado ni copies archivos innecesariamente. Las propuestas no modifican el texto oficial.`,
+        outcomeId: o.id, criterionId: null as number | null },
+      ...criteria.filter(c => c.outcomeId === o.id).map(c => ({
+        key: `MAT-CE:${c.id}`, kind: "material_ce" as const, title: `${o.code} · CE ${c.code} · Materiales y actividades`,
+        content: `${o.code}: ${o.description}\n\nCE ${c.code}: ${c.description}\n\nPropón actividades, evidencias, instrumentos y enlaces a recursos de la biblioteca. Identifica su autoría y licencia. Las propuestas no modifican el texto oficial.`,
+        outcomeId: o.id, criterionId: c.id,
+      })),
+    ]),
+  ];
+}
+
 export function forumCurriculumFingerprint(
   module: Pick<Module, "id" | "code" | "name" | "cycleId" | "cycleName" | "centerId">,
   outcomes: Pick<ModuleLearningOutcome, "id" | "code" | "description" | "order">[],

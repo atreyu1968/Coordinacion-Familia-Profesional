@@ -23,6 +23,7 @@ import { moduleFamilyFilter } from "../lib/familyCatalog";
 import { getActiveFamily } from "../lib/settings";
 import { enqueueForumDigest } from "../lib/forumDigestQueue";
 import { currentCurriculumImportReport } from "../lib/curriculumImportReport";
+import { planForumThreads } from "@workspace/db";
 import { hasTeachingModuleAccess } from "../lib/teachingModuleAccess";
 import {
   loadCurriculumSnapshot, compareCurriculum, applyCurriculumRows, curriculumKey,
@@ -186,21 +187,7 @@ export async function structure(store: Database, moduleId: number, user: User) {
     title: forumThreadsTable.title, archived: sql<boolean>`${forumThreadsTable.deletedAt} is not null`,
   }).from(forumThreadContextsTable).innerJoin(forumThreadsTable, eq(forumThreadsTable.id, forumThreadContextsTable.threadId))
     .where(eq(forumThreadContextsTable.moduleId, moduleId));
-  const planned = [
-    ...sections.filter(s => s.enabled).sort((a, b) => a.order - b.order || a.key.localeCompare(b.key)).map(s => ({
-      key: s.key, kind: "programming_section" as const, title: `${s.key} · ${s.title}`, content: s.prompt, outcomeId: null as number | null, criterionId: null as number | null,
-    })),
-    ...outcomes.flatMap(o => [
-      { key: `MAT-RA:${o.id}`, kind: "material_ra" as const, title: `${o.code} · Materiales y actividades`,
-        content: `${o.code}: ${o.description}\n\nComparte propuestas integradoras, dudas y referencias a materiales de la biblioteca existente. No adjuntes datos del alumnado ni copies archivos innecesariamente. Las propuestas no modifican el texto oficial.`,
-        outcomeId: o.id, criterionId: null as number | null },
-      ...criteria.filter(c => c.outcomeId === o.id).map(c => ({
-        key: `MAT-CE:${c.id}`, kind: "material_ce" as const, title: `${o.code} · CE ${c.code} · Materiales y actividades`,
-        content: `${o.code}: ${o.description}\n\nCE ${c.code}: ${c.description}\n\nPropón actividades, evidencias, instrumentos y enlaces a recursos de la biblioteca. Identifica su autoría y licencia. Las propuestas no modifican el texto oficial.`,
-        outcomeId: o.id, criterionId: c.id,
-      })),
-    ]),
-  ];
+  const planned = planForumThreads(sections, outcomes, criteria);
   const plannedKeys = new Set(planned.map(t => t.key));
   const threads: ForumCollaborationThread[] = planned.map(t => {
     const existing = contexts.find(c => c.key === t.key);

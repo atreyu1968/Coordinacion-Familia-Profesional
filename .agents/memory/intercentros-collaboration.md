@@ -24,6 +24,17 @@ cada centro la adopción y aprobación institucional.
 en aprobación institucional. No fusionar módulos por nombre ni inventar RA/CE
 para completar un piloto sin datos curriculares revisados.
 
+El despliegue debe preparar los temas estructurados del currículo ya verificado,
+sin exigir que coordinación repita esa carga manualmente; las decisiones
+manuales posteriores, incluidos los pilotos desactivados, prevalecen.
+
+**Why:** El usuario aprobó incluir en el instalador/actualizador la preparación
+de los subforos que no aparecían en producción, conservando temas y sin duplicados.
+
+**How to apply:** Automatizar solo a partir de la procedencia verificada de la
+hoja y de identidades no ambiguas; no activar incidencias pendientes, sobrescribir
+revisiones humanas ni recuperar temas archivados.
+
 La clasificación curricular no convierte en privado un archivo de origen que
 ya era público, ni revoca sus permisos previos.
 

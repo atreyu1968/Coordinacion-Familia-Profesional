@@ -211,6 +211,10 @@ echo "==> Preloading reference data (provinces, islands, municipalities, FP cent
 run_as_user_preserving_env "DATABASE_URL" \
   "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-reference-data"
 
+echo "==> Preparing verified ADG module forums (without replacing manual changes)"
+run_as_user_preserving_env "DATABASE_URL" \
+  "cd '${APP_DIR}' && pnpm --filter @workspace/scripts run seed-forum-threads"
+
 if [[ "${SEED_TEST_TEACHERS:-no}" =~ ^[yY]([eE][sS])?$ ]]; then
   echo "==> Seeding test teachers (Administración y Gestión)"
   if [[ -n "${TEST_TEACHER_PASSWORD:-}" ]]; then
